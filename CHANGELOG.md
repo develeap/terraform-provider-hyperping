@@ -10,11 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial resources and data sources for Hyperping API management
 
-## [1.0.0] - TBD
+## [1.0.0] - 2026-02-02
 
 Initial stable release of the Terraform Provider for Hyperping.
 
-This provider is production-ready with comprehensive test coverage (76%), complete documentation, and all major Hyperping API features implemented. Per semantic versioning, v1.0.0 indicates a stable public API ready for production use.
+This provider is production-ready with comprehensive test coverage (45.8% overall, 94% client), complete documentation, and all major Hyperping API features implemented. Per semantic versioning, v1.0.0 indicates a stable public API ready for production use.
 
 ### Added
 
