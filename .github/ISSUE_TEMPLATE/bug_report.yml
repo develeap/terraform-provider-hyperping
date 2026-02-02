@@ -111,12 +111,3 @@ body:
     attributes:
       label: Additional Context
       description: Any other context, screenshots, or information about the problem.
-
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Code of Conduct
-      description: By submitting this issue, you agree to follow our Code of Conduct
-      options:
-        - label: I agree to follow this project's Code of Conduct
-          required: true

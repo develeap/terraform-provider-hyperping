@@ -83,5 +83,3 @@ body:
       options:
         - label: I have searched existing issues to ensure this is not a duplicate
           required: true
-        - label: I agree to follow this project's Code of Conduct
-          required: true
