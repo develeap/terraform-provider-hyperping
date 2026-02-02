@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -307,6 +308,7 @@ func testAccCheckStatusPageDisappears(server *mockStatusPageServer) tfresource.T
 type mockStatusPageServer struct {
 	*httptest.Server
 	t           *testing.T
+	mu          sync.RWMutex
 	statusPages map[string]map[string]interface{}
 	subscribers map[string][]map[string]interface{}
 	counter     int
@@ -358,6 +360,9 @@ func (m *mockStatusPageServer) handleRequest(w http.ResponseWriter, r *http.Requ
 }
 
 func (m *mockStatusPageServer) listStatusPages(w http.ResponseWriter, _ *http.Request) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	pages := make([]map[string]interface{}, 0, len(m.statusPages))
 	for _, page := range m.statusPages {
 		pages = append(pages, page)
@@ -378,6 +383,9 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	m.counter++
 	uuid := fmt.Sprintf("sp_%03d", m.counter)
@@ -524,6 +532,9 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 func (m *mockStatusPageServer) getStatusPage(w http.ResponseWriter, r *http.Request) {
 	uuid := strings.TrimPrefix(r.URL.Path, "/v1/statuspages/")
 
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	page, ok := m.statusPages[uuid]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
@@ -537,17 +548,20 @@ func (m *mockStatusPageServer) getStatusPage(w http.ResponseWriter, r *http.Requ
 func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.Request) {
 	uuid := strings.TrimPrefix(r.URL.Path, "/v1/statuspages/")
 
-	page, ok := m.statusPages[uuid]
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Status page not found"})
-		return
-	}
-
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+		return
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	page, ok := m.statusPages[uuid]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Status page not found"})
 		return
 	}
 
@@ -644,6 +658,9 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 func (m *mockStatusPageServer) deleteStatusPage(w http.ResponseWriter, r *http.Request) {
 	uuid := strings.TrimPrefix(r.URL.Path, "/v1/statuspages/")
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, ok := m.statusPages[uuid]; !ok {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Status page not found"})
@@ -655,6 +672,8 @@ func (m *mockStatusPageServer) deleteStatusPage(w http.ResponseWriter, r *http.R
 }
 
 func (m *mockStatusPageServer) deleteAllStatusPages() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.statusPages = make(map[string]map[string]interface{})
 }
 
@@ -667,6 +686,9 @@ func (m *mockStatusPageServer) listSubscribers(w http.ResponseWriter, r *http.Re
 			break
 		}
 	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	subs, ok := m.subscribers[uuid]
 	if !ok {
@@ -696,6 +718,9 @@ func (m *mockStatusPageServer) addSubscriber(w http.ResponseWriter, r *http.Requ
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 		return
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	m.subCounter++
 	subscriber := map[string]interface{}{
@@ -744,6 +769,9 @@ func (m *mockStatusPageServer) deleteSubscriber(w http.ResponseWriter, r *http.R
 			subIDStr = parts[i+1]
 		}
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	subs, ok := m.subscribers[uuid]
 	if !ok {
