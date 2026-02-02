@@ -140,7 +140,7 @@ func (v uuidFormatValidator) ValidateString(_ context.Context, req validator.Str
 	}
 
 	value := req.ConfigValue.ValueString()
-	// Simple UUID format check: 8-4-4-4-12 hexadecimal characters with hyphens
+	// Simple UUID format check: 8-4-4-4-12 hexadecimal characters with dashes
 	// Or provider-specific formats like "mon_", "tok_", "out_" prefixes
 	if len(value) < 8 {
 		resp.Diagnostics.AddAttributeError(
@@ -151,11 +151,11 @@ func (v uuidFormatValidator) ValidateString(_ context.Context, req validator.Str
 		return
 	}
 
-	// Accept standard UUIDs (with hyphens) or Hyperping resource IDs (with underscores)
-	hasHyphens := strings.Contains(value, "-")
+	// Accept standard UUIDs (with dashes) or Hyperping resource IDs (with underscores)
+	hasDashes := strings.Contains(value, "-")
 	hasUnderscores := strings.Contains(value, "_")
 
-	if !hasHyphens && !hasUnderscores {
+	if !hasDashes && !hasUnderscores {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid UUID Format",

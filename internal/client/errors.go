@@ -118,7 +118,7 @@ func NewRateLimitError(retryAfter int) *APIError {
 }
 
 // Compile regexes once for performance.
-// apiKeyPattern matches both sk_ and hp_ prefixed keys with alphanumeric, underscore, and hyphen (VULN-019).
+// apiKeyPattern matches sk_ prefixed keys with alphanumeric, underscore, and dash characters (VULN-019).
 // bearerPattern matches any Bearer token of 8+ non-whitespace chars (VULN-019).
 var (
 	apiKeyPattern     = regexp.MustCompile(`sk_[a-zA-Z0-9_-]+`)

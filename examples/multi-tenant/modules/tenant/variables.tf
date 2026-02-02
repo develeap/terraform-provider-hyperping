@@ -1,12 +1,12 @@
 # Tenant Module Variables
 
 variable "tenant_id" {
-  description = "Unique tenant identifier (lowercase, alphanumeric, hyphens)"
+  description = "Unique tenant identifier (lowercase, alphanumeric, dashes)"
   type        = string
 
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.tenant_id))
-    error_message = "Tenant ID must be lowercase alphanumeric with hyphens."
+    error_message = "Tenant ID must be lowercase alphanumeric with dashes."
   }
 }
 

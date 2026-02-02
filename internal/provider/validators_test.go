@@ -141,7 +141,7 @@ func TestUUIDFormat(t *testing.T) {
 		{"outage ID", "out_incident123", false},
 		{"incident ID", "inc_test123", false},
 		{"invalid - too short", "short", true},
-		{"invalid - no separators", "nohyphensorunderscores", true},
+		{"invalid - no separators", "nodashesorunderscores", true},
 		{"invalid - empty", "", true},
 	}
 
