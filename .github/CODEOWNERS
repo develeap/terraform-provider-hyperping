@@ -1,1 +1,9 @@
-* @hashicorp/terraform-core-plugins
+# Default owner for everything in the repo
+* @KhaledSalhab-Develeap
+
+# Critical files require explicit review
+/internal/client/**         @KhaledSalhab-Develeap
+/internal/provider/**       @KhaledSalhab-Develeap
+/.github/workflows/**       @KhaledSalhab-Develeap
+/go.mod                     @KhaledSalhab-Develeap
+/go.sum                     @KhaledSalhab-Develeap
