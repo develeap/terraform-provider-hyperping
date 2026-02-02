@@ -1,0 +1,39 @@
+[
+  {
+    "uuid": "inci_001",
+    "date": "2025-01-15T10:30:00.000Z",
+    "title": {
+      "en": "API Outage"
+    },
+    "text": {
+      "en": "Complete API outage affecting all endpoints."
+    },
+    "type": "outage",
+    "affectedComponents": ["comp_api"],
+    "statuspages": ["sp_main"],
+    "updates": []
+  },
+  {
+    "uuid": "inci_002",
+    "date": "2025-01-14T08:00:00.000Z",
+    "title": {
+      "en": "Degraded Performance"
+    },
+    "text": {
+      "en": "Some users experiencing slow response times."
+    },
+    "type": "incident",
+    "affectedComponents": [],
+    "statuspages": ["sp_main"],
+    "updates": [
+      {
+        "uuid": "update_resolved",
+        "date": "2025-01-14T09:00:00.000Z",
+        "text": {
+          "en": "Issue has been resolved."
+        },
+        "type": "resolved"
+      }
+    ]
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "name": "API Monitor",
+    "url": "https://api.example.com/health",
+    "uuid": "mon_OYKr5fpSDHqbP2",
+    "paused": false,
+    "protocol": "http",
+    "projectUuid": "proj_IU6NdRUvdZSWz7",
+    "port": null,
+    "http_method": "GET",
+    "regions": ["amsterdam", "london"],
+    "check_frequency": 30,
+    "follow_redirects": true,
+    "expected_status_code": "2xx",
+    "request_body": "",
+    "request_headers": []
+  },
+  {
+    "name": "Website Monitor",
+    "url": "https://www.example.com",
+    "uuid": "mon_XYZ123abc",
+    "paused": true,
+    "protocol": "http",
+    "projectUuid": "proj_IU6NdRUvdZSWz7",
+    "port": null,
+    "http_method": "GET",
+    "regions": ["paris", "frankfurt", "tokyo"],
+    "check_frequency": 60,
+    "follow_redirects": true,
+    "expected_status_code": "200",
+    "request_body": "",
+    "request_headers": []
+  }
+]

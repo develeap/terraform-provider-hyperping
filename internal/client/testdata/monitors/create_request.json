@@ -1,0 +1,16 @@
+{
+  "name": "New API Monitor",
+  "url": "https://api.example.com/health",
+  "protocol": "http",
+  "http_method": "POST",
+  "check_frequency": 60,
+  "regions": ["london", "paris", "frankfurt"],
+  "request_headers": [
+    {"name": "Authorization", "value": "Bearer secret"},
+    {"name": "Content-Type", "value": "application/json"}
+  ],
+  "request_body": "{\"ping\": true}",
+  "follow_redirects": false,
+  "expected_status_code": "201",
+  "paused": false
+}

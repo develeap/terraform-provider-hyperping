@@ -2,22 +2,60 @@ version: "2"
 linters:
   default: none
   enable:
-    - copyloopvar
-    - depguard
-    - durationcheck
+    - bodyclose
     - errcheck
-    - forcetypeassert
-    - godot
+    - gocritic
+    - govet
     - ineffassign
-    - makezero
     - misspell
     - nilerr
-    - predeclared
+    - prealloc
+    - revive
     - staticcheck
     - unconvert
     - unparam
     - unused
-    - usetesting
+    - whitespace
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocritic:
+      disabled-checks:
+        - whyNoLint
+        - hugeParam
+        - paramTypeCombine
+        - regexpSimplify
+        - rangeValCopy
+        - nestingReduce
+        - unnamedResult
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: var-declaration
+        - name: var-naming
   exclusions:
     generated: lax
     presets:
@@ -25,34 +63,31 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+          - gocritic
+          - revive
+          - unused
+        path: _test\.go
+      - linters:
+          - all
+        path: docs/
     paths:
       - third_party$
       - builtin$
       - examples$
-  settings:
-    depguard:
-      rules:
-        main:
-          list-mode: lax # a package is allowed if it doesn't match the deny list or the allow rule is more specific (longer) than the deny rule.
-          deny:
-            - pkg: "github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest" # prefix
-              desc: "Use github.com/hashicorp/terraform-plugin-testing/helper/acctest"
-
-            - pkg: "github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource" # prefix
-              desc: "Use github.com/hashicorp/terraform-plugin-testing/helper/resource"
-
-            - pkg: "github.com/hashicorp/terraform-plugin-sdk/v2/terraform" # prefix
-              desc: "Use github.com/hashicorp/terraform-plugin-testing/terraform"
-
-            - pkg: "github.com/hashicorp/terraform-plugin-sdk/v2" # prefix
-              desc: "Use Terraform Plugin Framework"
-
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
 formatters:
   enable:
     - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/develeap/terraform-provider-hyperping
   exclusions:
     generated: lax
     paths:

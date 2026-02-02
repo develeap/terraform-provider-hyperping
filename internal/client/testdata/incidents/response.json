@@ -1,0 +1,35 @@
+{
+  "uuid": "inci_cDAqydvnNnyc8D",
+  "date": "2025-01-15T10:30:00.000Z",
+  "title": {
+    "en": "API Service Degradation",
+    "fr": "Dégradation du service API"
+  },
+  "text": {
+    "en": "We are investigating reports of increased latency on our API endpoints.",
+    "fr": "Nous enquêtons sur des rapports de latence accrue sur nos points de terminaison API."
+  },
+  "type": "incident",
+  "affectedComponents": ["comp_api_001", "comp_api_002"],
+  "statuspages": ["sp_main", "sp_api"],
+  "updates": [
+    {
+      "uuid": "update_001",
+      "date": "2025-01-15T10:45:00.000Z",
+      "text": {
+        "en": "We have identified the root cause and are working on a fix.",
+        "fr": "Nous avons identifié la cause racine et travaillons sur un correctif."
+      },
+      "type": "identified"
+    },
+    {
+      "uuid": "update_002",
+      "date": "2025-01-15T11:30:00.000Z",
+      "text": {
+        "en": "A fix has been deployed. We are monitoring the situation.",
+        "fr": "Un correctif a été déployé. Nous surveillons la situation."
+      },
+      "type": "monitoring"
+    }
+  ]
+}

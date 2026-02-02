@@ -1,0 +1,11 @@
+{
+  "title": {
+    "en": "Service Disruption"
+  },
+  "text": {
+    "en": "We are currently experiencing a service disruption affecting our main API."
+  },
+  "type": "outage",
+  "affectedComponents": ["comp_api_main"],
+  "statuspages": ["sp_public"]
+}
