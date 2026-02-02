@@ -143,7 +143,7 @@ terraform apply
 
 ## Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for guidelines.
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 1. Fork the repository
 2. Create a feature branch
@@ -153,7 +153,6 @@ Contributions welcome! See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for guidel
 ## Support
 
 - [Issue Tracker](https://github.com/develeap/terraform-provider-hyperping/issues)
-- [Discussions](https://github.com/develeap/terraform-provider-hyperping/discussions)
 
 ## License
 
