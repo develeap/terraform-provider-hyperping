@@ -161,4 +161,4 @@ Mozilla Public License 2.0 - see [LICENSE](LICENSE) for details.
 
 ---
 
-Maintained by [Develeap](https://develeap.com) | [Hyperping](https://hyperping.io/)
+Maintained by [Develeap](https://develeap.com)
