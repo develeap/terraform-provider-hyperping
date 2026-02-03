@@ -38,50 +38,24 @@ func main() {
 }
 
 func run(ctx context.Context) int {
-	log.SetOutput(os.Stdout)
-	log.SetFlags(0)
-
-	fmt.Println("🚀 Hyperping API Documentation Scraper - Plan A")
-	fmt.Println(strings.Repeat("=", 60))
-
-	// Load configuration
-	config := DefaultConfig()
-	log.Printf("📋 Configuration:\n")
-	log.Printf("   Base URL: %s\n", config.BaseURL)
-	log.Printf("   Output Dir: %s\n", config.OutputDir)
-	log.Printf("   Rate Limit: %.1f req/sec\n", config.RateLimit)
-	log.Printf("   Timeout: %v\n", config.Timeout)
-	log.Printf("   Retries: %d\n", config.Retries)
-	os.Stdout.Sync()
-
-	// Create output directory
-	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
-		log.Printf("❌ Failed to create output directory: %v\n", err)
-		return 1
-	}
-
-	// Load cache
-	cache, err := LoadCache(config.CacheFile)
+	// Setup configuration
+	config, cache, err := setupScraper()
 	if err != nil {
-		log.Printf("❌ Failed to load cache: %v\n", err)
+		log.Printf("❌ Setup failed: %v\n", err)
 		return 1
 	}
 
 	// Launch browser
-	log.Println("\n🌐 Launching browser...")
-
 	browser, cleanup, err := launchBrowser(config)
 	if err != nil {
 		log.Printf("❌ Failed to launch browser: %v\n", err)
 		return 1
 	}
-	defer cleanup() // Always cleanup browser
-
+	defer cleanup()
 	log.Println("✅ Browser connected")
 
-	// Phase 1: URL Discovery
-	log.Println("\n" + strings.Repeat("=", 60))
-	discovered, err := DiscoverURLs(ctx, browser, config.BaseURL)
+	// Discover URLs
+	discovered, err := discoverAndSummarize(ctx, browser, config.BaseURL)
 	if err != nil {
 		if ctx.Err() != nil {
 			log.Println("❌ Discovery interrupted by shutdown")
@@ -89,6 +63,69 @@ func run(ctx context.Context) int {
 		}
 		log.Printf("❌ URL discovery failed: %v\n", err)
 		return 1
+	}
+
+	// Scrape pages
+	newCache, stats, err := scrapePages(ctx, browser, discovered, cache, config)
+	if err != nil {
+		if ctx.Err() != nil {
+			log.Println("❌ Scraping interrupted by shutdown")
+			return 2
+		}
+		log.Printf("❌ Scraping failed: %v\n", err)
+		return 1
+	}
+
+	// Report results
+	if err := reportResults(discovered, stats, cache, newCache, config.CacheFile); err != nil {
+		log.Printf("⚠️  Failed to save results: %v\n", err)
+	}
+
+	// Manage snapshots and analyze changes
+	if err := manageSnapshots(ctx, config.OutputDir, newCache); err != nil {
+		log.Printf("⚠️  Snapshot management failed: %v\n", err)
+	}
+
+	log.Println("\n✅ Done!")
+	return 0
+}
+
+// setupScraper initializes configuration and loads cache
+func setupScraper() (ScraperConfig, Cache, error) {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(0)
+
+	fmt.Println("🚀 Hyperping API Documentation Scraper - Plan A")
+	fmt.Println(strings.Repeat("=", 60))
+
+	config := DefaultConfig()
+	log.Printf("📋 Configuration:\n")
+	log.Printf("   Base URL: %s\n", config.BaseURL)
+	log.Printf("   Output Dir: %s\n", config.OutputDir)
+	log.Printf("   Rate Limit: %.1f req/sec\n", config.RateLimit)
+	log.Printf("   Timeout: %v\n", config.Timeout)
+	log.Printf("   Retries: %d\n", config.Retries)
+
+	// Create output directory
+	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+		return config, Cache{}, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Load cache
+	cache, err := LoadCache(config.CacheFile)
+	if err != nil {
+		return config, Cache{}, fmt.Errorf("failed to load cache: %w", err)
+	}
+
+	return config, cache, nil
+}
+
+// discoverAndSummarize discovers URLs and prints summary statistics
+func discoverAndSummarize(ctx context.Context, browser *rod.Browser, baseURL string) ([]DiscoveredURL, error) {
+	log.Println("\n" + strings.Repeat("=", 60))
+	discovered, err := DiscoverURLs(ctx, browser, baseURL)
+	if err != nil {
+		return nil, err
 	}
 
 	log.Printf("\n📊 Discovery Summary:\n")
@@ -103,29 +140,35 @@ func run(ctx context.Context) int {
 	for section, count := range sections {
 		log.Printf("      %s: %d\n", section, count)
 	}
-	os.Stdout.Sync()
 
-	// Phase 2: Smart Scraping with Cache
+	return discovered, nil
+}
+
+// ScrapeStats holds scraping statistics
+type ScrapeStats struct {
+	Scraped  int
+	Skipped  int
+	Failed   int
+	Duration time.Duration
+}
+
+// scrapePages performs the main scraping loop with rate limiting
+func scrapePages(ctx context.Context, browser *rod.Browser, discovered []DiscoveredURL, cache Cache, config ScraperConfig) (Cache, ScrapeStats, error) {
 	log.Println("\n" + strings.Repeat("=", 60))
 	log.Println("🔄 Starting smart scraping...")
-	os.Stdout.Sync()
 
-	// Create reusable page
 	page := browser.MustPage()
 	defer page.MustClose()
 
-	// Rate limiter
 	limiter := rate.NewLimiter(rate.Limit(config.RateLimit), 1)
-
 	startTime := time.Now()
-	scraped := 0
-	skipped := 0
-	failed := 0
 
 	newCache := Cache{
 		Entries:   make(map[string]CacheEntry),
 		CreatedAt: time.Now(),
 	}
+
+	stats := ScrapeStats{}
 
 	for i, discoveredURL := range discovered {
 		// Check for cancellation
@@ -144,83 +187,97 @@ func run(ctx context.Context) int {
 			continue
 		}
 
-		filename := URLToFilename(discoveredURL.URL)
-		log.Printf("\n[%d/%d] %s\n", i+1, len(discovered), discoveredURL.URL)
-		log.Printf("        Section: %s, Method: %s\n", discoveredURL.Section, discoveredURL.Method)
-		os.Stdout.Sync()
-
-		// Try to scrape with retries (pass context for cancellation)
-		pageData, err := scrapeWithRetry(ctx, page, discoveredURL.URL, config.Retries, config.Timeout)
-		if err != nil {
-			log.Printf("        ❌ Failed after %d retries: %v\n", config.Retries, err)
-			failed++
-			os.Stdout.Sync()
-			continue
-		}
-
-		// Check if content changed
-		changed := HasChanged(cache, filename, pageData.Text)
-
-		if changed {
-			log.Printf("        ✅ Scraped (%d chars) - CHANGED\n", len(pageData.Text))
-			scraped++
-
-			// Save to disk
-			outputPath := filepath.Join(config.OutputDir, filename)
-			if err := savePageData(outputPath, pageData); err != nil {
-				log.Printf("        ⚠️  Failed to save: %v\n", err)
+		// Scrape single URL
+		if err := scrapeSingleURL(ctx, page, discoveredURL, i, len(discovered), cache, &newCache, &stats, config); err != nil {
+			if ctx.Err() != nil {
+				break
 			}
-		} else {
-			log.Printf("        ⏭️  Unchanged (%d chars) - SKIPPED\n", len(pageData.Text))
-			skipped++
+			// Error already logged in scrapeSingleURL
 		}
-
-		// Update cache
-		UpdateCache(&newCache, filename, pageData)
-		os.Stdout.Sync()
 	}
 
-	duration := time.Since(startTime)
+	stats.Duration = time.Since(startTime)
+	return newCache, stats, nil
+}
 
-	// Phase 3: Results and Cache Update
+// scrapeSingleURL scrapes a single URL and updates statistics
+func scrapeSingleURL(ctx context.Context, page *rod.Page, discoveredURL DiscoveredURL, index, total int, oldCache Cache, newCache *Cache, stats *ScrapeStats, config ScraperConfig) error {
+	filename := URLToFilename(discoveredURL.URL)
+	log.Printf("\n[%d/%d] %s\n", index+1, total, discoveredURL.URL)
+	log.Printf("        Section: %s, Method: %s\n", discoveredURL.Section, discoveredURL.Method)
+
+	// Try to scrape with retries
+	pageData, err := scrapeWithRetry(ctx, page, discoveredURL.URL, config.Retries, config.Timeout)
+	if err != nil {
+		log.Printf("        ❌ Failed after %d retries: %v\n", config.Retries, err)
+		stats.Failed++
+		return err
+	}
+
+	// Check if content changed
+	changed := HasChanged(oldCache, filename, pageData.Text)
+
+	if changed {
+		log.Printf("        ✅ Scraped (%d chars) - CHANGED\n", len(pageData.Text))
+		stats.Scraped++
+
+		// Save to disk
+		outputPath := filepath.Join(config.OutputDir, filename)
+		if err := savePageData(outputPath, pageData); err != nil {
+			log.Printf("        ⚠️  Failed to save: %v\n", err)
+		}
+	} else {
+		log.Printf("        ⏭️  Unchanged (%d chars) - SKIPPED\n", len(pageData.Text))
+		stats.Skipped++
+	}
+
+	// Update cache
+	UpdateCache(newCache, filename, pageData)
+	return nil
+}
+
+// reportResults prints scraping statistics and saves cache
+func reportResults(discovered []DiscoveredURL, stats ScrapeStats, oldCache, newCache Cache, cacheFile string) error {
 	log.Println("\n" + strings.Repeat("=", 60))
 	log.Println("📊 Scraping Complete!")
 	log.Printf("\n   Total URLs: %d\n", len(discovered))
-	log.Printf("   Scraped: %d (content changed)\n", scraped)
-	log.Printf("   Skipped: %d (unchanged)\n", skipped)
-	log.Printf("   Failed: %d\n", failed)
-	log.Printf("   Duration: %v\n", duration.Round(time.Second))
+	log.Printf("   Scraped: %d (content changed)\n", stats.Scraped)
+	log.Printf("   Skipped: %d (unchanged)\n", stats.Skipped)
+	log.Printf("   Failed: %d\n", stats.Failed)
+	log.Printf("   Duration: %v\n", stats.Duration.Round(time.Second))
 
-	if skipped > 0 {
-		timeSavings := float64(skipped) / float64(len(discovered)) * 100
+	if stats.Skipped > 0 {
+		timeSavings := float64(stats.Skipped) / float64(len(discovered)) * 100
 		log.Printf("   Time Savings: ~%.0f%%\n", timeSavings)
 	}
 
 	// Save updated cache
-	if err := SaveCache(config.CacheFile, newCache); err != nil {
-		log.Printf("⚠️  Failed to save cache: %v\n", err)
+	if err := SaveCache(cacheFile, newCache); err != nil {
+		return fmt.Errorf("failed to save cache: %w", err)
 	}
 
 	// Compare with old cache
-	if len(cache.Entries) > 0 {
+	if len(oldCache.Entries) > 0 {
 		log.Println("\n📈 Change Detection:")
-		stats := CompareCaches(cache, newCache)
-		log.Printf("   Unchanged: %d\n", stats["unchanged"])
-		log.Printf("   Modified: %d\n", stats["modified"])
-		log.Printf("   Added: %d\n", stats["added"])
-		log.Printf("   Deleted: %d\n", stats["deleted"])
+		cacheStats := CompareCaches(oldCache, newCache)
+		log.Printf("   Unchanged: %d\n", cacheStats["unchanged"])
+		log.Printf("   Modified: %d\n", cacheStats["modified"])
+		log.Printf("   Added: %d\n", cacheStats["added"])
+		log.Printf("   Deleted: %d\n", cacheStats["deleted"])
 	}
 
-	// Phase 4: Snapshot Management
+	return nil
+}
+
+// manageSnapshots handles snapshot creation, comparison, and reporting
+func manageSnapshots(ctx context.Context, outputDir string, newCache Cache) error {
 	log.Println("\n" + strings.Repeat("=", 60))
 	log.Println("📸 Managing API snapshots...")
-	os.Stdout.Sync()
 
 	snapshotMgr := NewSnapshotManager("snapshots")
 
 	// Get previous snapshot for comparison
-	var previousSnapshot string
-	previousSnapshot, err = snapshotMgr.GetLatestSnapshot()
+	previousSnapshot, err := snapshotMgr.GetLatestSnapshot()
 	if err != nil {
 		log.Printf("   No previous snapshot found (first run)\n")
 	} else {
@@ -228,9 +285,40 @@ func run(ctx context.Context) int {
 	}
 
 	// Save current snapshot
+	currentPages := loadCurrentPages(outputDir, newCache)
+	currentTimestamp := time.Now()
+
+	if err := snapshotMgr.SaveSnapshot(currentTimestamp, currentPages); err != nil {
+		return fmt.Errorf("failed to save snapshot: %w", err)
+	}
+
+	// Analyze changes if previous snapshot exists
+	if previousSnapshot != "" {
+		diffs, err := analyzeChanges(snapshotMgr, previousSnapshot, currentTimestamp)
+		if err != nil {
+			log.Printf("⚠️  Failed to compare snapshots: %v\n", err)
+		} else if len(diffs) > 0 {
+			if err := generateAndReportDiffs(diffs, currentTimestamp); err != nil {
+				return err
+			}
+		} else {
+			log.Println("\n✅ No API changes detected")
+		}
+	}
+
+	// Cleanup old snapshots
+	if err := snapshotMgr.CleanupOldSnapshots(10); err != nil {
+		log.Printf("\n⚠️  Failed to cleanup old snapshots: %v\n", err)
+	}
+
+	return nil
+}
+
+// loadCurrentPages loads all page data from disk for snapshot
+func loadCurrentPages(outputDir string, newCache Cache) map[string]*extractor.PageData {
 	currentPages := make(map[string]*extractor.PageData)
 	for filename := range newCache.Entries {
-		filePath := filepath.Join(config.OutputDir, filename)
+		filePath := filepath.Join(outputDir, filename)
 		if utils.FileExists(filePath) {
 			pageData, err := loadPageData(filePath)
 			if err == nil {
@@ -238,79 +326,65 @@ func run(ctx context.Context) int {
 			}
 		}
 	}
+	return currentPages
+}
 
-	currentTimestamp := time.Now()
-	if err := snapshotMgr.SaveSnapshot(currentTimestamp, currentPages); err != nil {
-		log.Printf("⚠️  Failed to save snapshot: %v\n", err)
+// analyzeChanges compares snapshots and returns differences
+func analyzeChanges(snapshotMgr *SnapshotManager, previousSnapshot string, currentTimestamp time.Time) ([]APIDiff, error) {
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("🔍 Analyzing API changes (semantic diff)...")
+
+	currentSnapshot := filepath.Join("snapshots", currentTimestamp.Format("2006-01-02_15-04-05"))
+	return snapshotMgr.CompareSnapshots(previousSnapshot, currentSnapshot)
+}
+
+// generateAndReportDiffs creates diff report and GitHub issue
+func generateAndReportDiffs(diffs []APIDiff, timestamp time.Time) error {
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("📝 Generating diff report...")
+
+	report := GenerateDiffReport(diffs, timestamp)
+
+	// Save markdown report locally
+	reportFile := "api_changes_" + timestamp.Format("2006-01-02_15-04-05") + ".md"
+	if err := SaveDiffReport(report, reportFile); err != nil {
+		return fmt.Errorf("failed to save diff report: %w", err)
+	}
+	log.Printf("✅ Diff report saved: %s\n", reportFile)
+
+	log.Printf("\n📊 Summary: %s\n", report.Summary)
+	if report.Breaking {
+		log.Printf("   ⚠️  WARNING: Contains breaking changes!\n")
 	}
 
-	// Phase 5: Semantic Diff Analysis
-	var diffs []APIDiff
+	// Create GitHub issue if configured
+	return createGitHubIssue(report)
+}
 
-	if previousSnapshot != "" {
-		log.Println("\n" + strings.Repeat("=", 60))
-		log.Println("🔍 Analyzing API changes (semantic diff)...")
-		os.Stdout.Sync()
+// createGitHubIssue creates a GitHub issue for API changes
+func createGitHubIssue(report DiffReport) error {
+	log.Println("\n🐙 GitHub Integration...")
 
-		currentSnapshot := filepath.Join("snapshots", currentTimestamp.Format("2006-01-02_15-04-05"))
-
-		diffs, err = snapshotMgr.CompareSnapshots(previousSnapshot, currentSnapshot)
-		if err != nil {
-			log.Printf("⚠️  Failed to compare snapshots: %v\n", err)
-		}
+	githubClient, err := LoadGitHubConfig()
+	if err != nil {
+		log.Printf("   ⏭️  GitHub credentials not found\n")
+		log.Println("   Running in PREVIEW MODE...")
+		PreviewGitHubIssue(report, "")
+		return nil
 	}
 
-	// Phase 6: GitHub Issue Creation
-	if len(diffs) > 0 {
-		log.Println("\n" + strings.Repeat("=", 60))
-		log.Println("📝 Generating diff report...")
-		os.Stdout.Sync()
-
-		report := GenerateDiffReport(diffs, currentTimestamp)
-
-		// Save markdown report locally
-		reportFile := "api_changes_" + currentTimestamp.Format("2006-01-02_15-04-05") + ".md"
-		if err := SaveDiffReport(report, reportFile); err != nil {
-			log.Printf("⚠️  Failed to save diff report: %v\n", err)
-		} else {
-			log.Printf("✅ Diff report saved: %s\n", reportFile)
-		}
-
-		log.Printf("\n📊 Summary: %s\n", report.Summary)
-		if report.Breaking {
-			log.Printf("   ⚠️  WARNING: Contains breaking changes!\n")
-		}
-
-		// Create GitHub issue if configured (or preview mode)
-		log.Println("\n🐙 GitHub Integration...")
-		githubClient, err := LoadGitHubConfig()
-		if err != nil {
-			log.Printf("   ⏭️  GitHub credentials not found\n")
-			log.Println("   Running in PREVIEW MODE...")
-			PreviewGitHubIssue(report, "")
-		} else {
-			// Ensure labels exist
-			if err := githubClient.CreateLabelsIfNeeded(); err != nil {
-				log.Printf("   ⚠️  Failed to create labels: %v\n", err)
-			}
-
-			// Create issue
-			snapshotURL := "" // TODO: Generate URL to snapshot in GitHub repo
-			if err := githubClient.CreateIssue(report, snapshotURL); err != nil {
-				log.Printf("   ❌ Failed to create issue: %v\n", err)
-			}
-		}
-	} else {
-		log.Println("\n✅ No API changes detected")
+	// Ensure labels exist
+	if err := githubClient.CreateLabelsIfNeeded(); err != nil {
+		log.Printf("   ⚠️  Failed to create labels: %v\n", err)
 	}
 
-	// Cleanup old snapshots (keep last 10)
-	if err := snapshotMgr.CleanupOldSnapshots(10); err != nil {
-		log.Printf("\n⚠️  Failed to cleanup old snapshots: %v\n", err)
+	// Create issue
+	snapshotURL := "" // TODO: Generate URL to snapshot in GitHub repo
+	if err := githubClient.CreateIssue(report, snapshotURL); err != nil {
+		return fmt.Errorf("failed to create GitHub issue: %w", err)
 	}
 
-	log.Println("\n✅ Done!")
-	return 0 // Success
+	return nil
 }
 
 // loadPageData loads a PageData struct from a JSON file
@@ -320,12 +394,6 @@ func loadPageData(filepath string) (*extractor.PageData, error) {
 		return nil, err
 	}
 	return &pageData, nil
-}
-
-// fileExists checks if a file exists
-func fileExists(filepath string) bool {
-	_, err := os.Stat(filepath)
-	return err == nil
 }
 
 // scrapeWithRetry attempts to scrape a page with exponential backoff
