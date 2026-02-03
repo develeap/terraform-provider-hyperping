@@ -82,6 +82,99 @@ api_changes_*.md       # Diff reports (if changes detected)
 .scraper_cache.json    # Cache for change detection
 ```
 
+## Automated Scheduling (GitHub Actions)
+
+### Setup Daily Automated Runs
+
+The scraper can run automatically in GitHub Actions on a daily schedule:
+
+**Location:** `.github/workflows/scraper.yml`
+
+**Features:**
+- ✅ Runs daily at 2 AM UTC (configurable)
+- ✅ Manual trigger via GitHub UI
+- ✅ Automatic GitHub issue creation on API changes
+- ✅ Uploads logs and reports as artifacts
+- ✅ Commits cache/snapshots back to repository
+- ✅ Job summary with metrics
+
+**Setup Steps:**
+
+1. **No additional secrets needed!** The workflow uses the built-in `GITHUB_TOKEN` which automatically has permissions to:
+   - Read repository
+   - Create issues
+   - Commit changes
+
+2. **Workflow is already configured** in `.github/workflows/scraper.yml`
+
+3. **That's it!** The scraper will run automatically every day at 2 AM UTC.
+
+### Manual Trigger
+
+You can also trigger the scraper manually:
+
+1. Go to **Actions** tab in GitHub
+2. Select **"API Documentation Scraper"** workflow
+3. Click **"Run workflow"**
+4. Choose log level (optional): debug, info, warn, error
+5. Click **"Run workflow"** button
+
+### What Happens on Each Run
+
+```
+1. ✅ Checks out code
+2. ✅ Sets up Go 1.22 + Chrome
+3. ✅ Restores cache from previous run
+4. ✅ Builds scraper
+5. ✅ Runs scraper with JSON logging
+6. ✅ Creates GitHub issues if changes detected
+7. ✅ Uploads logs, reports, scraped data as artifacts
+8. ✅ Commits cache/snapshots back to repo
+9. ✅ Posts job summary with metrics
+```
+
+### Viewing Results
+
+**Job Summary:**
+- Navigate to Actions > Latest run
+- See summary with metrics and detected changes
+
+**Artifacts (downloadable):**
+- `scraper-logs-{run}` - Full JSON logs (retained 30 days)
+- `diff-reports-{run}` - Markdown diff reports (retained 90 days)
+- `scraped-data-{run}` - Raw scraped JSON (retained 7 days)
+
+**GitHub Issues:**
+- Automatically created when API changes detected
+- Labels: `api-change`, `breaking-change`, section labels
+- Body includes full diff report
+
+### Customizing the Schedule
+
+Edit `.github/workflows/scraper.yml`:
+
+```yaml
+on:
+  schedule:
+    # Run at 2 AM UTC daily
+    - cron: '0 2 * * *'
+
+    # Examples:
+    # Every 6 hours: '0 */6 * * *'
+    # Weekdays only: '0 2 * * 1-5'
+    # Twice daily: '0 2,14 * * *'
+```
+
+### Disabling Automated Runs
+
+To temporarily disable:
+
+1. Go to **Actions** tab
+2. Select **"API Documentation Scraper"** workflow
+3. Click **"..."** → **"Disable workflow"**
+
+Or delete `.github/workflows/scraper.yml`
+
 ## Configuration
 
 Configuration is done via `config.go`:

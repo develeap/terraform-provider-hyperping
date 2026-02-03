@@ -1,0 +1,166 @@
+name: API Documentation Scraper
+
+on:
+  # Run daily at 2 AM UTC
+  schedule:
+    - cron: '0 2 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      log_level:
+        description: 'Log level'
+        required: false
+        default: 'info'
+        type: choice
+        options:
+          - debug
+          - info
+          - warn
+          - error
+
+  # Run on push to main (for testing)
+  push:
+    branches:
+      - main
+    paths:
+      - 'tools/cmd/scraper/**'
+      - '.github/workflows/scraper.yml'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper caching
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: tools/cmd/scraper/go.sum
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser
+          chromium-browser --version
+
+      - name: Restore cache and snapshots
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/cmd/scraper/.scraper_cache.json
+            tools/cmd/scraper/snapshots/
+            tools/cmd/scraper/docs_scraped/
+          key: scraper-data-${{ github.run_id }}
+          restore-keys: |
+            scraper-data-
+
+      - name: Build scraper
+        working-directory: tools/cmd/scraper
+        run: go build -o scraper
+
+      - name: Run scraper
+        working-directory: tools/cmd/scraper
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          LOG_FORMAT: json
+          LOG_LEVEL: ${{ inputs.log_level || 'info' }}
+        run: |
+          ./scraper 2>&1 | tee scraper.log
+          echo "EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
+
+      - name: Upload scraper logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-logs-${{ github.run_number }}
+          path: tools/cmd/scraper/scraper.log
+          retention-days: 30
+
+      - name: Upload diff reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diff-reports-${{ github.run_number }}
+          path: tools/cmd/scraper/api_changes_*.md
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Upload scraped data
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraped-data-${{ github.run_number }}
+          path: tools/cmd/scraper/docs_scraped/
+          retention-days: 7
+
+      - name: Commit changes (if any)
+        if: success()
+        working-directory: tools/cmd/scraper
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # Add cache and snapshots
+          git add -f .scraper_cache.json snapshots/ || true
+
+          # Add diff reports
+          git add api_changes_*.md || true
+
+          # Check if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update scraper cache and snapshots [skip ci]
+
+            Automated scraper run: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+            Run number: ${{ github.run_number }}
+            "
+            git push
+          fi
+
+      - name: Check for failures
+        if: env.EXIT_CODE != '0'
+        run: |
+          echo "Scraper failed with exit code $EXIT_CODE"
+          exit 1
+
+      - name: Post summary
+        if: always()
+        run: |
+          cd tools/cmd/scraper
+
+          echo "## Scraper Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Exit Code:** ${EXIT_CODE:-unknown}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract metrics from log (if available)
+          if [ -f scraper.log ]; then
+            echo "### Metrics" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "(Scraped|Skipped|Failed|Duration|Cache)" scraper.log | head -20 >> $GITHUB_STEP_SUMMARY || echo "No metrics found" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # List diff reports
+          if ls api_changes_*.md 1> /dev/null 2>&1; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Changes Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            for file in api_changes_*.md; do
+              echo "- [$file](../artifacts/${{ github.run_number }}/diff-reports-${{ github.run_number }}/$file)" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ No API changes detected" >> $GITHUB_STEP_SUMMARY
+          fi
