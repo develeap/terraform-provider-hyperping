@@ -396,6 +396,32 @@ func loadPageData(filepath string) (*extractor.PageData, error) {
 	return &pageData, nil
 }
 
+// isRetryableError determines if an error should trigger a retry
+func isRetryableError(err error) bool {
+	errStr := err.Error()
+
+	// Don't retry client errors (404, 403, 401, etc.)
+	nonRetryablePatterns := []string{
+		"404",
+		"403",
+		"401",
+		"400",
+		"not found",
+		"forbidden",
+		"unauthorized",
+		"bad request",
+	}
+
+	for _, pattern := range nonRetryablePatterns {
+		if strings.Contains(strings.ToLower(errStr), pattern) {
+			return false
+		}
+	}
+
+	// Retry network errors, timeouts, 500s, etc.
+	return true
+}
+
 // scrapeWithRetry attempts to scrape a page with exponential backoff
 func scrapeWithRetry(ctx context.Context, page *rod.Page, url string, maxRetries int, timeout time.Duration) (*extractor.PageData, error) {
 	var lastErr error
@@ -425,6 +451,13 @@ func scrapeWithRetry(ctx context.Context, page *rod.Page, url string, maxRetries
 		}
 
 		lastErr = err
+
+		// Check if error is retryable
+		if !isRetryableError(err) {
+			log.Printf("        ⚠️  Non-retryable error: %v\n", err)
+			return nil, fmt.Errorf("non-retryable error: %w", err)
+		}
+
 		log.Printf("        ⚠️  Attempt %d failed: %v\n", attempt+1, err)
 	}
 
@@ -447,12 +480,12 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 		return nil, fmt.Errorf("page load timeout: %w", err)
 	}
 
-	// Wait for content with cancellation support (TODO: replace with proper WaitStable in Phase 3)
-	select {
-	case <-time.After(500 * time.Millisecond):
-		// Wait completed
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	// Wait for DOM to stabilize (no changes for 100ms)
+	// This handles dynamic content loading better than fixed sleep
+	if err := page.Context(timeoutCtx).WaitStable(100 * time.Millisecond); err != nil {
+		// WaitStable timeout is not fatal - page might just be slow
+		// Log and continue with whatever content we have
+		log.Printf("        ⚠️  Page stability timeout (content may still be loading)\n")
 	}
 
 	// Clean up page (remove scripts, styles)
