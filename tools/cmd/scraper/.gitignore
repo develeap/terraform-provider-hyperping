@@ -1,0 +1,39 @@
+# Environment variables and secrets
+.env
+.env.*
+.env.local
+*.env
+
+# Scraper cache and runtime files
+.scraper_cache.json
+scraper.log
+*.log
+
+# Compiled binaries
+scraper
+scraper_*
+!/scraper/  # Allow scraper directory if it exists
+
+# Scraped data and outputs
+docs_scraped/
+snapshots/
+api_changes_*.md
+
+# Test coverage
+coverage.out
+*.test
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+.tmp-*
