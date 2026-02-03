@@ -19,16 +19,16 @@ func FileExists(filepath string) bool {
 	return err == nil
 }
 
-// SaveToFile writes a string to a file with public permissions
+// SaveToFile writes a string to a file with public permissions (atomic)
 // Use for non-sensitive content like reports
 func SaveToFile(filename, content string) error {
-	if err := os.WriteFile(filename, []byte(content), FilePermPublic); err != nil {
+	if err := AtomicWriteFile(filename, []byte(content), FilePermPublic); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 	return nil
 }
 
-// SaveJSON writes a struct as JSON to a file with private permissions
+// SaveJSON writes a struct as JSON to a file with private permissions (atomic)
 // Uses private permissions for security (may contain sensitive data)
 func SaveJSON(filename string, data interface{}) error {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
@@ -36,7 +36,7 @@ func SaveJSON(filename string, data interface{}) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 
-	if err := os.WriteFile(filename, jsonData, FilePermPrivate); err != nil {
+	if err := AtomicWriteFile(filename, jsonData, FilePermPrivate); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 

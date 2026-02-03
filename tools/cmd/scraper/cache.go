@@ -36,14 +36,14 @@ func LoadCache(filename string) (Cache, error) {
 	return cache, nil
 }
 
-// SaveCache writes the cache to disk
+// SaveCache writes the cache to disk using atomic write (crash-safe)
 func SaveCache(filename string, cache Cache) error {
 	data, err := json.MarshalIndent(cache, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal cache: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := utils.AtomicWriteFile(filename, data, utils.FilePermPrivate); err != nil {
 		return fmt.Errorf("failed to write cache file: %w", err)
 	}
 

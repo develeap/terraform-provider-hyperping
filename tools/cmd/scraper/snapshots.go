@@ -42,7 +42,7 @@ func (sm *SnapshotManager) SaveSnapshot(timestamp time.Time, pages map[string]*e
 			return fmt.Errorf("failed to marshal %s: %w", filename, err)
 		}
 
-		if err := os.WriteFile(filePath, data, 0644); err != nil {
+		if err := utils.AtomicWriteFile(filePath, data, utils.FilePermPrivate); err != nil {
 			return fmt.Errorf("failed to write %s: %w", filename, err)
 		}
 	}
