@@ -14,6 +14,7 @@ import (
 func launchBrowser(config ScraperConfig) (*rod.Browser, func(), error) {
 	launchURL, err := launcher.New().
 		Headless(config.Headless).
+		NoSandbox(true). // Required for CI environments (GitHub Actions, Docker)
 		Launch()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to launch browser: %w", err)
