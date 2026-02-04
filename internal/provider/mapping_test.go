@@ -32,7 +32,7 @@ func TestMapHealthcheckCommonFields_FullHealthcheck(t *testing.T) {
 		Name:             "Test HC",
 		PingURL:          "https://hb.tinyping.io/hc_abc123",
 		Cron:             "* * * * *",
-		Timezone:               "UTC",
+		Timezone:         "UTC",
 		PeriodValue:      &periodValue,
 		PeriodType:       "seconds",
 		GracePeriodValue: 30,
