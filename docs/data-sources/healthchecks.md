@@ -70,4 +70,4 @@ Read-Only:
 - `period_type` (String) Unit for period_value.
 - `period_value` (Number) Numeric value for the expected interval.
 - `ping_url` (String) The auto-generated ping URL.
-- `tz` (String) Timezone for the cron expression.
+- `timezone` (String) Timezone for the cron expression.

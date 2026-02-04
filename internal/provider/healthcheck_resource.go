@@ -43,7 +43,7 @@ type HealthcheckResourceModel struct {
 	Name             types.String `tfsdk:"name"`
 	PingURL          types.String `tfsdk:"ping_url"`
 	Cron             types.String `tfsdk:"cron"`
-	Tz               types.String `tfsdk:"tz"`
+	Timezone         types.String `tfsdk:"timezone"`
 	PeriodValue      types.Int64  `tfsdk:"period_value"`
 	PeriodType       types.String `tfsdk:"period_type"`
 	GracePeriodValue types.Int64  `tfsdk:"grace_period_value"`
@@ -90,7 +90,7 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 				MarkdownDescription: "Cron expression defining the schedule (e.g., `0 0 * * *`). Mutually exclusive with `period_value`/`period_type`.",
 				Optional:            true,
 			},
-			"tz": schema.StringAttribute{
+			"timezone": schema.StringAttribute{
 				MarkdownDescription: "Timezone for the cron expression (e.g., `America/New_York`). Required when `cron` is set.",
 				Optional:            true,
 			},
@@ -183,7 +183,7 @@ func (r *HealthcheckResource) Configure(_ context.Context, req resource.Configur
 // validateCronPeriodExclusivity checks that cron/tz and period_value/period_type are mutually exclusive.
 func validateCronPeriodExclusivity(plan *HealthcheckResourceModel) error {
 	hasCron := !isNullOrUnknown(plan.Cron) && plan.Cron.ValueString() != ""
-	hasTz := !isNullOrUnknown(plan.Tz) && plan.Tz.ValueString() != ""
+	hasTz := !isNullOrUnknown(plan.Timezone) && plan.Timezone.ValueString() != ""
 	hasPeriodValue := !isNullOrUnknown(plan.PeriodValue)
 	hasPeriodType := !isNullOrUnknown(plan.PeriodType)
 
@@ -294,9 +294,9 @@ func buildCreateHealthcheckRequest(plan *HealthcheckResourceModel) client.Create
 		cron := plan.Cron.ValueString()
 		req.Cron = &cron
 	}
-	if !plan.Tz.IsNull() {
-		tz := plan.Tz.ValueString()
-		req.Tz = &tz
+	if !plan.Timezone.IsNull() {
+		tz := plan.Timezone.ValueString()
+		req.Timezone = &tz
 	}
 	if !plan.PeriodValue.IsNull() {
 		pv := int(plan.PeriodValue.ValueInt64())
@@ -409,13 +409,13 @@ func (r *HealthcheckResource) applyFieldChanges(ctx context.Context, plan, state
 		}
 		hasChanges = true
 	}
-	if !plan.Tz.Equal(state.Tz) {
-		if plan.Tz.IsNull() {
+	if !plan.Timezone.Equal(state.Timezone) {
+		if plan.Timezone.IsNull() {
 			empty := ""
-			updateReq.Tz = &empty
+			updateReq.Timezone = &empty
 		} else {
-			tz := plan.Tz.ValueString()
-			updateReq.Tz = &tz
+			tz := plan.Timezone.ValueString()
+			updateReq.Timezone = &tz
 		}
 		hasChanges = true
 	}
@@ -540,7 +540,7 @@ func (r *HealthcheckResource) mapHealthcheckToModel(hc *client.Healthcheck, mode
 	model.Name = f.Name
 	model.PingURL = f.PingURL
 	model.Cron = f.Cron
-	model.Tz = f.Tz
+	model.Timezone = f.Timezone
 	model.PeriodValue = f.PeriodValue
 	model.PeriodType = f.PeriodType
 	model.GracePeriodValue = f.GracePeriodValue
