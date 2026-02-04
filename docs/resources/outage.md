@@ -47,6 +47,7 @@ resource "hyperping_outage" "incident_tracking" {
 ### Optional
 
 - `end_date` (String) The end date of the outage in ISO 8601 format. Null if ongoing.
+- `escalation_policy_uuid` (String) UUID of the escalation policy to link to this outage. If provided, the policy will be triggered according to its step timing.
 
 ### Read-Only
 
