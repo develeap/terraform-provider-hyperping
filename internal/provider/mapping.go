@@ -161,7 +161,7 @@ type HealthcheckCommonFields struct {
 	Name             types.String
 	PingURL          types.String
 	Cron             types.String
-	Tz               types.String
+	Timezone         types.String
 	PeriodValue      types.Int64
 	PeriodType       types.String
 	GracePeriodValue types.Int64
@@ -184,7 +184,7 @@ func MapHealthcheckCommonFields(hc *client.Healthcheck) HealthcheckCommonFields 
 			Name:             types.StringNull(),
 			PingURL:          types.StringNull(),
 			Cron:             types.StringNull(),
-			Tz:               types.StringNull(),
+			Timezone:         types.StringNull(),
 			PeriodValue:      types.Int64Null(),
 			PeriodType:       types.StringNull(),
 			GracePeriodValue: types.Int64Null(),
@@ -215,10 +215,10 @@ func MapHealthcheckCommonFields(hc *client.Healthcheck) HealthcheckCommonFields 
 	} else {
 		f.Cron = types.StringNull()
 	}
-	if hc.Tz != "" {
-		f.Tz = types.StringValue(hc.Tz)
+	if hc.Timezone != "" {
+		f.Timezone = types.StringValue(hc.Timezone)
 	} else {
-		f.Tz = types.StringNull()
+		f.Timezone = types.StringNull()
 	}
 	if hc.PeriodValue != nil {
 		f.PeriodValue = types.Int64Value(int64(*hc.PeriodValue))

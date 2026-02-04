@@ -52,4 +52,4 @@ output "backup_status" {
 - `period_type` (String) Unit for period_value (seconds, minutes, hours, days).
 - `period_value` (Number) Numeric value for the expected interval.
 - `ping_url` (String) The auto-generated ping URL for this healthcheck.
-- `tz` (String) Timezone for the cron expression.
+- `timezone` (String) Timezone for the cron expression.
