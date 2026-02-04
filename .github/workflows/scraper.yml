@@ -94,31 +94,6 @@ jobs:
           path: tools/cmd/scraper/docs_scraped/
           retention-days: 7
 
-      - name: Commit changes (if any)
-        if: success()
-        working-directory: tools/cmd/scraper
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-
-          # Add cache and snapshots
-          git add -f .scraper_cache.json snapshots/ || true
-
-          # Add diff reports
-          git add api_changes_*.md || true
-
-          # Check if there are changes
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "chore: update scraper cache and snapshots [skip ci]
-
-            Automated scraper run: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-            Run number: ${{ github.run_number }}
-            "
-            git push
-          fi
-
       - name: Check for failures
         if: env.EXIT_CODE != '0'
         run: |
