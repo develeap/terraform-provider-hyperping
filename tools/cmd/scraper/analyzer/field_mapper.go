@@ -47,6 +47,7 @@ var SkippedFields = map[string]bool{
 	"search":         true,
 	"limit":          true,
 	"offset":         true,
+	"type":           true, // Filter param for list endpoints (e.g., outages?type=manual)
 
 	// Users array (complex nested, handled separately)
 	"users":          true,

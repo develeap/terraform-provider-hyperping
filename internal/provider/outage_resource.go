@@ -42,18 +42,19 @@ type OutageResource struct {
 
 // OutageResourceModel describes the resource data model.
 type OutageResourceModel struct {
-	ID               types.String `tfsdk:"id"`
-	MonitorUUID      types.String `tfsdk:"monitor_uuid"`
-	StartDate        types.String `tfsdk:"start_date"`
-	EndDate          types.String `tfsdk:"end_date"`
-	StatusCode       types.Int64  `tfsdk:"status_code"`
-	Description      types.String `tfsdk:"description"`
-	OutageType       types.String `tfsdk:"outage_type"`
-	IsResolved       types.Bool   `tfsdk:"is_resolved"`
-	DurationMs       types.Int64  `tfsdk:"duration_ms"`
-	DetectedLocation types.String `tfsdk:"detected_location"`
-	Monitor          types.Object `tfsdk:"monitor"`
-	AcknowledgedBy   types.Object `tfsdk:"acknowledged_by"`
+	ID                   types.String `tfsdk:"id"`
+	MonitorUUID          types.String `tfsdk:"monitor_uuid"`
+	StartDate            types.String `tfsdk:"start_date"`
+	EndDate              types.String `tfsdk:"end_date"`
+	StatusCode           types.Int64  `tfsdk:"status_code"`
+	Description          types.String `tfsdk:"description"`
+	EscalationPolicyUUID types.String `tfsdk:"escalation_policy_uuid"`
+	OutageType           types.String `tfsdk:"outage_type"`
+	IsResolved           types.Bool   `tfsdk:"is_resolved"`
+	DurationMs           types.Int64  `tfsdk:"duration_ms"`
+	DetectedLocation     types.String `tfsdk:"detected_location"`
+	Monitor              types.Object `tfsdk:"monitor"`
+	AcknowledgedBy       types.Object `tfsdk:"acknowledged_by"`
 }
 
 // Metadata returns the resource type name.
@@ -119,6 +120,16 @@ func (r *OutageResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"escalation_policy_uuid": schema.StringAttribute{
+				MarkdownDescription: "UUID of the escalation policy to link to this outage. If provided, the policy will be triggered according to its step timing.",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					UUIDFormat(),
 				},
 			},
 			"outage_type": schema.StringAttribute{
@@ -222,6 +233,11 @@ func (r *OutageResource) Create(ctx context.Context, req resource.CreateRequest,
 	if !plan.EndDate.IsNull() {
 		endDate := plan.EndDate.ValueString()
 		createReq.EndDate = &endDate
+	}
+
+	if !plan.EscalationPolicyUUID.IsNull() {
+		escPolicyUUID := plan.EscalationPolicyUUID.ValueString()
+		createReq.EscalationPolicyUuid = &escPolicyUUID
 	}
 
 	created, err := r.client.CreateOutage(ctx, createReq)
@@ -343,6 +359,12 @@ func (r *OutageResource) mapOutageToModel(outage *client.Outage, model *OutageRe
 		model.EndDate = types.StringValue(*outage.EndDate)
 	} else {
 		model.EndDate = types.StringNull()
+	}
+
+	if outage.EscalationPolicy != nil {
+		model.EscalationPolicyUUID = types.StringValue(outage.EscalationPolicy.UUID)
+	} else {
+		model.EscalationPolicyUUID = types.StringNull()
 	}
 
 	model.Monitor, model.AcknowledgedBy = MapOutageNestedObjects(outage, diags)
