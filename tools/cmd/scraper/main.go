@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -11,13 +12,27 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/analyzer"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
 	"github.com/go-rod/rod"
 	"golang.org/x/time/rate"
 )
 
+// Command line flags
+var (
+	analyzeMode bool
+	providerDir string
+	snapshotDir string
+)
+
 func main() {
+	// Parse command line flags
+	flag.BoolVar(&analyzeMode, "analyze", false, "Run coverage analysis instead of scraping")
+	flag.StringVar(&providerDir, "provider-dir", "../../../internal", "Path to provider internal directory")
+	flag.StringVar(&snapshotDir, "snapshot-dir", "./snapshots", "Path to snapshots directory")
+	flag.Parse()
+
 	// Setup signal handling for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -32,8 +47,13 @@ func main() {
 		cancel()
 	}()
 
-	// Run scraper with context
-	exitCode := run(ctx)
+	// Run appropriate mode
+	var exitCode int
+	if analyzeMode {
+		exitCode = runAnalyze(ctx)
+	} else {
+		exitCode = run(ctx)
+	}
 	os.Exit(exitCode)
 }
 
@@ -88,6 +108,152 @@ func run(ctx context.Context) int {
 
 	log.Println("\n✅ Done!")
 	return 0
+}
+
+// runAnalyze performs coverage analysis comparing API docs to provider schema
+func runAnalyze(ctx context.Context) int {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(0)
+
+	fmt.Println("🔍 Hyperping Provider Coverage Analyzer")
+	fmt.Println(strings.Repeat("=", 60))
+
+	log.Printf("📋 Configuration:\n")
+	log.Printf("   Provider Dir: %s\n", providerDir)
+	log.Printf("   Snapshot Dir: %s\n", snapshotDir)
+
+	// Find latest snapshot
+	snapshotMgr := NewSnapshotManager(snapshotDir)
+	latestSnapshot, err := snapshotMgr.GetLatestSnapshot()
+	if err != nil {
+		log.Printf("❌ No snapshots found. Run scraper first: %v\n", err)
+		return 1
+	}
+	log.Printf("   Latest Snapshot: %s\n", filepath.Base(latestSnapshot))
+
+	// Initialize analyzer
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("📦 Extracting provider schemas...")
+
+	a, err := analyzer.NewAnalyzer(providerDir)
+	if err != nil {
+		log.Printf("❌ Failed to initialize analyzer: %v\n", err)
+		return 1
+	}
+	log.Printf("   Found %d resource schemas\n", len(a.ProviderSchemas))
+
+	for _, schema := range a.ProviderSchemas {
+		log.Printf("   - %s (%d fields)\n", schema.Name, len(schema.Fields))
+	}
+
+	// Load API parameters from snapshot
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("📄 Loading API parameters from snapshot...")
+
+	apiParams, err := analyzer.LoadAPIParamsFromSnapshot(latestSnapshot)
+	if err != nil {
+		log.Printf("❌ Failed to load API params: %v\n", err)
+		return 1
+	}
+	log.Printf("   Loaded %d endpoint files\n", len(apiParams))
+
+	// Run coverage analysis
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("🔬 Analyzing coverage...")
+
+	report := a.AnalyzeCoverage(apiParams)
+
+	// Print summary
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("📊 Coverage Report")
+	log.Printf("\n   Overall Coverage: %.1f%%\n", report.CoveragePercent)
+	log.Printf("   Total API Fields: %d\n", report.TotalAPIFields)
+	log.Printf("   Covered Fields: %d\n", report.CoveredFields)
+	log.Printf("   Missing Fields: %d\n", report.MissingFields)
+	log.Printf("   Stale Fields: %d\n", report.StaleFields)
+
+	log.Println("\n   By Resource:")
+	for _, rc := range report.Resources {
+		log.Printf("   - %s: %.1f%% (%d/%d)\n",
+			rc.TerraformResource, rc.CoveragePercent, rc.ImplementedFields, rc.APIFields)
+	}
+
+	// Save markdown report
+	reportFile := "coverage_report_" + time.Now().Format("2006-01-02_15-04-05") + ".md"
+	markdown := analyzer.FormatCoverageReportMarkdown(report)
+	if err := utils.SaveToFile(reportFile, markdown); err != nil {
+		log.Printf("⚠️  Failed to save report: %v\n", err)
+	} else {
+		log.Printf("\n✅ Report saved: %s\n", reportFile)
+	}
+
+	// Create GitHub issues for resources with gaps
+	if len(report.Gaps) > 0 {
+		log.Println("\n" + strings.Repeat("=", 60))
+		log.Println("🐙 GitHub Integration...")
+
+		if err := createCoverageIssues(report); err != nil {
+			log.Printf("⚠️  Failed to create GitHub issues: %v\n", err)
+		}
+	}
+
+	log.Println("\n✅ Analysis complete!")
+	return 0
+}
+
+// createCoverageIssues creates GitHub issues for coverage gaps
+func createCoverageIssues(report *analyzer.CoverageReport) error {
+	githubClient, err := LoadGitHubConfig()
+	if err != nil {
+		log.Printf("   ⏭️  GitHub credentials not found - skipping issue creation\n")
+		return nil
+	}
+
+	// Group gaps by resource
+	gapsByResource := analyzer.GroupGapsByResource(report.Gaps)
+
+	for resource, gaps := range gapsByResource {
+		// Get coverage stats for this resource
+		var resourceCoverage *analyzer.ResourceCoverage
+		for i := range report.Resources {
+			if report.Resources[i].Resource == resource {
+				resourceCoverage = &report.Resources[i]
+				break
+			}
+		}
+
+		if resourceCoverage == nil {
+			continue
+		}
+
+		// Count missing fields
+		missingCount := 0
+		for _, gap := range gaps {
+			if gap.Type == analyzer.GapMissing {
+				missingCount++
+			}
+		}
+
+		if missingCount == 0 {
+			continue
+		}
+
+		// Generate issue content
+		title := analyzer.FormatGitHubIssueTitle(resourceCoverage.TerraformResource, missingCount)
+		body := analyzer.FormatGitHubIssueBody(resource, resourceCoverage.TerraformResource, *resourceCoverage, gaps)
+		labels := analyzer.GetGitHubIssueLabels()
+
+		log.Printf("   Creating issue for %s (%d gaps)...\n", resourceCoverage.TerraformResource, missingCount)
+
+		// Check if issue already exists and update, or create new
+		if err := githubClient.CreateOrUpdateCoverageIssue(title, body, labels); err != nil {
+			log.Printf("   ⚠️  Failed to create issue for %s: %v\n", resource, err)
+		} else {
+			log.Printf("   ✅ Issue created/updated for %s\n", resource)
+		}
+	}
+
+	return nil
 }
 
 // setupScraper initializes configuration and loads cache

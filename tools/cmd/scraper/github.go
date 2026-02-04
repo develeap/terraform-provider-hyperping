@@ -413,3 +413,160 @@ func isValidGitHubToken(token string) bool {
 
 	return true
 }
+
+// CreateOrUpdateCoverageIssue creates a new issue or updates existing one for coverage gaps
+func (gc *GitHubClient) CreateOrUpdateCoverageIssue(title, body string, labels []string) error {
+	// First, search for existing issue with matching title prefix
+	existingIssue, err := gc.findCoverageIssue(title)
+	if err != nil {
+		// Continue with creation if search fails
+		fmt.Printf("   ⚠️  Failed to search for existing issues: %v\n", err)
+	}
+
+	if existingIssue != nil {
+		// Update existing issue
+		return gc.updateIssue(existingIssue.Number, body)
+	}
+
+	// Create new issue
+	issue := GitHubIssue{
+		Title:  title,
+		Body:   body,
+		Labels: labels,
+	}
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues", gc.Owner, gc.Repo)
+
+	jsonData, err := json.Marshal(issue)
+	if err != nil {
+		return fmt.Errorf("failed to marshal issue: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+gc.Token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	resp, err := gc.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("GitHub API error (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var issueResp struct {
+		Number  int    `json:"number"`
+		HTMLURL string `json:"html_url"`
+	}
+	if err := json.Unmarshal(respBody, &issueResp); err != nil {
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	fmt.Printf("   ✅ Created issue #%d: %s\n", issueResp.Number, issueResp.HTMLURL)
+	return nil
+}
+
+// ExistingIssue represents a found GitHub issue
+type ExistingIssue struct {
+	Number int
+	Title  string
+}
+
+// findCoverageIssue searches for an existing coverage gap issue
+func (gc *GitHubClient) findCoverageIssue(title string) (*ExistingIssue, error) {
+	// Extract resource name from title for search
+	// Title format: "[Coverage Gap] hyperping_monitor: X fields need attention"
+	searchTitle := title
+	if idx := strings.Index(title, ":"); idx > 0 {
+		searchTitle = title[:idx] // Just search for "[Coverage Gap] hyperping_monitor"
+	}
+
+	// Search open issues with coverage-gap label
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues?state=open&labels=coverage-gap", gc.Owner, gc.Repo)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+gc.Token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := gc.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API error: %d", resp.StatusCode)
+	}
+
+	var issues []struct {
+		Number int    `json:"number"`
+		Title  string `json:"title"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&issues); err != nil {
+		return nil, err
+	}
+
+	// Find matching issue
+	for _, issue := range issues {
+		if strings.HasPrefix(issue.Title, searchTitle) {
+			return &ExistingIssue{
+				Number: issue.Number,
+				Title:  issue.Title,
+			}, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// updateIssue updates an existing issue's body
+func (gc *GitHubClient) updateIssue(issueNumber int, body string) error {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/%d", gc.Owner, gc.Repo, issueNumber)
+
+	data := map[string]string{
+		"body": body,
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+gc.Token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := gc.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("GitHub API error: %d - %s", resp.StatusCode, string(respBody))
+	}
+
+	fmt.Printf("   ✅ Updated existing issue #%d\n", issueNumber)
+	return nil
+}
