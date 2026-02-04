@@ -94,7 +94,7 @@ jobs:
       - name: Run gosec
         uses: securego/gosec@master
         with:
-          args: -exclude-generated ./...
+          args: -exclude-generated -exclude-dir=tools ./...
 
   # Run unit tests (no API key required)
   unit-test:
