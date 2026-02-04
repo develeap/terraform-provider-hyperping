@@ -1,9 +1,10 @@
 name: API Documentation Scraper
 
 on:
-  # Run daily at 2 AM UTC
+  # Run twice daily at 2 AM and 2 PM UTC
   schedule:
     - cron: '0 2 * * *'
+    - cron: '0 14 * * *'
 
   # Allow manual trigger
   workflow_dispatch:
@@ -18,14 +19,6 @@ on:
           - info
           - warn
           - error
-
-  # Run on push to main (for testing)
-  push:
-    branches:
-      - main
-    paths:
-      - 'tools/cmd/scraper/**'
-      - '.github/workflows/scraper.yml'
 
 jobs:
   scrape:
