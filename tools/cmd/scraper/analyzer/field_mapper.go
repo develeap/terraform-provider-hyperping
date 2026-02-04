@@ -7,10 +7,11 @@ import (
 
 // ResourceMapping associates API endpoints with Terraform resources
 type ResourceMapping struct {
-	TerraformResource string            // e.g., "hyperping_monitor"
-	APISection        string            // e.g., "monitors"
-	APIEndpoints      []string          // e.g., ["monitors_create", "monitors_update"]
-	FieldOverrides    map[string]string // API field -> TF field for special cases
+	TerraformResource   string            // e.g., "hyperping_monitor"
+	APISection          string            // e.g., "monitors"
+	APIEndpoints        []string          // e.g., ["monitors_create", "monitors_update"]
+	FieldOverrides      map[string]string // API field -> TF field for special cases
+	NestedFieldMappings map[string]string // API field -> nested TF path (e.g., "website" -> "settings.website")
 }
 
 // SkippedFields contains fields that are intentionally not exposed in Terraform
@@ -100,7 +101,27 @@ var ResourceMappings = []ResourceMapping{
 		APISection:        "statuspages",
 		APIEndpoints:      []string{"statuspages", "statuspages_create", "statuspages_update", "statuspages_delete", "statuspages_get", "statuspages_list"},
 		FieldOverrides: map[string]string{
-			"uuid": "id",
+			"uuid":      "id",
+			"subdomain": "hosted_subdomain", // API uses subdomain, TF uses hosted_subdomain
+		},
+		// StatusPage API has flat structure, but TF nests many fields inside "settings" for better UX
+		NestedFieldMappings: map[string]string{
+			"website":                 "settings.website",
+			"description":             "settings.description",
+			"languages":               "settings.languages",
+			"theme":                   "settings.theme",
+			"font":                    "settings.font",
+			"accent_color":            "settings.accent_color",
+			"auto_refresh":            "settings.auto_refresh",
+			"banner_header":           "settings.banner_header",
+			"logo":                    "settings.logo",
+			"logo_height":             "settings.logo_height",
+			"favicon":                 "settings.favicon",
+			"hide_powered_by":         "settings.hide_powered_by",
+			"hide_from_search_engines": "settings.hide_from_search_engines",
+			"google_analytics":        "settings.google_analytics",
+			"subscribe":               "settings.subscribe",
+			"authentication":          "settings.authentication",
 		},
 	},
 	{
@@ -161,6 +182,28 @@ func MapAPIFieldToTerraform(apiField string, mapping *ResourceMapping) string {
 
 	// Convert camelCase to snake_case
 	return CamelToSnake(apiField)
+}
+
+// GetNestedFieldMapping returns the nested TF path for an API field, if it exists
+// Returns empty string if the field is not mapped to a nested path
+func GetNestedFieldMapping(apiField string, mapping *ResourceMapping) string {
+	if mapping == nil || mapping.NestedFieldMappings == nil {
+		return ""
+	}
+	// Check both original name and snake_case version
+	if path, ok := mapping.NestedFieldMappings[apiField]; ok {
+		return path
+	}
+	snakeName := CamelToSnake(apiField)
+	if path, ok := mapping.NestedFieldMappings[snakeName]; ok {
+		return path
+	}
+	return ""
+}
+
+// IsNestedField checks if an API field maps to a nested TF field
+func IsNestedField(apiField string, mapping *ResourceMapping) bool {
+	return GetNestedFieldMapping(apiField, mapping) != ""
 }
 
 // MapTerraformFieldToAPI converts a Terraform field name to its API equivalent
