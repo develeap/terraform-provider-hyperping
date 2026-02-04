@@ -237,7 +237,7 @@ func (r *OutageResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	if !plan.EscalationPolicyUUID.IsNull() {
 		escPolicyUUID := plan.EscalationPolicyUUID.ValueString()
-		createReq.EscalationPolicyUuid = &escPolicyUUID
+		createReq.EscalationPolicyUUID = &escPolicyUUID
 	}
 
 	created, err := r.client.CreateOutage(ctx, createReq)

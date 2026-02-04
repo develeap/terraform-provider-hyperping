@@ -68,12 +68,12 @@ type OutageAction struct {
 // API: POST /v1/outages
 type CreateOutageRequest struct {
 	MonitorUUID          string  `json:"monitorUuid"`
-	StartDate            string  `json:"startDate"`                      // ISO 8601 format
-	EndDate              *string `json:"endDate,omitempty"`              // ISO 8601 format, optional
+	StartDate            string  `json:"startDate"`         // ISO 8601 format
+	EndDate              *string `json:"endDate,omitempty"` // ISO 8601 format, optional
 	StatusCode           int     `json:"statusCode"`
 	Description          string  `json:"description"`
 	OutageType           string  `json:"outageType"`                     // "manual" for manually created outages
-	EscalationPolicyUuid *string `json:"escalationPolicyUuid,omitempty"` // UUID of escalation policy to trigger
+	EscalationPolicyUUID *string `json:"escalationPolicyUuid,omitempty"` // UUID of escalation policy to trigger
 }
 
 // Validate checks input lengths on CreateOutageRequest fields.
