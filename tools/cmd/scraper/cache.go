@@ -14,7 +14,7 @@ import (
 
 // LoadCache reads the cache file from disk
 func LoadCache(filename string) (Cache, error) {
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(filename) // #nosec G304 -- filename is from internal config
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Cache doesn't exist yet, return empty
@@ -102,7 +102,7 @@ func BuildCacheFromDisk(dir string) (Cache, error) {
 	for _, filepath := range files {
 		filename := filepath[len(dir)+1:] // Remove directory prefix
 
-		data, err := os.ReadFile(filepath)
+		data, err := os.ReadFile(filepath) // #nosec G304 -- filepath is from internal glob
 		if err != nil {
 			log.Printf("   ⚠️  Failed to read %s: %v\n", filename, err)
 			continue

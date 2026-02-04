@@ -107,7 +107,7 @@ func setupScraper() (ScraperConfig, Cache, error) {
 	log.Printf("   Retries: %d\n", config.Retries)
 
 	// Create output directory
-	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(config.OutputDir, 0750); err != nil {
 		return config, Cache{}, fmt.Errorf("failed to create output directory: %w", err)
 	}
 

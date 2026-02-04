@@ -56,9 +56,9 @@ func AtomicWriteFile(filename string, data []byte, perm os.FileMode) error {
 
 	// Cleanup temp file on any error
 	defer func() {
-		tmpFile.Close()
+		_ = tmpFile.Close() // Ignore error in cleanup
 		if _, err := os.Stat(tmpPath); err == nil {
-			os.Remove(tmpPath)
+			_ = os.Remove(tmpPath) // Ignore error in cleanup
 		}
 	}()
 
@@ -92,7 +92,7 @@ func AtomicWriteFile(filename string, data []byte, perm os.FileMode) error {
 
 // LoadJSON reads a JSON file into a struct
 func LoadJSON(filename string, target interface{}) error {
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(filename) // #nosec G304 -- filename is from internal tool paths
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}

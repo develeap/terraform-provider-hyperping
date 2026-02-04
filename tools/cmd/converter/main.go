@@ -20,7 +20,7 @@ func main() {
 	inputDir := "tools/cmd/scraper/docs_scraped"
 	outputDir := filepath.Join(inputDir, "markdown")
 
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		log.Fatal(err)
 	}
 
@@ -48,7 +48,7 @@ func main() {
 
 func convertToMarkdown(jsonFile, mdFile string) error {
 	// Read JSON
-	data, err := os.ReadFile(jsonFile)
+	data, err := os.ReadFile(jsonFile) // #nosec G304 -- jsonFile is from internal glob
 	if err != nil {
 		return err
 	}
@@ -67,5 +67,5 @@ func convertToMarkdown(jsonFile, mdFile string) error {
 	md.WriteString("\n")
 
 	// Write markdown file
-	return os.WriteFile(mdFile, []byte(md.String()), 0644)
+	return os.WriteFile(mdFile, []byte(md.String()), 0600)
 }

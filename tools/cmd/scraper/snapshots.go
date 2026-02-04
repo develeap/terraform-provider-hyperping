@@ -29,7 +29,7 @@ func (sm *SnapshotManager) SaveSnapshot(timestamp time.Time, pages map[string]*e
 	// Create snapshot directory: snapshots/2026-02-03_10-30-00/
 	snapshotDir := filepath.Join(sm.BaseDir, timestamp.Format("2006-01-02_15-04-05"))
 
-	if err := os.MkdirAll(snapshotDir, 0755); err != nil {
+	if err := os.MkdirAll(snapshotDir, 0750); err != nil {
 		return fmt.Errorf("failed to create snapshot directory: %w", err)
 	}
 
