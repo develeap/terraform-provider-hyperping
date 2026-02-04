@@ -169,6 +169,9 @@ func (a *Analyzer) analyzeResource(mapping ResourceMapping, apiParams []extracto
 		} else if _, exists := tfFieldSet[apiName]; exists {
 			// Also check direct match
 			coverage.ImplementedFields++
+		} else if IsNestedField(apiName, &mapping) {
+			// Field is implemented but nested inside another TF attribute (e.g., settings.website)
+			coverage.ImplementedFields++
 		} else {
 			coverage.MissingFields++
 		}
@@ -244,6 +247,12 @@ func (a *Analyzer) findResourceGaps(mapping ResourceMapping, apiParams []extract
 		}
 
 		tfName := MapAPIFieldToTerraform(apiParam.Name, &mapping)
+
+		// Check if field is implemented via nested mapping (e.g., API "website" -> TF "settings.website")
+		if IsNestedField(apiParam.Name, &mapping) {
+			// Field is implemented but nested - not a gap
+			continue
+		}
 
 		if _, exists := tfFieldMap[tfName]; !exists {
 			// Also try direct match
