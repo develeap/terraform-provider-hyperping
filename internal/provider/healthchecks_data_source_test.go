@@ -112,7 +112,7 @@ func TestHealthchecksDataSource_mapHealthcheckToDataModel(t *testing.T) {
 			Name:             "Full Healthcheck",
 			PingURL:          "https://ping.hyperping.io/full",
 			Cron:             "*/15 * * * *",
-			Tz:               "America/Los_Angeles",
+			Timezone:               "America/Los_Angeles",
 			PeriodValue:      &periodVal,
 			PeriodType:       "minutes",
 			GracePeriodValue: 15,

@@ -50,7 +50,7 @@ func TestHealthcheckDataSource_Schema(t *testing.T) {
 	}
 
 	computedAttrs := []string{
-		"name", "ping_url", "cron", "tz", "period_value", "period_type",
+		"name", "ping_url", "cron", "timezone", "period_value", "period_type",
 		"grace_period_value", "grace_period_type", "escalation_policy",
 		"is_paused", "is_down", "period", "grace_period", "last_ping", "created_at",
 	}
@@ -121,7 +121,7 @@ func TestMapHealthcheckToDataSourceModel(t *testing.T) {
 			Name:             "Full Healthcheck",
 			PingURL:          "https://ping.hyperping.io/full",
 			Cron:             "*/5 * * * *",
-			Tz:               "America/New_York",
+			Timezone:               "America/New_York",
 			PeriodValue:      &periodVal,
 			PeriodType:       "minutes",
 			GracePeriodValue: 10,

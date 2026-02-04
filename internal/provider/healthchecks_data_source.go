@@ -41,7 +41,7 @@ type HealthcheckDataModel struct {
 	Name             types.String `tfsdk:"name"`
 	PingURL          types.String `tfsdk:"ping_url"`
 	Cron             types.String `tfsdk:"cron"`
-	Tz               types.String `tfsdk:"tz"`
+	Timezone         types.String `tfsdk:"timezone"`
 	PeriodValue      types.Int64  `tfsdk:"period_value"`
 	PeriodType       types.String `tfsdk:"period_type"`
 	GracePeriodValue types.Int64  `tfsdk:"grace_period_value"`
@@ -87,7 +87,7 @@ func (d *HealthchecksDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 							MarkdownDescription: "Cron expression defining the schedule.",
 							Computed:            true,
 						},
-						"tz": schema.StringAttribute{
+						"timezone": schema.StringAttribute{
 							MarkdownDescription: "Timezone for the cron expression.",
 							Computed:            true,
 						},
@@ -194,7 +194,7 @@ func (d *HealthchecksDataSource) mapHealthcheckToDataModel(hc *client.Healthchec
 	model.Name = f.Name
 	model.PingURL = f.PingURL
 	model.Cron = f.Cron
-	model.Tz = f.Tz
+	model.Timezone = f.Timezone
 	model.PeriodValue = f.PeriodValue
 	model.PeriodType = f.PeriodType
 	model.GracePeriodValue = f.GracePeriodValue

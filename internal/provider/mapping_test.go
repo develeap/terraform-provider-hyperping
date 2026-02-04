@@ -32,7 +32,7 @@ func TestMapHealthcheckCommonFields_FullHealthcheck(t *testing.T) {
 		Name:             "Test HC",
 		PingURL:          "https://hb.tinyping.io/hc_abc123",
 		Cron:             "* * * * *",
-		Tz:               "UTC",
+		Timezone:               "UTC",
 		PeriodValue:      &periodValue,
 		PeriodType:       "seconds",
 		GracePeriodValue: 30,
@@ -56,8 +56,8 @@ func TestMapHealthcheckCommonFields_FullHealthcheck(t *testing.T) {
 	if f.Cron.ValueString() != "* * * * *" {
 		t.Errorf("expected Cron '* * * * *', got %s", f.Cron.ValueString())
 	}
-	if f.Tz.ValueString() != "UTC" {
-		t.Errorf("expected Tz 'UTC', got %s", f.Tz.ValueString())
+	if f.Timezone.ValueString() != "UTC" {
+		t.Errorf("expected Tz 'UTC', got %s", f.Timezone.ValueString())
 	}
 	if f.PeriodValue.ValueInt64() != 60 {
 		t.Errorf("expected PeriodValue 60, got %d", f.PeriodValue.ValueInt64())
@@ -86,7 +86,7 @@ func TestMapHealthcheckCommonFields_NullOptionalFields(t *testing.T) {
 	if !f.Cron.IsNull() {
 		t.Error("expected Cron to be null when empty")
 	}
-	if !f.Tz.IsNull() {
+	if !f.Timezone.IsNull() {
 		t.Error("expected Tz to be null when empty")
 	}
 	if !f.PeriodValue.IsNull() {
@@ -273,9 +273,9 @@ func buildTestPlan(cron, tz string, periodValue *int, periodType string) Healthc
 		plan.Cron = tfStringNull()
 	}
 	if tz != "" {
-		plan.Tz = tfString(tz)
+		plan.Timezone = tfString(tz)
 	} else {
-		plan.Tz = tfStringNull()
+		plan.Timezone = tfStringNull()
 	}
 	if periodValue != nil {
 		plan.PeriodValue = tfInt64(int64(*periodValue))

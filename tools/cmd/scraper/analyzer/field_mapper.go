@@ -91,6 +91,7 @@ var ResourceMappings = []ResourceMapping{
 			"healthcheckUuid":  "id",
 			"healthcheck_uuid": "id",
 			"pingUrl":          "ping_url",
+			"tz":               "timezone", // API accepts both tz and timezone
 		},
 	},
 	{

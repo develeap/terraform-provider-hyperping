@@ -18,7 +18,7 @@ type Healthcheck struct {
 	Name             string                     `json:"name"`
 	PingURL          string                     `json:"pingUrl"`                    // Auto-generated ping URL
 	Cron             string                     `json:"cron,omitempty"`             // Cron expression (e.g., "0 0 * * *")
-	Tz               string                     `json:"tz,omitempty"`               // Timezone (e.g., "America/New_York")
+	Timezone         string                     `json:"timezone,omitempty"`         // Timezone (e.g., "America/New_York")
 	PeriodValue      *int                       `json:"periodValue,omitempty"`      // Numeric value for period
 	PeriodType       string                     `json:"periodType,omitempty"`       // seconds, minutes, hours, days
 	Period           int                        `json:"period"`                     // Calculated period in seconds
@@ -40,7 +40,7 @@ type Healthcheck struct {
 type CreateHealthcheckRequest struct {
 	Name             string  `json:"name"`
 	Cron             *string `json:"cron,omitempty"`        // Required if PeriodValue/PeriodType not set
-	Tz               *string `json:"tz,omitempty"`          // Required if Cron is set
+	Timezone         *string `json:"timezone,omitempty"`    // Required if Cron is set
 	PeriodValue      *int    `json:"periodValue,omitempty"` // Required if Cron not set
 	PeriodType       *string `json:"periodType,omitempty"`  // Required if Cron not set
 	GracePeriodValue int     `json:"gracePeriodValue"`
@@ -61,7 +61,7 @@ func (r CreateHealthcheckRequest) Validate() error {
 type UpdateHealthcheckRequest struct {
 	Name             *string `json:"name,omitempty"`
 	Cron             *string `json:"cron,omitempty"`
-	Tz               *string `json:"tz,omitempty"`
+	Timezone         *string `json:"timezone,omitempty"`
 	PeriodValue      *int    `json:"periodValue,omitempty"`
 	PeriodType       *string `json:"periodType,omitempty"`
 	GracePeriodValue *int    `json:"gracePeriodValue,omitempty"`
