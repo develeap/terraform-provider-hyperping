@@ -37,3 +37,7 @@ website/vendor
 *.winfile eol=crlf
 terraform-provider-hyperping
 .env
+
+# Scraper binaries and generated reports
+scraper
+coverage_report_*.md
