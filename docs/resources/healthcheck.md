@@ -66,7 +66,7 @@ output "backup_ping_url" {
 - `is_paused` (Boolean) Whether the healthcheck is paused. Defaults to `false`.
 - `period_type` (String) Unit for `period_value`. Valid values: `seconds`, `minutes`, `hours`, `days`.
 - `period_value` (Number) Numeric value for the expected interval. Mutually exclusive with `cron`/`tz`.
-- `tz` (String) Timezone for the cron expression (e.g., `America/New_York`). Required when `cron` is set.
+- `timezone` (String) Timezone for the cron expression (e.g., `America/New_York`). Required when `cron` is set.
 
 ### Read-Only
 
