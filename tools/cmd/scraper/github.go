@@ -424,8 +424,8 @@ func (gc *GitHubClient) CreateOrUpdateCoverageIssue(title, body string, labels [
 	}
 
 	if existingIssue != nil {
-		// Update existing issue
-		return gc.updateIssue(existingIssue.Number, body)
+		// Update existing issue (title and body)
+		return gc.updateIssue(existingIssue.Number, title, body)
 	}
 
 	// Create new issue
@@ -534,12 +534,13 @@ func (gc *GitHubClient) findCoverageIssue(title string) (*ExistingIssue, error) 
 	return nil, nil
 }
 
-// updateIssue updates an existing issue's body
-func (gc *GitHubClient) updateIssue(issueNumber int, body string) error {
+// updateIssue updates an existing issue's title and body
+func (gc *GitHubClient) updateIssue(issueNumber int, title, body string) error {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues/%d", gc.Owner, gc.Repo, issueNumber)
 
 	data := map[string]string{
-		"body": body,
+		"title": title,
+		"body":  body,
 	}
 
 	jsonData, err := json.Marshal(data)

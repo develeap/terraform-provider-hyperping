@@ -111,6 +111,16 @@ var ResourceMappings = []ResourceMapping{
 			"outage_uuid": "id",
 		},
 	},
+	{
+		TerraformResource: "hyperping_statuspage_subscriber",
+		APISection:        "statuspages_subscribers",
+		APIEndpoints:      []string{"statuspages_subscribers", "statuspages_subscribers_create", "statuspages_subscribers_delete", "statuspages_subscribers_list"},
+		FieldOverrides: map[string]string{
+			"uuid":           "id",
+			"subscriberUuid": "id",
+			"subscriber_uuid": "id",
+		},
+	},
 }
 
 // GetResourceMapping returns the mapping for an API section
@@ -237,8 +247,19 @@ func NormalizeTypeName(typeName string) string {
 
 // ExtractAPIEndpointSection extracts the section from an endpoint filename
 // e.g., "monitors_create.json" -> "monitors"
+// e.g., "statuspages_subscribers_create.json" -> "statuspages_subscribers"
 func ExtractAPIEndpointSection(filename string) string {
 	base := strings.TrimSuffix(filename, ".json")
+
+	// Handle nested endpoints like "statuspages_subscribers_create"
+	nestedPrefixes := []string{"statuspages_subscribers"}
+	for _, prefix := range nestedPrefixes {
+		if strings.HasPrefix(base, prefix) {
+			return prefix
+		}
+	}
+
+	// Default: take first part
 	parts := strings.Split(base, "_")
 	if len(parts) > 0 {
 		return parts[0]
