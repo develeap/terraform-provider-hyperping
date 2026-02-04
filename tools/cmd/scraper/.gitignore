@@ -16,6 +16,7 @@ scraper_*
 
 # Scraped data and outputs
 docs_scraped/
+docs_scraped_mvp/
 snapshots/
 api_changes_*.md
 
