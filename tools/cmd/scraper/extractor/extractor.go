@@ -1,9 +1,7 @@
 // Package extractor provides API parameter extraction from documentation
 package extractor
 
-import (
-	"log"
-)
+import "log"
 
 // PageData represents scraped content from a single API documentation page
 type PageData struct {
@@ -26,22 +24,29 @@ type APIParameter struct {
 }
 
 // ExtractAPIParameters extracts structured parameter information from scraped HTML
-// Uses multiple extraction strategies for robustness
+// Uses HTML structure parsing for accurate extraction of REQUEST parameters only
 func ExtractAPIParameters(pageData *PageData) []APIParameter {
-	var params []APIParameter
+	// Primary strategy: Parse HTML structure directly
+	// This is the most reliable method as it uses Hyperping's semantic HTML classes
+	// and only extracts from request parameter sections (Body, Path Parameters, Query Parameters)
+	// It explicitly ignores response/object documentation sections
+	params := ExtractFromHTML(pageData.HTML)
 
-	text := pageData.Text
+	// If HTML extraction found parameters, use those exclusively
+	if len(params) > 0 {
+		return deduplicateParameters(params)
+	}
 
-	// Strategy 1: Hyperping's specific format (primary)
-	params = append(params, extractFromHyperpingFormat(text)...)
+	// If the page has parameter tables but none are request sections,
+	// don't fall back to text extraction (which would extract response fields)
+	if HasParameterTables(pageData.HTML) {
+		return []APIParameter{} // Return empty - no request parameters on this page
+	}
 
-	// Strategy 2: Table formats (backup)
-	params = append(params, extractFromTables(text)...)
+	// Fallback: Try text-based extraction ONLY for pages without standard HTML structure
+	// This handles edge cases like authentication pages without structured tables
+	params = extractFromHyperpingFormat(pageData.Text)
 
-	// Strategy 3: JSON code blocks (supplementary)
-	params = append(params, extractFromJSONExamples(pageData.HTML)...)
-
-	// Deduplicate by name
 	return deduplicateParameters(params)
 }
 
