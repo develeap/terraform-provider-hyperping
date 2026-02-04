@@ -365,6 +365,12 @@ func generateAndReportDiffs(diffs []APIDiff, timestamp time.Time) error {
 func createGitHubIssue(report DiffReport) error {
 	log.Println("\n🐙 GitHub Integration...")
 
+	// Skip issue creation if no actual API changes detected
+	if report.ChangedPages == 0 {
+		log.Println("   ⏭️  No API changes to report - skipping issue creation")
+		return nil
+	}
+
 	githubClient, err := LoadGitHubConfig()
 	if err != nil {
 		log.Printf("   ⏭️  GitHub credentials not found\n")
