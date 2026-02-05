@@ -39,5 +39,5 @@ terraform-provider-hyperping
 .env
 
 # Scraper binaries and generated reports
-scraper
+tools/cmd/scraper/scraper
 coverage_report_*.md

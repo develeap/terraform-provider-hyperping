@@ -12,46 +12,48 @@ type ResourceMapping struct {
 	APIEndpoints        []string          // e.g., ["monitors_create", "monitors_update"]
 	FieldOverrides      map[string]string // API field -> TF field for special cases
 	NestedFieldMappings map[string]string // API field -> nested TF path (e.g., "website" -> "settings.website")
+	ComputedFields      map[string]bool   // TF fields that are computed/response-only (not in API request docs)
+	UndocumentedFields  map[string]bool   // TF fields that exist but aren't documented in API request docs (API doc gaps)
 }
 
 // SkippedFields contains fields that are intentionally not exposed in Terraform
 var SkippedFields = map[string]bool{
 	// Read-only timestamps
-	"status":         true,
-	"createdAt":      true,
-	"created_at":     true,
-	"updatedAt":      true,
-	"updated_at":     true,
+	"status":     true,
+	"createdAt":  true,
+	"created_at": true,
+	"updatedAt":  true,
+	"updated_at": true,
 
 	// Internal IDs (exposed as "id")
-	"uuid":           true,
-	"projectUuid":    true,
-	"project_uuid":   true,
+	"uuid":         true,
+	"projectUuid":  true,
+	"project_uuid": true,
 
 	// Computed fields
 	"sslExpiration":  true,
 	"ssl_expiration": true,
 
 	// Internal references
-	"bulkUuid":       true,
-	"bulk_uuid":      true,
-	"createdBy":      true,
-	"created_by":     true,
+	"bulkUuid":   true,
+	"bulk_uuid":  true,
+	"createdBy":  true,
+	"created_by": true,
 
 	// Separate resources
-	"updates":        true, // Nested updates array (hyperping_incident_update)
-	"subscriberId":   true, // Belongs to hyperping_statuspage_subscriber
-	"subscriber_id":  true,
+	"updates":       true, // Nested updates array (hyperping_incident_update)
+	"subscriberId":  true, // Belongs to hyperping_statuspage_subscriber
+	"subscriber_id": true,
 
 	// Query/pagination parameters (not resource fields)
-	"page":           true,
-	"search":         true,
-	"limit":          true,
-	"offset":         true,
-	"type":           true, // Filter param for list endpoints (e.g., outages?type=manual)
+	"page":   true,
+	"search": true,
+	"limit":  true,
+	"offset": true,
+	"type":   true, // Filter param for list endpoints (e.g., outages?type=manual)
 
 	// Users array (complex nested, handled separately)
-	"users":          true,
+	"users": true,
 }
 
 // ResourceMappings defines all known API-to-Terraform resource mappings
@@ -65,14 +67,22 @@ var ResourceMappings = []ResourceMapping{
 			"monitorUuid":  "id",
 			"monitor_uuid": "id",
 		},
+		// id is computed from API response (not in request docs)
+		ComputedFields: map[string]bool{
+			"id": true,
+		},
 	},
 	{
 		TerraformResource: "hyperping_incident",
 		APISection:        "incidents",
 		APIEndpoints:      []string{"incidents", "incidents_create", "incidents_update", "incidents_delete", "incidents_get", "incidents_list"},
 		FieldOverrides: map[string]string{
-			"uuid":         "id",
-			"statuspages":  "status_pages",
+			"uuid":        "id",
+			"statuspages": "status_pages",
+		},
+		// id is computed from API response (not in request docs)
+		ComputedFields: map[string]bool{
+			"id": true,
 		},
 	},
 	{
@@ -83,17 +93,43 @@ var ResourceMappings = []ResourceMapping{
 			"uuid":        "id",
 			"statuspages": "status_pages",
 		},
+		// id is computed from API response (not in request docs)
+		ComputedFields: map[string]bool{
+			"id": true,
+		},
+		// Fields with provider defaults that may not be in API docs
+		UndocumentedFields: map[string]bool{
+			"notification_option":  true, // TF has default, API may not document
+			"notification_minutes": true, // TF has default, API may not document
+			"text":                 true, // API has it but extractor doesn't capture it reliably
+		},
 	},
 	{
 		TerraformResource: "hyperping_healthcheck",
 		APISection:        "healthchecks",
 		APIEndpoints:      []string{"healthchecks", "healthchecks_create", "healthchecks_update", "healthchecks_delete", "healthchecks_get", "healthchecks_list", "healthchecks_pause", "healthchecks_resume"},
 		FieldOverrides: map[string]string{
-			"uuid":             "id",
-			"healthcheckUuid":  "id",
-			"healthcheck_uuid": "id",
-			"pingUrl":          "ping_url",
-			"tz":               "timezone", // API accepts both tz and timezone
+			"uuid":                   "id",
+			"healthcheckUuid":        "id",
+			"healthcheck_uuid":       "id",
+			"pingUrl":                "ping_url",
+			"tz":                     "timezone",          // API accepts both tz and timezone
+			"escalation_policy_uuid": "escalation_policy", // API uses _uuid suffix, TF doesn't
+		},
+		// Response-only fields (computed from API, not in request docs)
+		ComputedFields: map[string]bool{
+			"id":           true,
+			"ping_url":     true, // Auto-generated URL to ping
+			"period":       true, // Calculated from period_type/period_value
+			"grace_period": true, // Calculated from grace_period_type/value
+			"is_down":      true, // Current failure state
+			"last_ping":    true, // Timestamp of last ping
+			"created_at":   true, // Creation timestamp
+			"is_paused":    true, // Managed via separate pause/resume endpoints
+		},
+		// Fields not captured by API docs extractor
+		UndocumentedFields: map[string]bool{
+			"escalation_policy": true, // API docs don't document this for healthchecks
 		},
 	},
 	{
@@ -106,22 +142,32 @@ var ResourceMappings = []ResourceMapping{
 		},
 		// StatusPage API has flat structure, but TF nests many fields inside "settings" for better UX
 		NestedFieldMappings: map[string]string{
-			"website":                 "settings.website",
-			"description":             "settings.description",
-			"languages":               "settings.languages",
-			"theme":                   "settings.theme",
-			"font":                    "settings.font",
-			"accent_color":            "settings.accent_color",
-			"auto_refresh":            "settings.auto_refresh",
-			"banner_header":           "settings.banner_header",
-			"logo":                    "settings.logo",
-			"logo_height":             "settings.logo_height",
-			"favicon":                 "settings.favicon",
-			"hide_powered_by":         "settings.hide_powered_by",
+			"website":                  "settings.website",
+			"description":              "settings.description",
+			"languages":                "settings.languages",
+			"theme":                    "settings.theme",
+			"font":                     "settings.font",
+			"accent_color":             "settings.accent_color",
+			"auto_refresh":             "settings.auto_refresh",
+			"banner_header":            "settings.banner_header",
+			"logo":                     "settings.logo",
+			"logo_height":              "settings.logo_height",
+			"favicon":                  "settings.favicon",
+			"hide_powered_by":          "settings.hide_powered_by",
 			"hide_from_search_engines": "settings.hide_from_search_engines",
-			"google_analytics":        "settings.google_analytics",
-			"subscribe":               "settings.subscribe",
-			"authentication":          "settings.authentication",
+			"google_analytics":         "settings.google_analytics",
+			"subscribe":                "settings.subscribe",
+			"authentication":           "settings.authentication",
+		},
+		// Response-only fields (computed from API, not in request docs)
+		ComputedFields: map[string]bool{
+			"id":       true,
+			"url":      true, // Public URL is auto-generated
+			"hostname": true, // Custom domain, often returned from API but not in request docs
+		},
+		// TF structural elements without direct API counterparts
+		UndocumentedFields: map[string]bool{
+			"settings": true, // TF nested block, API has flat fields (handled via NestedFieldMappings)
 		},
 	},
 	{
@@ -133,15 +179,42 @@ var ResourceMappings = []ResourceMapping{
 			"outageUuid":  "id",
 			"outage_uuid": "id",
 		},
+		// Response-only fields (computed from API, not in request docs)
+		ComputedFields: map[string]bool{
+			"id":                true,
+			"outage_type":       true, // Always "manual" for created outages
+			"is_resolved":       true, // Derived from end_date
+			"duration_ms":       true, // Calculated duration
+			"detected_location": true, // Location info from API
+			"monitor":           true, // Nested monitor object
+			"acknowledged_by":   true, // Nested user object
+		},
+		// Fields used by provider but not documented in API request docs (API doc gap)
+		UndocumentedFields: map[string]bool{
+			"monitor_uuid": true, // Required for outage creation but not in API docs
+			"start_date":   true, // Required for outage creation but not in API docs
+			"end_date":     true, // Optional for outage creation but not in API docs
+			"status_code":  true, // Required for outage creation but not in API docs
+		},
 	},
 	{
 		TerraformResource: "hyperping_statuspage_subscriber",
 		APISection:        "statuspages_subscribers",
 		APIEndpoints:      []string{"statuspages_subscribers", "statuspages_subscribers_create", "statuspages_subscribers_delete", "statuspages_subscribers_list"},
 		FieldOverrides: map[string]string{
-			"uuid":           "id",
-			"subscriberUuid": "id",
+			"uuid":            "id",
+			"subscriberUuid":  "id",
 			"subscriber_uuid": "id",
+		},
+		// Response-only fields (computed from API, not in request docs)
+		ComputedFields: map[string]bool{
+			"id":         true,
+			"created_at": true, // Creation timestamp (response-only)
+			"value":      true, // Display value (computed, response-only)
+		},
+		// Parent identifier is passed in URL path, not request body
+		UndocumentedFields: map[string]bool{
+			"statuspage_uuid": true, // URL path parameter, not body parameter
 		},
 	},
 }
@@ -204,6 +277,30 @@ func GetNestedFieldMapping(apiField string, mapping *ResourceMapping) string {
 // IsNestedField checks if an API field maps to a nested TF field
 func IsNestedField(apiField string, mapping *ResourceMapping) bool {
 	return GetNestedFieldMapping(apiField, mapping) != ""
+}
+
+// IsComputedField checks if a TF field is computed-only (response field, not in API request docs)
+// These fields are expected to not appear in API request documentation
+func IsComputedField(tfField string, mapping *ResourceMapping) bool {
+	if mapping == nil || mapping.ComputedFields == nil {
+		return false
+	}
+	return mapping.ComputedFields[tfField]
+}
+
+// IsUndocumentedField checks if a TF field is known to not be documented in API request docs
+// This handles cases where the provider implements fields that the API supports but doesn't document
+func IsUndocumentedField(tfField string, mapping *ResourceMapping) bool {
+	if mapping == nil || mapping.UndocumentedFields == nil {
+		return false
+	}
+	return mapping.UndocumentedFields[tfField]
+}
+
+// IsExpectedStaleField checks if a TF field is expected to not have an API counterpart
+// This includes both computed-only fields and known API documentation gaps
+func IsExpectedStaleField(tfField string, mapping *ResourceMapping) bool {
+	return IsComputedField(tfField, mapping) || IsUndocumentedField(tfField, mapping)
 }
 
 // MapTerraformFieldToAPI converts a Terraform field name to its API equivalent
