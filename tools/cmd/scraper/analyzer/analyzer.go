@@ -188,9 +188,13 @@ func (a *Analyzer) analyzeResource(mapping ResourceMapping, apiParams []extracto
 			}
 		}
 		if !found && !IsSkippedField(tfName) {
-			// Check if it's a computed-only field (those are expected to not be in API request docs)
+			// Check if it's an expected stale field (computed-only or known API doc gap)
+			if IsExpectedStaleField(tfName, &mapping) {
+				continue
+			}
+			// Also check AST-extracted schema for computed-only fields
 			if field, ok := tfFieldSet[tfName]; ok && field.Computed && !field.Required && !field.Optional {
-				continue // Skip computed-only fields
+				continue
 			}
 			coverage.StaleFields++
 		}
@@ -282,7 +286,8 @@ func (a *Analyzer) findResourceGaps(mapping ResourceMapping, apiParams []extract
 			apiType := NormalizeTypeName(apiParam.Type)
 			tfType := NormalizeTypeName(tfField.Type)
 
-			if apiType != tfType && apiType != "unknown" && tfType != "unknown" {
+			// Only flag as mismatch if types are truly incompatible
+			if !areTypesCompatible(apiType, tfType) {
 				gap := CoverageGap{
 					Type:       GapTypeMismatch,
 					Resource:   mapping.APISection,
@@ -365,6 +370,35 @@ func mapAPITypeToTerraformAttribute(apiType string) string {
 	default:
 		return "String"
 	}
+}
+
+// areTypesCompatible checks if two normalized types are compatible
+// Some API types map to different TF types by design:
+// - API "enum" -> TF "string" (with validators)
+// - API "object" -> TF "string" (for localized strings like title/text)
+func areTypesCompatible(apiType, tfType string) bool {
+	// Same type is always compatible
+	if apiType == tfType {
+		return true
+	}
+
+	// Unknown types are compatible (can't verify)
+	if apiType == "unknown" || tfType == "unknown" {
+		return true
+	}
+
+	// enum -> string is the standard Terraform pattern (use validators for constraints)
+	if apiType == "enum" && tfType == "string" {
+		return true
+	}
+
+	// object -> string is used for localized strings (title, text with language keys)
+	// The API docs may show these as objects with language keys, but TF accepts simple strings
+	if apiType == "object" && tfType == "string" {
+		return true
+	}
+
+	return false
 }
 
 // escapeDescription escapes special characters in descriptions
