@@ -14,10 +14,10 @@ import (
 
 func TestClient_ListIncidents(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" || r.URL.Path != "/v3/incidents" {
+		if r.Method != "GET" || r.URL.Path != IncidentsBasePath {
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 		}
-		if r.Header.Get("Authorization") != "Bearer test_key" {
+		if r.Header.Get(HeaderAuthorization) != BearerPrefix+"test_key" {
 			t.Error("Missing or invalid Authorization header")
 		}
 
@@ -132,7 +132,7 @@ func TestClient_ListIncidents_ServerError(t *testing.T) {
 
 func TestClient_GetIncident(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" || r.URL.Path != "/v3/incidents/inci_123" {
+		if r.Method != "GET" || r.URL.Path != IncidentsBasePath+"/inci_123" {
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 
@@ -182,7 +182,7 @@ func TestClient_GetIncident_NotFound(t *testing.T) {
 
 func TestClient_CreateIncident(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" || r.URL.Path != "/v3/incidents" {
+		if r.Method != "POST" || r.URL.Path != IncidentsBasePath {
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 
@@ -280,7 +280,7 @@ func TestClient_CreateIncident_ValidationError(t *testing.T) {
 
 func TestClient_UpdateIncident(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" || r.URL.Path != "/v3/incidents/inci_123" {
+		if r.Method != "PUT" || r.URL.Path != IncidentsBasePath+"/inci_123" {
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 
@@ -336,7 +336,7 @@ func TestClient_UpdateIncident_NotFound(t *testing.T) {
 
 func TestClient_AddIncidentUpdate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" || r.URL.Path != "/v3/incidents/inci_123/updates" {
+		if r.Method != "POST" || r.URL.Path != IncidentsBasePath+"/inci_123/updates" {
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 
@@ -377,7 +377,7 @@ func TestClient_AddIncidentUpdate(t *testing.T) {
 
 func TestClient_ResolveIncident(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" || r.URL.Path != "/v3/incidents/inci_123/updates" {
+		if r.Method != "POST" || r.URL.Path != IncidentsBasePath+"/inci_123/updates" {
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 
@@ -414,7 +414,7 @@ func TestClient_ResolveIncident(t *testing.T) {
 
 func TestClient_DeleteIncident(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "DELETE" || r.URL.Path != "/v3/incidents/inci_123" {
+		if r.Method != "DELETE" || r.URL.Path != IncidentsBasePath+"/inci_123" {
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -555,7 +555,7 @@ func TestClient_ListIncidents_EmptyObjectResponse(t *testing.T) {
 
 func TestClient_ListIncidents_UnexpectedJSONType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(HeaderContentType, ContentTypeJSON)
 		w.Write([]byte(`"unexpected string response"`))
 	}))
 	defer server.Close()

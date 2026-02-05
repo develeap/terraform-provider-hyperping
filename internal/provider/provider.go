@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -114,7 +113,7 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 	// Note: Context masking applies to logs in this Configure function only
 	_ = tflog.MaskAllFieldValuesRegexes(
 		tflog.MaskFieldValuesWithFieldKeys(ctx, "api_key"),
-		regexp.MustCompile(`sk_[a-zA-Z0-9_-]+`),
+		client.APIKeyPattern,
 	)
 
 	// Create client with tflog integration for debugging

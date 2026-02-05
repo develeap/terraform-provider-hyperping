@@ -21,9 +21,9 @@ import (
 
 func TestAccMonitorDataSource_basic(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
-		if r.Method == "GET" && r.URL.Path == "/v1/monitors/mon-test-123" {
+		if r.Method == "GET" && r.URL.Path == client.MonitorsBasePath+"/mon-test-123" {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"uuid":                 "mon-test-123",
 				"name":                 "Test Monitor",
@@ -77,9 +77,9 @@ data "hyperping_monitor" "test" {
 
 func TestAccMonitorDataSource_withAllFields(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
-		if r.Method == "GET" && r.URL.Path == "/v1/monitors/mon-full-123" {
+		if r.Method == "GET" && r.URL.Path == client.MonitorsBasePath+"/mon-full-123" {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"uuid":                 "mon-full-123",
 				"name":                 "Full Monitor",

@@ -16,7 +16,7 @@ func TestClient_ListMaintenance(t *testing.T) {
 	startDate := "2025-12-17T14:30:00.000Z"
 	endDate := "2025-12-17T18:30:00.000Z"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/v1/maintenance-windows" {
+		if r.Method != http.MethodGet || r.URL.Path != MaintenanceBasePath {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -136,7 +136,7 @@ func TestClient_GetMaintenance(t *testing.T) {
 	startDate := "2025-12-17T14:30:00.000Z"
 	endDate := "2025-12-17T18:30:00.000Z"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/v1/maintenance-windows/mw_123" {
+		if r.Method != http.MethodGet || r.URL.Path != MaintenanceBasePath+"/mw_123" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -190,7 +190,7 @@ func TestClient_GetMaintenance_NotFound(t *testing.T) {
 
 func TestClient_CreateMaintenance(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/v1/maintenance-windows" {
+		if r.Method != http.MethodPost || r.URL.Path != MaintenanceBasePath {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -263,7 +263,7 @@ func TestClient_CreateMaintenance_ValidationError(t *testing.T) {
 
 func TestClient_UpdateMaintenance(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut || r.URL.Path != "/v1/maintenance-windows/mw_123" {
+		if r.Method != http.MethodPut || r.URL.Path != MaintenanceBasePath+"/mw_123" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -319,7 +319,7 @@ func TestClient_UpdateMaintenance_NotFound(t *testing.T) {
 
 func TestClient_DeleteMaintenance(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete || r.URL.Path != "/v1/maintenance-windows/mw_123" {
+		if r.Method != http.MethodDelete || r.URL.Path != MaintenanceBasePath+"/mw_123" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -403,7 +403,7 @@ func TestClient_ListMaintenance_EmptyWrappedResponse(t *testing.T) {
 
 func TestClient_ListMaintenance_UnexpectedJSONType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(HeaderContentType, ContentTypeJSON)
 		w.Write([]byte(`12345`))
 	}))
 	defer server.Close()

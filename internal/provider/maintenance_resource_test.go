@@ -40,14 +40,14 @@ func TestAccMaintenanceResource_basic(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/maintenance-windows":
+		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/maintenance-windows/mw_test_123":
+		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_test_123":
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == "/v1/maintenance-windows/mw_test_123":
+		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_test_123":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -107,14 +107,14 @@ func TestAccMaintenanceResource_full(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/maintenance-windows":
+		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/maintenance-windows/mw_full_123":
+		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_full_123":
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == "/v1/maintenance-windows/mw_full_123":
+		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_full_123":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -178,12 +178,12 @@ func TestAccMaintenanceResource_timeUpdate(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/maintenance-windows":
+		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodPut && r.URL.Path == "/v1/maintenance-windows/mw_time_123":
+		case r.Method == http.MethodPut && r.URL.Path == client.MaintenanceBasePath+"/mw_time_123":
 			var req map[string]interface{}
 			json.NewDecoder(r.Body).Decode(&req)
 			if sd, ok := req["start_date"].(string); ok {
@@ -193,9 +193,9 @@ func TestAccMaintenanceResource_timeUpdate(t *testing.T) {
 				maintenance["end_date"] = ed
 			}
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/maintenance-windows/mw_time_123":
+		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_time_123":
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == "/v1/maintenance-windows/mw_time_123":
+		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_time_123":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -267,19 +267,19 @@ func TestAccMaintenanceResource_disappears(t *testing.T) {
 	deleted := false
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/maintenance-windows":
+		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/maintenance-windows/mw_disappear_123":
+		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_disappear_123":
 			if deleted {
 				w.WriteHeader(http.StatusNotFound)
 				json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
 				return
 			}
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == "/v1/maintenance-windows/mw_disappear_123":
+		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_disappear_123":
 			deleted = true
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -653,14 +653,14 @@ func TestAccMaintenanceResource_withMonitors(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/maintenance-windows":
+		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/maintenance-windows/mw_monitors_123":
+		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_monitors_123":
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == "/v1/maintenance-windows/mw_monitors_123":
+		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_monitors_123":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -716,14 +716,14 @@ func TestAccMaintenanceResource_import(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/maintenance-windows":
+		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/maintenance-windows/mw_import_123":
+		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_import_123":
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == "/v1/maintenance-windows/mw_import_123":
+		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_import_123":
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -782,19 +782,19 @@ func TestAccMaintenanceResource_deleteNotFound(t *testing.T) {
 	deleted := false
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/v1/maintenance-windows":
+		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/maintenance-windows/mw_delete_nf_123":
+		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_delete_nf_123":
 			if deleted {
 				w.WriteHeader(http.StatusNotFound)
 				json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
 				return
 			}
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == "/v1/maintenance-windows/mw_delete_nf_123":
+		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_delete_nf_123":
 			// Return not found - should not error since resource is already gone
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})

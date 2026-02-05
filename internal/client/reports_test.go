@@ -102,7 +102,7 @@ func TestClient_GetMonitorReport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				expectedPath := "/v2/reporting/monitor-reports/" + tt.uuid
+				expectedPath := ReportsBasePath + "/" + tt.uuid
 				if r.URL.Path != expectedPath {
 					t.Errorf("unexpected path: got %v, want %v", r.URL.Path, expectedPath)
 				}
@@ -229,7 +229,7 @@ func TestClient_ListMonitorReports(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/v2/reporting/monitor-reports" {
+				if r.URL.Path != ReportsBasePath {
 					t.Errorf("unexpected path: got %v", r.URL.Path)
 				}
 				if r.Method != http.MethodGet {

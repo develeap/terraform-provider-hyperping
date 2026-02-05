@@ -9,11 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
 func TestAccOutageResource_basic(t *testing.T) {
@@ -223,16 +226,18 @@ func newMockOutageServer(t *testing.T) *mockOutageServer {
 }
 
 func (m *mockOutageServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	basePath := client.OutagesBasePath
+	basePathWithSlash := basePath + "/"
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v2/outages":
+	case r.Method == "GET" && r.URL.Path == basePath:
 		m.listOutages(w)
-	case r.Method == "POST" && r.URL.Path == "/v2/outages":
+	case r.Method == "POST" && r.URL.Path == basePath:
 		m.createOutage(w, r)
-	case r.Method == "GET" && len(r.URL.Path) > len("/v2/outages/"):
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		m.getOutage(w, r)
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v2/outages/"):
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		m.deleteOutage(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -294,7 +299,7 @@ func (m *mockOutageServer) createOutage(w http.ResponseWriter, r *http.Request) 
 }
 
 func (m *mockOutageServer) getOutage(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v2/outages/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
 
 	outage, exists := m.outages[id]
 	if !exists {
@@ -307,7 +312,7 @@ func (m *mockOutageServer) getOutage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *mockOutageServer) deleteOutage(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v2/outages/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
 
 	if _, exists := m.outages[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -353,10 +358,12 @@ func (m *mockOutageServerWithErrors) setReadError(v bool)   { m.readError = v }
 func (m *mockOutageServerWithErrors) setDeleteError(v bool) { m.deleteError = v }
 
 func (m *mockOutageServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	basePath := client.OutagesBasePath
+	basePathWithSlash := basePath + "/"
 
 	switch {
-	case r.Method == "POST" && r.URL.Path == "/v2/outages":
+	case r.Method == "POST" && r.URL.Path == basePath:
 		if m.createError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -364,7 +371,7 @@ func (m *mockOutageServerWithErrors) handleRequestWithErrors(w http.ResponseWrit
 		}
 		m.createOutage(w, r)
 
-	case r.Method == "GET" && len(r.URL.Path) > len("/v2/outages/"):
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		if m.readError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -372,7 +379,7 @@ func (m *mockOutageServerWithErrors) handleRequestWithErrors(w http.ResponseWrit
 		}
 		m.getOutage(w, r)
 
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v2/outages/"):
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		if m.deleteError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})

@@ -23,8 +23,8 @@ func TestClient_ListMonitors_DirectArray(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/monitors" {
-			t.Errorf("expected path /v1/monitors, got %s", r.URL.Path)
+		if r.URL.Path != MonitorsBasePath {
+			t.Errorf("expected path %s, got %s", MonitorsBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -126,8 +126,8 @@ func TestClient_GetMonitor_Success(t *testing.T) {
 		if r.Method != "GET" {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/monitors/mon_test" {
-			t.Errorf("expected path /v1/monitors/mon_test, got %s", r.URL.Path)
+		if r.URL.Path != MonitorsBasePath+"/mon_test" {
+			t.Errorf("expected path %s/mon_test, got %s", MonitorsBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -172,8 +172,8 @@ func TestClient_CreateMonitor_Success(t *testing.T) {
 		if r.Method != "POST" {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/monitors" {
-			t.Errorf("expected path /v1/monitors, got %s", r.URL.Path)
+		if r.URL.Path != MonitorsBasePath {
+			t.Errorf("expected path %s, got %s", MonitorsBasePath, r.URL.Path)
 		}
 
 		var req CreateMonitorRequest
@@ -251,8 +251,8 @@ func TestClient_UpdateMonitor_Success(t *testing.T) {
 		if r.Method != "PUT" {
 			t.Errorf("expected PUT, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/monitors/mon_test" {
-			t.Errorf("expected path /v1/monitors/mon_test, got %s", r.URL.Path)
+		if r.URL.Path != MonitorsBasePath+"/mon_test" {
+			t.Errorf("expected path %s/mon_test, got %s", MonitorsBasePath, r.URL.Path)
 		}
 
 		var req UpdateMonitorRequest
@@ -298,8 +298,8 @@ func TestClient_DeleteMonitor_Success(t *testing.T) {
 		if r.Method != "DELETE" {
 			t.Errorf("expected DELETE, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/monitors/mon_test" {
-			t.Errorf("expected path /v1/monitors/mon_test, got %s", r.URL.Path)
+		if r.URL.Path != MonitorsBasePath+"/mon_test" {
+			t.Errorf("expected path %s/mon_test, got %s", MonitorsBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusNoContent)

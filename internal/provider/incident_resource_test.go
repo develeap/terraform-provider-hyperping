@@ -458,20 +458,20 @@ func newMockIncidentServer(t *testing.T) *mockIncidentServer {
 }
 
 func (m *mockIncidentServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v3/incidents":
+	case r.Method == "GET" && r.URL.Path == client.IncidentsBasePath:
 		m.listIncidents(w)
-	case r.Method == "POST" && r.URL.Path == "/v3/incidents":
+	case r.Method == "POST" && r.URL.Path == client.IncidentsBasePath:
 		m.createIncident(w, r)
-	case r.Method == "POST" && strings.Contains(r.URL.Path, "/v3/incidents/") && strings.HasSuffix(r.URL.Path, "/updates"):
+	case r.Method == "POST" && strings.Contains(r.URL.Path, client.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates"):
 		m.addIncidentUpdate(w, r)
-	case r.Method == "GET" && len(r.URL.Path) > len("/v3/incidents/"):
+	case r.Method == "GET" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
 		m.getIncident(w, r)
-	case r.Method == "PUT" && len(r.URL.Path) > len("/v3/incidents/"):
+	case r.Method == "PUT" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
 		m.updateIncident(w, r)
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v3/incidents/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
 		m.deleteIncident(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -532,7 +532,7 @@ func (m *mockIncidentServer) createIncident(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockIncidentServer) getIncident(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v3/incidents/"):]
+	id := r.URL.Path[len(client.IncidentsBasePath+"/"):]
 
 	incident, exists := m.incidents[id]
 	if !exists {
@@ -545,7 +545,7 @@ func (m *mockIncidentServer) getIncident(w http.ResponseWriter, r *http.Request)
 }
 
 func (m *mockIncidentServer) updateIncident(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v3/incidents/"):]
+	id := r.URL.Path[len(client.IncidentsBasePath+"/"):]
 
 	incident, exists := m.incidents[id]
 	if !exists {
@@ -583,7 +583,7 @@ func (m *mockIncidentServer) updateIncident(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockIncidentServer) deleteIncident(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v3/incidents/"):]
+	id := r.URL.Path[len(client.IncidentsBasePath+"/"):]
 
 	if _, exists := m.incidents[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -600,8 +600,8 @@ func (m *mockIncidentServer) deleteAllIncidents() {
 }
 
 func (m *mockIncidentServer) addIncidentUpdate(w http.ResponseWriter, r *http.Request) {
-	// Extract incident ID from path like "/v3/incidents/{id}/updates"
-	path := r.URL.Path[len("/v3/incidents/"):]
+	// Extract incident ID from path like client.IncidentsBasePath+"/"{id}/updates"
+	path := r.URL.Path[len(client.IncidentsBasePath+"/"):]
 	incidentID := path[:len(path)-len("/updates")]
 
 	incident, exists := m.incidents[incidentID]
@@ -676,10 +676,10 @@ func (m *mockIncidentServerWithErrors) setReadError(v bool)   { m.readError = v 
 func (m *mockIncidentServerWithErrors) setUpdateError(v bool) { m.updateError = v }
 
 func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
 	switch {
-	case r.Method == "POST" && r.URL.Path == "/v3/incidents":
+	case r.Method == "POST" && r.URL.Path == client.IncidentsBasePath:
 		if m.createError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -687,7 +687,7 @@ func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWr
 		}
 		m.createIncident(w, r)
 
-	case r.Method == "POST" && strings.Contains(r.URL.Path, "/v3/incidents/") && strings.HasSuffix(r.URL.Path, "/updates"):
+	case r.Method == "POST" && strings.Contains(r.URL.Path, client.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates"):
 		if m.updateError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -695,7 +695,7 @@ func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWr
 		}
 		m.addIncidentUpdate(w, r)
 
-	case r.Method == "GET" && len(r.URL.Path) > len("/v3/incidents/"):
+	case r.Method == "GET" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
 		if m.readError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -703,7 +703,7 @@ func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWr
 		}
 		m.getIncident(w, r)
 
-	case r.Method == "PUT" && len(r.URL.Path) > len("/v3/incidents/"):
+	case r.Method == "PUT" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
 		if m.updateError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -711,7 +711,7 @@ func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWr
 		}
 		m.updateIncident(w, r)
 
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v3/incidents/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
 		if m.deleteError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})

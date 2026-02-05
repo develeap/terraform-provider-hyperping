@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
 // testAccProtoV6ProviderFactories is used to instantiate a provider during
@@ -118,7 +120,7 @@ data "hyperping_monitors" "all" {}
 
 func TestAccProvider_WithBaseURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		w.Write([]byte("[]"))
 	}))
 	defer server.Close()
@@ -211,7 +213,7 @@ func TestTFLogAdapter_Debug(t *testing.T) {
 // Unit tests for Provider.Configure
 func TestProvider_Configure_WithAPIKey(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		w.Write([]byte("[]"))
 	}))
 	defer server.Close()
@@ -241,11 +243,11 @@ data "hyperping_monitors" "all" {}
 func TestProvider_Configure_EnvVar(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify authorization header is present
-		auth := r.Header.Get("Authorization")
+		auth := r.Header.Get(client.HeaderAuthorization)
 		if auth != "Bearer hp_env_test_key" {
 			t.Errorf("expected Bearer hp_env_test_key, got %s", auth)
 		}
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		w.Write([]byte("[]"))
 	}))
 	defer server.Close()

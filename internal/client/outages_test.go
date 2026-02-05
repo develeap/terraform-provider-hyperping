@@ -134,7 +134,7 @@ func TestClient_GetOutage(t *testing.T) {
 					t.Errorf("Expected GET request, got %s", r.Method)
 				}
 				if r.URL.Path != outagesBasePath+"/"+tt.uuid {
-					t.Errorf("Expected path /v2/outages/%s, got %s", tt.uuid, r.URL.Path)
+					t.Errorf("Expected path %s/%s, got %s", outagesBasePath, tt.uuid, r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -252,7 +252,7 @@ func TestClient_ListOutages(t *testing.T) {
 					t.Errorf("Expected GET request, got %s", r.Method)
 				}
 				if r.URL.Path != outagesBasePath {
-					t.Errorf("Expected path /v2/outages, got %s", r.URL.Path)
+					t.Errorf("Expected path %s, got %s", outagesBasePath, r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -369,7 +369,7 @@ func TestClient_AcknowledgeOutage(t *testing.T) {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
 		if r.URL.Path != outagesBasePath+"/out_test123/acknowledge" {
-			t.Errorf("Expected path /v2/outages/out_test123/acknowledge, got %s", r.URL.Path)
+			t.Errorf("Expected path %s/out_test123/acknowledge, got %s", outagesBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -401,7 +401,7 @@ func TestClient_UnacknowledgeOutage(t *testing.T) {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
 		if r.URL.Path != outagesBasePath+"/out_test123/unacknowledge" {
-			t.Errorf("Expected path /v2/outages/out_test123/unacknowledge, got %s", r.URL.Path)
+			t.Errorf("Expected path %s/out_test123/unacknowledge, got %s", outagesBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -430,7 +430,7 @@ func TestClient_ResolveOutage(t *testing.T) {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
 		if r.URL.Path != outagesBasePath+"/out_test123/resolve" {
-			t.Errorf("Expected path /v2/outages/out_test123/resolve, got %s", r.URL.Path)
+			t.Errorf("Expected path %s/out_test123/resolve, got %s", outagesBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -462,7 +462,7 @@ func TestClient_EscalateOutage(t *testing.T) {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
 		if r.URL.Path != outagesBasePath+"/out_test123/escalate" {
-			t.Errorf("Expected path /v2/outages/out_test123/escalate, got %s", r.URL.Path)
+			t.Errorf("Expected path %s/out_test123/escalate, got %s", outagesBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -519,7 +519,7 @@ func TestClient_DeleteOutage(t *testing.T) {
 					t.Errorf("Expected DELETE request, got %s", r.Method)
 				}
 				if r.URL.Path != outagesBasePath+"/"+tt.uuid {
-					t.Errorf("Expected path /v2/outages/%s, got %s", tt.uuid, r.URL.Path)
+					t.Errorf("Expected path %s/%s, got %s", outagesBasePath, tt.uuid, r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -728,7 +728,7 @@ func TestClient_ListOutages_DataWrapper(t *testing.T) {
 				t.Errorf("Expected GET request, got %s", r.Method)
 			}
 			if r.URL.Path != outagesBasePath {
-				t.Errorf("Expected path /v2/outages, got %s", r.URL.Path)
+				t.Errorf("Expected path %s, got %s", outagesBasePath, r.URL.Path)
 			}
 
 			w.WriteHeader(http.StatusOK)

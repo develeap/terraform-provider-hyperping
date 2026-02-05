@@ -266,10 +266,10 @@ func newMockHyperpingServerForDataSource(t *testing.T) *mockHyperpingServerForDS
 }
 
 func (m *mockHyperpingServerForDS) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v1/monitors":
+	case r.Method == "GET" && r.URL.Path == client.MonitorsBasePath:
 		m.listMonitors(w)
 	default:
 		w.WriteHeader(http.StatusNotFound)

@@ -40,7 +40,7 @@ type authTransport struct {
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Clone the request before mutation — RoundTrip contract requires this.
 	clone := req.Clone(req.Context())
-	clone.Header.Set("Authorization", "Bearer "+string(t.token))
+	clone.Header.Set(HeaderAuthorization, BearerPrefix+string(t.token))
 	return t.next.RoundTrip(clone)
 }
 
