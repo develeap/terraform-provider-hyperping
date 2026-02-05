@@ -108,3 +108,14 @@ resource "hyperping_statuspage" "production" {
 - `created_at` (String) Creation timestamp (computed)
 - `id` (Number) Subscriber ID (computed)
 - `value` (String) Display value (computed)
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# Import a subscriber using the composite ID (statuspage_uuid:subscriber_id)
+terraform import hyperping_statuspage_subscriber.example "sp_abc123:456"
+```
+
+**Note:** The ID format is `statuspage_uuid:subscriber_id`. The subscriber_id is a numeric ID assigned by Hyperping.

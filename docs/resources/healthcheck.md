@@ -77,3 +77,14 @@ output "backup_ping_url" {
 - `last_ping` (String) Timestamp of the last ping received in ISO 8601 format (read-only).
 - `period` (Number) Calculated period in seconds (read-only).
 - `ping_url` (String) The auto-generated ping URL. Your cron job pings this URL to prove it ran.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# Import a healthcheck using its UUID
+terraform import hyperping_healthcheck.example "hc_abc123def456"
+```
+
+After import, run `terraform plan` to verify the imported state matches your configuration.
