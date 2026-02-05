@@ -65,10 +65,13 @@ func CompareWithDocumentation(cassetteSchema *CassetteSchema, docFields map[stri
 		}
 
 		// Get documented fields for this endpoint's resource
+		// Build map with normalized names for comparison
 		docFieldList := docFields[result.Resource]
 		docFieldMap := make(map[string]DocumentedField)
+		normalizedDocMap := make(map[string]DocumentedField) // snake_case normalized
 		for _, f := range docFieldList {
 			docFieldMap[f.Name] = f
+			normalizedDocMap[normalizeFieldName(f.Name)] = f
 		}
 
 		// Compare response fields (most important for schema discovery)
@@ -80,7 +83,14 @@ func CompareWithDocumentation(cassetteSchema *CassetteSchema, docFields map[stri
 				Type:      cassetteField.Type,
 			}
 
-			if docField, exists := docFieldMap[fieldName]; exists {
+			// Try exact match first, then normalized (snake_case) match
+			docField, exists := docFieldMap[fieldName]
+			if !exists {
+				normalizedName := normalizeFieldName(fieldName)
+				docField, exists = normalizedDocMap[normalizedName]
+			}
+
+			if exists {
 				// Field is documented
 				docNormType := normalizeTypeForComparison(docField.Type)
 				cassetteNormType := normalizeTypeForComparison(cassetteField.Type)
@@ -106,8 +116,19 @@ func CompareWithDocumentation(cassetteSchema *CassetteSchema, docFields map[stri
 		}
 
 		// Check for deprecated fields (in docs but not in API response)
+		// Build normalized response field map for comparison
+		normalizedRespMap := make(map[string]bool)
+		for respFieldName := range endpoint.ResponseFields {
+			normalizedRespMap[normalizeFieldName(respFieldName)] = true
+		}
+
 		for fieldName := range docFieldMap {
-			if _, exists := endpoint.ResponseFields[fieldName]; !exists {
+			normalizedDocName := normalizeFieldName(fieldName)
+			// Check both exact match and normalized match
+			_, exactExists := endpoint.ResponseFields[fieldName]
+			_, normalizedExists := normalizedRespMap[normalizedDocName]
+
+			if !exactExists && !normalizedExists {
 				// Only flag if we saw the endpoint (had a successful response)
 				if len(endpoint.ResponseFields) > 0 {
 					discovery := FieldDiscovery{
@@ -129,6 +150,19 @@ func CompareWithDocumentation(cassetteSchema *CassetteSchema, docFields map[stri
 	}
 
 	return results
+}
+
+// normalizeFieldName converts camelCase to snake_case for comparison.
+// e.g., "periodValue" -> "period_value", "isPaused" -> "is_paused"
+func normalizeFieldName(name string) string {
+	var result strings.Builder
+	for i, r := range name {
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			result.WriteRune('_')
+		}
+		result.WriteRune(r)
+	}
+	return strings.ToLower(result.String())
 }
 
 // extractResourceFromPath extracts the resource name from an API path.
