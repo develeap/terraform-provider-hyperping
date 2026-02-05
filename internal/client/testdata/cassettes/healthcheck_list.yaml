@@ -23,7 +23,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.12; linux/amd64)
-        url: https://api.hyperping.io/v1/healthchecks
+        url: https://api.hyperping.io/v2/healthchecks
         method: GET
       response:
         proto: HTTP/2.0

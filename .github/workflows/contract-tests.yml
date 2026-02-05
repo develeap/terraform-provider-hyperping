@@ -127,10 +127,15 @@ jobs:
             const failures = logContent.match(/--- FAIL:[\s\S]*?(?=--- |$)/g) || [];
             const failureText = failures.slice(0, 5).join('\n\n');
 
+            const runNumber = context.runNumber;
+            const runId = context.runId;
+            const serverUrl = 'https://github.com';
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+
             const title = `[Contract Tests] API drift detected - ${new Date().toISOString().split('T')[0]}`;
             const body = `## Contract Test Failures
 
-**Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+**Run:** [#${runNumber}](${serverUrl}/${repo}/actions/runs/${runId})
 **Date:** ${new Date().toISOString()}
 
 ### Description

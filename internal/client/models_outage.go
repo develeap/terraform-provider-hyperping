@@ -8,7 +8,7 @@ package client
 // =============================================================================
 
 // Outage represents a Hyperping outage (system-generated monitor failure).
-// API: GET /v1/outages, GET /v1/outages/:uuid
+// API: GET /v2/outages, GET /v2/outages/:uuid
 //
 // Outages are different from Incidents:
 // - Outages are automatically detected monitor failures (system-generated)
@@ -65,7 +65,7 @@ type OutageAction struct {
 }
 
 // CreateOutageRequest represents a request to create a manual outage.
-// API: POST /v1/outages
+// API: POST /v2/outages
 type CreateOutageRequest struct {
 	MonitorUUID          string  `json:"monitorUuid"`
 	StartDate            string  `json:"startDate"`         // ISO 8601 format

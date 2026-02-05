@@ -8,7 +8,7 @@ package client
 // =============================================================================
 
 // StatusPage represents a Hyperping status page.
-// API: GET /v1/statuspages, GET /v1/statuspages/{uuid}
+// API: ... /v2/statuspages/{uuid}
 type StatusPage struct {
 	UUID              string              `json:"uuid"` // e.g., "sp_abc123xyz"
 	Name              string              `json:"name"`
@@ -78,7 +78,7 @@ type StatusPageService struct {
 }
 
 // StatusPagePaginatedResponse represents a paginated list of status pages.
-// API: GET /v1/statuspages with pagination
+// API: ... /v2/statuspages with pagination
 type StatusPagePaginatedResponse struct {
 	StatusPages    []StatusPage `json:"statuspages"`
 	HasNextPage    bool         `json:"hasNextPage"`
@@ -88,7 +88,7 @@ type StatusPagePaginatedResponse struct {
 }
 
 // CreateStatusPageRequest represents a request to create a status page.
-// API: POST /v1/statuspages
+// API: ... /v2/statuspages
 type CreateStatusPageRequest struct {
 	Name                  string                                  `json:"name"`
 	Subdomain             *string                                 `json:"subdomain,omitempty"`
@@ -161,7 +161,7 @@ func (r CreateStatusPageRequest) Validate() error {
 }
 
 // UpdateStatusPageRequest represents a request to update a status page.
-// API: PUT /v1/statuspages/{uuid}
+// API: ... /v2/statuspages/{uuid}
 type UpdateStatusPageRequest struct {
 	Name                  *string                                 `json:"name,omitempty"`
 	Subdomain             *string                                 `json:"subdomain,omitempty"`

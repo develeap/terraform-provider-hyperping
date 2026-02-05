@@ -8,7 +8,7 @@ package client
 // =============================================================================
 
 // Healthcheck represents a Hyperping healthcheck (cron job monitoring).
-// API: GET /v1/healthchecks, GET /v1/healthchecks/{uuid}
+// API: GET /v2/healthchecks, GET /v2/healthchecks/{uuid}
 //
 // Healthchecks monitor cron jobs via ping URLs. When the job runs, it pings
 // the URL. If no ping is received within the expected period + grace period,
@@ -36,7 +36,7 @@ type Healthcheck struct {
 }
 
 // CreateHealthcheckRequest represents a request to create a healthcheck.
-// API: POST /v1/healthchecks
+// API: POST /v2/healthchecks
 type CreateHealthcheckRequest struct {
 	Name             string  `json:"name"`
 	Cron             *string `json:"cron,omitempty"`        // Required if PeriodValue/PeriodType not set
@@ -57,7 +57,7 @@ func (r CreateHealthcheckRequest) Validate() error {
 }
 
 // UpdateHealthcheckRequest represents a request to update a healthcheck.
-// API: PUT /v1/healthchecks/{uuid}
+// API: PUT /v2/healthchecks/{uuid}
 type UpdateHealthcheckRequest struct {
 	Name             *string `json:"name,omitempty"`
 	Cron             *string `json:"cron,omitempty"`

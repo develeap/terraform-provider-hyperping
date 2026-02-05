@@ -10,7 +10,7 @@ import "fmt"
 // =============================================================================
 
 // StatusPageSubscriber represents a subscriber to a status page.
-// API: GET /v1/statuspages/{uuid}/subscribers
+// API: ... /v2/statuspages/{uuid}/subscribers
 type StatusPageSubscriber struct {
 	ID           int     `json:"id"`
 	Type         string  `json:"type"` // email, sms, slack, teams
@@ -23,7 +23,7 @@ type StatusPageSubscriber struct {
 }
 
 // SubscriberPaginatedResponse represents a paginated list of subscribers.
-// API: GET /v1/statuspages/{uuid}/subscribers with pagination
+// API: ... /v2/statuspages/{uuid}/subscribers with pagination
 type SubscriberPaginatedResponse struct {
 	Subscribers    []StatusPageSubscriber `json:"subscribers"`
 	HasNextPage    bool                   `json:"hasNextPage"`
@@ -33,7 +33,7 @@ type SubscriberPaginatedResponse struct {
 }
 
 // AddSubscriberRequest represents a request to add a subscriber.
-// API: POST /v1/statuspages/{uuid}/subscribers
+// API: ... /v2/statuspages/{uuid}/subscribers
 type AddSubscriberRequest struct {
 	Type            string  `json:"type"`                        // email, sms, teams (NOT slack - must use OAuth)
 	Email           *string `json:"email,omitempty"`             // required if type=email
