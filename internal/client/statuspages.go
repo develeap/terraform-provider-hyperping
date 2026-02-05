@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-const statuspagesBasePath = "/v1/statuspages"
+const statuspagesBasePath = "/v2/statuspages"
 
 // ListStatusPages returns a paginated list of status pages.
 // Parameters:
