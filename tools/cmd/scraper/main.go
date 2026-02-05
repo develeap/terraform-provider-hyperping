@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/analyzer"
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/contract"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
 	"github.com/go-rod/rod"
@@ -24,6 +25,7 @@ var (
 	analyzeMode bool
 	providerDir string
 	snapshotDir string
+	cassetteDir string
 )
 
 func main() {
@@ -31,6 +33,7 @@ func main() {
 	flag.BoolVar(&analyzeMode, "analyze", false, "Run coverage analysis instead of scraping")
 	flag.StringVar(&providerDir, "provider-dir", "../../../internal", "Path to provider internal directory")
 	flag.StringVar(&snapshotDir, "snapshot-dir", "./snapshots", "Path to snapshots directory")
+	flag.StringVar(&cassetteDir, "cassette-dir", "", "Path to VCR cassettes for contract testing (optional)")
 	flag.Parse()
 
 	// Setup signal handling for graceful shutdown
@@ -121,6 +124,9 @@ func runAnalyze(ctx context.Context) int {
 	log.Printf("📋 Configuration:\n")
 	log.Printf("   Provider Dir: %s\n", providerDir)
 	log.Printf("   Snapshot Dir: %s\n", snapshotDir)
+	if cassetteDir != "" {
+		log.Printf("   Cassette Dir: %s\n", cassetteDir)
+	}
 
 	// Find latest snapshot
 	snapshotMgr := NewSnapshotManager(snapshotDir)
@@ -187,6 +193,13 @@ func runAnalyze(ctx context.Context) int {
 		log.Printf("\n✅ Report saved: %s\n", reportFile)
 	}
 
+	// Contract testing analysis (if cassettes provided)
+	if cassetteDir != "" {
+		if err := runContractAnalysis(cassetteDir, apiParams); err != nil {
+			log.Printf("⚠️  Contract analysis failed: %v\n", err)
+		}
+	}
+
 	// Create GitHub issues for resources with gaps
 	if len(report.Gaps) > 0 {
 		log.Println("\n" + strings.Repeat("=", 60))
@@ -199,6 +212,74 @@ func runAnalyze(ctx context.Context) int {
 
 	log.Println("\n✅ Analysis complete!")
 	return 0
+}
+
+// runContractAnalysis performs contract testing analysis using VCR cassettes
+func runContractAnalysis(cassetteDir string, apiParams map[string][]extractor.APIParameter) error {
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("🔬 Contract Testing Analysis...")
+	log.Printf("   Cassette Dir: %s\n", cassetteDir)
+
+	// Extract schema from cassettes
+	cassetteSchema, err := contract.ExtractFromCassettes(cassetteDir)
+	if err != nil {
+		return fmt.Errorf("failed to extract cassette schema: %w", err)
+	}
+	log.Printf("   Found %d endpoints in cassettes\n", len(cassetteSchema.Endpoints))
+
+	// Convert API params to documented fields format
+	docFields := convertAPIParamsToDocFields(apiParams)
+
+	// Compare cassettes with documentation
+	results := contract.CompareWithDocumentation(cassetteSchema, docFields)
+
+	// Count discoveries
+	totalUndocumented := 0
+	totalMismatches := 0
+	for _, r := range results {
+		totalUndocumented += r.Summary.UndocumentedFields
+		totalMismatches += r.Summary.TypeMismatches
+	}
+
+	log.Printf("\n   📊 Contract Testing Results:\n")
+	log.Printf("   Undocumented Fields: %d\n", totalUndocumented)
+	log.Printf("   Type Mismatches: %d\n", totalMismatches)
+
+	// Generate and save discovery report
+	if totalUndocumented > 0 || totalMismatches > 0 {
+		discoveryReport := contract.GenerateDiscoveryReport(results)
+		reportFile := "discovery_report_" + time.Now().Format("2006-01-02_15-04-05") + ".md"
+		if err := utils.SaveToFile(reportFile, discoveryReport); err != nil {
+			log.Printf("⚠️  Failed to save discovery report: %v\n", err)
+		} else {
+			log.Printf("   ✅ Discovery report saved: %s\n", reportFile)
+		}
+	} else {
+		log.Println("   ✅ No documentation gaps discovered via contract testing")
+	}
+
+	return nil
+}
+
+// convertAPIParamsToDocFields converts scraped API params to the format expected by contract comparator
+func convertAPIParamsToDocFields(apiParams map[string][]extractor.APIParameter) map[string][]contract.DocumentedField {
+	result := make(map[string][]contract.DocumentedField)
+
+	for endpoint, params := range apiParams {
+		// Extract resource name from endpoint (e.g., "healthchecks_create" -> "healthchecks")
+		resource := strings.Split(endpoint, "_")[0]
+
+		for _, param := range params {
+			field := contract.DocumentedField{
+				Name:     param.Name,
+				Type:     param.Type,
+				Required: param.Required,
+			}
+			result[resource] = append(result[resource], field)
+		}
+	}
+
+	return result
 }
 
 // createCoverageIssues creates GitHub issues for coverage gaps

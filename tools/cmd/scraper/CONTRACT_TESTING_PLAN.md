@@ -86,13 +86,13 @@ Enhance analyzer to compare: API docs (scraped) vs Provider (AST) vs Actual API 
 - [x] Three-way comparison logic implemented
 - [x] Report generation for documentation gaps
 - [x] Unit tests passing
-- [ ] CLI integration with -cassette-dir flag
+- [x] CLI integration with -cassette-dir flag
 
 ### Tasks
 1. ~~Create comparator module~~ ✅
 2. ~~Implement three-way comparison~~ ✅
 3. ~~Add discovery report generation~~ ✅
-4. Add CLI integration (next step)
+4. ~~Add CLI integration~~ ✅
 
 ### Files Created
 - `tools/cmd/scraper/contract/comparator.go` - Comparison logic
@@ -130,7 +130,7 @@ Automate contract testing in CI/CD pipeline.
 ## Current Status
 
 **Phase**: 3 - Three-Way Comparison
-**Status**: Core complete (pending CLI integration)
+**Status**: Complete
 
 ### Phase 1 Summary (Response Recording)
 - Added go-vcr v3 dependency for HTTP recording/replay
@@ -147,9 +147,18 @@ Automate contract testing in CI/CD pipeline.
 - Created comparator module for cassette vs docs comparison
 - Identifies undocumented fields, type mismatches, deprecated fields
 - Generates markdown report of documentation gaps
+- CLI integration with `-cassette-dir` flag
 - All unit tests passing
 
+### CLI Usage
+```bash
+# Run analysis with contract testing
+./scraper -analyze \
+  -provider-dir=../../../internal \
+  -snapshot-dir=./snapshots \
+  -cassette-dir=../../internal/client/testdata/cassettes
+```
+
 ### Next Steps
-1. Add CLI integration with -cassette-dir flag
-2. Record real cassettes and test end-to-end
-3. Proceed to Phase 4: CI integration
+1. Record real cassettes with API key
+2. Proceed to Phase 4: CI integration (optional, can be done later)
