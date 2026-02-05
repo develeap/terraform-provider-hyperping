@@ -74,6 +74,7 @@ provider "hyperping" {
 ## Guides
 
 - [Migration Guide](guides/migration.md) - Migrate from manual Hyperping management to Terraform
+- [Rate Limits Guide](guides/rate-limits.md) - Capacity planning for large deployments
 - [Validation Guide](guides/validation.md) - Catch configuration errors early with `terraform validate`
 
 ## Troubleshooting
