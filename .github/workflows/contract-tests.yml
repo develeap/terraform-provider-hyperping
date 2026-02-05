@@ -23,10 +23,28 @@ permissions:
   issues: write  # For creating discovery issues
 
 jobs:
+  # This job always runs to prevent "No jobs were run" warnings
+  check-trigger:
+    name: Check Trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check event type
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "Contract tests will run (event: ${{ github.event_name }})"
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "Skipping contract tests (event: ${{ github.event_name }})"
+          fi
+
   contract-tests:
     name: Contract Tests
-    # Only run on schedule or manual trigger, skip on other events
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
