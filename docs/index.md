@@ -77,6 +77,10 @@ provider "hyperping" {
 - [Rate Limits Guide](guides/rate-limits.md) - Capacity planning for large deployments
 - [Validation Guide](guides/validation.md) - Catch configuration errors early with `terraform validate`
 
+## CI/CD
+
+- [GitHub Actions Workflows](https://github.com/develeap/terraform-provider-hyperping/tree/main/examples/github-actions) - Ready-to-use workflows for automated Terraform deployments
+
 ## Troubleshooting
 
 See the [Troubleshooting Guide](TROUBLESHOOTING.md) for common issues and solutions.
