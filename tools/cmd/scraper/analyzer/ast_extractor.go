@@ -97,7 +97,10 @@ func extractResourceSchema(filePath string, apiNameMap map[string]map[string]str
 		FilePath:   filePath,
 	}
 
-	// Look for ResourceModel struct
+	// Extract schema attributes from Schema() method (Computed/Optional/Required flags)
+	schemaAttrs := extractSchemaAttributes(node)
+
+	// Look for ResourceModel struct to get field names and types
 	var fields []SchemaField
 	ast.Inspect(node, func(n ast.Node) bool {
 		typeSpec, ok := n.(*ast.TypeSpec)
@@ -152,6 +155,13 @@ func extractResourceSchema(filePath string, apiNameMap map[string]map[string]str
 				Type:          fieldType,
 			}
 
+			// Apply Computed/Optional/Required from Schema() method
+			if attrs, ok := schemaAttrs[tfsdkTag]; ok {
+				schemaField.Computed = attrs.Computed
+				schemaField.Optional = attrs.Optional
+				schemaField.Required = attrs.Required
+			}
+
 			fields = append(fields, schemaField)
 		}
 
@@ -160,6 +170,83 @@ func extractResourceSchema(filePath string, apiNameMap map[string]map[string]str
 
 	schema.Fields = fields
 	return schema, nil
+}
+
+// schemaAttrFlags holds the flags extracted from schema.Attribute definitions
+type schemaAttrFlags struct {
+	Computed bool
+	Optional bool
+	Required bool
+}
+
+// extractSchemaAttributes parses the Schema() method to extract attribute flags
+func extractSchemaAttributes(node *ast.File) map[string]schemaAttrFlags {
+	result := make(map[string]schemaAttrFlags)
+
+	ast.Inspect(node, func(n ast.Node) bool {
+		// Look for function declarations named Schema
+		funcDecl, ok := n.(*ast.FuncDecl)
+		if !ok || funcDecl.Name.Name != "Schema" {
+			return true
+		}
+
+		// Walk through the function body looking for schema attribute definitions
+		ast.Inspect(funcDecl.Body, func(inner ast.Node) bool {
+			// Look for key-value expressions in map literals
+			keyValueExpr, ok := inner.(*ast.KeyValueExpr)
+			if !ok {
+				return true
+			}
+
+			// Key should be a string literal (attribute name like "id", "name")
+			keyLit, ok := keyValueExpr.Key.(*ast.BasicLit)
+			if !ok || keyLit.Kind != token.STRING {
+				return true
+			}
+
+			attrName := strings.Trim(keyLit.Value, `"`)
+
+			// Value should be a composite literal (schema.StringAttribute{...})
+			compLit, ok := keyValueExpr.Value.(*ast.CompositeLit)
+			if !ok {
+				return true
+			}
+
+			// Extract Computed/Optional/Required from the composite literal
+			flags := schemaAttrFlags{}
+			for _, elt := range compLit.Elts {
+				kv, ok := elt.(*ast.KeyValueExpr)
+				if !ok {
+					continue
+				}
+
+				keyIdent, ok := kv.Key.(*ast.Ident)
+				if !ok {
+					continue
+				}
+
+				// Check for boolean true values
+				valueIdent, isIdent := kv.Value.(*ast.Ident)
+				if isIdent && valueIdent.Name == "true" {
+					switch keyIdent.Name {
+					case "Computed":
+						flags.Computed = true
+					case "Optional":
+						flags.Optional = true
+					case "Required":
+						flags.Required = true
+					}
+				}
+			}
+
+			result[attrName] = flags
+			return true
+		})
+
+		return true
+	})
+
+	return result
 }
 
 // extractClientModelMappings extracts json tag mappings from client model files
