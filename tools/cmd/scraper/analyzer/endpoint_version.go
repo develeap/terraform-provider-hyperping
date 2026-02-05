@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/tools/cmd/scraper/utils"
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
 )
 
 // EndpointMismatch represents a version mismatch between docs and provider

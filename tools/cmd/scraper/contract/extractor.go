@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/tools/cmd/scraper/utils"
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
 	"gopkg.in/yaml.v3"
 )
 

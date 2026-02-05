@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/develeap/terraform-provider-hyperping/tools/cmd/scraper/utils"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
 )
 
 // CoverageGapType categorizes the type of discrepancy found
