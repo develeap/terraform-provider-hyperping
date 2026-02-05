@@ -76,11 +76,14 @@ jobs:
             echo "✅ Documentation already up to date"
           fi
 
-  # Security scanning
+  # Security scanning with SARIF upload to GitHub Security tab
   security:
     name: Security
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -94,7 +97,12 @@ jobs:
       - name: Run gosec
         uses: securego/gosec@master
         with:
-          args: -exclude-generated -exclude-dir=tools ./...
+          args: -exclude-generated -exclude-dir=tools -fmt sarif -out gosec-results.sarif ./...
+      - name: Upload gosec results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: gosec-results.sarif
 
   # Run unit tests (no API key required)
   unit-test:
@@ -150,6 +158,60 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
         continue-on-error: true
+
+  # API Sync Check - ensures provider matches documented API
+  # This blocks PRs if the provider is out of sync with API documentation
+  sync-check:
+    name: API Sync Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Restore scraper snapshots
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/cmd/scraper/.scraper_cache.json
+            tools/cmd/scraper/snapshots/
+            tools/cmd/scraper/docs_scraped/
+          key: scraper-data-
+          restore-keys: |
+            scraper-data-
+
+      - name: Build scraper
+        working-directory: tools/cmd/scraper
+        run: go build -o scraper
+
+      - name: Check for snapshots
+        id: check-snapshots
+        working-directory: tools/cmd/scraper
+        run: |
+          if [ -d "./snapshots" ] && [ "$(ls -A ./snapshots 2>/dev/null)" ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "Snapshots found, proceeding with sync check"
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "No snapshots found - this is expected on first run or after cache expiry"
+            echo "Sync check will be skipped. Run the scraper workflow first to populate snapshots."
+          fi
+
+      - name: Run sync check
+        if: steps.check-snapshots.outputs.found == 'true'
+        working-directory: tools/cmd/scraper
+        run: |
+          ./scraper -sync \
+            -provider-dir=../../../internal \
+            -snapshot-dir=./snapshots
+
+      - name: Sync check skipped notice
+        if: steps.check-snapshots.outputs.found != 'true'
+        run: |
+          echo "::warning::Sync check skipped - no API snapshots available. Run 'API Documentation Scraper' workflow first."
 
   # Run acceptance tests in a matrix with Terraform CLI versions
   # Only runs when API key is available (not on PRs from forks)
