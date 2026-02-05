@@ -34,3 +34,43 @@ provider "hyperping" {
 
 - `api_key` (String, Sensitive) Hyperping API key (starts with `sk_`). Can also be set via `HYPERPING_API_KEY` environment variable.
 - `base_url` (String) Hyperping API base URL. Defaults to `https://api.hyperping.io`.
+
+## Resources
+
+- [hyperping_monitor](resources/monitor.md) - HTTP, TCP, and ICMP uptime monitors
+- [hyperping_healthcheck](resources/healthcheck.md) - Cron job monitoring (dead man's switch)
+- [hyperping_incident](resources/incident.md) - Incident management
+- [hyperping_incident_update](resources/incident_update.md) - Incident timeline updates
+- [hyperping_maintenance](resources/maintenance.md) - Scheduled maintenance windows
+- [hyperping_statuspage](resources/statuspage.md) - Public status pages
+- [hyperping_statuspage_subscriber](resources/statuspage_subscriber.md) - Status page subscribers
+- [hyperping_outage](resources/outage.md) - Manual outage tracking
+
+## Data Sources
+
+- [hyperping_monitors](data-sources/monitors.md) - List all monitors
+- [hyperping_monitor](data-sources/monitor.md) - Get a single monitor
+- [hyperping_healthchecks](data-sources/healthchecks.md) - List all healthchecks
+- [hyperping_incidents](data-sources/incidents.md) - List incidents
+- [hyperping_statuspages](data-sources/statuspages.md) - List status pages
+- [hyperping_outages](data-sources/outages.md) - List outages
+
+## Getting Started
+
+1. **Get your API key** from the [Hyperping dashboard](https://hyperping.io)
+2. **Set the environment variable:**
+   ```bash
+   export HYPERPING_API_KEY="sk_your_api_key"
+   ```
+3. **Create your first monitor:**
+   ```terraform
+   resource "hyperping_monitor" "website" {
+     name     = "My Website"
+     url      = "https://example.com"
+     protocol = "http"
+   }
+   ```
+
+## Troubleshooting
+
+See the [Troubleshooting Guide](TROUBLESHOOTING.md) for common issues and solutions.
