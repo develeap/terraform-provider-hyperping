@@ -73,6 +73,7 @@ provider "hyperping" {
 
 ## Guides
 
+- [Migration Guide](guides/migration.md) - Migrate from manual Hyperping management to Terraform
 - [Validation Guide](guides/validation.md) - Catch configuration errors early with `terraform validate`
 
 ## Troubleshooting
