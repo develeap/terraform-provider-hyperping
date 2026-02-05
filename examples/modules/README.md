@@ -48,7 +48,7 @@ module "status_page" {
   source = "path/to/modules/statuspage-complete"
 
   name      = "Acme Corp Status"
-  subdomain = "acme-status"
+  hosted_subdomain = "acme-status"
 
   services = {
     api = { url = "https://api.example.com/health" }
@@ -98,7 +98,7 @@ module "status_page" {
   source = "path/to/modules/statuspage-complete"
 
   name      = "Example Corp Status"
-  subdomain = "status"
+  hosted_subdomain = "status"
   hostname  = "status.example.com"
 
   services = {

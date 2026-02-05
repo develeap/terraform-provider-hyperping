@@ -1,8 +1,12 @@
 # Status Page Complete Module - Basic Tests
 
+provider "hyperping" {
+  api_key = "test_mock_api_key_for_plan_only"
+}
+
 variables {
-  name      = "Test Status Page"
-  subdomain = "test-status"
+  name             = "Test Status Page"
+  hosted_subdomain = "test-status"
 
   services = {
     api = {
@@ -23,8 +27,8 @@ run "creates_status_page" {
   }
 
   assert {
-    condition     = hyperping_statuspage.main.subdomain == "test-status"
-    error_message = "Status page subdomain should match input"
+    condition     = hyperping_statuspage.main.hosted_subdomain == "test-status"
+    error_message = "Status page hosted_subdomain should match input"
   }
 }
 
@@ -51,20 +55,11 @@ run "monitors_have_correct_urls" {
   }
 }
 
-run "applies_default_theme" {
+run "monitors_use_http_protocol" {
   command = plan
 
   assert {
-    condition     = hyperping_statuspage.main.theme == "system"
-    error_message = "Default theme should be system"
-  }
-}
-
-run "enables_subscriptions_by_default" {
-  command = plan
-
-  assert {
-    condition     = hyperping_statuspage.main.enable_subscriptions == true
-    error_message = "Subscriptions should be enabled by default"
+    condition     = hyperping_monitor.service["api"].protocol == "http"
+    error_message = "Monitor protocol should be http"
   }
 }

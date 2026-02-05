@@ -71,7 +71,7 @@ module "ssl_staging" {
 | `regions` | Monitoring regions | `list(string)` | `["virginia", "london"]` | no |
 | `port` | HTTPS port | `number` | `443` | no |
 | `alerts_wait` | Failed checks before alerting | `number` | `1` | no |
-| `escalation_policy_uuid` | Escalation policy UUID | `string` | `null` | no |
+| `escalation_policy` | Escalation policy UUID | `string` | `null` | no |
 | `paused` | Create in paused state | `bool` | `false` | no |
 
 ## Outputs

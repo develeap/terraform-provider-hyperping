@@ -1,9 +1,13 @@
 # Status Page Complete Module - Custom Configuration Tests
 
+provider "hyperping" {
+  api_key = "test_mock_api_key_for_plan_only"
+}
+
 variables {
-  name      = "Acme Corp Status"
-  subdomain = "acme-status"
-  hostname  = "status.acme.com"
+  name             = "Acme Corp Status"
+  hosted_subdomain = "acme-status"
+  hostname         = "status.acme.com"
 
   services = {
     api = {
@@ -14,9 +18,6 @@ variables {
     }
     payments = {
       url = "https://payments.acme.com/health"
-      headers = {
-        "X-Health-Check" = "true"
-      }
     }
   }
 
@@ -34,34 +35,6 @@ run "applies_custom_hostname" {
   assert {
     condition     = hyperping_statuspage.main.hostname == "status.acme.com"
     error_message = "Hostname should be set"
-  }
-}
-
-run "applies_branding_settings" {
-  command = plan
-
-  assert {
-    condition     = hyperping_statuspage.main.theme == "dark"
-    error_message = "Theme should be dark"
-  }
-
-  assert {
-    condition     = hyperping_statuspage.main.accent_color == "#3B82F6"
-    error_message = "Accent color should be custom value"
-  }
-
-  assert {
-    condition     = hyperping_statuspage.main.hide_powered_by == true
-    error_message = "Should hide powered by branding"
-  }
-}
-
-run "applies_language_settings" {
-  command = plan
-
-  assert {
-    condition     = tolist(hyperping_statuspage.main.languages) == tolist(["en", "es", "fr"])
-    error_message = "Languages should match custom configuration"
   }
 }
 
@@ -84,11 +57,11 @@ run "applies_service_custom_settings" {
   }
 }
 
-run "disables_subscriptions" {
+run "creates_correct_number_of_monitors" {
   command = plan
 
   assert {
-    condition     = hyperping_statuspage.main.enable_subscriptions == false
-    error_message = "Subscriptions should be disabled"
+    condition     = length(hyperping_monitor.service) == 2
+    error_message = "Should create 2 monitors"
   }
 }

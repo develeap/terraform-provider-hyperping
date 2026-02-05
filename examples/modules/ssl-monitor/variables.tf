@@ -44,8 +44,10 @@ variable "regions" {
   validation {
     condition = alltrue([
       for r in var.regions : contains([
-        "virginia", "london", "frankfurt", "singapore",
-        "sydney", "tokyo", "saopaulo", "oregon", "bahrain"
+        "paris", "frankfurt", "amsterdam", "london",
+        "singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore",
+        "virginia", "california", "sanfrancisco", "oregon", "nyc", "toronto", "saopaulo",
+        "bahrain", "capetown"
       ], r)
     ])
     error_message = "Invalid region specified."
@@ -64,7 +66,7 @@ variable "alerts_wait" {
   default     = 1
 }
 
-variable "escalation_policy_uuid" {
+variable "escalation_policy" {
   description = "UUID of escalation policy for SSL alerts"
   type        = string
   default     = null

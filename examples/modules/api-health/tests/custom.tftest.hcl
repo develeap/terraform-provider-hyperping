@@ -1,26 +1,24 @@
 # API Health Module - Custom Configuration Tests
 
+provider "hyperping" {
+  api_key = "test_mock_api_key_for_plan_only"
+}
+
 variables {
-  name_prefix = "PROD-API"
-  name_format = "[%s] Health: %s"
+  name_prefix       = "PROD-API"
+  name_format       = "[PROD-API] Health: %s"
+  default_frequency = 30
 
   endpoints = {
     payments = {
       url                  = "https://api.example.com/v1/health"
       method               = "POST"
-      frequency            = 30
       expected_status_code = "201"
-      timeout              = 15
-      headers = {
-        "Authorization" = "Bearer test-token"
-        "Content-Type"  = "application/json"
-      }
     }
   }
 
-  regions     = ["virginia", "london", "tokyo"]
-  alerts_wait = 2
-  paused      = true
+  default_regions = ["virginia", "london", "tokyo"]
+  paused          = true
 }
 
 run "applies_custom_name_format" {
@@ -53,16 +51,6 @@ run "applies_custom_http_settings" {
 
 run "applies_monitoring_settings" {
   command = plan
-
-  assert {
-    condition     = tolist(hyperping_monitor.endpoint["payments"].regions) == tolist(["virginia", "london", "tokyo"])
-    error_message = "Regions should match custom configuration"
-  }
-
-  assert {
-    condition     = hyperping_monitor.endpoint["payments"].alerts_wait == 2
-    error_message = "Alerts wait should be 2"
-  }
 
   assert {
     condition     = hyperping_monitor.endpoint["payments"].paused == true

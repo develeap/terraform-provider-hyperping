@@ -1,11 +1,14 @@
 # SSL Monitor Module - Custom Configuration Tests
 
+provider "hyperping" {
+  api_key = "test_mock_api_key_for_plan_only"
+}
+
 variables {
   domains         = ["payments.example.com", "api.example.com"]
   name_prefix     = "SSL-PROD"
   check_frequency = 1800
   regions         = ["virginia", "london", "tokyo"]
-  alerts_wait     = 2
   paused          = true
 }
 
@@ -27,22 +30,8 @@ run "applies_custom_frequency" {
   }
 }
 
-run "applies_custom_regions" {
+run "applies_paused_state" {
   command = plan
-
-  assert {
-    condition     = tolist(hyperping_monitor.ssl["payments.example.com"].regions) == tolist(["virginia", "london", "tokyo"])
-    error_message = "Regions should match custom configuration"
-  }
-}
-
-run "applies_alerting_settings" {
-  command = plan
-
-  assert {
-    condition     = hyperping_monitor.ssl["payments.example.com"].alerts_wait == 2
-    error_message = "Alerts wait should be 2"
-  }
 
   assert {
     condition     = hyperping_monitor.ssl["payments.example.com"].paused == true

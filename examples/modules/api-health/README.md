@@ -68,10 +68,12 @@ module "api_monitors" {
 |------|-------------|------|---------|----------|
 | `endpoints` | Map of endpoint configurations | `map(object)` | n/a | yes |
 | `name_prefix` | Prefix for monitor names | `string` | `""` | no |
+| `name_format` | Custom name format (use %s for key) | `string` | `""` | no |
 | `default_regions` | Default monitoring regions | `list(string)` | `["virginia", "london", "frankfurt"]` | no |
 | `default_frequency` | Default check frequency (seconds) | `number` | `60` | no |
-| `alerts_wait` | Failed checks before alerting | `number` | `0` | no |
-| `escalation_policy_uuid` | Escalation policy UUID | `string` | `null` | no |
+| `alerts_wait` | Seconds before alerting | `number` | `null` | no |
+| `escalation_policy` | Escalation policy UUID | `string` | `null` | no |
+| `paused` | Create monitors in paused state | `bool` | `false` | no |
 
 ### Endpoint Object
 
@@ -80,29 +82,33 @@ module "api_monitors" {
 | `url` | URL to monitor | `string` | required |
 | `method` | HTTP method | `string` | `"GET"` |
 | `frequency` | Check frequency (seconds) | `number` | uses `default_frequency` |
-| `expected_status_code` | Expected HTTP status | `string` | `"200"` |
+| `expected_status_code` | Expected HTTP status | `string` | `"2xx"` |
 | `follow_redirects` | Follow HTTP redirects | `bool` | `true` |
-| `headers` | Request headers | `map(string)` | `{}` |
+| `headers` | Request headers | `map(string)` | `null` |
 | `body` | Request body | `string` | `null` |
 | `required_keyword` | Keyword that must appear in response | `string` | `null` |
 | `regions` | Override default regions | `list(string)` | uses `default_regions` |
-| `paused` | Create monitor in paused state | `bool` | `false` |
+| `paused` | Override default paused state | `bool` | uses `paused` |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
 | `monitor_ids` | Map of endpoint name to monitor UUID |
-| `monitor_names` | Map of endpoint name to full monitor name |
-| `monitor_urls` | Map of endpoint name to monitored URL |
+| `monitor_ids_list` | List of all monitor UUIDs |
 | `monitors` | Full monitor objects for advanced usage |
-| `active_monitors` | List of active (non-paused) monitor IDs |
-| `monitor_count` | Total number of monitors created |
+| `endpoint_count` | Total number of monitors created |
 
 ## Valid Regions
 
-`virginia`, `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `saopaulo`, `oregon`, `bahrain`
+```
+paris, frankfurt, amsterdam, london, singapore, sydney, tokyo, seoul,
+mumbai, bangalore, virginia, california, sanfrancisco, oregon, nyc,
+toronto, saopaulo, bahrain, capetown
+```
 
-## Valid Frequencies
+## Valid Frequencies (seconds)
 
-`10`, `20`, `30`, `60`, `120`, `180`, `300`, `600`, `1800`, `3600`, `21600`, `43200`, `86400` (seconds)
+```
+10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400
+```

@@ -15,8 +15,8 @@ This module creates:
 module "status_page" {
   source = "path/to/modules/statuspage-complete"
 
-  name      = "Acme Corp Status"
-  subdomain = "acme-status"
+  name             = "Acme Corp Status"
+  hosted_subdomain = "acme-status"
 
   services = {
     api = {
@@ -37,9 +37,9 @@ module "status_page" {
 module "status_page" {
   source = "path/to/modules/statuspage-complete"
 
-  name      = "Acme Corp Status"
-  subdomain = "status"
-  hostname  = "status.example.com"  # Custom domain
+  name             = "Acme Corp Status"
+  hosted_subdomain = "status"
+  hostname         = "status.example.com"  # Custom domain
 
   services = {
     api = { url = "https://api.example.com/health" }
@@ -69,9 +69,9 @@ module "status_page" {
 module "status_prod" {
   source = "path/to/modules/statuspage-complete"
 
-  name      = "Production Status"
-  subdomain = "status"
-  hostname  = "status.example.com"
+  name             = "Production Status"
+  hosted_subdomain = "status"
+  hostname         = "status.example.com"
 
   services = {
     api     = { url = "https://api.example.com/health" }
@@ -85,8 +85,8 @@ module "status_prod" {
 module "status_staging" {
   source = "path/to/modules/statuspage-complete"
 
-  name      = "Staging Status"
-  subdomain = "status-staging"
+  name             = "Staging Status"
+  hosted_subdomain = "status-staging"
 
   services = {
     api = {
@@ -106,8 +106,9 @@ module "status_staging" {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|----------|
 | `name` | Status page name | `string` | n/a | yes |
-| `subdomain` | Subdomain for hosted status page | `string` | n/a | yes |
+| `hosted_subdomain` | Subdomain for hosted status page | `string` | n/a | yes |
 | `hostname` | Custom domain for status page | `string` | `null` | no |
+| `description` | Localized descriptions (lang -> text) | `map(string)` | `null` | no |
 | `services` | Map of services to monitor | `map(object)` | n/a | yes |
 | `theme` | Status page theme | `string` | `"system"` | no |
 | `accent_color` | Accent color (hex format) | `string` | `"#36b27e"` | no |
@@ -126,8 +127,8 @@ Each service in the `services` map accepts:
 | `description` | Service description | `string` | `""` |
 | `method` | HTTP method | `string` | `"GET"` |
 | `frequency` | Check frequency (seconds) | `number` | `60` |
-| `expected_status_code` | Expected response code | `string` | `"200"` |
-| `headers` | Custom request headers | `map(string)` | `{}` |
+| `expected_status_code` | Expected response code | `string` | `"2xx"` |
+| `headers` | Custom request headers | `map(string)` | `null` |
 
 ## Outputs
 
@@ -135,7 +136,7 @@ Each service in the `services` map accepts:
 |------|-------------|
 | `statuspage_id` | Status page UUID |
 | `statuspage_url` | Public URL for the status page |
-| `statuspage_subdomain` | Status page subdomain |
+| `statuspage_hosted_subdomain` | Status page hosted subdomain |
 | `monitor_ids` | Map of service name to monitor UUID |
 | `monitor_ids_list` | List of all monitor UUIDs |
 | `monitors` | Full monitor objects with details |
@@ -153,9 +154,9 @@ To use a custom domain:
 module "status_page" {
   source = "path/to/modules/statuspage-complete"
 
-  name      = "My Company Status"
-  subdomain = "mycompany"
-  hostname  = "status.mycompany.com"  # Point CNAME to hyperping.app
+  name             = "My Company Status"
+  hosted_subdomain = "mycompany"
+  hostname         = "status.mycompany.com"  # Point CNAME to hyperping.app
 
   services = {
     main = { url = "https://api.mycompany.com/health" }
@@ -174,7 +175,9 @@ module "status_page" {
 ## Available Regions
 
 ```
-virginia, london, frankfurt, singapore, sydney, tokyo, saopaulo, oregon, bahrain
+paris, frankfurt, amsterdam, london, singapore, sydney, tokyo, seoul,
+mumbai, bangalore, virginia, california, sanfrancisco, oregon, nyc,
+toronto, saopaulo, bahrain, capetown
 ```
 
 ## Notes

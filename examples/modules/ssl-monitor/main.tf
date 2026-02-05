@@ -38,7 +38,7 @@ resource "hyperping_monitor" "ssl" {
   paused               = var.paused
   alerts_wait          = var.alerts_wait
 
-  escalation_policy_uuid = var.escalation_policy_uuid
+  escalation_policy = var.escalation_policy
 
   lifecycle {
     create_before_destroy = true

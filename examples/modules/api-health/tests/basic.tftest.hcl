@@ -1,5 +1,9 @@
 # API Health Module - Basic Tests
 
+provider "hyperping" {
+  api_key = "test_mock_api_key_for_plan_only"
+}
+
 variables {
   name_prefix = "TEST"
   endpoints = {
@@ -30,6 +34,11 @@ run "creates_monitor_with_defaults" {
   assert {
     condition     = hyperping_monitor.endpoint["api"].check_frequency == 60
     error_message = "Default frequency should be 60 seconds"
+  }
+
+  assert {
+    condition     = hyperping_monitor.endpoint["api"].protocol == "http"
+    error_message = "Protocol should be http"
   }
 }
 

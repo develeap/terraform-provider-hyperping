@@ -7,12 +7,12 @@ output "statuspage_id" {
 
 output "statuspage_url" {
   description = "Status page public URL"
-  value       = var.hostname != null ? "https://${var.hostname}" : "https://${var.subdomain}.hyperping.app"
+  value       = hyperping_statuspage.main.url
 }
 
-output "statuspage_subdomain" {
-  description = "Status page subdomain"
-  value       = var.subdomain
+output "statuspage_hosted_subdomain" {
+  description = "Status page hosted subdomain"
+  value       = var.hosted_subdomain
 }
 
 output "monitor_ids" {

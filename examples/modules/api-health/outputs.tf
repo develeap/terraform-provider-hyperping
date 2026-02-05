@@ -7,18 +7,9 @@ output "monitor_ids" {
   }
 }
 
-output "monitor_names" {
-  description = "Map of endpoint name to full monitor name"
-  value = {
-    for k, v in hyperping_monitor.endpoint : k => v.name
-  }
-}
-
-output "monitor_urls" {
-  description = "Map of endpoint name to monitored URL"
-  value = {
-    for k, v in hyperping_monitor.endpoint : k => v.url
-  }
+output "monitor_ids_list" {
+  description = "List of all monitor UUIDs"
+  value       = [for v in hyperping_monitor.endpoint : v.id]
 }
 
 output "monitors" {
@@ -36,15 +27,7 @@ output "monitors" {
   }
 }
 
-output "active_monitors" {
-  description = "List of active (non-paused) monitor IDs"
-  value = [
-    for k, v in hyperping_monitor.endpoint : v.id
-    if !v.paused
-  ]
-}
-
-output "monitor_count" {
+output "endpoint_count" {
   description = "Total number of monitors created"
   value       = length(hyperping_monitor.endpoint)
 }

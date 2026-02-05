@@ -1,5 +1,9 @@
 # SSL Monitor Module - Basic Tests
 
+provider "hyperping" {
+  api_key = "test_mock_api_key_for_plan_only"
+}
+
 variables {
   domains = ["example.com", "api.example.com"]
 }
@@ -42,5 +46,14 @@ run "uses_default_frequency" {
   assert {
     condition     = hyperping_monitor.ssl["example.com"].check_frequency == 3600
     error_message = "Default frequency should be 3600 seconds (1 hour)"
+  }
+}
+
+run "uses_http_protocol_type" {
+  command = plan
+
+  assert {
+    condition     = hyperping_monitor.ssl["example.com"].protocol == "http"
+    error_message = "Protocol should be http"
   }
 }

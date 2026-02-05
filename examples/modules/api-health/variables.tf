@@ -5,14 +5,14 @@ variable "endpoints" {
   type = map(object({
     url                  = string
     method               = optional(string, "GET")
-    frequency            = optional(number, 60)
-    expected_status_code = optional(string, "200")
+    frequency            = optional(number)
+    expected_status_code = optional(string, "2xx")
     follow_redirects     = optional(bool, true)
-    headers              = optional(map(string), {})
+    headers              = optional(map(string))
     body                 = optional(string)
     required_keyword     = optional(string)
     regions              = optional(list(string))
-    paused               = optional(bool, false)
+    paused               = optional(bool)
   }))
 
   validation {
@@ -39,6 +39,12 @@ variable "name_prefix" {
   }
 }
 
+variable "name_format" {
+  description = "Custom name format string. Use %s for the endpoint key. Overrides name_prefix if set."
+  type        = string
+  default     = ""
+}
+
 variable "default_regions" {
   description = "Default regions for monitors (can be overridden per endpoint)"
   type        = list(string)
@@ -47,11 +53,13 @@ variable "default_regions" {
   validation {
     condition = alltrue([
       for r in var.default_regions : contains([
-        "virginia", "london", "frankfurt", "singapore",
-        "sydney", "tokyo", "saopaulo", "oregon", "bahrain"
+        "paris", "frankfurt", "amsterdam", "london",
+        "singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore",
+        "virginia", "california", "sanfrancisco", "oregon", "nyc", "toronto", "saopaulo",
+        "bahrain", "capetown"
       ], r)
     ])
-    error_message = "Invalid region specified. Valid regions: virginia, london, frankfurt, singapore, sydney, tokyo, saopaulo, oregon, bahrain."
+    error_message = "Invalid region specified."
   }
 }
 
@@ -69,18 +77,19 @@ variable "default_frequency" {
 }
 
 variable "alerts_wait" {
-  description = "Number of failed checks before alerting (0 = immediate)"
+  description = "Seconds to wait before alerting after outage detection (0 = immediate)"
   type        = number
-  default     = 0
-
-  validation {
-    condition     = var.alerts_wait >= 0 && var.alerts_wait <= 10
-    error_message = "Alerts wait must be between 0 and 10."
-  }
+  default     = null
 }
 
-variable "escalation_policy_uuid" {
+variable "escalation_policy" {
   description = "UUID of escalation policy to use for all monitors"
   type        = string
   default     = null
+}
+
+variable "paused" {
+  description = "Create monitors in paused state"
+  type        = bool
+  default     = false
 }

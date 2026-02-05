@@ -10,12 +10,12 @@ variable "name" {
   }
 }
 
-variable "subdomain" {
+variable "hosted_subdomain" {
   description = "Subdomain for hosted status page (e.g., 'status' for status.hyperping.app)"
   type        = string
 
   validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.subdomain))
+    condition     = can(regex("^[a-z0-9-]+$", var.hosted_subdomain))
     error_message = "Subdomain must be lowercase alphanumeric with hyphens only."
   }
 }
@@ -26,6 +26,12 @@ variable "hostname" {
   default     = null
 }
 
+variable "description" {
+  description = "Localized descriptions (language code -> text). If null, uses name for all languages."
+  type        = map(string)
+  default     = null
+}
+
 variable "services" {
   description = "Map of services to monitor and display on status page"
   type = map(object({
@@ -33,8 +39,8 @@ variable "services" {
     description          = optional(string, "")
     method               = optional(string, "GET")
     frequency            = optional(number, 60)
-    expected_status_code = optional(string, "200")
-    headers              = optional(map(string), {})
+    expected_status_code = optional(string, "2xx")
+    headers              = optional(map(string))
   }))
 
   validation {
@@ -79,8 +85,10 @@ variable "regions" {
   validation {
     condition = alltrue([
       for r in var.regions : contains([
-        "virginia", "london", "frankfurt", "singapore",
-        "sydney", "tokyo", "saopaulo", "oregon", "bahrain"
+        "paris", "frankfurt", "amsterdam", "london",
+        "singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore",
+        "virginia", "california", "sanfrancisco", "oregon", "nyc", "toronto", "saopaulo",
+        "bahrain", "capetown"
       ], r)
     ])
     error_message = "Invalid region specified."
