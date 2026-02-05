@@ -261,14 +261,3 @@ Optional:
 Read-Only:
 
 - `id` (String) Service ID (computed)
-
-## Import
-
-Import is supported using the following syntax:
-
-```shell
-# Import a status page using its UUID
-terraform import hyperping_statuspage.example "sp_abc123def456"
-```
-
-After import, run `terraform plan` to verify the imported state matches your configuration. You may need to adjust section and service configurations to match the existing status page structure.
