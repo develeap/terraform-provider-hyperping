@@ -34,5 +34,9 @@ pre-push:
       run: go vet ./...
       fail_text: "go vet found issues"
 
+    govulncheck:
+      run: govulncheck ./... || true  # Non-fatal: govulncheck has known issues with some deps
+      fail_text: "Vulnerabilities found. Run: govulncheck ./..."
+
 # Skip hooks in CI (GitHub Actions sets CI=true)
 skip_in_ci: true
