@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
 func TestAccMaintenanceWindowDataSource_basic(t *testing.T) {
@@ -83,12 +86,14 @@ func newMockMaintenanceServer(t *testing.T) *mockMaintenanceServer {
 }
 
 func (m *mockMaintenanceServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	basePath := client.MaintenanceBasePath
+	basePathWithSlash := basePath + "/"
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v1/maintenance-windows":
+	case r.Method == "GET" && r.URL.Path == basePath:
 		m.listMaintenanceWindows(w)
-	case r.Method == "GET" && len(r.URL.Path) > len("/v1/maintenance-windows/"):
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		m.getMaintenanceWindow(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -105,7 +110,7 @@ func (m *mockMaintenanceServer) listMaintenanceWindows(w http.ResponseWriter) {
 }
 
 func (m *mockMaintenanceServer) getMaintenanceWindow(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/maintenance-windows/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.MaintenanceBasePath+"/")
 
 	window, exists := m.maintenanceWindows[id]
 	if !exists {

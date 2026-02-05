@@ -14,6 +14,8 @@ import (
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
 func TestAccHealthcheckResource_basic(t *testing.T) {
@@ -289,22 +291,24 @@ func newMockHealthcheckServer(t *testing.T) *mockHealthcheckServer {
 }
 
 func (m *mockHealthcheckServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	basePath := client.HealthchecksBasePath
+	basePathWithSlash := basePath + "/"
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v2/healthchecks":
+	case r.Method == "GET" && r.URL.Path == basePath:
 		m.listHealthchecks(w)
-	case r.Method == "POST" && r.URL.Path == "/v2/healthchecks":
+	case r.Method == "POST" && r.URL.Path == basePath:
 		m.createHealthcheck(w, r)
 	case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/pause"):
 		m.pauseHealthcheck(w, r)
 	case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/resume"):
 		m.resumeHealthcheck(w, r)
-	case r.Method == "GET" && len(r.URL.Path) > len("/v2/healthchecks/"):
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		m.getHealthcheck(w, r)
-	case r.Method == "PUT" && len(r.URL.Path) > len("/v2/healthchecks/"):
+	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		m.updateHealthcheck(w, r)
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v2/healthchecks/"):
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		m.deleteHealthcheck(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -370,7 +374,7 @@ func (m *mockHealthcheckServer) createHealthcheck(w http.ResponseWriter, r *http
 }
 
 func (m *mockHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v2/healthchecks/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
 
 	healthcheck, exists := m.healthchecks[id]
 	if !exists {
@@ -383,7 +387,7 @@ func (m *mockHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Re
 }
 
 func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v2/healthchecks/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
 
 	healthcheck, exists := m.healthchecks[id]
 	if !exists {
@@ -438,7 +442,7 @@ func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http
 }
 
 func (m *mockHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v2/healthchecks/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
 
 	if _, exists := m.healthchecks[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -451,8 +455,8 @@ func (m *mockHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *http
 }
 
 func (m *mockHealthcheckServer) pauseHealthcheck(w http.ResponseWriter, r *http.Request) {
-	// Extract UUID from path: /v2/healthchecks/{uuid}/pause
-	path := strings.TrimPrefix(r.URL.Path, "/v2/healthchecks/")
+	// Extract UUID from path: {basePath}/{uuid}/pause
+	path := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
 	id := strings.TrimSuffix(path, "/pause")
 
 	healthcheck, exists := m.healthchecks[id]
@@ -469,8 +473,8 @@ func (m *mockHealthcheckServer) pauseHealthcheck(w http.ResponseWriter, r *http.
 }
 
 func (m *mockHealthcheckServer) resumeHealthcheck(w http.ResponseWriter, r *http.Request) {
-	// Extract UUID from path: /v2/healthchecks/{uuid}/resume
-	path := strings.TrimPrefix(r.URL.Path, "/v2/healthchecks/")
+	// Extract UUID from path: {basePath}/{uuid}/resume
+	path := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
 	id := strings.TrimSuffix(path, "/resume")
 
 	healthcheck, exists := m.healthchecks[id]
@@ -522,10 +526,12 @@ func (m *mockHealthcheckServerWithErrors) setUpdateError(v bool) { m.updateError
 func (m *mockHealthcheckServerWithErrors) setDeleteError(v bool) { m.deleteError = v }
 
 func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	basePath := client.HealthchecksBasePath
+	basePathWithSlash := basePath + "/"
 
 	switch {
-	case r.Method == "POST" && r.URL.Path == "/v2/healthchecks":
+	case r.Method == "POST" && r.URL.Path == basePath:
 		if m.createError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -533,7 +539,7 @@ func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.Respons
 		}
 		m.createHealthcheck(w, r)
 
-	case r.Method == "GET" && len(r.URL.Path) > len("/v2/healthchecks/"):
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		if m.readError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -541,7 +547,7 @@ func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.Respons
 		}
 		m.getHealthcheck(w, r)
 
-	case r.Method == "PUT" && len(r.URL.Path) > len("/v2/healthchecks/"):
+	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		if m.updateError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -549,7 +555,7 @@ func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.Respons
 		}
 		m.updateHealthcheck(w, r)
 
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v2/healthchecks/"):
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, basePathWithSlash):
 		if m.deleteError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})

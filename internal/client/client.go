@@ -341,8 +341,8 @@ func (c *Client) doRequestWithRetry(ctx context.Context, method, path string, bo
 		}
 
 		// Authorization header is injected by authTransport (VULN-009).
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Accept", "application/json")
+		req.Header.Set(HeaderContentType, ContentTypeJSON)
+		req.Header.Set(HeaderAccept, ContentTypeJSON)
 		req.Header.Set("User-Agent", c.userAgent)
 
 		// Log request

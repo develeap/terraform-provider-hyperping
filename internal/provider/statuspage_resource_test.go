@@ -14,6 +14,8 @@ import (
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
 func TestAccStatusPageResource_basic(t *testing.T) {
@@ -332,12 +334,14 @@ func newMockStatusPageServer(t *testing.T) *mockStatusPageServer {
 }
 
 func (m *mockStatusPageServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	basePath := client.StatuspagesBasePath
+	basePathWithID := basePath + "/sp_"
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v2/statuspages":
+	case r.Method == "GET" && r.URL.Path == basePath:
 		m.listStatusPages(w, r)
-	case r.Method == "POST" && r.URL.Path == "/v2/statuspages":
+	case r.Method == "POST" && r.URL.Path == basePath:
 		m.createStatusPage(w, r)
 	// Subscriber routes must come before general status page routes
 	case r.Method == "GET" && strings.Contains(r.URL.Path, "/subscribers"):
@@ -347,11 +351,11 @@ func (m *mockStatusPageServer) handleRequest(w http.ResponseWriter, r *http.Requ
 	case r.Method == "DELETE" && strings.Contains(r.URL.Path, "/subscribers/"):
 		m.deleteSubscriber(w, r)
 	// General status page routes
-	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v2/statuspages/sp_"):
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, basePathWithID):
 		m.getStatusPage(w, r)
-	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, "/v2/statuspages/sp_"):
+	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, basePathWithID):
 		m.updateStatusPage(w, r)
-	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, "/v2/statuspages/sp_"):
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, basePathWithID):
 		m.deleteStatusPage(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -530,7 +534,7 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 }
 
 func (m *mockStatusPageServer) getStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, "/v2/statuspages/")
+	uuid := strings.TrimPrefix(r.URL.Path, client.StatuspagesBasePath+"/")
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -550,7 +554,7 @@ func (m *mockStatusPageServer) getStatusPage(w http.ResponseWriter, r *http.Requ
 }
 
 func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, "/v2/statuspages/")
+	uuid := strings.TrimPrefix(r.URL.Path, client.StatuspagesBasePath+"/")
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -660,7 +664,7 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 }
 
 func (m *mockStatusPageServer) deleteStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, "/v2/statuspages/")
+	uuid := strings.TrimPrefix(r.URL.Path, client.StatuspagesBasePath+"/")
 
 	m.mu.Lock()
 	defer m.mu.Unlock()

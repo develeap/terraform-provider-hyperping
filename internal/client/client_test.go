@@ -197,11 +197,11 @@ func TestClient_WithLogger_Integration(t *testing.T) {
 func TestClient_doRequest_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify headers
-		if r.Header.Get("Authorization") != "Bearer test_key" {
-			t.Errorf("expected Authorization header 'Bearer test_key', got %q", r.Header.Get("Authorization"))
+		if r.Header.Get(HeaderAuthorization) != BearerPrefix+"test_key" {
+			t.Errorf("expected Authorization header 'Bearer test_key', got %q", r.Header.Get(HeaderAuthorization))
 		}
-		if r.Header.Get("Content-Type") != "application/json" {
-			t.Errorf("expected Content-Type 'application/json', got %q", r.Header.Get("Content-Type"))
+		if r.Header.Get(HeaderContentType) != ContentTypeJSON {
+			t.Errorf("expected Content-Type 'application/json', got %q", r.Header.Get(HeaderContentType))
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -734,14 +734,14 @@ func TestClient_doRequest_RetryOnlyRetryableErrors_401(t *testing.T) {
 func TestClient_doRequest_HeadersSet(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify all headers
-		if r.Header.Get("Authorization") != "Bearer test_api_key_123" {
-			t.Errorf("Authorization header = %q, expected 'Bearer test_api_key_123'", r.Header.Get("Authorization"))
+		if r.Header.Get(HeaderAuthorization) != BearerPrefix+"test_api_key_123" {
+			t.Errorf("Authorization header = %q, expected 'Bearer test_api_key_123'", r.Header.Get(HeaderAuthorization))
 		}
-		if r.Header.Get("Content-Type") != "application/json" {
-			t.Errorf("Content-Type header = %q, expected 'application/json'", r.Header.Get("Content-Type"))
+		if r.Header.Get(HeaderContentType) != ContentTypeJSON {
+			t.Errorf("Content-Type header = %q, expected 'application/json'", r.Header.Get(HeaderContentType))
 		}
-		if r.Header.Get("Accept") != "application/json" {
-			t.Errorf("Accept header = %q, expected 'application/json'", r.Header.Get("Accept"))
+		if r.Header.Get(HeaderAccept) != ContentTypeJSON {
+			t.Errorf("Accept header = %q, expected 'application/json'", r.Header.Get(HeaderAccept))
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -1255,7 +1255,7 @@ func TestAuthTransport(t *testing.T) {
 	t.Run("injects authorization header", func(t *testing.T) {
 		var receivedAuth string
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			receivedAuth = r.Header.Get("Authorization")
+			receivedAuth = r.Header.Get(HeaderAuthorization)
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer server.Close()
@@ -1271,7 +1271,7 @@ func TestAuthTransport(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		expected := "Bearer sk_test123"
+		expected := BearerPrefix + "sk_test123"
 		if receivedAuth != expected {
 			t.Errorf("expected Authorization header %q, got %q", expected, receivedAuth)
 		}
@@ -1280,7 +1280,7 @@ func TestAuthTransport(t *testing.T) {
 	t.Run("does not mutate original request", func(t *testing.T) {
 		var clonedAuth string
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			clonedAuth = r.Header.Get("Authorization")
+			clonedAuth = r.Header.Get(HeaderAuthorization)
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer server.Close()
@@ -1297,11 +1297,11 @@ func TestAuthTransport(t *testing.T) {
 		}
 
 		// Cloned request had the auth header
-		if clonedAuth != "Bearer test-token" {
+		if clonedAuth != BearerPrefix+"test-token" {
 			t.Errorf("expected cloned request to have auth header, got %q", clonedAuth)
 		}
 		// Original request should not have Authorization header
-		if req.Header.Get("Authorization") != "" {
+		if req.Header.Get(HeaderAuthorization) != "" {
 			t.Error("original request was mutated — authTransport must clone")
 		}
 	})

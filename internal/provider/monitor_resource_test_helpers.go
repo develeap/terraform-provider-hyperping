@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
 // Test configuration helpers (shared across test files)
@@ -277,10 +280,10 @@ func (m *mockHyperpingServerWithErrors) setDeleteError(v bool) { m.deleteError =
 func (m *mockHyperpingServerWithErrors) setPauseError(v bool)  { m.pauseError = v }
 
 func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
 	switch {
-	case r.Method == "POST" && r.URL.Path == "/v1/monitors":
+	case r.Method == "POST" && r.URL.Path == client.MonitorsBasePath:
 		if m.createError {
 			w.WriteHeader(http.StatusInternalServerError)
 			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}); err != nil {
@@ -290,7 +293,7 @@ func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseW
 		}
 		m.createMonitor(w, r)
 
-	case r.Method == "GET" && len(r.URL.Path) > len("/v1/monitors/"):
+	case r.Method == "GET" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
 		if m.readError {
 			w.WriteHeader(http.StatusInternalServerError)
 			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}); err != nil {
@@ -300,7 +303,7 @@ func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseW
 		}
 		m.getMonitor(w, r)
 
-	case r.Method == "PUT" && len(r.URL.Path) > len("/v1/monitors/"):
+	case r.Method == "PUT" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
 		if m.updateError {
 			w.WriteHeader(http.StatusInternalServerError)
 			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}); err != nil {
@@ -325,7 +328,7 @@ func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseW
 		}
 		m.updateMonitor(w, r)
 
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v1/monitors/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
 		if m.deleteError {
 			w.WriteHeader(http.StatusInternalServerError)
 			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}); err != nil {
@@ -341,18 +344,18 @@ func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseW
 }
 
 func (m *mockHyperpingServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v1/monitors":
+	case r.Method == "GET" && r.URL.Path == client.MonitorsBasePath:
 		m.listMonitors(w)
-	case r.Method == "POST" && r.URL.Path == "/v1/monitors":
+	case r.Method == "POST" && r.URL.Path == client.MonitorsBasePath:
 		m.createMonitor(w, r)
-	case r.Method == "GET" && len(r.URL.Path) > len("/v1/monitors/"):
+	case r.Method == "GET" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
 		m.getMonitor(w, r)
-	case r.Method == "PUT" && len(r.URL.Path) > len("/v1/monitors/"):
+	case r.Method == "PUT" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
 		m.updateMonitor(w, r)
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v1/monitors/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
 		m.deleteMonitor(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -433,7 +436,7 @@ func (m *mockHyperpingServer) createMonitor(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockHyperpingServer) getMonitor(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/monitors/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
 
 	monitor, exists := m.monitors[id]
 	if !exists {
@@ -450,7 +453,7 @@ func (m *mockHyperpingServer) getMonitor(w http.ResponseWriter, r *http.Request)
 }
 
 func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/monitors/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
 
 	monitor, exists := m.monitors[id]
 	if !exists {
@@ -517,7 +520,7 @@ func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockHyperpingServer) deleteMonitor(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/monitors/"):]
+	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
 
 	if _, exists := m.monitors[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)

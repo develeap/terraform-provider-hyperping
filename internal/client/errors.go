@@ -118,10 +118,8 @@ func NewRateLimitError(retryAfter int) *APIError {
 }
 
 // Compile regexes once for performance.
-// apiKeyPattern matches sk_ prefixed keys with alphanumeric, underscore, and dash characters (VULN-019).
 // bearerPattern matches any Bearer token of 8+ non-whitespace chars (VULN-019).
 var (
-	apiKeyPattern     = regexp.MustCompile(`sk_[a-zA-Z0-9_-]+`)
 	bearerPattern     = regexp.MustCompile(`Bearer\s+(?:[^\s]*[0-9_-][^\s]*|[^\s]{32,})`)
 	urlCredPattern    = regexp.MustCompile(`://[^:]+:[^@]+@`)
 	authHeaderPattern = regexp.MustCompile(`Authorization:\s+Bearer\s+[^\s]+`)
@@ -131,7 +129,7 @@ var (
 // This prevents API keys, tokens, and credentials from being exposed in logs or error output.
 func sanitizeMessage(msg string) string {
 	// Replace Hyperping API keys (sk_alphanumeric) with redacted placeholder
-	msg = apiKeyPattern.ReplaceAllString(msg, "sk_***REDACTED***")
+	msg = APIKeyPattern.ReplaceAllString(msg, APIKeyPrefix+"***REDACTED***")
 
 	// Replace Authorization headers first (more specific pattern)
 	msg = authHeaderPattern.ReplaceAllString(msg, "Authorization: ***REDACTED***")
