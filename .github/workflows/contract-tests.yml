@@ -25,6 +25,8 @@ permissions:
 jobs:
   contract-tests:
     name: Contract Tests
+    # Only run on schedule or manual trigger, skip on other events
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
