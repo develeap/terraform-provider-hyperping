@@ -193,6 +193,14 @@ func runAnalyze(ctx context.Context) int {
 		log.Printf("\n✅ Report saved: %s\n", reportFile)
 	}
 
+	// Endpoint version analysis
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("🔗 Endpoint Version Analysis...")
+
+	if err := runEndpointVersionAnalysis(latestSnapshot, providerDir); err != nil {
+		log.Printf("⚠️  Endpoint version analysis failed: %v\n", err)
+	}
+
 	// Contract testing analysis (if cassettes provided)
 	if cassetteDir != "" {
 		if err := runContractAnalysis(cassetteDir, apiParams); err != nil {
@@ -256,6 +264,47 @@ func runContractAnalysis(cassetteDir string, apiParams map[string][]extractor.AP
 		}
 	} else {
 		log.Println("   ✅ No documentation gaps discovered via contract testing")
+	}
+
+	return nil
+}
+
+// runEndpointVersionAnalysis compares API endpoint versions between docs and provider code
+func runEndpointVersionAnalysis(snapshotDir, providerDir string) error {
+	// Extract endpoints from scraped docs
+	docsEndpoints, err := analyzer.ExtractEndpointsFromDocs(snapshotDir)
+	if err != nil {
+		return fmt.Errorf("failed to extract docs endpoints: %w", err)
+	}
+	log.Printf("   Found %d endpoints in docs\n", len(docsEndpoints))
+
+	// Extract endpoints from provider code
+	providerEndpoints, err := analyzer.ExtractEndpointsFromProvider(providerDir)
+	if err != nil {
+		return fmt.Errorf("failed to extract provider endpoints: %w", err)
+	}
+	log.Printf("   Found %d endpoints in provider\n", len(providerEndpoints))
+
+	// Compare versions
+	report := analyzer.CompareEndpointVersions(docsEndpoints, providerEndpoints)
+
+	if len(report.Mismatches) > 0 {
+		log.Printf("\n   ⚠️  Found %d endpoint version mismatches:\n", len(report.Mismatches))
+		for _, m := range report.Mismatches {
+			log.Printf("   - %s: docs=%s, provider=%s\n", m.Resource, m.DocsVersion, m.ProviderVersion)
+			log.Printf("     Fix: %s\n", m.Suggestion)
+		}
+
+		// Save detailed report
+		reportContent := analyzer.FormatEndpointReport(report)
+		reportFile := "endpoint_version_report_" + time.Now().Format("2006-01-02_15-04-05") + ".md"
+		if err := utils.SaveToFile(reportFile, reportContent); err != nil {
+			log.Printf("⚠️  Failed to save endpoint report: %v\n", err)
+		} else {
+			log.Printf("   ✅ Endpoint report saved: %s\n", reportFile)
+		}
+	} else {
+		log.Println("   ✅ All endpoint versions match!")
 	}
 
 	return nil

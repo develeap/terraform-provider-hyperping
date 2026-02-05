@@ -23,7 +23,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.12; linux/amd64)
-        url: https://api.hyperping.io/v1/monitors
+        url: https://api.hyperping.io/v1/outages
         method: GET
       response:
         proto: HTTP/2.0
@@ -31,9 +31,9 @@ interactions:
         proto_minor: 0
         transfer_encoding: []
         trailer: {}
-        content_length: -1
-        uncompressed: true
-        body: '[{"id":115746,"name":"test-monitor","url":"https://httpstat.us/200","uuid":"mon_u4caULGi4rO2XR","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":true,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"up","ssl_expiration":32,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null}]'
+        content_length: 13
+        uncompressed: false
+        body: Invalid Token
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -50,25 +50,23 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9c90d005cec27546-TLV
+                - 9c90cfd218a5997f-TLV
+            Content-Length:
+                - "13"
             Content-Type:
-                - application/json; charset=utf-8
+                - text/html; charset=utf-8
             Date:
-                - Thu, 05 Feb 2026 07:49:41 GMT
+                - Thu, 05 Feb 2026 07:49:33 GMT
             Etag:
-                - W/"1c8-jJH3w/Bg/q6uHoGF68uLifXnWyc"
+                - W/"d-GLqvnw/1O/MWaNK/4OhPBcb7NQs"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
-            Ratelimit:
-                - '"800-in-1hr"; r=781; t=2193'
-            Ratelimit-Policy:
-                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=fwtlU1HFnUF%2BN6iMYhx9jpHlwx3cvZzK%2BYEeExtyM6MPDTyXY%2BpS91wH%2F7vIL3H6scRU8a6siIV4Adm9iMpBw3seX8Uanv2z3ViyBnXraA8%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=H%2FBe3f0R5hMdAfXU67f6xYxHxdB0pugjGvrO1kgmNzbV8411%2FWoL4Dj1PGFtZAzyad0CLlRONg0nwBew4AaWbxGJS7HStoRo4kYRgC7DdiY%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
-        status: 200 OK
-        code: 200
-        duration: 194.334454ms
+        status: 401 Unauthorized
+        code: 401
+        duration: 175.710016ms

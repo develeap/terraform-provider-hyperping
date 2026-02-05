@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-const healthchecksBasePath = "/v1/healthchecks"
+const healthchecksBasePath = "/v2/healthchecks"
 
 // parseHealthcheckListResponse handles the various response formats the API might return.
 func parseHealthcheckListResponse(raw json.RawMessage) ([]Healthcheck, error) {

@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-const outagesBasePath = "/v1/outages"
+const outagesBasePath = "/v2/outages"
 
 // parseOutageListResponse handles the various response formats the API might return.
 func parseOutageListResponse(raw json.RawMessage) ([]Outage, error) {
