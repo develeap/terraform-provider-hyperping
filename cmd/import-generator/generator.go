@@ -12,9 +12,19 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
+// APIClient defines the interface for fetching Hyperping resources.
+type APIClient interface {
+	ListMonitors(ctx context.Context) ([]client.Monitor, error)
+	ListHealthchecks(ctx context.Context) ([]client.Healthcheck, error)
+	ListStatusPages(ctx context.Context, page *int, search *string) (*client.StatusPagePaginatedResponse, error)
+	ListIncidents(ctx context.Context) ([]client.Incident, error)
+	ListMaintenance(ctx context.Context) ([]client.Maintenance, error)
+	ListOutages(ctx context.Context) ([]client.Outage, error)
+}
+
 // Generator generates Terraform import commands and HCL from Hyperping resources.
 type Generator struct {
-	client    *client.Client
+	client    APIClient
 	prefix    string
 	resources []string
 }
