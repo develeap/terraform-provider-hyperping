@@ -46,8 +46,8 @@ func NewVCRRecorder(t *testing.T, cfg VCRConfig) (*recorder.Recorder, *http.Clie
 
 	cassettePath := filepath.Join(cfg.CassetteDir, cfg.CassetteName)
 
-	// Ensure cassette directory exists
-	if err := os.MkdirAll(cfg.CassetteDir, 0o755); err != nil {
+	// Ensure cassette directory exists (0o750 for security - gosec G301)
+	if err := os.MkdirAll(cfg.CassetteDir, 0o750); err != nil {
 		t.Fatalf("failed to create cassette directory: %v", err)
 	}
 
