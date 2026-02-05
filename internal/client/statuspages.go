@@ -46,13 +46,16 @@ func (c *Client) GetStatusPage(ctx context.Context, uuid string) (*StatusPage, e
 		return nil, fmt.Errorf("GetStatusPage: %w", err)
 	}
 
-	var statusPage StatusPage
+	// API returns: {"statuspage": {...}}
+	var response struct {
+		StatusPage StatusPage `json:"statuspage"`
+	}
 	path := fmt.Sprintf("%s/%s", statuspagesBasePath, uuid)
-	if err := c.doRequest(ctx, "GET", path, nil, &statusPage); err != nil {
+	if err := c.doRequest(ctx, "GET", path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to get status page %s: %w", uuid, err)
 	}
 
-	return &statusPage, nil
+	return &response.StatusPage, nil
 }
 
 // CreateStatusPage creates a new status page.

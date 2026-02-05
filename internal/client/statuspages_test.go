@@ -199,8 +199,13 @@ func TestGetStatusPage_Success(t *testing.T) {
 			},
 		}
 
+		// API returns wrapped response: {"statuspage": {...}}
+		response := struct {
+			StatusPage StatusPage `json:"statuspage"`
+		}{StatusPage: statusPage}
+
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(statusPage)
+		json.NewEncoder(w).Encode(response)
 	})
 	defer server.Close()
 
