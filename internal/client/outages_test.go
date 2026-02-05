@@ -133,7 +133,7 @@ func TestClient_GetOutage(t *testing.T) {
 				if r.Method != http.MethodGet {
 					t.Errorf("Expected GET request, got %s", r.Method)
 				}
-				if r.URL.Path != outagesBasePath + "/"+tt.uuid {
+				if r.URL.Path != outagesBasePath+"/"+tt.uuid {
 					t.Errorf("Expected path /v2/outages/%s, got %s", tt.uuid, r.URL.Path)
 				}
 
@@ -368,7 +368,7 @@ func TestClient_AcknowledgeOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != outagesBasePath + "/out_test123/acknowledge" {
+		if r.URL.Path != outagesBasePath+"/out_test123/acknowledge" {
 			t.Errorf("Expected path /v2/outages/out_test123/acknowledge, got %s", r.URL.Path)
 		}
 
@@ -400,7 +400,7 @@ func TestClient_UnacknowledgeOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != outagesBasePath + "/out_test123/unacknowledge" {
+		if r.URL.Path != outagesBasePath+"/out_test123/unacknowledge" {
 			t.Errorf("Expected path /v2/outages/out_test123/unacknowledge, got %s", r.URL.Path)
 		}
 
@@ -429,7 +429,7 @@ func TestClient_ResolveOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != outagesBasePath + "/out_test123/resolve" {
+		if r.URL.Path != outagesBasePath+"/out_test123/resolve" {
 			t.Errorf("Expected path /v2/outages/out_test123/resolve, got %s", r.URL.Path)
 		}
 
@@ -461,7 +461,7 @@ func TestClient_EscalateOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != outagesBasePath + "/out_test123/escalate" {
+		if r.URL.Path != outagesBasePath+"/out_test123/escalate" {
 			t.Errorf("Expected path /v2/outages/out_test123/escalate, got %s", r.URL.Path)
 		}
 
@@ -518,7 +518,7 @@ func TestClient_DeleteOutage(t *testing.T) {
 				if r.Method != http.MethodDelete {
 					t.Errorf("Expected DELETE request, got %s", r.Method)
 				}
-				if r.URL.Path != outagesBasePath + "/"+tt.uuid {
+				if r.URL.Path != outagesBasePath+"/"+tt.uuid {
 					t.Errorf("Expected path /v2/outages/%s, got %s", tt.uuid, r.URL.Path)
 				}
 

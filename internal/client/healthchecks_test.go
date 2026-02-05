@@ -111,7 +111,7 @@ func TestClient_GetHealthcheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != healthchecksBasePath + "/"+tt.uuid {
+				if r.URL.Path != healthchecksBasePath+"/"+tt.uuid {
 					t.Errorf("unexpected path: got %v", r.URL.Path)
 				}
 				if r.Method != http.MethodGet {
@@ -426,7 +426,7 @@ func TestClient_UpdateHealthcheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != healthchecksBasePath + "/"+tt.uuid {
+				if r.URL.Path != healthchecksBasePath+"/"+tt.uuid {
 					t.Errorf("unexpected path: got %v", r.URL.Path)
 				}
 				if r.Method != http.MethodPut {
@@ -496,7 +496,7 @@ func TestClient_DeleteHealthcheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != healthchecksBasePath + "/"+tt.uuid {
+				if r.URL.Path != healthchecksBasePath+"/"+tt.uuid {
 					t.Errorf("unexpected path: got %v", r.URL.Path)
 				}
 				if r.Method != http.MethodDelete {
@@ -562,7 +562,7 @@ func TestClient_PauseHealthcheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != healthchecksBasePath + "/"+tt.uuid+"/pause" {
+				if r.URL.Path != healthchecksBasePath+"/"+tt.uuid+"/pause" {
 					t.Errorf("unexpected path: got %v", r.URL.Path)
 				}
 				if r.Method != http.MethodPost {
@@ -633,7 +633,7 @@ func TestClient_ResumeHealthcheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != healthchecksBasePath + "/"+tt.uuid+"/resume" {
+				if r.URL.Path != healthchecksBasePath+"/"+tt.uuid+"/resume" {
 					t.Errorf("unexpected path: got %v", r.URL.Path)
 				}
 				if r.Method != http.MethodPost {
