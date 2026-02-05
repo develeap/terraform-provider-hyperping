@@ -32,8 +32,7 @@ const (
 	APIKeyPrefix = "sk_"
 
 	// APIKeyPatternString is the regex pattern string for matching API keys.
-	// nolint:gosec // G101: This is a regex pattern, not a credential
-	APIKeyPatternString = `sk_[a-zA-Z0-9_-]+`
+	APIKeyPatternString = `sk_[a-zA-Z0-9_-]+` // #nosec G101 -- regex pattern for validation, not a credential
 )
 
 // APIKeyPattern is the compiled regex for matching Hyperping API keys.
