@@ -1,0 +1,30 @@
+version: 2
+interactions:
+  - request:
+      method: POST
+      url: https://api.hyperping.io/v1/healthchecks
+      body: '{"name":"test-healthcheck","periodValue":60,"periodType":"seconds","gracePeriodValue":300,"gracePeriodType":"seconds"}'
+    response:
+      code: 201
+      body: '{"uuid":"hc_abc123","name":"test-healthcheck","pingUrl":"https://ping.hyperping.io/hc_abc123","periodValue":60,"periodType":"seconds","period":60,"gracePeriodValue":300,"gracePeriodType":"seconds","gracePeriod":300,"isPaused":false,"isDown":false,"createdAt":"2026-01-15T10:00:00Z"}'
+  - request:
+      method: GET
+      url: https://api.hyperping.io/v1/healthchecks/hc_abc123
+      body: ""
+    response:
+      code: 200
+      body: '{"uuid":"hc_abc123","name":"test-healthcheck","pingUrl":"https://ping.hyperping.io/hc_abc123","periodValue":60,"periodType":"seconds","period":60,"gracePeriodValue":300,"gracePeriodType":"seconds","gracePeriod":300,"isPaused":false,"isDown":false,"createdAt":"2026-01-15T10:00:00Z","lastPing":null,"dueDate":"2026-01-15T11:00:00Z"}'
+  - request:
+      method: PUT
+      url: https://api.hyperping.io/v1/healthchecks/hc_abc123
+      body: '{"name":"updated-healthcheck","periodValue":120}'
+    response:
+      code: 200
+      body: '{"uuid":"hc_abc123","name":"updated-healthcheck","pingUrl":"https://ping.hyperping.io/hc_abc123","periodValue":120,"periodType":"seconds","period":120,"gracePeriodValue":300,"gracePeriodType":"seconds","gracePeriod":300,"isPaused":false,"isDown":false,"createdAt":"2026-01-15T10:00:00Z"}'
+  - request:
+      method: DELETE
+      url: https://api.hyperping.io/v1/healthchecks/hc_abc123
+      body: ""
+    response:
+      code: 204
+      body: ""
