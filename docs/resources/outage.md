@@ -78,3 +78,14 @@ Read-Only:
 - `protocol` (String) The protocol of the monitor.
 - `url` (String) The URL of the monitor.
 - `uuid` (String) The UUID of the monitor.
+
+## Import
+
+Import is supported using the following syntax:
+
+```shell
+# Import an outage using its UUID
+terraform import hyperping_outage.example "out_abc123def456"
+```
+
+**Note:** Since outage fields are ForceNew (immutable), importing allows you to manage existing outages but any configuration drift will trigger recreation.
