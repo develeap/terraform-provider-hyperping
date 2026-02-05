@@ -71,6 +71,10 @@ provider "hyperping" {
    }
    ```
 
+## Guides
+
+- [Validation Guide](guides/validation.md) - Catch configuration errors early with `terraform validate`
+
 ## Troubleshooting
 
 See the [Troubleshooting Guide](TROUBLESHOOTING.md) for common issues and solutions.
