@@ -632,6 +632,206 @@ func TestMapSubscriberToTF(t *testing.T) {
 	}
 }
 
+// TestMapTFToSettings tests conversion of TF settings object to API structs
+func TestMapTFToSettings(t *testing.T) {
+	t.Run("null object returns nil", func(t *testing.T) {
+		var diags diag.Diagnostics
+		subscribe, auth := mapTFToSettings(types.ObjectNull(StatusPageSettingsAttrTypes()), &diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags.Errors())
+		}
+		if subscribe != nil {
+			t.Error("expected nil subscribe for null object")
+		}
+		if auth != nil {
+			t.Error("expected nil auth for null object")
+		}
+	})
+
+	t.Run("unknown object returns nil", func(t *testing.T) {
+		var diags diag.Diagnostics
+		subscribe, auth := mapTFToSettings(types.ObjectUnknown(StatusPageSettingsAttrTypes()), &diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags.Errors())
+		}
+		if subscribe != nil {
+			t.Error("expected nil subscribe for unknown object")
+		}
+		if auth != nil {
+			t.Error("expected nil auth for unknown object")
+		}
+	})
+}
+
+// TestMapTFToServices tests conversion of TF services list to API structs
+func TestMapTFToServices(t *testing.T) {
+	t.Run("null list returns empty", func(t *testing.T) {
+		var diags diag.Diagnostics
+		result := mapTFToServices(types.ListNull(types.ObjectType{AttrTypes: ServiceAttrTypes()}), &diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags.Errors())
+		}
+		if len(result) != 0 {
+			t.Errorf("expected 0 services for null list, got %d", len(result))
+		}
+	})
+
+	t.Run("unknown list returns empty", func(t *testing.T) {
+		var diags diag.Diagnostics
+		result := mapTFToServices(types.ListUnknown(types.ObjectType{AttrTypes: ServiceAttrTypes()}), &diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags.Errors())
+		}
+		if len(result) != 0 {
+			t.Errorf("expected 0 services for unknown list, got %d", len(result))
+		}
+	})
+}
+
+// TestMapListToStringSlice tests conversion of TF list to string slice
+func TestMapListToStringSlice(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     types.List
+		wantCount int
+	}{
+		{
+			name:      "null list returns empty",
+			input:     types.ListNull(types.StringType),
+			wantCount: 0,
+		},
+		{
+			name:      "unknown list returns empty",
+			input:     types.ListUnknown(types.StringType),
+			wantCount: 0,
+		},
+		{
+			name: "single item",
+			input: types.ListValueMust(types.StringType, []attr.Value{
+				types.StringValue("en"),
+			}),
+			wantCount: 1,
+		},
+		{
+			name: "multiple items",
+			input: types.ListValueMust(types.StringType, []attr.Value{
+				types.StringValue("en"),
+				types.StringValue("fr"),
+				types.StringValue("de"),
+			}),
+			wantCount: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var diags diag.Diagnostics
+			result := mapListToStringSlice(tt.input, &diags)
+
+			if diags.HasError() {
+				t.Errorf("unexpected error: %v", diags.Errors())
+				return
+			}
+
+			if len(result) != tt.wantCount {
+				t.Errorf("expected %d items, got %d", tt.wantCount, len(result))
+			}
+		})
+	}
+}
+
+// TestMapTFToService tests conversion of a single TF service object to API struct
+func TestMapTFToService(t *testing.T) {
+	t.Run("valid service with all fields", func(t *testing.T) {
+		var diags diag.Diagnostics
+
+		serviceObj := types.ObjectValueMust(ServiceAttrTypes(), map[string]attr.Value{
+			"id":   types.StringValue("svc_1"),
+			"uuid": types.StringValue("mon_123"),
+			"name": types.MapValueMust(types.StringType, map[string]attr.Value{
+				"en": types.StringValue("API Service"),
+			}),
+			"show_uptime":         types.BoolValue(true),
+			"show_response_times": types.BoolValue(true),
+			"is_group":            types.BoolValue(false),
+		})
+
+		result := mapTFToService(serviceObj, &diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags.Errors())
+			return
+		}
+
+		if result.MonitorUUID != "mon_123" {
+			t.Errorf("expected MonitorUUID 'mon_123', got %q", result.MonitorUUID)
+		}
+		if result.NameShown == nil || *result.NameShown != "API Service" {
+			t.Errorf("expected NameShown 'API Service', got %v", result.NameShown)
+		}
+		if result.ShowUptime == nil || !*result.ShowUptime {
+			t.Error("expected ShowUptime true")
+		}
+		if result.ShowResponseTimes == nil || !*result.ShowResponseTimes {
+			t.Error("expected ShowResponseTimes true")
+		}
+		if result.IsGroup == nil || *result.IsGroup {
+			t.Error("expected IsGroup false")
+		}
+	})
+
+	t.Run("minimal service with uuid only", func(t *testing.T) {
+		var diags diag.Diagnostics
+
+		serviceObj := types.ObjectValueMust(ServiceAttrTypes(), map[string]attr.Value{
+			"id":                  types.StringNull(),
+			"uuid":                types.StringValue("mon_minimal"),
+			"name":                types.MapNull(types.StringType),
+			"show_uptime":         types.BoolNull(),
+			"show_response_times": types.BoolNull(),
+			"is_group":            types.BoolNull(),
+		})
+
+		result := mapTFToService(serviceObj, &diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags.Errors())
+			return
+		}
+
+		if result.MonitorUUID != "mon_minimal" {
+			t.Errorf("expected MonitorUUID 'mon_minimal', got %q", result.MonitorUUID)
+		}
+		if result.NameShown != nil {
+			t.Errorf("expected nil NameShown, got %v", *result.NameShown)
+		}
+		if result.ShowUptime != nil {
+			t.Error("expected nil ShowUptime")
+		}
+		if result.ShowResponseTimes != nil {
+			t.Error("expected nil ShowResponseTimes")
+		}
+	})
+
+	t.Run("invalid element type returns error", func(t *testing.T) {
+		var diags diag.Diagnostics
+
+		// Pass a string instead of an object
+		result := mapTFToService(types.StringValue("not an object"), &diags)
+
+		if !diags.HasError() {
+			t.Error("expected error for invalid element type")
+		}
+		if result.MonitorUUID != "" {
+			t.Error("expected empty MonitorUUID for error case")
+		}
+	})
+}
+
 // Helper function for tests
 func stringPtr(s string) *string {
 	return &s

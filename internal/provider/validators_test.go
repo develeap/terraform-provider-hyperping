@@ -176,3 +176,149 @@ func TestUUIDFormat_Null(t *testing.T) {
 		t.Errorf("UUIDFormat(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
 	}
 }
+
+// Description method tests for coverage
+func TestNoControlCharacters_Description(t *testing.T) {
+	v := NoControlCharacters("test message")
+	ctx := context.Background()
+
+	desc := v.Description(ctx)
+	if desc == "" {
+		t.Error("expected non-empty description")
+	}
+
+	mdDesc := v.MarkdownDescription(ctx)
+	if mdDesc == "" {
+		t.Error("expected non-empty markdown description")
+	}
+
+	if desc != mdDesc {
+		t.Error("description and markdown description should match")
+	}
+}
+
+func TestReservedHeaderName_Description(t *testing.T) {
+	v := ReservedHeaderName()
+	ctx := context.Background()
+
+	desc := v.Description(ctx)
+	if desc == "" {
+		t.Error("expected non-empty description")
+	}
+
+	mdDesc := v.MarkdownDescription(ctx)
+	if mdDesc == "" {
+		t.Error("expected non-empty markdown description")
+	}
+
+	if desc != mdDesc {
+		t.Error("description and markdown description should match")
+	}
+}
+
+func TestISO8601_Description(t *testing.T) {
+	v := ISO8601()
+	ctx := context.Background()
+
+	desc := v.Description(ctx)
+	if desc == "" {
+		t.Error("expected non-empty description")
+	}
+
+	mdDesc := v.MarkdownDescription(ctx)
+	if mdDesc == "" {
+		t.Error("expected non-empty markdown description")
+	}
+
+	if desc != mdDesc {
+		t.Error("description and markdown description should match")
+	}
+}
+
+func TestUUIDFormat_Description(t *testing.T) {
+	v := UUIDFormat()
+	ctx := context.Background()
+
+	desc := v.Description(ctx)
+	if desc == "" {
+		t.Error("expected non-empty description")
+	}
+
+	mdDesc := v.MarkdownDescription(ctx)
+	if mdDesc == "" {
+		t.Error("expected non-empty markdown description")
+	}
+
+	if desc != mdDesc {
+		t.Error("description and markdown description should match")
+	}
+}
+
+// Unknown value tests
+func TestNoControlCharacters_Unknown(t *testing.T) {
+	v := NoControlCharacters("test message")
+	req := validator.StringRequest{
+		Path:        path.Root("test"),
+		ConfigValue: types.StringUnknown(),
+	}
+	resp := &validator.StringResponse{}
+	v.ValidateString(context.Background(), req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Errorf("NoControlCharacters(unknown): unexpected error: %v", resp.Diagnostics.Errors())
+	}
+}
+
+func TestReservedHeaderName_NullUnknown(t *testing.T) {
+	tests := []struct {
+		name  string
+		value types.String
+	}{
+		{"null", types.StringNull()},
+		{"unknown", types.StringUnknown()},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := ReservedHeaderName()
+			req := validator.StringRequest{
+				Path:        path.Root("test"),
+				ConfigValue: tt.value,
+			}
+			resp := &validator.StringResponse{}
+			v.ValidateString(context.Background(), req, resp)
+
+			if resp.Diagnostics.HasError() {
+				t.Errorf("ReservedHeaderName(%s): unexpected error: %v", tt.name, resp.Diagnostics.Errors())
+			}
+		})
+	}
+}
+
+func TestISO8601_Unknown(t *testing.T) {
+	v := ISO8601()
+	req := validator.StringRequest{
+		Path:        path.Root("test"),
+		ConfigValue: types.StringUnknown(),
+	}
+	resp := &validator.StringResponse{}
+	v.ValidateString(context.Background(), req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Errorf("ISO8601(unknown): unexpected error: %v", resp.Diagnostics.Errors())
+	}
+}
+
+func TestUUIDFormat_Unknown(t *testing.T) {
+	v := UUIDFormat()
+	req := validator.StringRequest{
+		Path:        path.Root("test"),
+		ConfigValue: types.StringUnknown(),
+	}
+	resp := &validator.StringResponse{}
+	v.ValidateString(context.Background(), req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Errorf("UUIDFormat(unknown): unexpected error: %v", resp.Diagnostics.Errors())
+	}
+}

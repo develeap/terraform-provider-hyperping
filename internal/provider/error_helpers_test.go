@@ -249,3 +249,36 @@ func TestNewDeleteWarning(t *testing.T) {
 		t.Errorf("Expected detail to contain standard message, got: %s", diag.Detail())
 	}
 }
+
+func TestNewReadAfterCreateError(t *testing.T) {
+	err := errors.New("resource not ready")
+	diag := newReadAfterCreateError("Monitor", "mon_123", err)
+
+	if !strings.Contains(diag.Summary(), "Created But Read Failed") {
+		t.Errorf("Expected summary to contain 'Created But Read Failed', got: %s", diag.Summary())
+	}
+
+	if !strings.Contains(diag.Detail(), "mon_123") {
+		t.Errorf("Expected detail to contain resource ID, got: %s", diag.Detail())
+	}
+
+	if !strings.Contains(diag.Detail(), "terraform import") {
+		t.Errorf("Expected detail to contain import instructions, got: %s", diag.Detail())
+	}
+}
+
+func TestNewUnexpectedConfigTypeError(t *testing.T) {
+	diag := newUnexpectedConfigTypeError("*provider.hyperpingClient", "string")
+
+	if !strings.Contains(diag.Summary(), "Unexpected Resource Configure Type") {
+		t.Errorf("Expected summary to contain 'Unexpected Resource Configure Type', got: %s", diag.Summary())
+	}
+
+	if !strings.Contains(diag.Detail(), "*provider.hyperpingClient") {
+		t.Errorf("Expected detail to contain expected type, got: %s", diag.Detail())
+	}
+
+	if !strings.Contains(diag.Detail(), "provider bug") {
+		t.Errorf("Expected detail to mention provider bug, got: %s", diag.Detail())
+	}
+}
