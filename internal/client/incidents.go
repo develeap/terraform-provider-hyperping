@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-const incidentsBasePath = "/v3/incidents"
+// incidentsBasePath uses the exported constant for consistency.
+var incidentsBasePath = IncidentsBasePath
 
 // ListIncidents returns all incidents.
 func (c *Client) ListIncidents(ctx context.Context) ([]Incident, error) {

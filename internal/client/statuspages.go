@@ -10,7 +10,8 @@ import (
 	"strconv"
 )
 
-const statuspagesBasePath = "/v2/statuspages"
+// statuspagesBasePath uses the exported constant for consistency.
+var statuspagesBasePath = StatuspagesBasePath
 
 // ListStatusPages returns a paginated list of status pages.
 // Parameters:

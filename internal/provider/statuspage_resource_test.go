@@ -335,9 +335,9 @@ func (m *mockStatusPageServer) handleRequest(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "application/json")
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v1/statuspages":
+	case r.Method == "GET" && r.URL.Path == "/v2/statuspages":
 		m.listStatusPages(w, r)
-	case r.Method == "POST" && r.URL.Path == "/v1/statuspages":
+	case r.Method == "POST" && r.URL.Path == "/v2/statuspages":
 		m.createStatusPage(w, r)
 	// Subscriber routes must come before general status page routes
 	case r.Method == "GET" && strings.Contains(r.URL.Path, "/subscribers"):
@@ -347,11 +347,11 @@ func (m *mockStatusPageServer) handleRequest(w http.ResponseWriter, r *http.Requ
 	case r.Method == "DELETE" && strings.Contains(r.URL.Path, "/subscribers/"):
 		m.deleteSubscriber(w, r)
 	// General status page routes
-	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v1/statuspages/sp_"):
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/v2/statuspages/sp_"):
 		m.getStatusPage(w, r)
-	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, "/v1/statuspages/sp_"):
+	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, "/v2/statuspages/sp_"):
 		m.updateStatusPage(w, r)
-	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, "/v1/statuspages/sp_"):
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, "/v2/statuspages/sp_"):
 		m.deleteStatusPage(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -530,7 +530,7 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 }
 
 func (m *mockStatusPageServer) getStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, "/v1/statuspages/")
+	uuid := strings.TrimPrefix(r.URL.Path, "/v2/statuspages/")
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -542,11 +542,15 @@ func (m *mockStatusPageServer) getStatusPage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	json.NewEncoder(w).Encode(page)
+	// Wrap response as per API spec: GET returns {"statuspage": {...}}
+	response := map[string]interface{}{
+		"statuspage": page,
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, "/v1/statuspages/")
+	uuid := strings.TrimPrefix(r.URL.Path, "/v2/statuspages/")
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -656,7 +660,7 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 }
 
 func (m *mockStatusPageServer) deleteStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, "/v1/statuspages/")
+	uuid := strings.TrimPrefix(r.URL.Path, "/v2/statuspages/")
 
 	m.mu.Lock()
 	defer m.mu.Unlock()

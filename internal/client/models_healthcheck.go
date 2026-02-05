@@ -37,15 +37,16 @@ type Healthcheck struct {
 
 // CreateHealthcheckRequest represents a request to create a healthcheck.
 // API: POST /v2/healthchecks
+// Note: API accepts snake_case in requests but returns camelCase in responses
 type CreateHealthcheckRequest struct {
 	Name             string  `json:"name"`
-	Cron             *string `json:"cron,omitempty"`        // Required if PeriodValue/PeriodType not set
-	Timezone         *string `json:"timezone,omitempty"`    // Required if Cron is set
-	PeriodValue      *int    `json:"periodValue,omitempty"` // Required if Cron not set
-	PeriodType       *string `json:"periodType,omitempty"`  // Required if Cron not set
-	GracePeriodValue int     `json:"gracePeriodValue"`
-	GracePeriodType  string  `json:"gracePeriodType"`            // seconds, minutes, hours, days
-	EscalationPolicy *string `json:"escalationPolicy,omitempty"` // UUID of escalation policy
+	Cron             *string `json:"cron,omitempty"`         // Required if PeriodValue/PeriodType not set
+	Timezone         *string `json:"timezone,omitempty"`     // Required if Cron is set
+	PeriodValue      *int    `json:"period_value,omitempty"` // Required if Cron not set
+	PeriodType       *string `json:"period_type,omitempty"`  // Required if Cron not set
+	GracePeriodValue int     `json:"grace_period_value"`
+	GracePeriodType  string  `json:"grace_period_type"`           // seconds, minutes, hours, days
+	EscalationPolicy *string `json:"escalation_policy,omitempty"` // UUID of escalation policy
 }
 
 // Validate checks input lengths on CreateHealthcheckRequest fields.
@@ -58,15 +59,16 @@ func (r CreateHealthcheckRequest) Validate() error {
 
 // UpdateHealthcheckRequest represents a request to update a healthcheck.
 // API: PUT /v2/healthchecks/{uuid}
+// Note: API accepts snake_case in requests but returns camelCase in responses
 type UpdateHealthcheckRequest struct {
 	Name             *string `json:"name,omitempty"`
 	Cron             *string `json:"cron,omitempty"`
 	Timezone         *string `json:"timezone,omitempty"`
-	PeriodValue      *int    `json:"periodValue,omitempty"`
-	PeriodType       *string `json:"periodType,omitempty"`
-	GracePeriodValue *int    `json:"gracePeriodValue,omitempty"`
-	GracePeriodType  *string `json:"gracePeriodType,omitempty"`
-	EscalationPolicy *string `json:"escalationPolicy,omitempty"`
+	PeriodValue      *int    `json:"period_value,omitempty"`
+	PeriodType       *string `json:"period_type,omitempty"`
+	GracePeriodValue *int    `json:"grace_period_value,omitempty"`
+	GracePeriodType  *string `json:"grace_period_type,omitempty"`
+	EscalationPolicy *string `json:"escalation_policy,omitempty"`
 }
 
 // HealthcheckAction represents an action performed on a healthcheck.

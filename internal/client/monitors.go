@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-const monitorsBasePath = "/v1/monitors"
+// monitorsBasePath uses the exported constant for consistency.
+var monitorsBasePath = MonitorsBasePath
 
 // ListMonitors returns all monitors.
 func (c *Client) ListMonitors(ctx context.Context) ([]Monitor, error) {

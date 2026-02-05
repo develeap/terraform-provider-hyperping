@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-const healthchecksBasePath = "/v2/healthchecks"
+// healthchecksBasePath uses the exported constant for consistency.
+var healthchecksBasePath = HealthchecksBasePath
 
 // parseHealthcheckListResponse handles the various response formats the API might return.
 func parseHealthcheckListResponse(raw json.RawMessage) ([]Healthcheck, error) {

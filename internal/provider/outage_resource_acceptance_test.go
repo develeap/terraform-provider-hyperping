@@ -226,13 +226,13 @@ func (m *mockOutageServer) handleRequest(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v1/outages":
+	case r.Method == "GET" && r.URL.Path == "/v2/outages":
 		m.listOutages(w)
-	case r.Method == "POST" && r.URL.Path == "/v1/outages":
+	case r.Method == "POST" && r.URL.Path == "/v2/outages":
 		m.createOutage(w, r)
-	case r.Method == "GET" && len(r.URL.Path) > len("/v1/outages/"):
+	case r.Method == "GET" && len(r.URL.Path) > len("/v2/outages/"):
 		m.getOutage(w, r)
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v1/outages/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len("/v2/outages/"):
 		m.deleteOutage(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -294,7 +294,7 @@ func (m *mockOutageServer) createOutage(w http.ResponseWriter, r *http.Request) 
 }
 
 func (m *mockOutageServer) getOutage(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/outages/"):]
+	id := r.URL.Path[len("/v2/outages/"):]
 
 	outage, exists := m.outages[id]
 	if !exists {
@@ -307,7 +307,7 @@ func (m *mockOutageServer) getOutage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *mockOutageServer) deleteOutage(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/outages/"):]
+	id := r.URL.Path[len("/v2/outages/"):]
 
 	if _, exists := m.outages[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -356,7 +356,7 @@ func (m *mockOutageServerWithErrors) handleRequestWithErrors(w http.ResponseWrit
 	w.Header().Set("Content-Type", "application/json")
 
 	switch {
-	case r.Method == "POST" && r.URL.Path == "/v1/outages":
+	case r.Method == "POST" && r.URL.Path == "/v2/outages":
 		if m.createError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -364,7 +364,7 @@ func (m *mockOutageServerWithErrors) handleRequestWithErrors(w http.ResponseWrit
 		}
 		m.createOutage(w, r)
 
-	case r.Method == "GET" && len(r.URL.Path) > len("/v1/outages/"):
+	case r.Method == "GET" && len(r.URL.Path) > len("/v2/outages/"):
 		if m.readError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -372,7 +372,7 @@ func (m *mockOutageServerWithErrors) handleRequestWithErrors(w http.ResponseWrit
 		}
 		m.getOutage(w, r)
 
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v1/outages/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len("/v2/outages/"):
 		if m.deleteError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})

@@ -156,8 +156,8 @@ ${failureText || 'See workflow logs for details'}
 
 ### Links
 
-- [Full Test Log](../actions/runs/${{ github.run_id }})
-- [Cassettes Location](../tree/main/internal/client/testdata/cassettes)
+- [Full Test Log](${serverUrl}/${repo}/actions/runs/${runId})
+- [Cassettes Location](${serverUrl}/${repo}/tree/main/internal/client/testdata/cassettes)
 `;
 
             // Check for existing open issue
@@ -175,7 +175,7 @@ ${failureText || 'See workflow logs for details'}
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issues[0].number,
-                body: `### Update - ${new Date().toISOString()}\n\nNew failures detected in run #${{ github.run_number }}.\n\n${failureText || 'See workflow logs.'}`
+                body: `### Update - ${new Date().toISOString()}\n\nNew failures detected in run #${runNumber}.\n\n${failureText || 'See workflow logs.'}`
               });
               console.log(`Updated existing issue #${issues[0].number}`);
             } else {
