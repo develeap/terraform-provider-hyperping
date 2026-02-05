@@ -23,6 +23,7 @@ import (
 // Command line flags
 var (
 	analyzeMode bool
+	syncCheck   bool
 	providerDir string
 	snapshotDir string
 	cassetteDir string
@@ -30,7 +31,8 @@ var (
 
 func main() {
 	// Parse command line flags
-	flag.BoolVar(&analyzeMode, "analyze", false, "Run coverage analysis instead of scraping")
+	flag.BoolVar(&analyzeMode, "analyze", false, "Run full coverage analysis with reports")
+	flag.BoolVar(&syncCheck, "sync", false, "Quick sync check - exits 1 if provider is out of sync with API")
 	flag.StringVar(&providerDir, "provider-dir", "../../../internal", "Path to provider internal directory")
 	flag.StringVar(&snapshotDir, "snapshot-dir", "./snapshots", "Path to snapshots directory")
 	flag.StringVar(&cassetteDir, "cassette-dir", "", "Path to VCR cassettes for contract testing (optional)")
@@ -52,12 +54,33 @@ func main() {
 
 	// Run appropriate mode
 	var exitCode int
-	if analyzeMode {
+	if syncCheck {
+		exitCode = runSyncCheck()
+	} else if analyzeMode {
 		exitCode = runAnalyze(ctx)
 	} else {
 		exitCode = run(ctx)
 	}
 	os.Exit(exitCode)
+}
+
+// runSyncCheck performs a quick sync check and exits with appropriate code
+func runSyncCheck() int {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(0)
+
+	status, err := RunSyncCheck(providerDir, snapshotDir)
+	if err != nil {
+		fmt.Printf("❌ Sync check failed: %v\n", err)
+		return 1
+	}
+
+	PrintSyncStatus(status)
+
+	if !status.InSync {
+		return 1 // Exit 1 = out of sync (fails CI)
+	}
+	return 0 // Exit 0 = in sync
 }
 
 func run(ctx context.Context) int {
