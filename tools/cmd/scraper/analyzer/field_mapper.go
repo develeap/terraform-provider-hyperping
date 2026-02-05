@@ -101,6 +101,7 @@ var ResourceMappings = []ResourceMapping{
 		UndocumentedFields: map[string]bool{
 			"notification_option":  true, // TF has default, API may not document
 			"notification_minutes": true, // TF has default, API may not document
+			"text":                 true, // API has it but extractor doesn't capture it reliably
 		},
 	},
 	{
@@ -125,6 +126,10 @@ var ResourceMappings = []ResourceMapping{
 			"last_ping":    true, // Timestamp of last ping
 			"created_at":   true, // Creation timestamp
 			"is_paused":    true, // Managed via separate pause/resume endpoints
+		},
+		// Fields not captured by API docs extractor
+		UndocumentedFields: map[string]bool{
+			"escalation_policy": true, // API docs don't document this for healthchecks
 		},
 	},
 	{
@@ -159,6 +164,10 @@ var ResourceMappings = []ResourceMapping{
 			"id":       true,
 			"url":      true, // Public URL is auto-generated
 			"hostname": true, // Custom domain, often returned from API but not in request docs
+		},
+		// TF structural elements without direct API counterparts
+		UndocumentedFields: map[string]bool{
+			"settings": true, // TF nested block, API has flat fields (handled via NestedFieldMappings)
 		},
 	},
 	{
