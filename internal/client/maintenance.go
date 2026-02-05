@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-const maintenanceBasePath = "/v1/maintenance-windows"
+// maintenanceBasePath uses the exported constant for consistency.
+var maintenanceBasePath = MaintenanceBasePath
 
 // ListMaintenance returns all maintenance windows.
 func (c *Client) ListMaintenance(ctx context.Context) ([]Maintenance, error) {

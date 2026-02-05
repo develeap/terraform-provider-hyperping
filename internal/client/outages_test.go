@@ -133,8 +133,8 @@ func TestClient_GetOutage(t *testing.T) {
 				if r.Method != http.MethodGet {
 					t.Errorf("Expected GET request, got %s", r.Method)
 				}
-				if r.URL.Path != "/v1/outages/"+tt.uuid {
-					t.Errorf("Expected path /v1/outages/%s, got %s", tt.uuid, r.URL.Path)
+				if r.URL.Path != outagesBasePath+"/"+tt.uuid {
+					t.Errorf("Expected path /v2/outages/%s, got %s", tt.uuid, r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -251,8 +251,8 @@ func TestClient_ListOutages(t *testing.T) {
 				if r.Method != http.MethodGet {
 					t.Errorf("Expected GET request, got %s", r.Method)
 				}
-				if r.URL.Path != "/v1/outages" {
-					t.Errorf("Expected path /v1/outages, got %s", r.URL.Path)
+				if r.URL.Path != outagesBasePath {
+					t.Errorf("Expected path /v2/outages, got %s", r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -331,7 +331,7 @@ func TestClient_CreateOutage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != "/v1/outages" {
+				if r.URL.Path != outagesBasePath {
 					t.Errorf("unexpected path: got %v", r.URL.Path)
 				}
 				if r.Method != http.MethodPost {
@@ -368,8 +368,8 @@ func TestClient_AcknowledgeOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/outages/out_test123/acknowledge" {
-			t.Errorf("Expected path /v1/outages/out_test123/acknowledge, got %s", r.URL.Path)
+		if r.URL.Path != outagesBasePath+"/out_test123/acknowledge" {
+			t.Errorf("Expected path /v2/outages/out_test123/acknowledge, got %s", r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -400,8 +400,8 @@ func TestClient_UnacknowledgeOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/outages/out_test123/unacknowledge" {
-			t.Errorf("Expected path /v1/outages/out_test123/unacknowledge, got %s", r.URL.Path)
+		if r.URL.Path != outagesBasePath+"/out_test123/unacknowledge" {
+			t.Errorf("Expected path /v2/outages/out_test123/unacknowledge, got %s", r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -429,8 +429,8 @@ func TestClient_ResolveOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/outages/out_test123/resolve" {
-			t.Errorf("Expected path /v1/outages/out_test123/resolve, got %s", r.URL.Path)
+		if r.URL.Path != outagesBasePath+"/out_test123/resolve" {
+			t.Errorf("Expected path /v2/outages/out_test123/resolve, got %s", r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -461,8 +461,8 @@ func TestClient_EscalateOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/outages/out_test123/escalate" {
-			t.Errorf("Expected path /v1/outages/out_test123/escalate, got %s", r.URL.Path)
+		if r.URL.Path != outagesBasePath+"/out_test123/escalate" {
+			t.Errorf("Expected path /v2/outages/out_test123/escalate, got %s", r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -518,8 +518,8 @@ func TestClient_DeleteOutage(t *testing.T) {
 				if r.Method != http.MethodDelete {
 					t.Errorf("Expected DELETE request, got %s", r.Method)
 				}
-				if r.URL.Path != "/v1/outages/"+tt.uuid {
-					t.Errorf("Expected path /v1/outages/%s, got %s", tt.uuid, r.URL.Path)
+				if r.URL.Path != outagesBasePath+"/"+tt.uuid {
+					t.Errorf("Expected path /v2/outages/%s, got %s", tt.uuid, r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -727,8 +727,8 @@ func TestClient_ListOutages_DataWrapper(t *testing.T) {
 			if r.Method != http.MethodGet {
 				t.Errorf("Expected GET request, got %s", r.Method)
 			}
-			if r.URL.Path != "/v1/outages" {
-				t.Errorf("Expected path /v1/outages, got %s", r.URL.Path)
+			if r.URL.Path != outagesBasePath {
+				t.Errorf("Expected path /v2/outages, got %s", r.URL.Path)
 			}
 
 			w.WriteHeader(http.StatusOK)

@@ -1,5 +1,10 @@
 default: fmt lint build
 
+# Pre-push check: Run all validations (same as lefthook pre-push)
+.PHONY: check
+check: fmt vet lint test security ## Run all checks (build, lint, test, security)
+	@echo "✅ All checks passed!"
+
 .PHONY: help
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -80,6 +85,16 @@ security: ## Run security scans (govulncheck, gosec)
 	@echo "Running gosec..."
 	go install github.com/securego/gosec/v2/cmd/gosec@latest
 	gosec -exclude-generated ./...
+
+.PHONY: vet
+vet: ## Run go vet
+	go vet ./...
+
+.PHONY: hooks
+hooks: ## Install git hooks (lefthook)
+	@command -v lefthook >/dev/null 2>&1 || { echo "Installing lefthook..."; go install github.com/evilmartians/lefthook@latest; }
+	lefthook install
+	@echo "✅ Git hooks installed! Pre-commit and pre-push hooks are now active."
 
 .PHONY: clean
 clean: ## Clean build artifacts

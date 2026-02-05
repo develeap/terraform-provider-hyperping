@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-const outagesBasePath = "/v1/outages"
+// outagesBasePath uses the exported constant for consistency.
+var outagesBasePath = OutagesBasePath
 
 // parseOutageListResponse handles the various response formats the API might return.
 func parseOutageListResponse(raw json.RawMessage) ([]Outage, error) {
@@ -40,7 +41,7 @@ func parseOutageListResponse(raw json.RawMessage) ([]Outage, error) {
 }
 
 // GetOutage retrieves a single outage by UUID.
-// API: GET /v1/outages/{uuid}
+// API: ... /v2/outages/{uuid}
 func (c *Client) GetOutage(ctx context.Context, uuid string) (*Outage, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("GetOutage: %w", err)
@@ -56,7 +57,7 @@ func (c *Client) GetOutage(ctx context.Context, uuid string) (*Outage, error) {
 }
 
 // ListOutages retrieves all outages.
-// API: GET /v1/outages
+// API: ... /v2/outages
 //
 // The response can vary in format:
 //   - Direct array: [{...}, {...}]
@@ -80,7 +81,7 @@ func (c *Client) ListOutages(ctx context.Context) ([]Outage, error) {
 }
 
 // CreateOutage creates a manual outage.
-// API: POST /v1/outages
+// API: ... /v2/outages
 //
 // Manual outages are used to track incidents that don't originate from monitor failures.
 // They must be manually resolved via the ResolveOutage endpoint.
@@ -96,7 +97,7 @@ func (c *Client) CreateOutage(ctx context.Context, req CreateOutageRequest) (*Ou
 }
 
 // AcknowledgeOutage acknowledges an outage.
-// API: POST /v1/outages/{uuid}/acknowledge
+// API: ... /v2/outages/{uuid}/acknowledge
 func (c *Client) AcknowledgeOutage(ctx context.Context, uuid string) (*OutageAction, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("AcknowledgeOutage: %w", err)
@@ -112,7 +113,7 @@ func (c *Client) AcknowledgeOutage(ctx context.Context, uuid string) (*OutageAct
 }
 
 // UnacknowledgeOutage removes acknowledgement from an outage.
-// API: POST /v1/outages/{uuid}/unacknowledge
+// API: ... /v2/outages/{uuid}/unacknowledge
 func (c *Client) UnacknowledgeOutage(ctx context.Context, uuid string) (*OutageAction, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("UnacknowledgeOutage: %w", err)
@@ -128,7 +129,7 @@ func (c *Client) UnacknowledgeOutage(ctx context.Context, uuid string) (*OutageA
 }
 
 // ResolveOutage manually resolves an outage.
-// API: POST /v1/outages/{uuid}/resolve
+// API: ... /v2/outages/{uuid}/resolve
 func (c *Client) ResolveOutage(ctx context.Context, uuid string) (*OutageAction, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("ResolveOutage: %w", err)
@@ -144,7 +145,7 @@ func (c *Client) ResolveOutage(ctx context.Context, uuid string) (*OutageAction,
 }
 
 // EscalateOutage escalates an outage (triggers additional notifications).
-// API: POST /v1/outages/{uuid}/escalate
+// API: ... /v2/outages/{uuid}/escalate
 func (c *Client) EscalateOutage(ctx context.Context, uuid string) (*OutageAction, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("EscalateOutage: %w", err)
@@ -160,7 +161,7 @@ func (c *Client) EscalateOutage(ctx context.Context, uuid string) (*OutageAction
 }
 
 // DeleteOutage deletes an outage.
-// API: DELETE /v1/outages/{uuid}
+// API: ... /v2/outages/{uuid}
 func (c *Client) DeleteOutage(ctx context.Context, uuid string) error {
 	if err := ValidateResourceID(uuid); err != nil {
 		return fmt.Errorf("DeleteOutage: %w", err)

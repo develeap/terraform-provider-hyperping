@@ -1,0 +1,38 @@
+# Lefthook configuration for terraform-provider-hyperping
+# Install: go install github.com/evilmartians/lefthook@latest && lefthook install
+# Docs: https://github.com/evilmartians/lefthook
+
+# Pre-commit: Fast checks only (formatting, syntax)
+pre-commit:
+  parallel: true
+  commands:
+    go-fmt:
+      glob: "*.go"
+      run: gofmt -l -w {staged_files}
+      stage_fixed: true
+    go-mod-tidy:
+      run: go mod tidy -diff
+      fail_text: "go.mod/go.sum not tidy. Run: go mod tidy"
+
+# Pre-push: Full validation before pushing to remote
+pre-push:
+  parallel: true
+  commands:
+    build:
+      run: go build -v .
+      fail_text: "Build failed"
+
+    lint:
+      run: golangci-lint run ./...
+      fail_text: "Linting failed. Run: golangci-lint run ./..."
+
+    test:
+      run: go test ./internal/... -count=1 -race -timeout=5m
+      fail_text: "Tests failed"
+
+    vet:
+      run: go vet ./...
+      fail_text: "go vet found issues"
+
+# Skip hooks in CI (GitHub Actions sets CI=true)
+skip_in_ci: true

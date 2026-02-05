@@ -34,7 +34,7 @@ func TestListStatusPages_Success(t *testing.T) {
 		if r.Method != http.MethodGet {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/statuspages" {
+		if r.URL.Path != statuspagesBasePath {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
@@ -148,7 +148,7 @@ func TestGetStatusPage_Success(t *testing.T) {
 		if r.Method != http.MethodGet {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/statuspages/sp_abc123" {
+		if r.URL.Path != statuspagesBasePath+"/sp_abc123" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
@@ -199,8 +199,13 @@ func TestGetStatusPage_Success(t *testing.T) {
 			},
 		}
 
+		// API returns wrapped response: {"statuspage": {...}}
+		response := struct {
+			StatusPage StatusPage `json:"statuspage"`
+		}{StatusPage: statusPage}
+
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(statusPage)
+		json.NewEncoder(w).Encode(response)
 	})
 	defer server.Close()
 
@@ -256,7 +261,7 @@ func TestCreateStatusPage_Success(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/statuspages" {
+		if r.URL.Path != statuspagesBasePath {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
@@ -423,7 +428,7 @@ func TestUpdateStatusPage_Success(t *testing.T) {
 		if r.Method != http.MethodPut {
 			t.Errorf("expected PUT, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/statuspages/sp_abc123" {
+		if r.URL.Path != statuspagesBasePath+"/sp_abc123" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
@@ -515,7 +520,7 @@ func TestDeleteStatusPage_Success(t *testing.T) {
 		if r.Method != http.MethodDelete {
 			t.Errorf("expected DELETE, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/statuspages/sp_abc123" {
+		if r.URL.Path != statuspagesBasePath+"/sp_abc123" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
@@ -553,7 +558,7 @@ func TestListSubscribers_Success(t *testing.T) {
 		if r.Method != http.MethodGet {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/statuspages/sp_abc123/subscribers" {
+		if r.URL.Path != statuspagesBasePath+"/sp_abc123/subscribers" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
@@ -654,7 +659,7 @@ func TestAddSubscriber_Email_Success(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/statuspages/sp_abc123/subscribers" {
+		if r.URL.Path != statuspagesBasePath+"/sp_abc123/subscribers" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
@@ -881,7 +886,7 @@ func TestDeleteSubscriber_Success(t *testing.T) {
 		if r.Method != http.MethodDelete {
 			t.Errorf("expected DELETE, got %s", r.Method)
 		}
-		if r.URL.Path != "/v1/statuspages/sp_abc123/subscribers/1" {
+		if r.URL.Path != statuspagesBasePath+"/sp_abc123/subscribers/1" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 

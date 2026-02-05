@@ -292,19 +292,19 @@ func (m *mockHealthcheckServer) handleRequest(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == "/v1/healthchecks":
+	case r.Method == "GET" && r.URL.Path == "/v2/healthchecks":
 		m.listHealthchecks(w)
-	case r.Method == "POST" && r.URL.Path == "/v1/healthchecks":
+	case r.Method == "POST" && r.URL.Path == "/v2/healthchecks":
 		m.createHealthcheck(w, r)
 	case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/pause"):
 		m.pauseHealthcheck(w, r)
 	case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/resume"):
 		m.resumeHealthcheck(w, r)
-	case r.Method == "GET" && len(r.URL.Path) > len("/v1/healthchecks/"):
+	case r.Method == "GET" && len(r.URL.Path) > len("/v2/healthchecks/"):
 		m.getHealthcheck(w, r)
-	case r.Method == "PUT" && len(r.URL.Path) > len("/v1/healthchecks/"):
+	case r.Method == "PUT" && len(r.URL.Path) > len("/v2/healthchecks/"):
 		m.updateHealthcheck(w, r)
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v1/healthchecks/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len("/v2/healthchecks/"):
 		m.deleteHealthcheck(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -331,16 +331,17 @@ func (m *mockHealthcheckServer) createHealthcheck(w http.ResponseWriter, r *http
 	m.counter++
 	id := fmt.Sprintf("hc_%d", m.counter)
 
-	// Extract period and grace values
-	periodValue := getOrDefaultInt(req, "periodValue", 60)
-	periodType := getOrDefaultString(req, "periodType")
-	gracePeriodValue := getOrDefaultInt(req, "gracePeriodValue", 300)
-	gracePeriodType := getOrDefaultString(req, "gracePeriodType")
+	// Extract period and grace values (API receives snake_case)
+	periodValue := getOrDefaultInt(req, "period_value", 60)
+	periodType := getOrDefaultString(req, "period_type")
+	gracePeriodValue := getOrDefaultInt(req, "grace_period_value", 300)
+	gracePeriodType := getOrDefaultString(req, "grace_period_type")
 
 	// Calculate period and gracePeriod in seconds
 	period := calculateSeconds(periodValue, periodType)
 	gracePeriod := calculateSeconds(gracePeriodValue, gracePeriodType)
 
+	// API returns camelCase
 	healthcheck := map[string]interface{}{
 		"uuid":             id,
 		"name":             req["name"],
@@ -350,13 +351,13 @@ func (m *mockHealthcheckServer) createHealthcheck(w http.ResponseWriter, r *http
 		"gracePeriodValue": gracePeriodValue,
 		"gracePeriodType":  gracePeriodType,
 		"gracePeriod":      gracePeriod,
-		"isPaused":         getOrDefaultBool(req, "isPaused", false),
+		"isPaused":         getOrDefaultBool(req, "is_paused", false),
 		"isDown":           false,
 		"pingUrl":          fmt.Sprintf("https://ping.hyperping.io/%s", id),
 		"createdAt":        "2026-01-01T00:00:00Z",
 	}
 
-	if ep, ok := req["escalationPolicy"].(string); ok && ep != "" {
+	if ep, ok := req["escalation_policy"].(string); ok && ep != "" {
 		healthcheck["escalationPolicy"] = map[string]interface{}{
 			"uuid": ep,
 		}
@@ -369,7 +370,7 @@ func (m *mockHealthcheckServer) createHealthcheck(w http.ResponseWriter, r *http
 }
 
 func (m *mockHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/healthchecks/"):]
+	id := r.URL.Path[len("/v2/healthchecks/"):]
 
 	healthcheck, exists := m.healthchecks[id]
 	if !exists {
@@ -382,7 +383,7 @@ func (m *mockHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Re
 }
 
 func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/healthchecks/"):]
+	id := r.URL.Path[len("/v2/healthchecks/"):]
 
 	healthcheck, exists := m.healthchecks[id]
 	if !exists {
@@ -398,31 +399,31 @@ func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Update fields if present
+	// Update fields if present (API receives snake_case)
 	if name, ok := req["name"].(string); ok {
 		healthcheck["name"] = name
 	}
-	if periodValue, ok := req["periodValue"].(float64); ok {
+	if periodValue, ok := req["period_value"].(float64); ok {
 		healthcheck["periodValue"] = int(periodValue)
 		periodType := getOrDefaultString(healthcheck, "periodType")
 		healthcheck["period"] = calculateSeconds(int(periodValue), periodType)
 	}
-	if periodType, ok := req["periodType"].(string); ok {
+	if periodType, ok := req["period_type"].(string); ok {
 		healthcheck["periodType"] = periodType
 		periodValue := getOrDefaultInt(healthcheck, "periodValue", 60)
 		healthcheck["period"] = calculateSeconds(periodValue, periodType)
 	}
-	if gracePeriodValue, ok := req["gracePeriodValue"].(float64); ok {
+	if gracePeriodValue, ok := req["grace_period_value"].(float64); ok {
 		healthcheck["gracePeriodValue"] = int(gracePeriodValue)
 		gracePeriodType := getOrDefaultString(healthcheck, "gracePeriodType")
 		healthcheck["gracePeriod"] = calculateSeconds(int(gracePeriodValue), gracePeriodType)
 	}
-	if gracePeriodType, ok := req["gracePeriodType"].(string); ok {
+	if gracePeriodType, ok := req["grace_period_type"].(string); ok {
 		healthcheck["gracePeriodType"] = gracePeriodType
 		gracePeriodValue := getOrDefaultInt(healthcheck, "gracePeriodValue", 300)
 		healthcheck["gracePeriod"] = calculateSeconds(gracePeriodValue, gracePeriodType)
 	}
-	if ep, ok := req["escalationPolicy"].(string); ok {
+	if ep, ok := req["escalation_policy"].(string); ok {
 		if ep != "" {
 			healthcheck["escalationPolicy"] = map[string]interface{}{
 				"uuid": ep,
@@ -437,7 +438,7 @@ func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http
 }
 
 func (m *mockHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len("/v1/healthchecks/"):]
+	id := r.URL.Path[len("/v2/healthchecks/"):]
 
 	if _, exists := m.healthchecks[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -450,8 +451,8 @@ func (m *mockHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *http
 }
 
 func (m *mockHealthcheckServer) pauseHealthcheck(w http.ResponseWriter, r *http.Request) {
-	// Extract UUID from path: /v1/healthchecks/{uuid}/pause
-	path := strings.TrimPrefix(r.URL.Path, "/v1/healthchecks/")
+	// Extract UUID from path: /v2/healthchecks/{uuid}/pause
+	path := strings.TrimPrefix(r.URL.Path, "/v2/healthchecks/")
 	id := strings.TrimSuffix(path, "/pause")
 
 	healthcheck, exists := m.healthchecks[id]
@@ -468,8 +469,8 @@ func (m *mockHealthcheckServer) pauseHealthcheck(w http.ResponseWriter, r *http.
 }
 
 func (m *mockHealthcheckServer) resumeHealthcheck(w http.ResponseWriter, r *http.Request) {
-	// Extract UUID from path: /v1/healthchecks/{uuid}/resume
-	path := strings.TrimPrefix(r.URL.Path, "/v1/healthchecks/")
+	// Extract UUID from path: /v2/healthchecks/{uuid}/resume
+	path := strings.TrimPrefix(r.URL.Path, "/v2/healthchecks/")
 	id := strings.TrimSuffix(path, "/resume")
 
 	healthcheck, exists := m.healthchecks[id]
@@ -524,7 +525,7 @@ func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.Respons
 	w.Header().Set("Content-Type", "application/json")
 
 	switch {
-	case r.Method == "POST" && r.URL.Path == "/v1/healthchecks":
+	case r.Method == "POST" && r.URL.Path == "/v2/healthchecks":
 		if m.createError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -532,7 +533,7 @@ func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.Respons
 		}
 		m.createHealthcheck(w, r)
 
-	case r.Method == "GET" && len(r.URL.Path) > len("/v1/healthchecks/"):
+	case r.Method == "GET" && len(r.URL.Path) > len("/v2/healthchecks/"):
 		if m.readError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -540,7 +541,7 @@ func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.Respons
 		}
 		m.getHealthcheck(w, r)
 
-	case r.Method == "PUT" && len(r.URL.Path) > len("/v1/healthchecks/"):
+	case r.Method == "PUT" && len(r.URL.Path) > len("/v2/healthchecks/"):
 		if m.updateError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -548,7 +549,7 @@ func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.Respons
 		}
 		m.updateHealthcheck(w, r)
 
-	case r.Method == "DELETE" && len(r.URL.Path) > len("/v1/healthchecks/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len("/v2/healthchecks/"):
 		if m.deleteError {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})

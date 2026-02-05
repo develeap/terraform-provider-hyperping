@@ -9,7 +9,8 @@ import (
 	"fmt"
 )
 
-const healthchecksBasePath = "/v1/healthchecks"
+// healthchecksBasePath uses the exported constant for consistency.
+var healthchecksBasePath = HealthchecksBasePath
 
 // parseHealthcheckListResponse handles the various response formats the API might return.
 func parseHealthcheckListResponse(raw json.RawMessage) ([]Healthcheck, error) {
@@ -40,7 +41,7 @@ func parseHealthcheckListResponse(raw json.RawMessage) ([]Healthcheck, error) {
 }
 
 // GetHealthcheck retrieves a single healthcheck by UUID.
-// API: GET /v1/healthchecks/{uuid}
+// API: ... /v2/healthchecks/{uuid}
 func (c *Client) GetHealthcheck(ctx context.Context, uuid string) (*Healthcheck, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("GetHealthcheck: %w", err)
@@ -56,7 +57,7 @@ func (c *Client) GetHealthcheck(ctx context.Context, uuid string) (*Healthcheck,
 }
 
 // ListHealthchecks retrieves all healthchecks.
-// API: GET /v1/healthchecks
+// API: ... /v2/healthchecks
 //
 // The response can vary in format:
 //   - Direct array: [{...}, {...}]
@@ -80,7 +81,7 @@ func (c *Client) ListHealthchecks(ctx context.Context) ([]Healthcheck, error) {
 }
 
 // CreateHealthcheck creates a new healthcheck.
-// API: POST /v1/healthchecks
+// API: ... /v2/healthchecks
 func (c *Client) CreateHealthcheck(ctx context.Context, req CreateHealthcheckRequest) (*Healthcheck, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("CreateHealthcheck: %w", err)
@@ -93,7 +94,7 @@ func (c *Client) CreateHealthcheck(ctx context.Context, req CreateHealthcheckReq
 }
 
 // UpdateHealthcheck updates an existing healthcheck.
-// API: PUT /v1/healthchecks/{uuid}
+// API: ... /v2/healthchecks/{uuid}
 func (c *Client) UpdateHealthcheck(ctx context.Context, uuid string, req UpdateHealthcheckRequest) (*Healthcheck, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("UpdateHealthcheck: %w", err)
@@ -108,7 +109,7 @@ func (c *Client) UpdateHealthcheck(ctx context.Context, uuid string, req UpdateH
 }
 
 // DeleteHealthcheck deletes a healthcheck.
-// API: DELETE /v1/healthchecks/{uuid}
+// API: ... /v2/healthchecks/{uuid}
 func (c *Client) DeleteHealthcheck(ctx context.Context, uuid string) error {
 	if err := ValidateResourceID(uuid); err != nil {
 		return fmt.Errorf("DeleteHealthcheck: %w", err)
@@ -122,7 +123,7 @@ func (c *Client) DeleteHealthcheck(ctx context.Context, uuid string) error {
 }
 
 // PauseHealthcheck pauses a healthcheck.
-// API: POST /v1/healthchecks/{uuid}/pause
+// API: ... /v2/healthchecks/{uuid}/pause
 func (c *Client) PauseHealthcheck(ctx context.Context, uuid string) (*HealthcheckAction, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("PauseHealthcheck: %w", err)
@@ -137,7 +138,7 @@ func (c *Client) PauseHealthcheck(ctx context.Context, uuid string) (*Healthchec
 }
 
 // ResumeHealthcheck resumes a paused healthcheck.
-// API: POST /v1/healthchecks/{uuid}/resume
+// API: ... /v2/healthchecks/{uuid}/resume
 func (c *Client) ResumeHealthcheck(ctx context.Context, uuid string) (*HealthcheckAction, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("ResumeHealthcheck: %w", err)

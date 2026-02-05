@@ -93,15 +93,15 @@ type LoggerInterface interface {
 
 // Scraper represents the main scraper with injected dependencies
 type Scraper struct {
-	config    ScraperConfig
-	cache     CacheManager
+	config     ScraperConfig
+	cache      CacheManager
 	discoverer URLDiscoverer
-	scraper   PageScraper
-	snapshots SnapshotStorage
-	differ    DiffReporter
-	github    GitHubIntegration
-	metrics   MetricsCollector
-	logger    LoggerInterface
+	scraper    PageScraper
+	snapshots  SnapshotStorage
+	differ     DiffReporter
+	github     GitHubIntegration
+	metrics    MetricsCollector
+	logger     LoggerInterface
 }
 
 // NewScraper creates a scraper with dependency injection

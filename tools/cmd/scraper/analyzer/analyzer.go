@@ -3,12 +3,12 @@ package analyzer
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
 )
 
 // CoverageGapType categorizes the type of discrepancy found
@@ -421,7 +421,7 @@ func LoadAPIParamsFromSnapshot(snapshotDir string) (map[string][]extractor.APIPa
 	}
 
 	for _, file := range files {
-		pageData, err := loadPageData(file)
+		pageData, err := loadPageData(snapshotDir, file)
 		if err != nil {
 			continue
 		}
@@ -435,8 +435,8 @@ func LoadAPIParamsFromSnapshot(snapshotDir string) (map[string][]extractor.APIPa
 }
 
 // loadPageData reads a single page data JSON file
-func loadPageData(filePath string) (*extractor.PageData, error) {
-	data, err := os.ReadFile(filePath)
+func loadPageData(baseDir, filePath string) (*extractor.PageData, error) {
+	data, err := utils.SafeReadFile(baseDir, filePath)
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ linters:
     - bodyclose
     - errcheck
     - gocritic
+    - gosec
     - govet
     - ineffassign
     - misspell

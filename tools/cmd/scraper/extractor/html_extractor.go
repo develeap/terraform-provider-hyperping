@@ -8,11 +8,11 @@ import (
 // RequestParameterSections defines which section titles contain request parameters
 // These are the ONLY sections we should extract parameters from
 var RequestParameterSections = map[string]bool{
-	"body":            true,
-	"path parameters": true,
+	"body":             true,
+	"path parameters":  true,
 	"query parameters": true,
-	"headers":         true,
-	"request body":    true,
+	"headers":          true,
+	"request body":     true,
 }
 
 // ResponseSectionPatterns defines patterns that indicate response/object documentation
@@ -59,9 +59,9 @@ func ExtractFromHTML(html string) []APIParameter {
 
 	// Build a list of section boundaries
 	type section struct {
-		title    string
-		startPos int
-		endPos   int
+		title     string
+		startPos  int
+		endPos    int
 		isRequest bool
 	}
 	var sections []section

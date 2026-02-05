@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/analyzer"
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/contract"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
 	"github.com/go-rod/rod"
@@ -22,15 +23,19 @@ import (
 // Command line flags
 var (
 	analyzeMode bool
+	syncCheck   bool
 	providerDir string
 	snapshotDir string
+	cassetteDir string
 )
 
 func main() {
 	// Parse command line flags
-	flag.BoolVar(&analyzeMode, "analyze", false, "Run coverage analysis instead of scraping")
+	flag.BoolVar(&analyzeMode, "analyze", false, "Run full coverage analysis with reports")
+	flag.BoolVar(&syncCheck, "sync", false, "Quick sync check - exits 1 if provider is out of sync with API")
 	flag.StringVar(&providerDir, "provider-dir", "../../../internal", "Path to provider internal directory")
 	flag.StringVar(&snapshotDir, "snapshot-dir", "./snapshots", "Path to snapshots directory")
+	flag.StringVar(&cassetteDir, "cassette-dir", "", "Path to VCR cassettes for contract testing (optional)")
 	flag.Parse()
 
 	// Setup signal handling for graceful shutdown
@@ -49,12 +54,33 @@ func main() {
 
 	// Run appropriate mode
 	var exitCode int
-	if analyzeMode {
+	if syncCheck {
+		exitCode = runSyncCheck()
+	} else if analyzeMode {
 		exitCode = runAnalyze(ctx)
 	} else {
 		exitCode = run(ctx)
 	}
 	os.Exit(exitCode)
+}
+
+// runSyncCheck performs a quick sync check and exits with appropriate code
+func runSyncCheck() int {
+	log.SetOutput(os.Stdout)
+	log.SetFlags(0)
+
+	status, err := RunSyncCheck(providerDir, snapshotDir)
+	if err != nil {
+		fmt.Printf("❌ Sync check failed: %v\n", err)
+		return 1
+	}
+
+	PrintSyncStatus(status)
+
+	if !status.InSync {
+		return 1 // Exit 1 = out of sync (fails CI)
+	}
+	return 0 // Exit 0 = in sync
 }
 
 func run(ctx context.Context) int {
@@ -121,6 +147,9 @@ func runAnalyze(ctx context.Context) int {
 	log.Printf("📋 Configuration:\n")
 	log.Printf("   Provider Dir: %s\n", providerDir)
 	log.Printf("   Snapshot Dir: %s\n", snapshotDir)
+	if cassetteDir != "" {
+		log.Printf("   Cassette Dir: %s\n", cassetteDir)
+	}
 
 	// Find latest snapshot
 	snapshotMgr := NewSnapshotManager(snapshotDir)
@@ -187,6 +216,21 @@ func runAnalyze(ctx context.Context) int {
 		log.Printf("\n✅ Report saved: %s\n", reportFile)
 	}
 
+	// Endpoint version analysis
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("🔗 Endpoint Version Analysis...")
+
+	if err := runEndpointVersionAnalysis(latestSnapshot, providerDir); err != nil {
+		log.Printf("⚠️  Endpoint version analysis failed: %v\n", err)
+	}
+
+	// Contract testing analysis (if cassettes provided)
+	if cassetteDir != "" {
+		if err := runContractAnalysis(cassetteDir, apiParams); err != nil {
+			log.Printf("⚠️  Contract analysis failed: %v\n", err)
+		}
+	}
+
 	// Create GitHub issues for resources with gaps
 	if len(report.Gaps) > 0 {
 		log.Println("\n" + strings.Repeat("=", 60))
@@ -199,6 +243,115 @@ func runAnalyze(ctx context.Context) int {
 
 	log.Println("\n✅ Analysis complete!")
 	return 0
+}
+
+// runContractAnalysis performs contract testing analysis using VCR cassettes
+func runContractAnalysis(cassetteDir string, apiParams map[string][]extractor.APIParameter) error {
+	log.Println("\n" + strings.Repeat("=", 60))
+	log.Println("🔬 Contract Testing Analysis...")
+	log.Printf("   Cassette Dir: %s\n", cassetteDir)
+
+	// Extract schema from cassettes
+	cassetteSchema, err := contract.ExtractFromCassettes(cassetteDir)
+	if err != nil {
+		return fmt.Errorf("failed to extract cassette schema: %w", err)
+	}
+	log.Printf("   Found %d endpoints in cassettes\n", len(cassetteSchema.Endpoints))
+
+	// Convert API params to documented fields format
+	docFields := convertAPIParamsToDocFields(apiParams)
+
+	// Compare cassettes with documentation
+	results := contract.CompareWithDocumentation(cassetteSchema, docFields)
+
+	// Count discoveries
+	totalUndocumented := 0
+	totalMismatches := 0
+	for _, r := range results {
+		totalUndocumented += r.Summary.UndocumentedFields
+		totalMismatches += r.Summary.TypeMismatches
+	}
+
+	log.Printf("\n   📊 Contract Testing Results:\n")
+	log.Printf("   Undocumented Fields: %d\n", totalUndocumented)
+	log.Printf("   Type Mismatches: %d\n", totalMismatches)
+
+	// Generate and save discovery report
+	if totalUndocumented > 0 || totalMismatches > 0 {
+		discoveryReport := contract.GenerateDiscoveryReport(results)
+		reportFile := "discovery_report_" + time.Now().Format("2006-01-02_15-04-05") + ".md"
+		if err := utils.SaveToFile(reportFile, discoveryReport); err != nil {
+			log.Printf("⚠️  Failed to save discovery report: %v\n", err)
+		} else {
+			log.Printf("   ✅ Discovery report saved: %s\n", reportFile)
+		}
+	} else {
+		log.Println("   ✅ No documentation gaps discovered via contract testing")
+	}
+
+	return nil
+}
+
+// runEndpointVersionAnalysis compares API endpoint versions between docs and provider code
+func runEndpointVersionAnalysis(snapshotDir, providerDir string) error {
+	// Extract endpoints from scraped docs
+	docsEndpoints, err := analyzer.ExtractEndpointsFromDocs(snapshotDir)
+	if err != nil {
+		return fmt.Errorf("failed to extract docs endpoints: %w", err)
+	}
+	log.Printf("   Found %d endpoints in docs\n", len(docsEndpoints))
+
+	// Extract endpoints from provider code
+	providerEndpoints, err := analyzer.ExtractEndpointsFromProvider(providerDir)
+	if err != nil {
+		return fmt.Errorf("failed to extract provider endpoints: %w", err)
+	}
+	log.Printf("   Found %d endpoints in provider\n", len(providerEndpoints))
+
+	// Compare versions
+	report := analyzer.CompareEndpointVersions(docsEndpoints, providerEndpoints)
+
+	if len(report.Mismatches) > 0 {
+		log.Printf("\n   ⚠️  Found %d endpoint version mismatches:\n", len(report.Mismatches))
+		for _, m := range report.Mismatches {
+			log.Printf("   - %s: docs=%s, provider=%s\n", m.Resource, m.DocsVersion, m.ProviderVersion)
+			log.Printf("     Fix: %s\n", m.Suggestion)
+		}
+
+		// Save detailed report
+		reportContent := analyzer.FormatEndpointReport(report)
+		reportFile := "endpoint_version_report_" + time.Now().Format("2006-01-02_15-04-05") + ".md"
+		if err := utils.SaveToFile(reportFile, reportContent); err != nil {
+			log.Printf("⚠️  Failed to save endpoint report: %v\n", err)
+		} else {
+			log.Printf("   ✅ Endpoint report saved: %s\n", reportFile)
+		}
+	} else {
+		log.Println("   ✅ All endpoint versions match!")
+	}
+
+	return nil
+}
+
+// convertAPIParamsToDocFields converts scraped API params to the format expected by contract comparator
+func convertAPIParamsToDocFields(apiParams map[string][]extractor.APIParameter) map[string][]contract.DocumentedField {
+	result := make(map[string][]contract.DocumentedField)
+
+	for endpoint, params := range apiParams {
+		// Extract resource name from endpoint (e.g., "healthchecks_create" -> "healthchecks")
+		resource := strings.Split(endpoint, "_")[0]
+
+		for _, param := range params {
+			field := contract.DocumentedField{
+				Name:     param.Name,
+				Type:     param.Type,
+				Required: param.Required,
+			}
+			result[resource] = append(result[resource], field)
+		}
+	}
+
+	return result
 }
 
 // createCoverageIssues creates GitHub issues for coverage gaps

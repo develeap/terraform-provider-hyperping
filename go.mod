@@ -12,6 +12,7 @@ require (
 	github.com/hashicorp/terraform-plugin-testing v1.14.0
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.11.1
+	gopkg.in/dnaeon/go-vcr.v3 v3.2.0
 )
 
 require (

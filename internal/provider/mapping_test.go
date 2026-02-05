@@ -6,6 +6,7 @@ package provider
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -298,3 +299,89 @@ func tfString(v string) types.String { return types.StringValue(v) }
 func tfStringNull() types.String     { return types.StringNull() }
 func tfInt64(v int64) types.Int64    { return types.Int64Value(v) }
 func tfInt64Null() types.Int64       { return types.Int64Null() }
+
+func TestMapTFListToRequestHeaders_NullList(t *testing.T) {
+	var diags diag.Diagnostics
+	result := mapTFListToRequestHeaders(types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}), &diags)
+
+	if result != nil {
+		t.Error("expected nil for null list")
+	}
+	if diags.HasError() {
+		t.Errorf("unexpected errors: %s", diags.Errors())
+	}
+}
+
+func TestMapTFListToRequestHeaders_UnknownList(t *testing.T) {
+	var diags diag.Diagnostics
+	result := mapTFListToRequestHeaders(types.ListUnknown(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}), &diags)
+
+	if result != nil {
+		t.Error("expected nil for unknown list")
+	}
+	if diags.HasError() {
+		t.Errorf("unexpected errors: %s", diags.Errors())
+	}
+}
+
+func TestMapTFListToRequestHeaders_EmptyList(t *testing.T) {
+	var diags diag.Diagnostics
+	emptyList, _ := types.ListValue(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}, []attr.Value{})
+	result := mapTFListToRequestHeaders(emptyList, &diags)
+
+	if len(result) != 0 {
+		t.Errorf("expected empty slice, got %d elements", len(result))
+	}
+	if diags.HasError() {
+		t.Errorf("unexpected errors: %s", diags.Errors())
+	}
+}
+
+func TestMapTFListToRequestHeaders_ValidHeaders(t *testing.T) {
+	var diags diag.Diagnostics
+
+	header1, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
+		"name":  types.StringValue("X-Custom-Header"),
+		"value": types.StringValue("custom-value"),
+	})
+	header2, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
+		"name":  types.StringValue("Accept"),
+		"value": types.StringValue("application/json"),
+	})
+
+	headerList, _ := types.ListValue(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}, []attr.Value{header1, header2})
+	result := mapTFListToRequestHeaders(headerList, &diags)
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 headers, got %d", len(result))
+	}
+	if result[0].Name != "X-Custom-Header" {
+		t.Errorf("expected header name 'X-Custom-Header', got %s", result[0].Name)
+	}
+	if result[0].Value != "custom-value" {
+		t.Errorf("expected header value 'custom-value', got %s", result[0].Value)
+	}
+	if diags.HasError() {
+		t.Errorf("unexpected errors: %s", diags.Errors())
+	}
+}
+
+func TestMapTFListToRequestHeaders_NullNameValue(t *testing.T) {
+	var diags diag.Diagnostics
+
+	// Header with null name and value should be skipped
+	headerWithNulls, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
+		"name":  types.StringNull(),
+		"value": types.StringNull(),
+	})
+
+	headerList, _ := types.ListValue(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}, []attr.Value{headerWithNulls})
+	result := mapTFListToRequestHeaders(headerList, &diags)
+
+	if len(result) != 0 {
+		t.Errorf("expected 0 headers (null values skipped), got %d", len(result))
+	}
+	if diags.HasError() {
+		t.Errorf("unexpected errors: %s", diags.Errors())
+	}
+}

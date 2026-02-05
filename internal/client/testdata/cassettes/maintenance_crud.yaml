@@ -1,0 +1,360 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.12; linux/amd64)
+        url: https://api.hyperping.io/v1/monitors
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '[{"id":115746,"name":"test-monitor","url":"https://httpstat.us/200","uuid":"mon_u4caULGi4rO2XR","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":true,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"up","ssl_expiration":32,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null}]'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9c90c527dbfac227-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Thu, 05 Feb 2026 07:42:16 GMT
+            Etag:
+                - W/"1c8-jJH3w/Bg/q6uHoGF68uLifXnWyc"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=787; t=2638'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=0y03pnTgBHgI5CwTv3stCpR7FNTS0RGxc%2BwIfMneWFpt9PwOzvxpuZDMcG3BQlTmJrsptEwkJthp6ilg3QeKb5HFoE%2FNtX1aObVnQa1ZYd4%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 190.486832ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 256
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: '{"name":"vcr-test-maintenance","title":{"en":"VCR Test Maintenance Window"},"text":{"en":"This is a test maintenance window created by contract tests"},"start_date":"2026-02-06T07:42:16Z","end_date":"2026-02-06T09:42:16Z","monitors":["mon_u4caULGi4rO2XR"]}'
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.12; linux/amd64)
+        url: https://api.hyperping.io/v1/maintenance-windows
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: 28
+        uncompressed: false
+        body: '{"uuid":"mw_Hk9sxlWbSePrMd"}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9c90c5289cd6c227-TLV
+            Content-Length:
+                - "28"
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Thu, 05 Feb 2026 07:42:16 GMT
+            Etag:
+                - W/"1c-8+tl7Faq8yQM5m553FsX5xj8Mz0"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=786; t=2638'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=s2KpdT3dbgS9lj%2Bb518s0oGzNiYO%2FfKg%2B7aIAXQ0GoQggWwnv2qEEuDTYZYXAP3YpffYpD3IcOqnC3gkT2Q8TQvCSdlYm8JGtnvzexHm%2FKA%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 201 Created
+        code: 201
+        duration: 118.417675ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.12; linux/amd64)
+        url: https://api.hyperping.io/v1/maintenance-windows/mw_Hk9sxlWbSePrMd
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '{"uuid":"mw_Hk9sxlWbSePrMd","name":"vcr-test-maintenance","title":{"en":"VCR Test Maintenance Window"},"start_date":"2026-02-06T07:42:16.000Z","end_date":"2026-02-06T09:42:16.000Z","timezone":"UTC","monitors":["mon_u4caULGi4rO2XR"],"statuspages":[],"bulkUuid":null,"createdBy":"khaled.salhab@develeap.com","createdAt":"2026-02-05T07:42:16.000Z","notificationOption":"none","notificationMinutes":60,"updates":[],"createdByProfilePictureUrl":null,"createdBySsoPictureUrl":"https://lh3.googleusercontent.com/a/ACg8ocLzgtI6SJEZJN6p7raaA6iOLR0-DusNtdLQQ21gL7iWj5YxIP8=s96-c","scheduledNotificationStatus":null,"scheduledNotificationSentAt":null,"scheduledNotificationBreakdown":null,"status":"upcoming"}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9c90c5295d8bc227-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Thu, 05 Feb 2026 07:42:16 GMT
+            Etag:
+                - W/"2ba-m78bIuzdtJFIziwPZiR5hOrTopk"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=785; t=2638'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=LZ5J0NywwIS3SIUvNpomi2QJN033o2RuTNnXsz1XDNXfvInQR5mwXfJhLMPMEZ7mn0s%2Bxd6oc3GV5KhCYjA52%2BcdtnlIyRrRgQK2s4QTM08%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 121.635007ms
+    - id: 3
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 39
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: '{"name":"vcr-test-maintenance-updated"}'
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.12; linux/amd64)
+        url: https://api.hyperping.io/v1/maintenance-windows/mw_Hk9sxlWbSePrMd
+        method: PUT
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '{"uuid":"mw_Hk9sxlWbSePrMd","name":"vcr-test-maintenance-updated","title":{"en":"VCR Test Maintenance Window"},"start_date":"2026-02-06T07:42:16.000Z","end_date":"2026-02-06T09:42:16.000Z","timezone":"UTC","monitors":["mon_u4caULGi4rO2XR"],"statuspages":[],"bulkUuid":null,"createdBy":"usr_dcnH5V1JEGsoiN","createdAt":"2026-02-05T07:42:16.000Z","notificationOption":"none","notificationMinutes":60,"updates":[]}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9c90c52a2e3bc227-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Thu, 05 Feb 2026 07:42:18 GMT
+            Etag:
+                - W/"19b-nmgryOwJ702NAuNmjvVk8U7te34"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=784; t=2638'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=OvnxesVUKNqWW89rGXYLIet5iKPXMsBtn5NKcj5cTrnKZgTWN%2B4o1y4RTk0oqzhTAbfS1bci55oBTxE%2FgW48ljSTK%2F%2Ffe7pzZ2M8FzgSKNY%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 2.32007988s
+    - id: 4
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.12; linux/amd64)
+        url: https://api.hyperping.io/v1/maintenance-windows/mw_Hk9sxlWbSePrMd
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '{"message":"Ok"}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9c90c5389cc1c227-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Thu, 05 Feb 2026 07:42:19 GMT
+            Etag:
+                - W/"10-/joFRKz/gr6105uVVzyNqD3EVJg"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=783; t=2636'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=egP9kHSAvzlJ5c3eU351P4H6%2FA7nyZyqJItyYuH5%2FnKuB8ZSrZ%2BHMNPSry2wrpN8YY89EvMhwt7LNt47XZ14amQM0cQybwrcsNvX8wQB91Q%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 190.955839ms

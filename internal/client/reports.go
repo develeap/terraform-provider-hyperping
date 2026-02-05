@@ -9,7 +9,8 @@ import (
 	"net/url"
 )
 
-const reportsBasePath = "/v2/reporting/monitor-reports"
+// reportsBasePath uses the exported constant for consistency.
+var reportsBasePath = ReportsBasePath
 
 // GetMonitorReport returns the report for a specific monitor.
 // Optional from/to parameters can be provided for date filtering.
