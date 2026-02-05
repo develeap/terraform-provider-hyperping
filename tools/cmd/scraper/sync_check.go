@@ -20,13 +20,13 @@ type SyncStatus struct {
 
 // SyncIssue represents a single sync problem that needs fixing
 type SyncIssue struct {
-	Category   string // "endpoint_version", "missing_field", "type_mismatch"
-	Severity   string // "error", "warning"
-	Resource   string
-	Message    string
-	Fix        string // Actionable fix instruction
-	File       string
-	Line       int
+	Category string // "endpoint_version", "missing_field", "type_mismatch"
+	Severity string // "error", "warning"
+	Resource string
+	Message  string
+	Fix      string // Actionable fix instruction
+	File     string
+	Line     int
 }
 
 // RunSyncCheck performs a complete sync check and returns status

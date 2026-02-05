@@ -22,7 +22,7 @@ func TestCompareWithDocumentation(t *testing.T) {
 		"healthchecks": {
 			{Name: "uuid", Type: "string"},
 			{Name: "name", Type: "string"},
-			{Name: "period", Type: "number"}, // Type differs
+			{Name: "period", Type: "number"},   // Type differs
 			{Name: "oldField", Type: "string"}, // Deprecated
 		},
 	}

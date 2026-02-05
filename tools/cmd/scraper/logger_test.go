@@ -65,10 +65,10 @@ func TestLoggerJSONFormat(t *testing.T) {
 
 func TestLoggerLevels(t *testing.T) {
 	tests := []struct {
-		name         string
-		level        LogLevel
-		logLevel     LogLevel
-		shouldLog    bool
+		name      string
+		level     LogLevel
+		logLevel  LogLevel
+		shouldLog bool
 	}{
 		{"debug logs at debug level", LogLevelDebug, LogLevelDebug, true},
 		{"debug doesn't log at info level", LogLevelDebug, LogLevelInfo, false},

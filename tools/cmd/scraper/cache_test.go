@@ -159,9 +159,9 @@ func TestCompareCaches(t *testing.T) {
 
 	newCache := Cache{
 		Entries: map[string]CacheEntry{
-			"unchanged.json": {Filename: "unchanged.json", ContentHash: "hash1", LastModified: time.Now()}, // Same hash
-			"modified.json":  {Filename: "modified.json", ContentHash: "newhash", LastModified: time.Now()},  // Different hash
-			"added.json":     {Filename: "added.json", ContentHash: "hash4", LastModified: time.Now()},       // New file
+			"unchanged.json": {Filename: "unchanged.json", ContentHash: "hash1", LastModified: time.Now()},  // Same hash
+			"modified.json":  {Filename: "modified.json", ContentHash: "newhash", LastModified: time.Now()}, // Different hash
+			"added.json":     {Filename: "added.json", ContentHash: "hash4", LastModified: time.Now()},      // New file
 		},
 		CreatedAt: time.Now(),
 	}

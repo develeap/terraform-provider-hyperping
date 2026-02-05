@@ -11,31 +11,31 @@ type Metrics struct {
 	mu sync.RWMutex
 
 	// Scraping metrics
-	URLsDiscovered    int64
-	PagesScraped      int64
-	PagesSkipped      int64
-	PagesFailed       int64
-	TotalDuration     time.Duration
-	AvgPageDuration   time.Duration
+	URLsDiscovered  int64
+	PagesScraped    int64
+	PagesSkipped    int64
+	PagesFailed     int64
+	TotalDuration   time.Duration
+	AvgPageDuration time.Duration
 
 	// Cache metrics
-	CacheHits         int64
-	CacheMisses       int64
-	CacheSize         int64
+	CacheHits   int64
+	CacheMisses int64
+	CacheSize   int64
 
 	// Error metrics
-	NetworkErrors     int64
-	TimeoutErrors     int64
-	ParseErrors       int64
-	RetryAttempts     int64
+	NetworkErrors int64
+	TimeoutErrors int64
+	ParseErrors   int64
+	RetryAttempts int64
 
 	// Resource metrics
-	BrowserRestarts   int64
-	MemoryUsageMB     int64
+	BrowserRestarts int64
+	MemoryUsageMB   int64
 
 	// Timestamps
-	StartTime         time.Time
-	LastScrapedAt     time.Time
+	StartTime     time.Time
+	LastScrapedAt time.Time
 }
 
 // NewMetrics creates a new metrics instance

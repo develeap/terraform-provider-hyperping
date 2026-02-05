@@ -12,13 +12,13 @@ import (
 // FieldDiscovery represents a field discovered through contract testing
 // that differs from what the API documentation shows.
 type FieldDiscovery struct {
-	Endpoint   string      `json:"endpoint"`    // e.g., "POST /v1/healthchecks"
-	FieldName  string      `json:"field_name"`  // e.g., "lastLogStartDate"
-	Source     FieldSource `json:"source"`      // request, response, or both
-	Type       string      `json:"type"`        // inferred type from cassette
-	DocStatus  DocStatus   `json:"doc_status"`  // undocumented, documented, differs
-	DocType    string      `json:"doc_type"`    // type from documentation (if any)
-	Suggestion string      `json:"suggestion"`  // action suggestion
+	Endpoint   string      `json:"endpoint"`   // e.g., "POST /v1/healthchecks"
+	FieldName  string      `json:"field_name"` // e.g., "lastLogStartDate"
+	Source     FieldSource `json:"source"`     // request, response, or both
+	Type       string      `json:"type"`       // inferred type from cassette
+	DocStatus  DocStatus   `json:"doc_status"` // undocumented, documented, differs
+	DocType    string      `json:"doc_type"`   // type from documentation (if any)
+	Suggestion string      `json:"suggestion"` // action suggestion
 }
 
 // DocStatus indicates how a field relates to documentation.
@@ -33,10 +33,10 @@ const (
 
 // ComparisonResult holds the result of comparing cassettes to documentation.
 type ComparisonResult struct {
-	Resource    string           `json:"resource"`     // e.g., "healthchecks"
-	Endpoint    string           `json:"endpoint"`     // e.g., "POST /v1/healthchecks"
-	Discoveries []FieldDiscovery `json:"discoveries"`  // Fields discovered via contract testing
-	Summary     ComparisonStats  `json:"summary"`      // Statistics
+	Resource    string           `json:"resource"`    // e.g., "healthchecks"
+	Endpoint    string           `json:"endpoint"`    // e.g., "POST /v1/healthchecks"
+	Discoveries []FieldDiscovery `json:"discoveries"` // Fields discovered via contract testing
+	Summary     ComparisonStats  `json:"summary"`     // Statistics
 }
 
 // ComparisonStats holds comparison statistics.

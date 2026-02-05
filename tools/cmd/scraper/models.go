@@ -34,32 +34,32 @@ type ParameterChange struct {
 
 // APIDiff represents changes detected between two versions of an API endpoint
 type APIDiff struct {
-	Section          string                    `json:"section"` // monitors, statuspages, incidents, etc.
-	Endpoint         string                    `json:"endpoint"`
-	Method           string                    `json:"method"`
-	AddedParams      []extractor.APIParameter  `json:"added_params,omitempty"`
-	RemovedParams    []extractor.APIParameter  `json:"removed_params,omitempty"`
-	ModifiedParams   []ParameterChange         `json:"modified_params,omitempty"`
-	Breaking         bool                      `json:"breaking"`
-	RawContentChange bool                      `json:"raw_content_change"` // True if hash changed but no semantic diff found
+	Section          string                   `json:"section"` // monitors, statuspages, incidents, etc.
+	Endpoint         string                   `json:"endpoint"`
+	Method           string                   `json:"method"`
+	AddedParams      []extractor.APIParameter `json:"added_params,omitempty"`
+	RemovedParams    []extractor.APIParameter `json:"removed_params,omitempty"`
+	ModifiedParams   []ParameterChange        `json:"modified_params,omitempty"`
+	Breaking         bool                     `json:"breaking"`
+	RawContentChange bool                     `json:"raw_content_change"` // True if hash changed but no semantic diff found
 }
 
 // DiffReport aggregates all changes for a scraping run
 type DiffReport struct {
-	Timestamp      time.Time  `json:"timestamp"`
-	TotalPages     int        `json:"total_pages"`
-	ChangedPages   int        `json:"changed_pages"`
-	UnchangedPages int        `json:"unchanged_pages"`
-	APIDiffs       []APIDiff  `json:"api_diffs,omitempty"`
-	Breaking       bool       `json:"breaking"` // True if any diff is breaking
-	Summary        string     `json:"summary"`
+	Timestamp      time.Time `json:"timestamp"`
+	TotalPages     int       `json:"total_pages"`
+	ChangedPages   int       `json:"changed_pages"`
+	UnchangedPages int       `json:"unchanged_pages"`
+	APIDiffs       []APIDiff `json:"api_diffs,omitempty"`
+	Breaking       bool      `json:"breaking"` // True if any diff is breaking
+	Summary        string    `json:"summary"`
 }
 
 // DiscoveredURL represents a URL found during navigation discovery
 type DiscoveredURL struct {
 	URL      string `json:"url"`
-	Section  string `json:"section"`  // Parent section (monitors, statuspages, etc.)
-	Method   string `json:"method"`   // HTTP method or operation (list, create, update, etc.)
+	Section  string `json:"section"`   // Parent section (monitors, statuspages, etc.)
+	Method   string `json:"method"`    // HTTP method or operation (list, create, update, etc.)
 	IsParent bool   `json:"is_parent"` // True if this is a parent page with children
 }
 
@@ -103,16 +103,16 @@ type ResourceSchema struct {
 // CoverageGap represents a discrepancy between API docs and provider schema
 type CoverageGap struct {
 	Type       CoverageGapType `json:"type"`
-	Resource   string          `json:"resource"`              // e.g., "monitor"
-	APIField   string          `json:"api_field,omitempty"`   // Field name in API docs
-	TFField    string          `json:"tf_field,omitempty"`    // Field name in Terraform
-	APIType    string          `json:"api_type,omitempty"`    // Type in API docs
-	TFType     string          `json:"tf_type,omitempty"`     // Type in Terraform
-	Details    string          `json:"details"`               // Human-readable explanation
-	Severity   string          `json:"severity"`              // error, warning, info
-	Suggestion string          `json:"suggestion,omitempty"`  // Recommended action
-	FilePath   string          `json:"file_path,omitempty"`   // File to modify
-	CodeHint   string          `json:"code_hint,omitempty"`   // Suggested code addition
+	Resource   string          `json:"resource"`             // e.g., "monitor"
+	APIField   string          `json:"api_field,omitempty"`  // Field name in API docs
+	TFField    string          `json:"tf_field,omitempty"`   // Field name in Terraform
+	APIType    string          `json:"api_type,omitempty"`   // Type in API docs
+	TFType     string          `json:"tf_type,omitempty"`    // Type in Terraform
+	Details    string          `json:"details"`              // Human-readable explanation
+	Severity   string          `json:"severity"`             // error, warning, info
+	Suggestion string          `json:"suggestion,omitempty"` // Recommended action
+	FilePath   string          `json:"file_path,omitempty"`  // File to modify
+	CodeHint   string          `json:"code_hint,omitempty"`  // Suggested code addition
 }
 
 // ResourceCoverage represents coverage statistics for a single resource

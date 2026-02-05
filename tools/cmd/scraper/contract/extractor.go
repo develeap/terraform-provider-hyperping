@@ -6,11 +6,11 @@ package contract
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/develeap/terraform-provider-hyperping/tools/cmd/scraper/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -50,7 +50,7 @@ func ExtractFromCassettes(cassetteDir string) (*CassetteSchema, error) {
 	}
 
 	for _, file := range files {
-		if err := extractFromCassette(file, schema); err != nil {
+		if err := extractFromCassette(cassetteDir, file, schema); err != nil {
 			return nil, fmt.Errorf("failed to extract from %s: %w", file, err)
 		}
 	}
@@ -59,8 +59,8 @@ func ExtractFromCassettes(cassetteDir string) (*CassetteSchema, error) {
 }
 
 // extractFromCassette extracts schemas from a single cassette file.
-func extractFromCassette(path string, schema *CassetteSchema) error {
-	data, err := os.ReadFile(path)
+func extractFromCassette(baseDir, path string, schema *CassetteSchema) error {
+	data, err := utils.SafeReadFile(baseDir, path)
 	if err != nil {
 		return fmt.Errorf("failed to read cassette: %w", err)
 	}

@@ -8,22 +8,23 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/develeap/terraform-provider-hyperping/tools/cmd/scraper/utils"
 )
 
 // EndpointMismatch represents a version mismatch between docs and provider
 type EndpointMismatch struct {
-	Resource       string
-	DocsEndpoint   string
-	ProviderPath   string
-	DocsVersion    string
+	Resource        string
+	DocsEndpoint    string
+	ProviderPath    string
+	DocsVersion     string
 	ProviderVersion string
-	FilePath       string
-	LineNumber     int
-	Suggestion     string
+	FilePath        string
+	LineNumber      int
+	Suggestion      string
 }
 
 // EndpointVersionReport contains all endpoint version analysis results
@@ -46,7 +47,7 @@ func ExtractEndpointsFromDocs(snapshotDir string) (map[string]string, error) {
 	}
 
 	for _, file := range files {
-		content, err := os.ReadFile(file)
+		content, err := utils.SafeReadFile(snapshotDir, file)
 		if err != nil {
 			continue
 		}
@@ -55,8 +56,8 @@ func ExtractEndpointsFromDocs(snapshotDir string) (map[string]string, error) {
 		matches := endpointPattern.FindAllStringSubmatch(string(content), -1)
 		for _, match := range matches {
 			if len(match) >= 3 {
-				fullPath := match[0]    // e.g., /v2/statuspages
-				resource := match[2]    // e.g., statuspages
+				fullPath := match[0] // e.g., /v2/statuspages
+				resource := match[2] // e.g., statuspages
 
 				// Store the highest version found for each resource
 				if existing, ok := endpoints[resource]; ok {
@@ -218,7 +219,9 @@ func extractVersion(path string) int {
 	matches := endpointPattern.FindStringSubmatch(path)
 	if len(matches) >= 2 {
 		var version int
-		fmt.Sscanf(matches[1], "%d", &version)
+		if _, err := fmt.Sscanf(matches[1], "%d", &version); err != nil {
+			return 0
+		}
 		return version
 	}
 	return 0
