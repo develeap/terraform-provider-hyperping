@@ -55,13 +55,12 @@ func TestAtLeastOneOf_Description(t *testing.T) {
 }
 
 func TestAtLeastOneOf_ValidatorInterface(t *testing.T) {
-	// Verify that AtLeastOneOf returns a valid validator.String interface
+	// Verify that AtLeastOneOf returns a valid validator
+	// The return type is enforced by Go's type system, so we just
+	// verify the function doesn't panic and returns non-nil
 	v := AtLeastOneOf()
-
-	// Type assertion should succeed
-	_, ok := v.(validator.String)
-	if !ok {
-		t.Error("AtLeastOneOf should return a validator.String")
+	if v == nil {
+		t.Error("AtLeastOneOf should return a non-nil validator")
 	}
 }
 
