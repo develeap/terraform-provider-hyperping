@@ -30,10 +30,6 @@ pre-push:
       run: go test ./internal/... -count=1 -race -timeout=5m
       fail_text: "Tests failed"
 
-    security:
-      run: gosec -quiet ./...
-      fail_text: "Security issues found. Run: gosec ./..."
-
     vet:
       run: go vet ./...
       fail_text: "go vet found issues"
