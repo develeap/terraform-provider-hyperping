@@ -117,22 +117,22 @@ func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 func (g *Generator) generateImports(sb *strings.Builder, data *ResourceData) {
 	for _, m := range data.Monitors {
 		name := g.terraformName(m.Name)
-		sb.WriteString(fmt.Sprintf("terraform import hyperping_monitor.%s \"%s\"\n", name, m.UUID))
+		fmt.Fprintf(sb, "terraform import hyperping_monitor.%s %q\n", name, m.UUID)
 	}
 
 	for _, h := range data.Healthchecks {
 		name := g.terraformName(h.Name)
-		sb.WriteString(fmt.Sprintf("terraform import hyperping_healthcheck.%s \"%s\"\n", name, h.UUID))
+		fmt.Fprintf(sb, "terraform import hyperping_healthcheck.%s %q\n", name, h.UUID)
 	}
 
 	for _, sp := range data.StatusPages {
 		name := g.terraformName(sp.Name)
-		sb.WriteString(fmt.Sprintf("terraform import hyperping_statuspage.%s \"%s\"\n", name, sp.UUID))
+		fmt.Fprintf(sb, "terraform import hyperping_statuspage.%s %q\n", name, sp.UUID)
 	}
 
 	for _, i := range data.Incidents {
 		name := g.terraformName(i.Title.En)
-		sb.WriteString(fmt.Sprintf("terraform import hyperping_incident.%s \"%s\"\n", name, i.UUID))
+		fmt.Fprintf(sb, "terraform import hyperping_incident.%s %q\n", name, i.UUID)
 	}
 
 	for _, m := range data.Maintenance {
@@ -141,12 +141,12 @@ func (g *Generator) generateImports(sb *strings.Builder, data *ResourceData) {
 			titleText = m.Name
 		}
 		name := g.terraformName(titleText)
-		sb.WriteString(fmt.Sprintf("terraform import hyperping_maintenance.%s \"%s\"\n", name, m.UUID))
+		fmt.Fprintf(sb, "terraform import hyperping_maintenance.%s %q\n", name, m.UUID)
 	}
 
 	for _, o := range data.Outages {
 		name := g.terraformName(o.Monitor.Name)
-		sb.WriteString(fmt.Sprintf("terraform import hyperping_outage.%s \"%s\"\n", name, o.UUID))
+		fmt.Fprintf(sb, "terraform import hyperping_outage.%s %q\n", name, o.UUID)
 	}
 }
 
@@ -198,7 +198,7 @@ func (g *Generator) terraformName(name string) string {
 	tfName = strings.Trim(tfName, "_")
 
 	// Ensure it starts with a letter
-	if len(tfName) > 0 && (tfName[0] >= '0' && tfName[0] <= '9') {
+	if tfName != "" && (tfName[0] >= '0' && tfName[0] <= '9') {
 		tfName = "r_" + tfName
 	}
 
@@ -233,7 +233,7 @@ func formatStringList(items []string) string {
 	}
 	quoted := make([]string, len(items))
 	for i, item := range items {
-		quoted[i] = fmt.Sprintf("\"%s\"", escapeHCL(item))
+		quoted[i] = fmt.Sprintf("%q", item)
 	}
 	return "[" + strings.Join(quoted, ", ") + "]"
 }

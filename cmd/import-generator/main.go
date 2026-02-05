@@ -34,12 +34,16 @@ var (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	flag.Parse()
 
 	apiKey := os.Getenv("HYPERPING_API_KEY")
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: HYPERPING_API_KEY environment variable is required")
-		os.Exit(1)
+		return 1
 	}
 
 	// Create client
@@ -58,19 +62,21 @@ func main() {
 	output, err := gen.Generate(ctx, *outputFormat)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating output: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// Write output
 	if *outputFile != "" {
-		if err := os.WriteFile(*outputFile, []byte(output), 0644); err != nil {
+		if err := os.WriteFile(*outputFile, []byte(output), 0o600); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
-			os.Exit(1)
+			return 1
 		}
 		fmt.Fprintf(os.Stderr, "Output written to %s\n", *outputFile)
 	} else {
 		fmt.Print(output)
 	}
+
+	return 0
 }
 
 func parseResources(s string) []string {
