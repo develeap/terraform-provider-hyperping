@@ -36,6 +36,7 @@ website/vendor
 # Keep windows files with windows line endings
 *.winfile eol=crlf
 terraform-provider-hyperping
+import-generator
 .env
 
 # Scraper binaries and generated reports
