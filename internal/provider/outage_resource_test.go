@@ -180,8 +180,3 @@ func TestOutageResource_UpdateShouldNotBeCalled(t *testing.T) {
 		t.Error("expected error diagnostic when Update is called")
 	}
 }
-
-// TODO: Add acceptance test stubs
-// func TestAccOutageResource_basic(t *testing.T) {}
-// func TestAccOutageResource_ongoing(t *testing.T) {}
-// func TestAccOutageResource_disappears(t *testing.T) {}

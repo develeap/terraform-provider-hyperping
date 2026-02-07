@@ -163,10 +163,3 @@ func TestValidateCronPeriodExclusivity_Scenarios(t *testing.T) {
 	// This is a placeholder to acknowledge the validation logic is tested
 	t.Log("Cron/period validation covered in mapping_test.go")
 }
-
-// TODO: Add acceptance test stubs
-// func TestAccHealthcheckResource_basic(t *testing.T) {}
-// func TestAccHealthcheckResource_cron(t *testing.T) {}
-// func TestAccHealthcheckResource_period(t *testing.T) {}
-// func TestAccHealthcheckResource_pause(t *testing.T) {}
-// func TestAccHealthcheckResource_disappears(t *testing.T) {}
