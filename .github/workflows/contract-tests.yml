@@ -3,6 +3,12 @@ name: Contract Tests
 # Run daily at 2 AM UTC to discover API changes via live contract testing
 # This is a discovery job - it reports findings but does NOT block builds
 on:
+  # Include push/pull_request to register workflow, but jobs are skipped via check-trigger
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
   schedule:
     - cron: '0 2 * * *' # Daily at 2 AM UTC
 
