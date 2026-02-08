@@ -4,7 +4,7 @@ name: Contract Tests
 # This is a discovery job - it reports findings but does NOT block builds
 on:
   schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+    - cron: '0 2 * * *' # Daily at 2 AM UTC
 
   # Allow manual trigger for ad-hoc testing
   workflow_dispatch:
@@ -15,15 +15,15 @@ on:
         default: 'replay'
         type: choice
         options:
-          - replay     # Use recorded cassettes (no API calls)
-          - record     # Record new cassettes (requires API key)
+          - replay
+          - record
 
 permissions:
   contents: read
-  issues: write  # For creating discovery issues
+  issues: write
 
 jobs:
-  # This job always runs to prevent "No jobs were run" warnings
+  # Prevent "No jobs were run" warnings
   check-trigger:
     name: Check Trigger
     runs-on: ubuntu-latest
@@ -35,10 +35,8 @@ jobs:
         run: |
           if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
-            echo "Contract tests will run (event: ${{ github.event_name }})"
           else
             echo "should_run=false" >> $GITHUB_OUTPUT
-            echo "Skipping contract tests (event: ${{ github.event_name }})"
           fi
 
   contract-tests:
@@ -50,10 +48,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -64,11 +62,11 @@ jobs:
       - name: Run contract tests (replay mode)
         if: github.event.inputs.mode != 'record'
         run: |
-          echo "Running contract tests in replay mode (using recorded cassettes)"
+          set -o pipefail
+          echo "Running contract tests in replay mode"
           go test -v -tags=contract ./internal/client/... \
-            -run "TestContract" \
-            2>&1 | tee contract_tests.log
-          echo "EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
+            -run "TestContract" | tee contract_tests.log
+          echo "EXIT_CODE=$?" >> $GITHUB_ENV
 
       - name: Run contract tests (record mode)
         if: github.event.inputs.mode == 'record'
@@ -76,49 +74,48 @@ jobs:
           HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY_CONTRACT }}
           VCR_MODE: record
         run: |
-          echo "Running contract tests in record mode (live API calls)"
+          set -o pipefail
+          echo "Running contract tests in record mode"
           if [ -z "$HYPERPING_API_KEY" ]; then
             echo "ERROR: HYPERPING_API_KEY_CONTRACT secret not set"
             exit 1
           fi
           go test -v -tags=contract ./internal/client/... \
-            -run "TestLiveContract" \
-            2>&1 | tee contract_tests.log
-          echo "EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
+            -run "TestLiveContract" | tee contract_tests.log
+          echo "EXIT_CODE=$?" >> $GITHUB_ENV
 
       - name: Upload test logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: contract-test-logs-${{ github.run_number }}
+          name: contract-test-logs-${{ github.run_id }}
           path: contract_tests.log
           retention-days: 30
 
       - name: Analyze test results
         if: always()
         run: |
+          MODE="${{ github.event.inputs.mode }}"
+          MODE="${MODE:-replay}"
+
           echo "## Contract Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Date:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "**Mode:** ${{ github.event.inputs.mode || 'replay' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Mode:** ${MODE}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f contract_tests.log ]; then
-            # Count test results
-            PASS_COUNT=$(grep -c "^--- PASS:" contract_tests.log 2>/dev/null || echo "0")
-            FAIL_COUNT=$(grep -c "^--- FAIL:" contract_tests.log 2>/dev/null || echo "0")
-            SKIP_COUNT=$(grep -c "^--- SKIP:" contract_tests.log 2>/dev/null || echo "0")
+            PASS_COUNT=$(grep -c "^--- PASS:" contract_tests.log || true)
+            FAIL_COUNT=$(grep -c "^--- FAIL:" contract_tests.log || true)
+            SKIP_COUNT=$(grep -c "^--- SKIP:" contract_tests.log || true)
 
-            echo "### Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "| Result | Count |" >> $GITHUB_STEP_SUMMARY
             echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
             echo "| Passed | $PASS_COUNT |" >> $GITHUB_STEP_SUMMARY
             echo "| Failed | $FAIL_COUNT |" >> $GITHUB_STEP_SUMMARY
             echo "| Skipped | $SKIP_COUNT |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
 
             if [ "$FAIL_COUNT" -gt 0 ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
               echo "### Failed Tests" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
               grep -A5 "^--- FAIL:" contract_tests.log | head -50 >> $GITHUB_STEP_SUMMARY
@@ -135,52 +132,45 @@ jobs:
           script: |
             const fs = require('fs');
 
-            // Read test log
             let logContent = '';
             try {
               logContent = fs.readFileSync('contract_tests.log', 'utf8');
-            } catch (e) {
+            } catch {
               logContent = 'No test log available';
             }
 
-            // Extract failures
             const failures = logContent.match(/--- FAIL:[\s\S]*?(?=--- |$)/g) || [];
             const failureText = failures.slice(0, 5).join('\n\n');
 
             const runNumber = context.runNumber;
             const runId = context.runId;
-            const serverUrl = 'https://github.com';
             const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const serverUrl = 'https://github.com';
 
             const title = `[Contract Tests] API drift detected - ${new Date().toISOString().split('T')[0]}`;
+
             const body = `## Contract Test Failures
 
 **Run:** [#${runNumber}](${serverUrl}/${repo}/actions/runs/${runId})
 **Date:** ${new Date().toISOString()}
 
 ### Description
-
-The daily contract tests detected potential API drift. This means the recorded API responses may no longer match the actual API behavior.
+Daily contract tests detected potential API drift.
 
 ### Failed Tests
-
 \`\`\`
 ${failureText || 'See workflow logs for details'}
 \`\`\`
 
 ### Action Required
-
-1. Review the test failures to understand what changed
-2. If API changed: Update cassettes with \`VCR_MODE=record\` and update provider if needed
-3. If false positive: Investigate why replay differs from recording
+1. Review failures
+2. Record new cassettes if API changed
+3. Investigate replay vs record mismatch
 
 ### Links
-
-- [Full Test Log](${serverUrl}/${repo}/actions/runs/${runId})
-- [Cassettes Location](${serverUrl}/${repo}/tree/main/internal/client/testdata/cassettes)
+- [Run](${serverUrl}/${repo}/actions/runs/${runId})
 `;
 
-            // Check for existing open issue
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -190,34 +180,25 @@ ${failureText || 'See workflow logs for details'}
             });
 
             if (issues.length > 0) {
-              // Update existing issue
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issues[0].number,
-                body: `### Update - ${new Date().toISOString()}\n\nNew failures detected in run #${runNumber}.\n\n${failureText || 'See workflow logs.'}`
+                body: `New failures detected in run #${runNumber}`
               });
-              console.log(`Updated existing issue #${issues[0].number}`);
             } else {
-              // Create new issue
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: title,
-                body: body,
+                title,
+                body,
                 labels: ['contract-tests', 'automated', 'api-drift']
               });
-              console.log('Created new contract test issue');
             }
 
       - name: Final status (never fails CI)
         if: always()
         run: |
-          echo ""
           echo "Contract tests completed."
-          echo "Exit code was: ${EXIT_CODE:-unknown}"
-          echo ""
-          echo "Note: Contract tests are for discovery only - they do not block CI."
-          echo "Any failures indicate potential API drift that should be investigated."
-          # Always exit 0 - this is a discovery job, not a blocking check
+          echo "Exit code: ${EXIT_CODE:-unknown}"
           exit 0
