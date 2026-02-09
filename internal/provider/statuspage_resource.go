@@ -597,7 +597,7 @@ func (r *StatusPageResource) preserveSectionServiceBooleans(planSection, apiSect
 		}
 	}
 
-	newSection, newDiags := types.ObjectValue(apiSection.Type(context.Background()).(types.ObjectType).AttrTypes, newAttrs)
+	newSection, newDiags := types.ObjectValue(SectionAttrTypes(), newAttrs)
 	diags.Append(newDiags...)
 
 	return newSection
@@ -647,7 +647,7 @@ func (r *StatusPageResource) preserveServicesListBooleans(planServices, apiServi
 		}
 
 		if needsPreservation {
-			newService, newDiags := types.ObjectValue(apiService.Type(context.Background()).(types.ObjectType).AttrTypes, newAttrs)
+			newService, newDiags := types.ObjectValue(ServiceAttrTypes(), newAttrs)
 			diags.Append(newDiags...)
 			newServices[i] = newService
 		} else {
