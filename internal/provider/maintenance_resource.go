@@ -377,12 +377,14 @@ func (r *MaintenanceResource) mapMaintenanceToModel(maintenance *client.Maintena
 		model.Title = types.StringNull()
 	}
 
-	// Handle text
+	// NOTE: Text field behavior - Hyperping API quirk
+	// The API accepts text during CREATE/UPDATE but may not return it in GET responses
+	// If API returns it (non-empty), use that value; otherwise preserve plan value
 	if maintenance.Text.En != "" {
 		model.Text = types.StringValue(maintenance.Text.En)
-	} else {
-		model.Text = types.StringNull()
 	}
+	// If empty and model.Text is already set (from plan), keep the existing value
+	// This prevents state drift when API doesn't return the field
 
 	// Handle dates
 	if maintenance.StartDate != nil {

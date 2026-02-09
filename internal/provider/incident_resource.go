@@ -312,7 +312,16 @@ func (r *IncidentResource) ImportState(ctx context.Context, req resource.ImportS
 func (r *IncidentResource) mapIncidentToModel(incident *client.Incident, model *IncidentResourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(incident.UUID)
 	model.Title = types.StringValue(incident.Title.En)
-	model.Text = types.StringValue(incident.Text.En)
+
+	// NOTE: Text field behavior - Hyperping API quirk
+	// The API accepts text during CREATE/UPDATE but may not return it in GET responses
+	// If API returns it (non-empty), use that value; otherwise preserve plan value
+	if incident.Text.En != "" {
+		model.Text = types.StringValue(incident.Text.En)
+	}
+	// If empty and model.Text is already set (from plan), keep the existing value
+	// This prevents state drift when API doesn't return the field
+
 	model.Type = types.StringValue(incident.Type)
 
 	// Handle date
