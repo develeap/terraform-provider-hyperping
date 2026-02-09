@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -29,9 +30,30 @@ type StatusPageCommonFields struct {
 	Sections        types.List   `tfsdk:"sections"`
 }
 
+// HyperpingSubdomainSuffix is the suffix appended to hosted subdomains by Hyperping API.
+const HyperpingSubdomainSuffix = ".hyperping.app"
+
+// normalizeSubdomain strips the .hyperping.app suffix from a subdomain if present.
+// This ensures the Terraform state matches the user's configuration.
+// Example: "mycompany.hyperping.app" -> "mycompany"
+func normalizeSubdomain(subdomain string) string {
+	if strings.HasSuffix(subdomain, HyperpingSubdomainSuffix) {
+		return strings.TrimSuffix(subdomain, HyperpingSubdomainSuffix)
+	}
+	return subdomain
+}
+
 // MapStatusPageCommonFields maps common status page fields from API response to Terraform types.
 // This is shared between StatusPageResource and StatusPage data sources to avoid duplication.
+// Use MapStatusPageCommonFieldsWithFilter for resources that need localized field filtering.
 func MapStatusPageCommonFields(sp *client.StatusPage, diags *diag.Diagnostics) StatusPageCommonFields {
+	return MapStatusPageCommonFieldsWithFilter(sp, nil, diags)
+}
+
+// MapStatusPageCommonFieldsWithFilter maps common status page fields with optional language filtering.
+// When configuredLangs is provided, localized fields (description, section/service names) are filtered
+// to only include the configured languages, preventing drift from API auto-population.
+func MapStatusPageCommonFieldsWithFilter(sp *client.StatusPage, configuredLangs []string, diags *diag.Diagnostics) StatusPageCommonFields {
 	if sp == nil {
 		return StatusPageCommonFields{
 			ID:              types.StringNull(),
@@ -44,10 +66,14 @@ func MapStatusPageCommonFields(sp *client.StatusPage, diags *diag.Diagnostics) S
 		}
 	}
 
+	// Normalize subdomain by stripping .hyperping.app suffix
+	// This ensures state matches the user's configuration
+	normalizedSubdomain := normalizeSubdomain(sp.HostedSubdomain)
+
 	result := StatusPageCommonFields{
 		ID:              types.StringValue(sp.UUID),
 		Name:            types.StringValue(sp.Name),
-		HostedSubdomain: types.StringValue(sp.HostedSubdomain),
+		HostedSubdomain: types.StringValue(normalizedSubdomain),
 		URL:             types.StringValue(sp.URL),
 	}
 
@@ -58,11 +84,11 @@ func MapStatusPageCommonFields(sp *client.StatusPage, diags *diag.Diagnostics) S
 		result.Hostname = types.StringNull()
 	}
 
-	// Map nested settings
-	result.Settings = mapSettingsToTF(sp.Settings, diags)
+	// Map nested settings with optional language filtering
+	result.Settings = mapSettingsToTFWithFilter(sp.Settings, configuredLangs, diags)
 
-	// Map sections list
-	result.Sections = mapSectionsToTF(sp.Sections, diags)
+	// Map sections list with optional language filtering
+	result.Sections = mapSectionsToTFWithFilter(sp.Sections, configuredLangs, diags)
 
 	return result
 }
@@ -72,7 +98,14 @@ func MapStatusPageCommonFields(sp *client.StatusPage, diags *diag.Diagnostics) S
 // =============================================================================
 
 // mapSettingsToTF converts API settings to Terraform Object type.
+// For data sources that don't need language filtering.
 func mapSettingsToTF(settings client.StatusPageSettings, diags *diag.Diagnostics) types.Object {
+	return mapSettingsToTFWithFilter(settings, nil, diags)
+}
+
+// mapSettingsToTFWithFilter converts API settings to Terraform Object type with optional language filtering.
+// When configuredLangs is provided, the description map is filtered to only include configured languages.
+func mapSettingsToTFWithFilter(settings client.StatusPageSettings, configuredLangs []string, diags *diag.Diagnostics) types.Object {
 	// Map subscribe settings
 	subscribeObj, subDiags := types.ObjectValue(SubscribeSettingsAttrTypes(), map[string]attr.Value{
 		"enabled": types.BoolValue(settings.Subscribe.Enabled),
@@ -92,8 +125,10 @@ func mapSettingsToTF(settings client.StatusPageSettings, diags *diag.Diagnostics
 	})
 	diags.Append(authDiags...)
 
-	// Map description (map[string]string)
-	descriptionMap := mapStringMapToTF(settings.Description)
+	// Map description (map[string]string) with optional language filtering
+	// Filter to only configured languages to prevent drift from API auto-population
+	filteredDescription := filterLocalizedMap(settings.Description, configuredLangs)
+	descriptionMap := mapStringMapToTF(filteredDescription)
 
 	// Map languages ([]string)
 	languagesList := mapStringSliceToList(settings.Languages, diags)
@@ -213,18 +248,26 @@ func mapTFToSettings(obj types.Object, diags *diag.Diagnostics) (*client.CreateS
 // =============================================================================
 
 // mapSectionsToTF converts API sections array to Terraform List type.
+// For data sources that don't need language filtering.
 func mapSectionsToTF(sections []client.StatusPageSection, diags *diag.Diagnostics) types.List {
+	return mapSectionsToTFWithFilter(sections, nil, diags)
+}
+
+// mapSectionsToTFWithFilter converts API sections array to Terraform List type with optional language filtering.
+// When configuredLangs is provided, section and service names are filtered to only include configured languages.
+func mapSectionsToTFWithFilter(sections []client.StatusPageSection, configuredLangs []string, diags *diag.Diagnostics) types.List {
 	if len(sections) == 0 {
 		return types.ListNull(types.ObjectType{AttrTypes: SectionAttrTypes()})
 	}
 
 	values := make([]attr.Value, len(sections))
 	for i, section := range sections {
-		// Map section name (map[string]string)
-		nameMap := mapStringMapToTF(section.Name)
+		// Map section name (map[string]string) with optional language filtering
+		filteredName := filterLocalizedMap(section.Name, configuredLangs)
+		nameMap := mapStringMapToTF(filteredName)
 
-		// Map services list (recursive)
-		servicesList := mapServicesToTF(section.Services, diags)
+		// Map services list (recursive) with optional language filtering
+		servicesList := mapServicesToTFWithFilter(section.Services, configuredLangs, diags)
 
 		sectionObj, sectionDiags := types.ObjectValue(SectionAttrTypes(), map[string]attr.Value{
 			"name":     nameMap,
@@ -240,8 +283,9 @@ func mapSectionsToTF(sections []client.StatusPageSection, diags *diag.Diagnostic
 	return list
 }
 
-// mapServicesToTF converts API services array to Terraform List type (recursive for nested groups).
-func mapServicesToTF(services []client.StatusPageService, diags *diag.Diagnostics) types.List {
+// mapServicesToTFWithFilter converts API services array to Terraform List type with optional language filtering.
+// Pass nil for configuredLangs to include all languages (used by data sources).
+func mapServicesToTFWithFilter(services []client.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.List {
 	// Use ServiceAttrTypes for elements since services may contain nested services
 	attrs := ServiceAttrTypes()
 
@@ -251,7 +295,7 @@ func mapServicesToTF(services []client.StatusPageService, diags *diag.Diagnostic
 
 	values := make([]attr.Value, len(services))
 	for i, service := range services {
-		values[i] = mapServiceToTF(service, diags)
+		values[i] = mapServiceToTFWithFilter(service, configuredLangs, diags)
 	}
 
 	list, listDiags := types.ListValue(types.ObjectType{AttrTypes: attrs}, values)
@@ -259,10 +303,12 @@ func mapServicesToTF(services []client.StatusPageService, diags *diag.Diagnostic
 	return list
 }
 
-// mapServiceToTF converts a single API service to Terraform Object type (recursive for nested services).
-func mapServiceToTF(service client.StatusPageService, diags *diag.Diagnostics) types.Object {
-	// Map service name (map[string]string)
-	nameMap := mapStringMapToTF(service.Name)
+// mapServiceToTFWithFilter converts a single API service to Terraform Object type with optional language filtering.
+// Pass nil for configuredLangs to include all languages (used by data sources).
+func mapServiceToTFWithFilter(service client.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.Object {
+	// Map service name (map[string]string) with optional language filtering
+	filteredName := filterLocalizedMap(service.Name, configuredLangs)
+	nameMap := mapStringMapToTF(filteredName)
 
 	attrs := ServiceAttrTypes()
 
@@ -426,6 +472,31 @@ func mapStringMapToTF(m map[string]string) types.Map {
 
 	result, _ := types.MapValue(types.StringType, values)
 	return result
+}
+
+// filterLocalizedMap filters a localized map to only include configured languages.
+// This prevents drift when the API auto-populates all languages but TF only configured some.
+// If configuredLangs is nil or empty, returns the original map unfiltered.
+func filterLocalizedMap(m map[string]string, configuredLangs []string) map[string]string {
+	if len(configuredLangs) == 0 || len(m) == 0 {
+		return m
+	}
+
+	// Build lookup set for configured languages
+	langSet := make(map[string]bool, len(configuredLangs))
+	for _, lang := range configuredLangs {
+		langSet[lang] = true
+	}
+
+	// Filter to only configured languages
+	filtered := make(map[string]string)
+	for k, v := range m {
+		if langSet[k] {
+			filtered[k] = v
+		}
+	}
+
+	return filtered
 }
 
 // mapTFToStringMap converts Terraform Map to Go map[string]string.

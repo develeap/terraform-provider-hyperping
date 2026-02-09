@@ -482,10 +482,12 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 	}
 
 	// Build API-compliant status page response with nested settings
+	// Real API returns hostedsubdomain WITH the .hyperping.app suffix
+	// The provider's normalization logic strips this suffix for state consistency
 	page := map[string]interface{}{
 		"uuid":               uuid,
 		"name":               req["name"],
-		"hostedsubdomain":    subdomain,
+		"hostedsubdomain":    fmt.Sprintf("%s.hyperping.app", subdomain), // Real API returns full subdomain
 		"url":                fmt.Sprintf("https://%s.hyperping.app", subdomain),
 		"password_protected": false,
 		"settings":           settings,
@@ -578,7 +580,8 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 		page["name"] = name
 	}
 	if subdomain, ok := req["subdomain"].(string); ok {
-		page["hostedsubdomain"] = subdomain
+		// Real API returns hostedsubdomain WITH the .hyperping.app suffix
+		page["hostedsubdomain"] = fmt.Sprintf("%s.hyperping.app", subdomain)
 		page["url"] = fmt.Sprintf("https://%s.hyperping.app", subdomain)
 	}
 	if hostname, ok := req["hostname"]; ok {

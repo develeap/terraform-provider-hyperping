@@ -447,8 +447,15 @@ func (r *StatusPageResource) ImportState(ctx context.Context, req resource.Impor
 }
 
 // mapStatusPageToModel maps API response to Terraform model.
+// It extracts configured languages from the model's settings to filter API response localized fields,
+// preventing drift from API auto-population of all supported languages.
 func (r *StatusPageResource) mapStatusPageToModel(sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
-	commonFields := MapStatusPageCommonFields(sp, diags)
+	// Extract configured languages from the model's settings
+	// This is used to filter localized fields in the API response
+	configuredLangs := r.extractConfiguredLanguages(model.Settings, diags)
+
+	// Map with language filtering to prevent drift
+	commonFields := MapStatusPageCommonFieldsWithFilter(sp, configuredLangs, diags)
 	model.ID = commonFields.ID
 	model.Name = commonFields.Name
 	model.Hostname = commonFields.Hostname
@@ -456,6 +463,21 @@ func (r *StatusPageResource) mapStatusPageToModel(sp *client.StatusPage, model *
 	model.URL = commonFields.URL
 	model.Settings = commonFields.Settings
 	model.Sections = commonFields.Sections
+}
+
+// extractConfiguredLanguages extracts the list of configured languages from the settings object.
+func (r *StatusPageResource) extractConfiguredLanguages(settings types.Object, diags *diag.Diagnostics) []string {
+	if settings.IsNull() || settings.IsUnknown() {
+		return nil
+	}
+
+	attrs := settings.Attributes()
+	langsAttr, ok := attrs["languages"].(types.List)
+	if !ok || langsAttr.IsNull() || langsAttr.IsUnknown() {
+		return nil
+	}
+
+	return mapListToStringSlice(langsAttr, diags)
 }
 
 // buildCreateRequest builds a CreateStatusPageRequest from the Terraform plan.
