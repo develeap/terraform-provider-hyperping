@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **hyperping_incident**: Preserve plan value for `text` field (write-only in API) to prevent state drift (ISS-005)
+- **hyperping_maintenance**: Preserve plan value for `text` field (write-only in API) to prevent state drift (ISS-006)
+
+### Known Issues
+
+- **hyperping_statuspage**: `settings.name` field is overridden by API with resource-level `name` value (ISS-007.3)
+- **hyperping_statuspage**: `show_response_times` field may flip from true to false after apply (ISS-007.4)
+
 ## [1.0.4] - 2026-02-09
+
+### Fixed (Partial - See v1.0.5 for complete fixes)
+
+- **hyperping_incident**: Add read-after-create pattern to prevent "inconsistent result after apply" errors (ISS-005 - partial)
+- **hyperping_maintenance**: Add read-after-create pattern to prevent "inconsistent result after apply" errors (ISS-006 - partial)
+- **hyperping_statuspage**: Normalize subdomain by stripping `.hyperping.app` suffix to prevent state drift (ISS-007.1)
+- **hyperping_statuspage**: Filter localized fields to only include configured languages, preventing drift from API auto-population (ISS-007.2)
 
 ### Fixed
 

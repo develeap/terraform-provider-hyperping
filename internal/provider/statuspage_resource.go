@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -454,6 +455,19 @@ func (r *StatusPageResource) mapStatusPageToModel(sp *client.StatusPage, model *
 	// This is used to filter localized fields in the API response
 	configuredLangs := r.extractConfiguredLanguages(model.Settings, diags)
 
+	// Preserve plan values BEFORE they get overwritten by API response
+	// 1. settings.name - API returns resource.name in settings.name field
+	var planSettingsName types.String
+	if !model.Settings.IsNull() && !model.Settings.IsUnknown() {
+		planAttrs := model.Settings.Attributes()
+		if name, ok := planAttrs["name"].(types.String); ok && !name.IsNull() {
+			planSettingsName = name
+		}
+	}
+
+	// 2. sections - needed to preserve show_response_times boolean values
+	planSections := model.Sections
+
 	// Map with language filtering to prevent drift
 	commonFields := MapStatusPageCommonFieldsWithFilter(sp, configuredLangs, diags)
 	model.ID = commonFields.ID
@@ -462,7 +476,20 @@ func (r *StatusPageResource) mapStatusPageToModel(sp *client.StatusPage, model *
 	model.HostedSubdomain = commonFields.HostedSubdomain
 	model.URL = commonFields.URL
 	model.Settings = commonFields.Settings
+
+	// Restore settings.name from plan to prevent API override drift
+	if !planSettingsName.IsNull() && !planSettingsName.IsUnknown() {
+		model.Settings = r.replaceSettingsName(model.Settings, planSettingsName, diags)
+	}
+
+	// Map sections from API
 	model.Sections = commonFields.Sections
+
+	// Preserve show_response_times and show_uptime boolean values from plan
+	// API may return false even when true was set (API bug or default value issue)
+	if !planSections.IsNull() && !planSections.IsUnknown() {
+		model.Sections = r.preserveServiceBooleans(planSections, model.Sections, diags)
+	}
 }
 
 // extractConfiguredLanguages extracts the list of configured languages from the settings object.
@@ -478,6 +505,160 @@ func (r *StatusPageResource) extractConfiguredLanguages(settings types.Object, d
 	}
 
 	return mapListToStringSlice(langsAttr, diags)
+}
+
+// replaceSettingsName replaces only the name field in a settings object while preserving all other fields.
+// This is needed because the Hyperping API returns resource.name in settings.name, overriding the user's value.
+func (r *StatusPageResource) replaceSettingsName(settings types.Object, name types.String, diags *diag.Diagnostics) types.Object {
+	if settings.IsNull() || settings.IsUnknown() {
+		return settings
+	}
+
+	// Get all current attributes
+	attrs := settings.Attributes()
+
+	// Create new map with all attributes, replacing only name
+	newAttrs := make(map[string]attr.Value, len(attrs))
+	for k, v := range attrs {
+		if k == "name" {
+			newAttrs[k] = name // Use plan value instead of API value
+		} else {
+			newAttrs[k] = v // Keep API value
+		}
+	}
+
+	// Build new settings object with replaced name
+	newSettings, newDiags := types.ObjectValue(StatusPageSettingsAttrTypes(), newAttrs)
+	diags.Append(newDiags...)
+
+	return newSettings
+}
+
+// preserveServiceBooleans preserves boolean field values from plan when API returns false.
+// This handles API bugs where show_response_times and show_uptime may not persist correctly.
+func (r *StatusPageResource) preserveServiceBooleans(planSections, apiSections types.List, diags *diag.Diagnostics) types.List {
+	if planSections.IsNull() || planSections.IsUnknown() || apiSections.IsNull() || apiSections.IsUnknown() {
+		return apiSections
+	}
+
+	planElements := planSections.Elements()
+	apiElements := apiSections.Elements()
+
+	// If lengths don't match, something is very wrong - just return API sections
+	if len(planElements) != len(apiElements) {
+		return apiSections
+	}
+
+	// Build new sections list with preserved boolean values
+	newSections := make([]attr.Value, len(apiElements))
+
+	for i := range apiElements {
+		planSection, planOk := planElements[i].(types.Object)
+		apiSection, apiOk := apiElements[i].(types.Object)
+
+		if !planOk || !apiOk {
+			newSections[i] = apiElements[i]
+			continue
+		}
+
+		// Preserve booleans in services list
+		newSection := r.preserveSectionServiceBooleans(planSection, apiSection, diags)
+		newSections[i] = newSection
+	}
+
+	newList, newDiags := types.ListValue(apiSections.ElementType(context.Background()), newSections)
+	diags.Append(newDiags...)
+
+	return newList
+}
+
+// preserveSectionServiceBooleans preserves boolean values in a single section's services.
+func (r *StatusPageResource) preserveSectionServiceBooleans(planSection, apiSection types.Object, diags *diag.Diagnostics) types.Object {
+	planAttrs := planSection.Attributes()
+	apiAttrs := apiSection.Attributes()
+
+	planServices, planOk := planAttrs["services"].(types.List)
+	apiServices, apiOk := apiAttrs["services"].(types.List)
+
+	if !planOk || !apiOk || planServices.IsNull() || apiServices.IsNull() {
+		return apiSection
+	}
+
+	// Preserve booleans in each service
+	newServices := r.preserveServicesListBooleans(planServices, apiServices, diags)
+
+	// Build new section with preserved services
+	newAttrs := make(map[string]attr.Value, len(apiAttrs))
+	for k, v := range apiAttrs {
+		if k == "services" {
+			newAttrs[k] = newServices
+		} else {
+			newAttrs[k] = v
+		}
+	}
+
+	newSection, newDiags := types.ObjectValue(apiSection.Type(context.Background()).(types.ObjectType).AttrTypes, newAttrs)
+	diags.Append(newDiags...)
+
+	return newSection
+}
+
+// preserveServicesListBooleans preserves boolean values in a services list.
+func (r *StatusPageResource) preserveServicesListBooleans(planServices, apiServices types.List, diags *diag.Diagnostics) types.List {
+	planElements := planServices.Elements()
+	apiElements := apiServices.Elements()
+
+	if len(planElements) != len(apiElements) {
+		return apiServices
+	}
+
+	newServices := make([]attr.Value, len(apiElements))
+
+	for i := range apiElements {
+		planService, planOk := planElements[i].(types.Object)
+		apiService, apiOk := apiElements[i].(types.Object)
+
+		if !planOk || !apiOk {
+			newServices[i] = apiElements[i]
+			continue
+		}
+
+		planAttrs := planService.Attributes()
+		apiAttrs := apiService.Attributes()
+
+		// Check show_response_times: if plan=true and api=false, keep plan value
+		needsPreservation := false
+		newAttrs := make(map[string]attr.Value, len(apiAttrs))
+		for k, v := range apiAttrs {
+			if k == "show_response_times" || k == "show_uptime" {
+				planVal, planHas := planAttrs[k].(types.Bool)
+				apiVal, apiHas := v.(types.Bool)
+
+				if planHas && apiHas && !planVal.IsNull() && !apiVal.IsNull() {
+					// If plan had true but API returned false, preserve plan value
+					if planVal.ValueBool() && !apiVal.ValueBool() {
+						newAttrs[k] = planVal
+						needsPreservation = true
+						continue
+					}
+				}
+			}
+			newAttrs[k] = v
+		}
+
+		if needsPreservation {
+			newService, newDiags := types.ObjectValue(apiService.Type(context.Background()).(types.ObjectType).AttrTypes, newAttrs)
+			diags.Append(newDiags...)
+			newServices[i] = newService
+		} else {
+			newServices[i] = apiElements[i]
+		}
+	}
+
+	newList, newDiags := types.ListValue(apiServices.ElementType(context.Background()), newServices)
+	diags.Append(newDiags...)
+
+	return newList
 }
 
 // buildCreateRequest builds a CreateStatusPageRequest from the Terraform plan.
