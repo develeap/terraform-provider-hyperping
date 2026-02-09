@@ -101,6 +101,7 @@ Or configure in the provider block (not recommended for production).
 
 - **[Terraform Registry](https://registry.terraform.io/providers/develeap/hyperping/latest/docs)** - Complete resource/data source reference
 - **[Examples](./examples/)** - Real-world usage examples
+- **[Changelog](./CHANGELOG.md)** - Version history and release notes
 - **[Hyperping API Docs](https://hyperping.notion.site/Hyperping-API-documentation-a0dc48fb818e4542a8f7fb4163ede2c3)** - Official API documentation
 
 ## Requirements

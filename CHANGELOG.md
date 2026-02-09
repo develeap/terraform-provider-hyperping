@@ -7,8 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-02-09
+
+### Fixed
+
+- **hyperping_incident**: Add read-after-create pattern to prevent "inconsistent result after apply" errors (ISS-005)
+- **hyperping_maintenance**: Add read-after-create pattern to prevent "inconsistent result after apply" errors (ISS-006)
+- **hyperping_statuspage**: Normalize subdomain by stripping `.hyperping.app` suffix to prevent state drift (ISS-007)
+- **hyperping_statuspage**: Filter localized fields to only include configured languages, preventing drift from API auto-population (ISS-007)
+
+## [1.0.3] - 2026-02-08
+
 ### Added
-- Initial resources and data sources for Hyperping API management
+
+- Reusable Terraform modules for common monitoring patterns (`api-health`, `ssl-monitor`, `statuspage-complete`)
+- Import generator CLI tool for bulk importing existing Hyperping resources
+- Reusable GitHub Actions workflow for Terraform operations
+- API-to-provider coverage analyzer tool
+- Automated API sync detection and contract testing
+- Comprehensive documentation: import guides, troubleshooting, migration guide, rate limits guide
+
+### Changed
+
+- Enhanced analyzer to understand computed and undocumented fields
+- Centralized API path constants in all tests
+- Updated Go toolchain to 1.24.13 to fix crypto/tls vulnerability
+
+### Fixed
+
+- **hyperping_healthcheck**: Rename `tz` field to `timezone` to match API response
+- **hyperping_outage**: Add `escalation_policy_uuid` field
+- Align module schemas with actual provider implementation
+- GPG signing configuration for releases
+
+## [1.0.2] - 2026-01-25
+
+### Fixed
+
+- Release pipeline configuration
+
+## [1.0.1] - 2026-01-24
+
+### Added
+
+- Terraform Registry documentation
+- Community health files (contributing guidelines, issue templates)
+
+### Fixed
+
+- Broken links in README
 
 ## [1.0.0] - 2026-02-02
 
@@ -90,5 +137,9 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.3...v1.0.4
+[1.0.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/develeap/terraform-provider-hyperping/releases/tag/v1.0.0
