@@ -5,21 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+**Note:** Versions 1.0.1 and 1.0.2 exist as git tags but were never published to Terraform Registry.
+Published releases start from v1.0.3.
+
 ## [Unreleased]
+
+## [1.0.6] - 2026-02-09
+
+### Fixed
+
+- **hyperping_incident**: Add read-after-update pattern to fix UPDATE operations (400 errors and state inconsistencies)
+- **hyperping_maintenance**: Add read-after-update pattern to ensure state consistency after updates
+- **All resources**: Incident and Maintenance now support full CRUD lifecycle (Create, Read, Update, Delete)
+
+## [1.0.5] - 2026-02-09
 
 ### Fixed
 
 - **hyperping_incident**: Preserve plan value for `text` field (write-only in API) to prevent state drift (ISS-005)
 - **hyperping_maintenance**: Preserve plan value for `text` field (write-only in API) to prevent state drift (ISS-006)
-
-### Known Issues
-
-- **hyperping_statuspage**: `settings.name` field is overridden by API with resource-level `name` value (ISS-007.3)
-- **hyperping_statuspage**: `show_response_times` field may flip from true to false after apply (ISS-007.4)
+- **hyperping_statuspage**: Preserve `settings.name` from plan to prevent API override (ISS-007.3)
+- **hyperping_statuspage**: Preserve `show_response_times` and `show_uptime` boolean values from plan when API returns false (ISS-007.4)
 
 ## [1.0.4] - 2026-02-09
 
-### Fixed (Partial - See v1.0.5 for complete fixes)
+### Fixed
 
 - **hyperping_incident**: Add read-after-create pattern to prevent "inconsistent result after apply" errors (ISS-005 - partial)
 - **hyperping_maintenance**: Add read-after-create pattern to prevent "inconsistent result after apply" errors (ISS-006 - partial)
@@ -154,9 +164,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.5...v1.0.6
+[1.0.5]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.3...v1.0.4
-[1.0.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.2...v1.0.3
-[1.0.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.1...v1.0.2
-[1.0.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/develeap/terraform-provider-hyperping/releases/tag/v1.0.0
+[1.0.3]: https://github.com/develeap/terraform-provider-hyperping/releases/tag/v1.0.3
