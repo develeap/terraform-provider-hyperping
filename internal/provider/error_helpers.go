@@ -96,6 +96,18 @@ func newReadAfterCreateError(resourceType, resourceID string, err error) diag.Di
 	)
 }
 
+// newReadAfterUpdateError creates a standardized error for read-after-update failures
+func newReadAfterUpdateError(resourceType, resourceID string, err error) diag.Diagnostic {
+	return diag.NewErrorDiagnostic(
+		fmt.Sprintf("%s Updated But Read Failed", resourceType),
+		fmt.Sprintf("%s was updated successfully (ID: %s) but reading the updated state failed: %s\n\n"+
+			"The resource was modified in Hyperping but Terraform state may be inconsistent. "+
+			"Run 'terraform refresh' to sync the state:\n"+
+			"  terraform refresh",
+			resourceType, resourceID, err),
+	)
+}
+
 // Configuration and Validation Errors
 
 // newConfigError creates a standardized error for configuration issues

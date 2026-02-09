@@ -256,17 +256,21 @@ func (r *IncidentResource) Update(ctx context.Context, req resource.UpdateReques
 		updateReq.StatusPages = &statusPages
 	}
 
-	// Call API
-	incident, err := r.client.UpdateIncident(ctx, state.ID.ValueString(), updateReq)
+	// Call API to update incident
+	_, err := r.client.UpdateIncident(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error updating incident",
-			fmt.Sprintf("Could not update incident %s: %s", state.ID.ValueString(), err),
-		)
+		resp.Diagnostics.Append(newUpdateError("Incident", state.ID.ValueString(), err))
 		return
 	}
 
-	// Map response to model
+	// Read full incident details (update response doesn't contain complete data)
+	incident, err := r.client.GetIncident(ctx, state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.Append(newReadAfterUpdateError("Incident", state.ID.ValueString(), err))
+		return
+	}
+
+	// Map complete API response to Terraform state
 	r.mapIncidentToModel(incident, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return

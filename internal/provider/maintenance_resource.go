@@ -313,17 +313,21 @@ func (r *MaintenanceResource) Update(ctx context.Context, req resource.UpdateReq
 		updateReq.Monitors = &monitors
 	}
 
-	// Call API
-	maintenance, err := r.client.UpdateMaintenance(ctx, state.ID.ValueString(), updateReq)
+	// Call API to update maintenance window
+	_, err := r.client.UpdateMaintenance(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error updating maintenance window",
-			fmt.Sprintf("Could not update maintenance window %s: %s", state.ID.ValueString(), err),
-		)
+		resp.Diagnostics.Append(newUpdateError("Maintenance Window", state.ID.ValueString(), err))
 		return
 	}
 
-	// Map response to model
+	// Read full maintenance details (update response doesn't contain complete data)
+	maintenance, err := r.client.GetMaintenance(ctx, state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.Append(newReadAfterUpdateError("Maintenance Window", state.ID.ValueString(), err))
+		return
+	}
+
+	// Map complete API response to Terraform state
 	r.mapMaintenanceToModel(maintenance, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return

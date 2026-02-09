@@ -149,7 +149,7 @@ func TestAccIncidentResource_updateError(t *testing.T) {
 			{
 				PreConfig:   func() { server.setUpdateError(true) },
 				Config:      testAccIncidentResourceConfig_basic(server.URL, "updated-title"),
-				ExpectError: regexp.MustCompile(`Could not update incident`),
+				ExpectError: regexp.MustCompile(`Failed to Update Incident`),
 			},
 		},
 	})
