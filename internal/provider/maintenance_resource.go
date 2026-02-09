@@ -220,17 +220,21 @@ func (r *MaintenanceResource) Create(ctx context.Context, req resource.CreateReq
 		createReq.NotificationMinutes = &notifyBefore
 	}
 
-	// Call API
-	maintenance, err := r.client.CreateMaintenance(ctx, createReq)
+	// Call API to create maintenance window
+	createResp, err := r.client.CreateMaintenance(ctx, createReq)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error creating maintenance window",
-			fmt.Sprintf("Could not create maintenance window: %s", err),
-		)
+		resp.Diagnostics.Append(newCreateError("Maintenance Window", err))
 		return
 	}
 
-	// Map response to model
+	// Read full maintenance details (create response only contains UUID)
+	maintenance, err := r.client.GetMaintenance(ctx, createResp.UUID)
+	if err != nil {
+		resp.Diagnostics.Append(newReadAfterCreateError("Maintenance Window", createResp.UUID, err))
+		return
+	}
+
+	// Map complete API response to Terraform state
 	r.mapMaintenanceToModel(maintenance, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return

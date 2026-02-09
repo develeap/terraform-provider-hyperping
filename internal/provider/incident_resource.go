@@ -153,17 +153,21 @@ func (r *IncidentResource) Create(ctx context.Context, req resource.CreateReques
 		createReq.AffectedComponents = components
 	}
 
-	// Call API
-	incident, err := r.client.CreateIncident(ctx, createReq)
+	// Call API to create incident
+	createResp, err := r.client.CreateIncident(ctx, createReq)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error creating incident",
-			fmt.Sprintf("Could not create incident: %s", err),
-		)
+		resp.Diagnostics.Append(newCreateError("Incident", err))
 		return
 	}
 
-	// Map response to model
+	// Read full incident details (create response only contains UUID)
+	incident, err := r.client.GetIncident(ctx, createResp.UUID)
+	if err != nil {
+		resp.Diagnostics.Append(newReadAfterCreateError("Incident", createResp.UUID, err))
+		return
+	}
+
+	// Map complete API response to Terraform state
 	r.mapIncidentToModel(incident, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return

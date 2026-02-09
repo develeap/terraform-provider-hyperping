@@ -43,8 +43,10 @@ func TestAccMaintenanceResource_basic(t *testing.T) {
 		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+			// Return ONLY UUID (simulating real Hyperping API behavior)
+			// The provider must do a GET to fetch the full maintenance window
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(maintenance)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
 		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_test_123":
 			json.NewEncoder(w).Encode(maintenance)
 		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_test_123":
@@ -110,8 +112,10 @@ func TestAccMaintenanceResource_full(t *testing.T) {
 		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+			// Return ONLY UUID (simulating real Hyperping API behavior)
+			// The provider must do a GET to fetch the full maintenance window
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(maintenance)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
 		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_full_123":
 			json.NewEncoder(w).Encode(maintenance)
 		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_full_123":
@@ -181,8 +185,10 @@ func TestAccMaintenanceResource_timeUpdate(t *testing.T) {
 		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+			// Return ONLY UUID (simulating real Hyperping API behavior)
+			// The provider must do a GET to fetch the full maintenance window
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(maintenance)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
 		case r.Method == http.MethodPut && r.URL.Path == client.MaintenanceBasePath+"/mw_time_123":
 			var req map[string]interface{}
 			json.NewDecoder(r.Body).Decode(&req)
@@ -270,8 +276,10 @@ func TestAccMaintenanceResource_disappears(t *testing.T) {
 		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+			// Return ONLY UUID (simulating real Hyperping API behavior)
+			// The provider must do a GET to fetch the full maintenance window
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(maintenance)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
 		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_disappear_123":
 			if deleted {
 				w.WriteHeader(http.StatusNotFound)
@@ -365,7 +373,57 @@ resource "hyperping_maintenance" "test" {
   monitors   = ["mon_123"]
 }
 `, server.URL, start.Format(time.RFC3339), end.Format(time.RFC3339)),
-				ExpectError: regexp.MustCompile("Error creating maintenance window"),
+				ExpectError: regexp.MustCompile("Failed to Create Maintenance Window"),
+			},
+		},
+	})
+}
+
+func TestAccMaintenanceResource_readAfterCreateError(t *testing.T) {
+	now := time.Now().UTC()
+	start := now.Add(24 * time.Hour).Truncate(time.Second)
+	end := start.Add(2 * time.Hour)
+
+	createCalled := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+			// POST succeeds, return only UUID
+			createCalled = true
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": "mw_read_error_123"})
+		case r.Method == http.MethodGet && createCalled:
+			// GET after create fails
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	tfresource.Test(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
+		},
+		Steps: []tfresource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "hp_test_key"
+  base_url = %q
+}
+
+resource "hyperping_maintenance" "test" {
+  name       = "Read After Create Error Test"
+  start_date = %q
+  end_date   = %q
+  monitors   = ["mon_123"]
+}
+`, server.URL, start.Format(time.RFC3339), end.Format(time.RFC3339)),
+				ExpectError: regexp.MustCompile("Maintenance Window Created But Read Failed"),
 			},
 		},
 	})
@@ -656,8 +714,10 @@ func TestAccMaintenanceResource_withMonitors(t *testing.T) {
 		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+			// Return ONLY UUID (simulating real Hyperping API behavior)
+			// The provider must do a GET to fetch the full maintenance window
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(maintenance)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
 		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_monitors_123":
 			json.NewEncoder(w).Encode(maintenance)
 		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_monitors_123":
@@ -719,8 +779,10 @@ func TestAccMaintenanceResource_import(t *testing.T) {
 		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+			// Return ONLY UUID (simulating real Hyperping API behavior)
+			// The provider must do a GET to fetch the full maintenance window
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(maintenance)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
 		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_import_123":
 			json.NewEncoder(w).Encode(maintenance)
 		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_import_123":
@@ -785,8 +847,10 @@ func TestAccMaintenanceResource_deleteNotFound(t *testing.T) {
 		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+			// Return ONLY UUID (simulating real Hyperping API behavior)
+			// The provider must do a GET to fetch the full maintenance window
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(maintenance)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
 		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_delete_nf_123":
 			if deleted {
 				w.WriteHeader(http.StatusNotFound)

@@ -130,7 +130,7 @@ func TestAccIncidentResource_createError(t *testing.T) {
 		Steps: []tfresource.TestStep{
 			{
 				Config:      testAccIncidentResourceConfig_basic(server.URL, "error-test"),
-				ExpectError: regexp.MustCompile(`Could not create incident`),
+				ExpectError: regexp.MustCompile(`Failed to Create Incident`),
 			},
 		},
 	})
@@ -171,6 +171,24 @@ func TestAccIncidentResource_readError(t *testing.T) {
 				ExpectError:        regexp.MustCompile(`Could not read incident`),
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
+func TestAccIncidentResource_readAfterCreateError(t *testing.T) {
+	server := newMockIncidentServerWithErrors(t)
+	defer server.Close()
+
+	// Enable read-after-create error: POST succeeds but GET fails
+	server.setReadAfterCreateError(true)
+
+	tfresource.Test(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config:      testAccIncidentResourceConfig_basic(server.URL, "read-after-create-error-test"),
+				ExpectError: regexp.MustCompile(`Incident Created But Read Failed`),
 			},
 		},
 	})
@@ -527,8 +545,10 @@ func (m *mockIncidentServer) createIncident(w http.ResponseWriter, r *http.Reque
 
 	m.incidents[id] = incident
 
+	// Return ONLY UUID (simulating real Hyperping API behavior)
+	// The provider must do a GET to fetch the full incident
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(incident)
+	json.NewEncoder(w).Encode(map[string]interface{}{"uuid": id})
 }
 
 func (m *mockIncidentServer) getIncident(w http.ResponseWriter, r *http.Request) {
@@ -649,10 +669,12 @@ func (m *mockIncidentServer) addIncidentUpdate(w http.ResponseWriter, r *http.Re
 
 type mockIncidentServerWithErrors struct {
 	*mockIncidentServer
-	createError bool
-	readError   bool
-	updateError bool
-	deleteError bool
+	createError          bool
+	readError            bool
+	updateError          bool
+	deleteError          bool
+	readAfterCreateError bool
+	createCalled         bool
 }
 
 func newMockIncidentServerWithErrors(t *testing.T) *mockIncidentServerWithErrors {
@@ -671,9 +693,10 @@ func newMockIncidentServerWithErrors(t *testing.T) *mockIncidentServerWithErrors
 	return m
 }
 
-func (m *mockIncidentServerWithErrors) setCreateError(v bool) { m.createError = v }
-func (m *mockIncidentServerWithErrors) setReadError(v bool)   { m.readError = v }
-func (m *mockIncidentServerWithErrors) setUpdateError(v bool) { m.updateError = v }
+func (m *mockIncidentServerWithErrors) setCreateError(v bool)          { m.createError = v }
+func (m *mockIncidentServerWithErrors) setReadError(v bool)            { m.readError = v }
+func (m *mockIncidentServerWithErrors) setUpdateError(v bool)          { m.updateError = v }
+func (m *mockIncidentServerWithErrors) setReadAfterCreateError(v bool) { m.readAfterCreateError = v }
 
 func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
@@ -685,6 +708,7 @@ func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWr
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 			return
 		}
+		m.createCalled = true
 		m.createIncident(w, r)
 
 	case r.Method == "POST" && strings.Contains(r.URL.Path, client.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates"):
@@ -696,7 +720,7 @@ func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWr
 		m.addIncidentUpdate(w, r)
 
 	case r.Method == "GET" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
-		if m.readError {
+		if m.readError || (m.readAfterCreateError && m.createCalled) {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 			return
