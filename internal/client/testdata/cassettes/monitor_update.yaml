@@ -6,13 +6,13 @@ interactions:
         proto: HTTP/1.1
         proto_major: 1
         proto_minor: 1
-        content_length: 128
+        content_length: 213
         transfer_encoding: []
         trailer: {}
         host: api.hyperping.io
         remote_addr: ""
         request_uri: ""
-        body: '{"name":"vcr-test-healthcheck","period_value":60,"period_type":"seconds","grace_period_value":300,"grace_period_type":"seconds"}'
+        body: '{"name":"vcr-test-monitor-update","url":"https://httpstat.us/200","protocol":"http","http_method":"GET","check_frequency":60,"regions":["london"],"follow_redirects":true,"expected_status_code":"200","paused":true}'
         form: {}
         headers:
             Accept:
@@ -23,7 +23,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v2/healthchecks
+        url: https://api.hyperping.io/v1/monitors
         method: POST
       response:
         proto: HTTP/2.0
@@ -31,9 +31,9 @@ interactions:
         proto_minor: 0
         transfer_encoding: []
         trailer: {}
-        content_length: 332
+        content_length: 463
         uncompressed: false
-        body: '{"message":"Healthcheck created","healthcheck":{"uuid":"tok_nHGU7CZnlcBvsMZxROlCtoch","name":"vcr-test-healthcheck","pingUrl":"https://hc.hyperping.io/tok_nHGU7CZnlcBvsMZxROlCtoch","period":60,"periodValue":60,"periodType":"seconds","gracePeriod":300,"gracePeriodValue":300,"gracePeriodType":"seconds","cron":null,"timezone":"UTC"}}'
+        body: '{"id":116373,"name":"vcr-test-monitor-update","url":"https://httpstat.us/200","uuid":"mon_C5w2HuCsdCq2vv","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":true,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -50,42 +50,42 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cbb098e6aedc231-TLV
+                - 9cbb095e4a88c231-TLV
             Content-Length:
-                - "332"
+                - "463"
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 10:49:00 GMT
+                - Tue, 10 Feb 2026 10:48:53 GMT
             Etag:
-                - W/"14c-qEfw3ikeBtw4ftVbG90HbTuDWS0"
+                - W/"1cf-uZFcwqz/+ZV3fTqpwr/xvdeWNDE"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=757; t=3575'
+                - '"800-in-1hr"; r=770; t=3583'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=CWOSd%2B7my1bhK6u6uNwuaP85PvxxZnnJOqWJraGjocipVMKThaPDu14nkzHNM5mlPHyvDOhAnx1Wvcqc8j8jgGidxvSLfyNYvJVavHpobAM%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=y1Nzysx89uT6RRbjO3UH4fgB4ssiggV%2Fw%2BDScZ3RauvXDm5IarmmTd%2BKND8GHt5XG8Rze5byVZsmAgVibgABV937MsE%2FicO8U6etv0z%2FXAI%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 201 Created
         code: 201
-        duration: 158.72912ms
+        duration: 983.534099ms
     - id: 1
       request:
         proto: HTTP/1.1
         proto_major: 1
         proto_minor: 1
-        content_length: 0
+        content_length: 90
         transfer_encoding: []
         trailer: {}
         host: api.hyperping.io
         remote_addr: ""
         request_uri: ""
-        body: ""
+        body: '{"name":"vcr-test-monitor-updated","check_frequency":120,"regions":["london","frankfurt"]}'
         form: {}
         headers:
             Accept:
@@ -96,8 +96,8 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v2/healthchecks/tok_nHGU7CZnlcBvsMZxROlCtoch
-        method: GET
+        url: https://api.hyperping.io/v1/monitors/mon_C5w2HuCsdCq2vv
+        method: PUT
       response:
         proto: HTTP/2.0
         proto_major: 2
@@ -106,7 +106,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '{"healthcheck":{"uuid":"tok_nHGU7CZnlcBvsMZxROlCtoch","name":"vcr-test-healthcheck","cron":null,"tz":"UTC","slug":null,"period":60,"periodValue":60,"periodType":"seconds","gracePeriod":300,"gracePeriodValue":300,"gracePeriodType":"seconds","createdAt":"2026-02-10T10:48:59.000Z","lastPing":null,"lastDowntime":null,"dueDate":null,"isDown":false,"pingUrl":"https://hc.hyperping.io/tok_nHGU7CZnlcBvsMZxROlCtoch","logs":[],"escalationPolicy":null}}'
+        body: '{"id":116373,"name":"vcr-test-monitor-updated","url":"https://httpstat.us/200","uuid":"mon_C5w2HuCsdCq2vv","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":true,"port":null,"http_method":"GET","regions":["london","frankfurt"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -123,28 +123,28 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cbb098f5c37c231-TLV
+                - 9cbb096459fcc231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 10:49:00 GMT
+                - Tue, 10 Feb 2026 10:48:54 GMT
             Etag:
-                - W/"1bd-/noVHJshSzFixCTN2x1x2FJvUFo"
+                - W/"1dd-HfLNnhB7tsP2GWqBJJoV/Ztd2Q4"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=756; t=3575'
+                - '"800-in-1hr"; r=769; t=3582'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=VYI%2BPEuypUJrcZoq9EHGGgQITFoi5KfxFk2EnGdCY4M%2BshQml4JwJ3gJuldz3YRh4lW%2BfC0O1%2FAyQC80VRhsJb9zF%2BE7Vrt%2B6rkB6sniOV8%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=n2mwhV9y66xuoyys7Loj3gFDsPpdrjF%2BBL5vB%2BFGxH5CM5W0cCGOBFK%2BU9eBfs3PvMXrEFlgB%2FKmLQxlYmPdDxNZZgZZYfwvdjvN82Nvs48%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 118.253261ms
+        duration: 1.020884985s
     - id: 2
       request:
         proto: HTTP/1.1
@@ -167,7 +167,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v2/healthchecks/tok_nHGU7CZnlcBvsMZxROlCtoch
+        url: https://api.hyperping.io/v1/monitors/mon_C5w2HuCsdCq2vv
         method: DELETE
       response:
         proto: HTTP/2.0
@@ -175,9 +175,9 @@ interactions:
         proto_minor: 0
         transfer_encoding: []
         trailer: {}
-        content_length: -1
-        uncompressed: true
-        body: '{"message":"Healthcheck deleted"}'
+        content_length: 0
+        uncompressed: false
+        body: ""
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -194,25 +194,21 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cbb09901d2fc231-TLV
-            Content-Type:
-                - application/json; charset=utf-8
+                - 9cbb096aaa3cc231-TLV
             Date:
-                - Tue, 10 Feb 2026 10:49:00 GMT
+                - Tue, 10 Feb 2026 10:48:54 GMT
             Etag:
-                - W/"21-Df3nAZRmtRbyOYsibEtdhZF++eU"
+                - W/"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=755; t=3575'
+                - '"800-in-1hr"; r=768; t=3581'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=IfvB0W9DFdzfmOxLanfH%2FS0D9IRWsSmqn4QDwCKieDT6wu8dipQK%2B4okT1%2FvJZPIEfG5sA0IKbjiWpP1T44h%2FJ2HFGFg0n2jwJYQ%2FP16XKI%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=v6z4JLFIakMcYnQ8WoREpNT%2Bx8GmT84Ie%2B%2BdyEfWvP5dzyuUZiDL62Fqwh6Fp3L5dk3ewr9LOoEALhp5uAj4bRnDSDpWZ8gKd1j0DRrNIUs%3D"}]}'
             Server:
                 - cloudflare
-            Vary:
-                - Accept-Encoding
-        status: 200 OK
-        code: 200
-        duration: 119.9543ms
+        status: 204 No Content
+        code: 204
+        duration: 126.367625ms

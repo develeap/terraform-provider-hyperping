@@ -50,40 +50,40 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cbb094b4f42c231-TLV
+                - 9cbb09c87c18c231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 10:48:49 GMT
+                - Tue, 10 Feb 2026 10:49:09 GMT
             Etag:
                 - W/"536-q1wq6JFjxb89L6LEsN1q2+nqIb0"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=781; t=3586'
+                - '"800-in-1hr"; r=738; t=3566'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=E0xYe1FAsH1R4%2FnyrxI%2FM1F5eq%2Bjk7w8WydQ2qzpPxHQWzN2zULDdVQch9tzDtGNfbQYREs%2Bm3PJ7gkNu271YEH6dLf5Utu5dGQUBBL9LLQ%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Wtb%2FE%2FC%2FaNBilI0%2Fue7Bdfx3V5dzab8dszfWjyO2r6ZA0cjwKZEfmTANJqz294zXZwevC8CIwaBdThXL%2BGVmQbzl2iif9UoVO2h%2F4TOreb0%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 137.412433ms
+        duration: 129.601105ms
     - id: 1
       request:
         proto: HTTP/1.1
         proto_major: 1
         proto_minor: 1
-        content_length: 130
+        content_length: 54
         transfer_encoding: []
         trailer: {}
         host: api.hyperping.io
         remote_addr: ""
         request_uri: ""
-        body: '{"title":{"en":"VCR Test Incident"},"text":{"en":"This is a test incident"},"type":"incident","statuspages":["sp_6crHEAwIwKkdOl"]}'
+        body: '{"type":"email","email":"test-subscriber@example.com"}'
         form: {}
         headers:
             Accept:
@@ -94,7 +94,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v3/incidents
+        url: https://api.hyperping.io/v2/statuspages/sp_6crHEAwIwKkdOl/subscribers
         method: POST
       response:
         proto: HTTP/2.0
@@ -102,9 +102,9 @@ interactions:
         proto_minor: 0
         transfer_encoding: []
         trailer: {}
-        content_length: 72
+        content_length: 147
         uncompressed: false
-        body: '{"message":"Incident created successfully","uuid":"inci_UCJncrZhYxCv3Y"}'
+        body: '{"message":"Subscriber added","subscriber":{"id":17705,"type":"email","email":"test-subscriber@example.com","phone":null,"teams_webhook_url":null}}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -121,30 +121,30 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cbb094c1843c231-TLV
+                - 9cbb09c94d68c231-TLV
             Content-Length:
-                - "72"
+                - "147"
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 10:48:49 GMT
+                - Tue, 10 Feb 2026 10:49:09 GMT
             Etag:
-                - W/"48-rDVyxxN1E4K8HN89zitvc5osscE"
+                - W/"93-628qIasRfhbbnOZdTg769qBVWgI"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=780; t=3586'
+                - '"800-in-1hr"; r=737; t=3566'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=vYJKEAgGodg1LaN48bNjdgw%2B5OYmAu6lB6oc3bjDm7nba4nJWpbIMiRuTVYkG4A9caVQzRCWiRaQxXH6B5nbpNcvcbYDgiKAb4%2BZVoAqMSI%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=9BtmpA3PebYK19y9teIs%2BrFmiO1vbXNWvXR6Stv2ZiPoVSEMTAfk8TfAVkXL6vMwQigDKPhiuxd7gY5Z7RDdMsyXxIIIQNXmXLqDz%2BJHzqU%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 201 Created
         code: 201
-        duration: 214.855522ms
+        duration: 115.447123ms
     - id: 2
       request:
         proto: HTTP/1.1
@@ -167,7 +167,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v3/incidents/inci_UCJncrZhYxCv3Y
+        url: https://api.hyperping.io/v2/statuspages/sp_6crHEAwIwKkdOl/subscribers
         method: GET
       response:
         proto: HTTP/2.0
@@ -177,7 +177,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '{"uuid":"inci_UCJncrZhYxCv3Y","date":"2026-02-10T10:48:49.000Z","title":{"en":"VCR Test Incident"},"type":"incident","affectedComponents":[],"statuspages":["sp_6crHEAwIwKkdOl"],"updates":[]}'
+        body: '{"subscribers":[{"id":17705,"type":"email","value":"test-subscriber@example.com","email":"test-subscriber@example.com","phone":null,"slack_channel":null,"created_at":"2026-02-10T10:49:09.000Z"}],"hasNextPage":false,"total":1,"page":0,"resultsPerPage":20}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -194,28 +194,28 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cbb094d8a42c231-TLV
+                - 9cbb09ca0e80c231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 10:48:49 GMT
+                - Tue, 10 Feb 2026 10:49:09 GMT
             Etag:
-                - W/"be-or3WhA+7+dQ1pDTJngL+aVE2yQ4"
+                - W/"fe-7ZZN93YOGZsH/XjIv1z1iLEbEjc"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=779; t=3585'
+                - '"800-in-1hr"; r=736; t=3565'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Bb8YJpBByp7JVLygBs5xQ3m4WwSUA5f28s7B8vO%2FqeqXtz%2FgmH%2FJ4lM0%2BZoSm3BoOAuz%2FPYSCHpHdaqdl1kxUSvfXT4GQ9j1f4S6YvlaDw0%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=zm2WuIfgSx6magF89FTNjf9sZPXaWOBP%2B0T8aiYRLMZTBKi6qspbUCDaggBRDuOzc0wU1ztnPsCgKLujcqKnsVfFP8%2BdCyYN%2FavTi9gVMOM%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 136.086952ms
+        duration: 100.603948ms
     - id: 3
       request:
         proto: HTTP/1.1
@@ -238,7 +238,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v3/incidents/inci_UCJncrZhYxCv3Y
+        url: https://api.hyperping.io/v2/statuspages/sp_6crHEAwIwKkdOl/subscribers/17705
         method: DELETE
       response:
         proto: HTTP/2.0
@@ -248,7 +248,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '{"message":"Incident and associated data deleted successfully"}'
+        body: '{"message":"Subscriber deleted"}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -265,25 +265,25 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cbb094e4b5ec231-TLV
+                - 9cbb09caaf45c231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 10:48:49 GMT
+                - Tue, 10 Feb 2026 10:49:09 GMT
             Etag:
-                - W/"3f-3R3rXu2U2sg0B8TK557tWKU/RII"
+                - W/"20-bQnE7a6koiQmrjIBRAr6kNm8X0o"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=778; t=3585'
+                - '"800-in-1hr"; r=735; t=3565'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=%2BnZtk9j6Vo2fH0TinWENlp56Z8BrUNSYHKXBS7DicP4Lt%2FxQc%2FIGPyfTXkxshfPIRUTYYAKSmBub6A3oWu9V3O59uDxrxmTaxIH5Yoa9EaE%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=hrMSEA7R7hBvVZ%2BJV6mf6PGPum%2FYO0yNg%2BXeyHv2o45P9M%2Bt9rCGnZrOoEY%2Fed0pxN%2FoaoJxalgqDcucLi5bFV2t4QLzo3SejQDl%2Frnrw%2F4%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 121.140141ms
+        duration: 109.095054ms

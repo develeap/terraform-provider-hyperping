@@ -175,12 +175,12 @@ jobs:
           echo "  - Provider CRUD: tested via acceptance tests (TestAcc*)"
           echo ""
 
-          # Threshold: 42% (unit-testable code without TF framework fixtures)
-          if [ $(echo "$TOTAL_COVERAGE < 42" | bc -l) -eq 1 ]; then
-            echo "❌ Coverage ${TOTAL_COVERAGE}% is below 42% threshold"
+          # Threshold: 45% (unit-testable code without TF framework fixtures)
+          if [ $(echo "$TOTAL_COVERAGE < 45" | bc -l) -eq 1 ]; then
+            echo "❌ Coverage ${TOTAL_COVERAGE}% is below 45% threshold"
             exit 1
           fi
-          echo "✅ Unit test coverage ${TOTAL_COVERAGE}% meets 42% threshold"
+          echo "✅ Unit test coverage ${TOTAL_COVERAGE}% meets 45% threshold"
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:

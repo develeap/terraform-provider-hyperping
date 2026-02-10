@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -829,29 +830,53 @@ func TestAddSubscriber_ValidationErrors(t *testing.T) {
 	defer server.Close()
 
 	tests := []struct {
-		name string
-		req  AddSubscriberRequest
+		name   string
+		uuid   string
+		req    AddSubscriberRequest
+		errMsg string
 	}{
 		{
+			name: "empty UUID",
+			uuid: "",
+			req: AddSubscriberRequest{
+				Type:  "email",
+				Email: stringPtr("user@example.com"),
+			},
+			errMsg: "resource ID must not be empty",
+		},
+		{
+			name: "invalid UUID with path traversal",
+			uuid: "../admin",
+			req: AddSubscriberRequest{
+				Type:  "email",
+				Email: stringPtr("user@example.com"),
+			},
+			errMsg: "path traversal not allowed",
+		},
+		{
 			name: "email type without email",
+			uuid: "sp_abc123",
 			req: AddSubscriberRequest{
 				Type: "email",
 			},
 		},
 		{
 			name: "sms type without phone",
+			uuid: "sp_abc123",
 			req: AddSubscriberRequest{
 				Type: "sms",
 			},
 		},
 		{
 			name: "teams type without webhook URL",
+			uuid: "sp_abc123",
 			req: AddSubscriberRequest{
 				Type: "teams",
 			},
 		},
 		{
 			name: "invalid type",
+			uuid: "sp_abc123",
 			req: AddSubscriberRequest{
 				Type:  "invalid",
 				Email: stringPtr("user@example.com"),
@@ -859,6 +884,7 @@ func TestAddSubscriber_ValidationErrors(t *testing.T) {
 		},
 		{
 			name: "invalid language",
+			uuid: "sp_abc123",
 			req: AddSubscriberRequest{
 				Type:     "email",
 				Email:    stringPtr("user@example.com"),
@@ -869,9 +895,14 @@ func TestAddSubscriber_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := client.AddSubscriber(context.Background(), "sp_abc123", tt.req)
+			_, err := client.AddSubscriber(context.Background(), tt.uuid, tt.req)
 			if err == nil {
 				t.Errorf("expected validation error for %s", tt.name)
+			}
+			if tt.errMsg != "" && err != nil {
+				if !strings.Contains(err.Error(), tt.errMsg) {
+					t.Errorf("expected error containing %q, got %q", tt.errMsg, err.Error())
+				}
 			}
 		})
 	}

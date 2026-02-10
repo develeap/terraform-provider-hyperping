@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -63,6 +64,65 @@ func TestAccStatusPageSubscribersDataSource_empty(t *testing.T) {
 			},
 		},
 	})
+}
+
+// Unit tests
+
+func TestSubscriberCommonFieldsAttrTypes(t *testing.T) {
+	attrTypes := subscriberCommonFieldsAttrTypes()
+
+	expectedKeys := []string{
+		"id",
+		"type",
+		"value",
+		"email",
+		"phone",
+		"slack_channel",
+		"created_at",
+	}
+
+	if len(attrTypes) != len(expectedKeys) {
+		t.Errorf("expected %d attributes, got %d", len(expectedKeys), len(attrTypes))
+	}
+
+	for _, key := range expectedKeys {
+		if _, ok := attrTypes[key]; !ok {
+			t.Errorf("missing expected attribute: %s", key)
+		}
+	}
+
+	// Verify specific types
+	if attrTypes["id"] != types.Int64Type {
+		t.Error("id should be Int64Type")
+	}
+	if attrTypes["type"] != types.StringType {
+		t.Error("type should be StringType")
+	}
+	if attrTypes["value"] != types.StringType {
+		t.Error("value should be StringType")
+	}
+	if attrTypes["email"] != types.StringType {
+		t.Error("email should be StringType")
+	}
+	if attrTypes["phone"] != types.StringType {
+		t.Error("phone should be StringType")
+	}
+	if attrTypes["slack_channel"] != types.StringType {
+		t.Error("slack_channel should be StringType")
+	}
+	if attrTypes["created_at"] != types.StringType {
+		t.Error("created_at should be StringType")
+	}
+}
+
+func TestNewStatusPageSubscribersDataSource(t *testing.T) {
+	ds := NewStatusPageSubscribersDataSource()
+	if ds == nil {
+		t.Fatal("NewStatusPageSubscribersDataSource returned nil")
+	}
+	if _, ok := ds.(*StatusPageSubscribersDataSource); !ok {
+		t.Errorf("expected *StatusPageSubscribersDataSource, got %T", ds)
+	}
 }
 
 // Helper functions

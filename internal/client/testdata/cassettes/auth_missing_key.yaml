@@ -23,7 +23,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v3/incidents
+        url: https://api.hyperping.io/v1/monitors
         method: GET
       response:
         proto: HTTP/2.0
@@ -33,7 +33,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '[{"uuid":"inci_JrzGlF1frfsJiH","date":"2026-02-09T09:22:19.000Z","title":{"en":"[v1.0.6-TEST] Incident with Dependencies"},"type":"incident","affectedComponents":[],"statuspages":[],"updates":[]},{"uuid":"inci_bp0jxKyQBBeVaf","date":"2026-02-09T09:22:19.000Z","title":{"en":"[v1.0.6-TEST] Basic Incident"},"type":"incident","affectedComponents":[],"statuspages":[],"updates":[]},{"uuid":"inci_1YRbRAVhrZxjZI","date":"2026-02-09T09:22:19.000Z","title":{"en":"Localized Object Title"},"type":"outage","affectedComponents":[],"statuspages":[],"updates":[]},{"uuid":"inci_eZ9Vi7LmRCFoDm","date":"2026-02-09T09:22:19.000Z","title":{"en":"[v1.0.6-UPDATE-TEST] Modified Title"},"type":"incident","affectedComponents":[],"statuspages":[],"updates":[]},{"uuid":"inci_L2GzQDlfrnJSty","date":"2026-02-09T07:20:36.000Z","title":{"en":"Debug Test Incident"},"type":"incident","affectedComponents":[],"statuspages":[],"updates":[]}]'
+        body: Forbidden
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -50,25 +50,21 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cbb094a8ddbc231-TLV
+                - 9cbb0947c9fec231-TLV
             Content-Type:
-                - application/json; charset=utf-8
+                - text/plain; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 10:48:49 GMT
+                - Tue, 10 Feb 2026 10:48:48 GMT
             Etag:
-                - W/"396-6FlH8v5LcPNdlxlO0k2XvRDAgTs"
+                - W/"9-PatfYBLj4Um1qTm5zrukoLhNyPU"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
-            Ratelimit:
-                - '"800-in-1hr"; r=782; t=3586'
-            Ratelimit-Policy:
-                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=A%2BXx2wtaUsJ8K%2F8A6GBQj5M3zdLCm%2F5YD3I%2FSdJGpEkqgIML%2BpDMs5a3OBwqXo7KWkE9Xk7FwWPovDV13wsqNxQMgx67LJpZ8JF8%2BVUV3xQ%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=fBnMmtsxnV%2B0u5mwCVsANQ2nf3AgEyYeuv8RDlQVWAt8KdmPFxDSs8%2F%2BEDuiKxAbF5XdSPlafr1nQDkCViY8HWN9ptdKxDrSPmpMnZgRPNA%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
-        status: 200 OK
-        code: 200
-        duration: 111.607022ms
+        status: 403 Forbidden
+        code: 403
+        duration: 85.13184ms

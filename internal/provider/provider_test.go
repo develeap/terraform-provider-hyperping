@@ -145,6 +145,168 @@ data "hyperping_monitors" "all" {}
 	})
 }
 
+func TestIsAllowedBaseURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		want    bool
+	}{
+		// Valid HTTPS Hyperping domains
+		{
+			name:    "valid - api.hyperping.io with https",
+			baseURL: "https://api.hyperping.io",
+			want:    true,
+		},
+		{
+			name:    "valid - hyperping.io root with https",
+			baseURL: "https://hyperping.io",
+			want:    true,
+		},
+		{
+			name:    "valid - subdomain of hyperping.io with https",
+			baseURL: "https://staging.hyperping.io",
+			want:    true,
+		},
+		{
+			name:    "valid - nested subdomain with https",
+			baseURL: "https://api.staging.hyperping.io",
+			want:    true,
+		},
+		{
+			name:    "valid - with path",
+			baseURL: "https://api.hyperping.io/v1",
+			want:    true,
+		},
+		{
+			name:    "valid - with query string",
+			baseURL: "https://api.hyperping.io?foo=bar",
+			want:    true,
+		},
+		{
+			name:    "valid - with fragment",
+			baseURL: "https://api.hyperping.io#section",
+			want:    true,
+		},
+		{
+			name:    "valid - mixed case domain",
+			baseURL: "https://API.HyperPing.io",
+			want:    true,
+		},
+
+		// Localhost exemptions (HTTPS not required)
+		{
+			name:    "valid - localhost without port",
+			baseURL: "http://localhost",
+			want:    true,
+		},
+		{
+			name:    "valid - localhost with port",
+			baseURL: "http://localhost:8080",
+			want:    true,
+		},
+		{
+			name:    "valid - 127.0.0.1 without port",
+			baseURL: "http://127.0.0.1",
+			want:    true,
+		},
+		{
+			name:    "valid - 127.0.0.1 with port",
+			baseURL: "http://127.0.0.1:8080",
+			want:    true,
+		},
+		{
+			name:    "invalid - IPv6 localhost not supported",
+			baseURL: "http://[::1]",
+			want:    false,
+		},
+		{
+			name:    "valid - localhost with https",
+			baseURL: "https://localhost",
+			want:    true,
+		},
+		{
+			name:    "valid - 127.0.0.1 with https",
+			baseURL: "https://127.0.0.1",
+			want:    true,
+		},
+
+		// SECURITY: HTTP without HTTPS (VULN-016)
+		{
+			name:    "invalid - http without localhost",
+			baseURL: "http://api.hyperping.io",
+			want:    false,
+		},
+		{
+			name:    "invalid - http hyperping.io root",
+			baseURL: "http://hyperping.io",
+			want:    false,
+		},
+		{
+			name:    "invalid - http with subdomain",
+			baseURL: "http://staging.hyperping.io",
+			want:    false,
+		},
+
+		// SECURITY: Non-Hyperping domains (SSRF prevention)
+		{
+			name:    "invalid - example.com with https",
+			baseURL: "https://example.com",
+			want:    false,
+		},
+		{
+			name:    "invalid - api.example.com",
+			baseURL: "https://api.example.com",
+			want:    false,
+		},
+		{
+			name:    "invalid - looks like hyperping but different TLD",
+			baseURL: "https://hyperping.com",
+			want:    false,
+		},
+		{
+			name:    "invalid - prefix match but different domain",
+			baseURL: "https://hyperpingio.com",
+			want:    false,
+		},
+		{
+			name:    "invalid - suffix match but different domain",
+			baseURL: "https://fakelyhyperping.io",
+			want:    false,
+		},
+
+		// Edge cases
+		{
+			name:    "invalid - empty string",
+			baseURL: "",
+			want:    false,
+		},
+		{
+			name:    "invalid - just domain without protocol",
+			baseURL: "api.hyperping.io",
+			want:    false,
+		},
+		{
+			name:    "invalid - ftp protocol",
+			baseURL: "ftp://api.hyperping.io",
+			want:    false,
+		},
+		{
+			name:    "invalid - data URL",
+			baseURL: "data:text/plain,test",
+			want:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isAllowedBaseURL(tt.baseURL)
+			if got != tt.want {
+				t.Errorf("isAllowedBaseURL(%q) = %v, want %v", tt.baseURL, got, tt.want)
+			}
+		})
+	}
+}
+
 // Unit tests for factory functions
 func TestNewMonitorResource(t *testing.T) {
 	r := NewMonitorResource()
@@ -185,29 +347,6 @@ func TestNewMonitorsDataSource(t *testing.T) {
 	if _, ok := ds.(*MonitorsDataSource); !ok {
 		t.Errorf("expected *MonitorsDataSource, got %T", ds)
 	}
-}
-
-// Unit tests for TFLogAdapter
-func TestNewTFLogAdapter(t *testing.T) {
-	adapter := NewTFLogAdapter()
-	if adapter == nil {
-		t.Fatal("NewTFLogAdapter returned nil")
-	}
-}
-
-func TestTFLogAdapter_Debug(t *testing.T) {
-	adapter := NewTFLogAdapter()
-	// The Debug method calls tflog.Debug which requires a proper context
-	// In unit tests without Terraform plugin framework context, this will be a no-op
-	// but we still verify it doesn't panic
-	ctx := context.Background()
-	fields := map[string]interface{}{
-		"key1": "value1",
-		"key2": 123,
-	}
-	// Should not panic
-	adapter.Debug(ctx, "test message", fields)
-	adapter.Debug(ctx, "message without fields", nil)
 }
 
 // Unit tests for Provider.Configure

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -161,4 +162,57 @@ provider "hyperping" {
 
 data "hyperping_statuspages" "empty" {}
 `, baseURL)
+}
+
+// Unit tests
+
+func TestStatusPageCommonFieldsAttrTypes(t *testing.T) {
+	attrTypes := statusPageCommonFieldsAttrTypes()
+
+	expectedKeys := []string{
+		"id",
+		"name",
+		"hostname",
+		"hosted_subdomain",
+		"url",
+		"settings",
+		"sections",
+	}
+
+	if len(attrTypes) != len(expectedKeys) {
+		t.Errorf("expected %d attributes, got %d", len(expectedKeys), len(attrTypes))
+	}
+
+	for _, key := range expectedKeys {
+		if _, ok := attrTypes[key]; !ok {
+			t.Errorf("missing expected attribute: %s", key)
+		}
+	}
+
+	// Verify specific types
+	if attrTypes["id"] != types.StringType {
+		t.Error("id should be StringType")
+	}
+	if attrTypes["name"] != types.StringType {
+		t.Error("name should be StringType")
+	}
+	if attrTypes["hostname"] != types.StringType {
+		t.Error("hostname should be StringType")
+	}
+	if attrTypes["hosted_subdomain"] != types.StringType {
+		t.Error("hosted_subdomain should be StringType")
+	}
+	if attrTypes["url"] != types.StringType {
+		t.Error("url should be StringType")
+	}
+}
+
+func TestNewStatusPagesDataSource(t *testing.T) {
+	ds := NewStatusPagesDataSource()
+	if ds == nil {
+		t.Fatal("NewStatusPagesDataSource returned nil")
+	}
+	if _, ok := ds.(*StatusPagesDataSource); !ok {
+		t.Errorf("expected *StatusPagesDataSource, got %T", ds)
+	}
 }
