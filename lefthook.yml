@@ -13,6 +13,19 @@ pre-commit:
     go-mod-tidy:
       run: go mod tidy -diff
       fail_text: "go.mod/go.sum not tidy. Run: go mod tidy"
+    generate-docs:
+      run: |
+        echo "📝 Generating Terraform provider documentation..."
+        cd tools && go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-dir .. --provider-name hyperping
+        cd ..
+        if ! git diff --exit-code --quiet docs/resources/ docs/data-sources/; then
+          git add docs/resources/ docs/data-sources/
+          echo "✅ Documentation updated and staged"
+        else
+          echo "✅ Documentation already up to date"
+        fi
+      stage_fixed: true
+      fail_text: "Failed to generate documentation"
 
 # Pre-push: Full validation before pushing to remote
 pre-push:

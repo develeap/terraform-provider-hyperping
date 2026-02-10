@@ -42,63 +42,35 @@ jobs:
         with:
           version: latest
 
-  # Auto-generate and commit documentation
+  # Documentation check: Verify docs are up-to-date (generated via lefthook pre-commit)
   generate:
     name: Documentation
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.head_ref }}
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
           cache: true
-      # We need the latest version of Terraform for our documentation generation to use
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
-      - name: Generate documentation
+      - name: Verify documentation is up-to-date
         run: |
-          # Backup manual documentation before generation
-          if [ -d "docs/guides" ]; then
-            cp -r docs/guides /tmp/docs-guides-backup
-          fi
-          if [ -f "docs/index.md" ]; then
-            cp docs/index.md /tmp/docs-index-backup.md
-          fi
-          if [ -f "docs/TROUBLESHOOTING.md" ]; then
-            cp docs/TROUBLESHOOTING.md /tmp/docs-troubleshooting-backup.md
-          fi
-
-          # Generate schema-based documentation
+          echo "🔍 Checking if documentation is up-to-date..."
           cd tools && go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-dir .. --provider-name hyperping
           cd ..
 
-          # Restore manual documentation
-          if [ -d "/tmp/docs-guides-backup" ]; then
-            cp -r /tmp/docs-guides-backup docs/guides
-          fi
-          if [ -f "/tmp/docs-index-backup.md" ]; then
-            cp /tmp/docs-index-backup.md docs/index.md
-          fi
-          if [ -f "/tmp/docs-troubleshooting-backup.md" ]; then
-            cp /tmp/docs-troubleshooting-backup.md docs/TROUBLESHOOTING.md
-          fi
-      - name: Check for changes and auto-commit
-        run: |
-          # Only check and commit generated docs (resources, data-sources)
           if ! git diff --exit-code --quiet docs/resources/ docs/data-sources/; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add docs/resources/ docs/data-sources/
-            git commit -m "docs: auto-generate updated documentation [skip ci]"
-            git push
-            echo "✅ Documentation updated and committed"
+            echo "❌ Documentation is out of date!"
+            echo ""
+            echo "The following files have changes:"
+            git diff --name-only docs/resources/ docs/data-sources/
+            echo ""
+            echo "Please run 'lefthook run pre-commit' locally to regenerate docs and commit the changes."
+            exit 1
           else
-            echo "✅ Documentation already up to date"
+            echo "✅ Documentation is up-to-date"
           fi
 
   # Security scanning with SARIF upload to GitHub Security tab

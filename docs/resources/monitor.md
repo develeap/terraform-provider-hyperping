@@ -76,7 +76,7 @@ resource "hyperping_monitor" "maintenance" {
 - `paused` (Boolean) Whether the monitor is paused. Defaults to `false`.
 - `port` (Number) Port number to check. Required when `protocol` is `port`.
 - `protocol` (String) The protocol type. Valid values: `http`, `port`, `icmp`. Defaults to `http`.
-- `regions` (List of String) List of regions to check from. Valid values: `london`, `frankfurt`, `london`, `london`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`, `virginia`, `tokyo`, `virginia`, `virginia`, `tokyo`, `singapore`, `singapore`.
+- `regions` (List of String) List of regions to check from. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.
 - `request_body` (String) Request body for POST/PUT/PATCH requests.
 - `request_headers` (Attributes List) Custom HTTP headers to send with the request. (see [below for nested schema](#nestedatt--request_headers))
 - `required_keyword` (String) A keyword that must appear in the response body for the check to pass.
