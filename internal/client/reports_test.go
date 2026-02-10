@@ -170,18 +170,24 @@ func TestClient_ListMonitorReports(t *testing.T) {
 			from:           "",
 			to:             "",
 			responseStatus: http.StatusOK,
-			responseBody: []MonitorReport{
-				{
-					UUID:     "mon_001",
-					Name:     "API Monitor 1",
-					Protocol: "http",
-					SLA:      99.5,
+			responseBody: ListMonitorReportsResponse{
+				Period: ReportPeriod{
+					From: "2026-01-01T00:00:00Z",
+					To:   "2026-01-31T23:59:59Z",
 				},
-				{
-					UUID:     "mon_002",
-					Name:     "API Monitor 2",
-					Protocol: "http",
-					SLA:      98.2,
+				Monitors: []MonitorReport{
+					{
+						UUID:     "mon_001",
+						Name:     "API Monitor 1",
+						Protocol: "http",
+						SLA:      99.5,
+					},
+					{
+						UUID:     "mon_002",
+						Name:     "API Monitor 2",
+						Protocol: "http",
+						SLA:      98.2,
+					},
 				},
 			},
 			wantErr:   false,
@@ -192,14 +198,20 @@ func TestClient_ListMonitorReports(t *testing.T) {
 			from:           "2026-01-01T00:00:00Z",
 			to:             "2026-01-31T23:59:59Z",
 			responseStatus: http.StatusOK,
-			responseBody: []MonitorReport{
-				{
-					UUID:          "mon_003",
-					Name:          "API Monitor 3",
-					Protocol:      "http",
-					SLA:           99.9,
-					MTTR:          120,
-					MTTRFormatted: "2min",
+			responseBody: ListMonitorReportsResponse{
+				Period: ReportPeriod{
+					From: "2026-01-01T00:00:00Z",
+					To:   "2026-01-31T23:59:59Z",
+				},
+				Monitors: []MonitorReport{
+					{
+						UUID:          "mon_003",
+						Name:          "API Monitor 3",
+						Protocol:      "http",
+						SLA:           99.9,
+						MTTR:          120,
+						MTTRFormatted: "2min",
+					},
 				},
 			},
 			wantErr:   false,
@@ -210,9 +222,15 @@ func TestClient_ListMonitorReports(t *testing.T) {
 			from:           "",
 			to:             "",
 			responseStatus: http.StatusOK,
-			responseBody:   []MonitorReport{},
-			wantErr:        false,
-			wantCount:      0,
+			responseBody: ListMonitorReportsResponse{
+				Period: ReportPeriod{
+					From: "2026-01-01T00:00:00Z",
+					To:   "2026-01-31T23:59:59Z",
+				},
+				Monitors: []MonitorReport{},
+			},
+			wantErr:   false,
+			wantCount: 0,
 		},
 		{
 			name:           "server error",

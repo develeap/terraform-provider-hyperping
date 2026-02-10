@@ -1,0 +1,74 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
+        url: https://api.hyperping.io/v2/reporting/monitor-reports?from=2026-02-03T05%3A36%3A12Z&to=2026-02-10T05%3A36%3A12Z
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '{"period":{"from":"2026-02-03T05:36:12.000Z","to":"2026-02-10T05:36:12.000Z"},"monitors":[{"uuid":"mon_fkvswafYt2nOG6","name":"[TEST]-StatusPage-Monitor","protocol":"http","sla":85.254,"outages":{"count":1,"totalDowntime":89184,"totalDowntimeFormatted":"1d 0hr 46min 24s","longestOutage":89184,"longestOutageFormatted":"1d 0hr 46min 24s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_HVL4JwlAh2LBH4","name":"[PROD]-Database-Health","protocol":"http","sla":85.344,"outages":{"count":1,"totalDowntime":88642,"totalDowntimeFormatted":"1d 0hr 37min 22s","longestOutage":88642,"longestOutageFormatted":"1d 0hr 37min 22s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_GcJl8vygAB0O8n","name":"[STAGING]-API-Health","protocol":"http","sla":85.337,"outages":{"count":1,"totalDowntime":88681,"totalDowntimeFormatted":"1d 0hr 38min 1s","longestOutage":88681,"longestOutageFormatted":"1d 0hr 38min 1s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_r5OgfTTvl5LdBw","name":"[PROD]-API-Health","protocol":"http","sla":85.336,"outages":{"count":1,"totalDowntime":88691,"totalDowntimeFormatted":"1d 0hr 38min 11s","longestOutage":88691,"longestOutageFormatted":"1d 0hr 38min 11s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_a7eoQI0nJ8qZEq","name":"[PROD]-Payment-Gateway","protocol":"http","sla":85.337,"outages":{"count":1,"totalDowntime":88685,"totalDowntimeFormatted":"1d 0hr 38min 5s","longestOutage":88685,"longestOutageFormatted":"1d 0hr 38min 5s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_m8soFTcOnjKFS7","name":"[PROD]-WebApp","protocol":"http","sla":100,"outages":{"count":0,"totalDowntime":0,"totalDowntimeFormatted":"0s","longestOutage":0,"longestOutageFormatted":"0s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_CTDnCGmtwz8xHC","name":"[PROD]-Admin-Dashboard","protocol":"http","sla":100,"outages":{"count":0,"totalDowntime":0,"totalDowntimeFormatted":"0s","longestOutage":0,"longestOutageFormatted":"0s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_BtEEIKjSnrefo5","name":"[STAGING]-WebApp","protocol":"http","sla":85.366,"outages":{"count":1,"totalDowntime":88509,"totalDowntimeFormatted":"1d 0hr 35min 9s","longestOutage":88509,"longestOutageFormatted":"1d 0hr 35min 9s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_XPKJ1drkfEP71K","name":"[PROD]-Website","protocol":"http","sla":100,"outages":{"count":0,"totalDowntime":0,"totalDowntimeFormatted":"0s","longestOutage":0,"longestOutageFormatted":"0s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_2Xdwh8uYTSHNzK","name":"[v1.0.4-TEST]-DB-Health","protocol":"http","sla":100,"outages":{"count":0,"totalDowntime":0,"totalDowntimeFormatted":"0s","longestOutage":0,"longestOutageFormatted":"0s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_7Ahjpl5sLIUUf5","name":"[v1.0.4-TEST]-API-Monitor","protocol":"http","sla":86.653,"outages":{"count":1,"totalDowntime":80722,"totalDowntimeFormatted":"22hr 25min 22s","longestOutage":80722,"longestOutageFormatted":"22hr 25min 22s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_DaF7WQVRIpS2p0","name":"[v1.0.6-TEST]-PUT-Method","protocol":"http","sla":87.917,"outages":{"count":1,"totalDowntime":73079,"totalDowntimeFormatted":"20hr 17min 59s","longestOutage":73079,"longestOutageFormatted":"20hr 17min 59s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_ZfxcoVFOwSs4ok","name":"[v1.0.6-TEST]-Max-Freq-86400s","protocol":"http","sla":100,"outages":{"count":0,"totalDowntime":0,"totalDowntimeFormatted":"0s","longestOutage":0,"longestOutageFormatted":"0s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_HmAq69QRQdTh6N","name":"[v1.0.6-TEST]-POST-with-Body","protocol":"http","sla":100,"outages":{"count":0,"totalDowntime":0,"totalDowntimeFormatted":"0s","longestOutage":0,"longestOutageFormatted":"0s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_YQxIeHE8iXxmbh","name":"[v1.0.6-TEST]-Min-Freq-10s","protocol":"http","sla":87.869,"outages":{"count":1,"totalDowntime":73367,"totalDowntimeFormatted":"20hr 22min 47s","longestOutage":73367,"longestOutageFormatted":"20hr 22min 47s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_2HOnKnkou1tvAp","name":"[v1.0.6-TEST]-Basic-GET","protocol":"http","sla":87.898,"outages":{"count":1,"totalDowntime":73196,"totalDowntimeFormatted":"20hr 19min 56s","longestOutage":73196,"longestOutageFormatted":"20hr 19min 56s"},"mttr":0,"mttrFormatted":"0s"},{"uuid":"mon_MdnOEmCL1uSAoV","name":"[v1.0.6-TEST]-DELETE-Method","protocol":"http","sla":87.946,"outages":{"count":1,"totalDowntime":72906,"totalDowntimeFormatted":"20hr 15min 6s","longestOutage":72906,"longestOutageFormatted":"20hr 15min 6s"},"mttr":0,"mttrFormatted":"0s"}]}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9cb93f5f6ba0ed42-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Tue, 10 Feb 2026 05:36:12 GMT
+            Etag:
+                - W/"11bc-G5HaMmGXze9vPvuc59MKezOnF7Q"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=781; t=1099'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Nnqkn0nHytu7MItDSrmAfo4XYwTvWMV19rXr%2Fs8WwqD%2F2uC6%2BqhwNWisIOocxViXV1DndpFwqeu66lUo2ns6V2f4ICZ7bINVrjwOJ59NgsE%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 243.772685ms

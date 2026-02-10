@@ -16,8 +16,22 @@ pre-commit:
     generate-docs:
       run: |
         echo "📝 Generating Terraform provider documentation..."
+
+        # Backup manual documentation
+        [ -d "docs/guides" ] && cp -r docs/guides /tmp/docs-guides-backup
+        [ -f "docs/index.md" ] && cp docs/index.md /tmp/docs-index-backup.md
+        [ -f "docs/TROUBLESHOOTING.md" ] && cp docs/TROUBLESHOOTING.md /tmp/docs-troubleshooting-backup.md
+
+        # Generate schema-based documentation
         cd tools && go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-dir .. --provider-name hyperping
         cd ..
+
+        # Restore manual documentation
+        [ -d "/tmp/docs-guides-backup" ] && cp -r /tmp/docs-guides-backup docs/guides
+        [ -f "/tmp/docs-index-backup.md" ] && cp /tmp/docs-index-backup.md docs/index.md
+        [ -f "/tmp/docs-troubleshooting-backup.md" ] && cp /tmp/docs-troubleshooting-backup.md docs/TROUBLESHOOTING.md
+
+        # Only stage generated docs (resources, data-sources)
         if ! git diff --exit-code --quiet docs/resources/ docs/data-sources/; then
           git add docs/resources/ docs/data-sources/
           echo "✅ Documentation updated and staged"

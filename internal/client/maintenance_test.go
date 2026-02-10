@@ -59,9 +59,11 @@ func TestClient_ListMaintenance(t *testing.T) {
 func TestClient_ListMaintenance_WrappedResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
-			"maintenance": []Maintenance{
+			"maintenanceWindows": []Maintenance{
 				{UUID: "mw_123", Name: "Planned Downtime", Title: LocalizedText{En: "Planned Downtime"}},
 			},
+			"hasNextPage": false,
+			"total":       1,
 		}
 		json.NewEncoder(w).Encode(response)
 	}))
@@ -190,24 +192,33 @@ func TestClient_GetMaintenance_NotFound(t *testing.T) {
 
 func TestClient_CreateMaintenance(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != MaintenanceBasePath {
-			w.WriteHeader(http.StatusNotFound)
+		// Handle POST - return only UUID
+		if r.Method == http.MethodPost && r.URL.Path == MaintenanceBasePath {
+			var req CreateMaintenanceRequest
+			json.NewDecoder(r.Body).Decode(&req)
+
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]string{"uuid": "mw_new"})
 			return
 		}
 
-		var req CreateMaintenanceRequest
-		json.NewDecoder(r.Body).Decode(&req)
-
-		w.WriteHeader(http.StatusCreated)
-		maintenance := Maintenance{
-			UUID:      "mw_new",
-			Name:      req.Name,
-			Title:     req.Title,
-			StartDate: &req.StartDate,
-			EndDate:   &req.EndDate,
-			Monitors:  req.Monitors,
+		// Handle GET - return full maintenance
+		if r.Method == http.MethodGet && r.URL.Path == MaintenanceBasePath+"/mw_new" {
+			startDate := "2025-12-20T02:00:00.000Z"
+			endDate := "2025-12-20T06:00:00.000Z"
+			maintenance := Maintenance{
+				UUID:      "mw_new",
+				Name:      "Planned Downtime",
+				Title:     LocalizedText{En: "System Maintenance"},
+				StartDate: &startDate,
+				EndDate:   &endDate,
+				Monitors:  []string{"mon_123"},
+			}
+			json.NewEncoder(w).Encode(maintenance)
+			return
 		}
-		json.NewEncoder(w).Encode(maintenance)
+
+		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
 
@@ -258,6 +269,46 @@ func TestClient_CreateMaintenance_ValidationError(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestClient_CreateMaintenance_ReadAfterCreateFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Handle POST - return UUID successfully
+		if r.Method == http.MethodPost && r.URL.Path == MaintenanceBasePath {
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]string{"uuid": "mw_new"})
+			return
+		}
+
+		// Handle GET - return 404 (simulating failure to read created resource)
+		if r.Method == http.MethodGet && r.URL.Path == MaintenanceBasePath+"/mw_new" {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+			return
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client := NewClient("test_key", WithBaseURL(server.URL))
+	notifyMinutes := 60
+	req := CreateMaintenanceRequest{
+		Name:                "Test Maintenance",
+		Title:               LocalizedText{En: "Test"},
+		StartDate:           "2025-12-20T02:00:00.000Z",
+		EndDate:             "2025-12-20T06:00:00.000Z",
+		Monitors:            []string{"mon_123"},
+		NotificationMinutes: &notifyMinutes,
+	}
+	_, err := client.CreateMaintenance(context.Background(), req)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to read created maintenance") {
+		t.Errorf("expected read-after-create error, got: %v", err)
 	}
 }
 
@@ -385,7 +436,9 @@ func TestClient_ListMaintenance_InvalidJSON(t *testing.T) {
 func TestClient_ListMaintenance_EmptyWrappedResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"maintenance": []Maintenance{},
+			"maintenanceWindows": []Maintenance{},
+			"hasNextPage":        false,
+			"total":              0,
 		})
 	}))
 	defer server.Close()
