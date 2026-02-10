@@ -48,12 +48,15 @@ func (c *Client) GetOutage(ctx context.Context, uuid string) (*Outage, error) {
 	}
 	path := fmt.Sprintf("%s/%s", outagesBasePath, uuid)
 
-	var outage Outage
-	if err := c.doRequest(ctx, "GET", path, nil, &outage); err != nil {
+	// API GET returns wrapped response: {"outage":{...}}
+	var getResp struct {
+		Outage Outage `json:"outage"`
+	}
+	if err := c.doRequest(ctx, "GET", path, nil, &getResp); err != nil {
 		return nil, fmt.Errorf("failed to get outage: %w", err)
 	}
 
-	return &outage, nil
+	return &getResp.Outage, nil
 }
 
 // ListOutages retrieves all outages.
@@ -89,11 +92,17 @@ func (c *Client) CreateOutage(ctx context.Context, req CreateOutageRequest) (*Ou
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("CreateOutage: %w", err)
 	}
-	var outage Outage
-	if err := c.doRequest(ctx, "POST", outagesBasePath, req, &outage); err != nil {
+
+	// API POST returns wrapped response: {"message":"Incident created","outage":{...}}
+	var createResp struct {
+		Message string `json:"message"`
+		Outage  Outage `json:"outage"`
+	}
+	if err := c.doRequest(ctx, "POST", outagesBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create outage: %w", err)
 	}
-	return &outage, nil
+
+	return &createResp.Outage, nil
 }
 
 // AcknowledgeOutage acknowledges an outage.

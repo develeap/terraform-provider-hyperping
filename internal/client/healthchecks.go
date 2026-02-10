@@ -48,12 +48,15 @@ func (c *Client) GetHealthcheck(ctx context.Context, uuid string) (*Healthcheck,
 	}
 	path := fmt.Sprintf("%s/%s", healthchecksBasePath, uuid)
 
-	var healthcheck Healthcheck
-	if err := c.doRequest(ctx, "GET", path, nil, &healthcheck); err != nil {
+	// API GET returns wrapped response: {"healthcheck":{...}}
+	var getResp struct {
+		Healthcheck Healthcheck `json:"healthcheck"`
+	}
+	if err := c.doRequest(ctx, "GET", path, nil, &getResp); err != nil {
 		return nil, fmt.Errorf("failed to get healthcheck: %w", err)
 	}
 
-	return &healthcheck, nil
+	return &getResp.Healthcheck, nil
 }
 
 // ListHealthchecks retrieves all healthchecks.
@@ -86,11 +89,17 @@ func (c *Client) CreateHealthcheck(ctx context.Context, req CreateHealthcheckReq
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("CreateHealthcheck: %w", err)
 	}
-	var healthcheck Healthcheck
-	if err := c.doRequest(ctx, "POST", healthchecksBasePath, req, &healthcheck); err != nil {
+
+	// API POST returns wrapped response: {"message":"...","healthcheck":{...}}
+	var createResp struct {
+		Message     string      `json:"message"`
+		Healthcheck Healthcheck `json:"healthcheck"`
+	}
+	if err := c.doRequest(ctx, "POST", healthchecksBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create healthcheck: %w", err)
 	}
-	return &healthcheck, nil
+
+	return &createResp.Healthcheck, nil
 }
 
 // UpdateHealthcheck updates an existing healthcheck.

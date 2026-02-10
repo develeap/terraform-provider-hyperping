@@ -24,20 +24,22 @@ func TestClient_GetOutage(t *testing.T) {
 			name:           "success - active outage",
 			uuid:           "out_ABC123",
 			responseStatus: http.StatusOK,
-			responseBody: Outage{
-				UUID:               "out_ABC123",
-				StartDate:          "2026-01-27T10:00:00Z",
-				DurationMs:         0,
-				StatusCode:         503,
-				Description:        "Service Unavailable",
-				IsResolved:         false,
-				DetectedLocation:   "london",
-				ConfirmedLocations: "london,paris",
-				Monitor: MonitorReference{
-					UUID:     "mon_test123",
-					Name:     "Test Monitor",
-					URL:      "https://example.com",
-					Protocol: "http",
+			responseBody: map[string]interface{}{
+				"outage": Outage{
+					UUID:               "out_ABC123",
+					StartDate:          "2026-01-27T10:00:00Z",
+					DurationMs:         0,
+					StatusCode:         503,
+					Description:        "Service Unavailable",
+					IsResolved:         false,
+					DetectedLocation:   "london",
+					ConfirmedLocations: "london,paris",
+					Monitor: MonitorReference{
+						UUID:     "mon_test123",
+						Name:     "Test Monitor",
+						URL:      "https://example.com",
+						Protocol: "http",
+					},
 				},
 			},
 			wantErr: false,
@@ -62,30 +64,32 @@ func TestClient_GetOutage(t *testing.T) {
 			name:           "success - resolved outage",
 			uuid:           "out_DEF456",
 			responseStatus: http.StatusOK,
-			responseBody: func() Outage {
+			responseBody: func() map[string]interface{} {
 				endDate := "2026-01-27T10:05:00Z"
 				ackAt := "2026-01-27T10:01:00Z"
-				return Outage{
-					UUID:               "out_DEF456",
-					StartDate:          "2026-01-27T10:00:00Z",
-					EndDate:            &endDate,
-					DurationMs:         300000, // 5 minutes in milliseconds
-					StatusCode:         503,
-					Description:        "Service recovered",
-					IsResolved:         true,
-					DetectedLocation:   "frankfurt",
-					ConfirmedLocations: "frankfurt,amsterdam",
-					AcknowledgedAt:     &ackAt,
-					AcknowledgedBy: &AcknowledgedByUser{
-						UUID:  "user_123",
-						Email: "engineer@example.com",
-						Name:  "Test Engineer",
-					},
-					Monitor: MonitorReference{
-						UUID:     "mon_test456",
-						Name:     "API Monitor",
-						URL:      "https://api.example.com",
-						Protocol: "http",
+				return map[string]interface{}{
+					"outage": Outage{
+						UUID:               "out_DEF456",
+						StartDate:          "2026-01-27T10:00:00Z",
+						EndDate:            &endDate,
+						DurationMs:         300000, // 5 minutes in milliseconds
+						StatusCode:         503,
+						Description:        "Service recovered",
+						IsResolved:         true,
+						DetectedLocation:   "frankfurt",
+						ConfirmedLocations: "frankfurt,amsterdam",
+						AcknowledgedAt:     &ackAt,
+						AcknowledgedBy: &AcknowledgedByUser{
+							UUID:  "user_123",
+							Email: "engineer@example.com",
+							Name:  "Test Engineer",
+						},
+						Monitor: MonitorReference{
+							UUID:     "mon_test456",
+							Name:     "API Monitor",
+							URL:      "https://api.example.com",
+							Protocol: "http",
+						},
 					},
 				}
 			}(),
@@ -293,20 +297,23 @@ func TestClient_CreateOutage(t *testing.T) {
 				OutageType:  "manual",
 			},
 			responseStatus: http.StatusCreated,
-			responseBody: Outage{
-				UUID:               "out_NEW001",
-				StartDate:          "2026-01-27T10:00:00Z",
-				DurationMs:         0,
-				StatusCode:         503,
-				Description:        "Planned maintenance outage",
-				IsResolved:         false,
-				DetectedLocation:   "manual",
-				ConfirmedLocations: "",
-				Monitor: MonitorReference{
-					UUID:     "mon_abc123",
-					Name:     "Test Monitor",
-					URL:      "https://example.com",
-					Protocol: "http",
+			responseBody: map[string]interface{}{
+				"message": "Incident created",
+				"outage": Outage{
+					UUID:               "out_NEW001",
+					StartDate:          "2026-01-27T10:00:00Z",
+					DurationMs:         0,
+					StatusCode:         503,
+					Description:        "Planned maintenance outage",
+					IsResolved:         false,
+					DetectedLocation:   "manual",
+					ConfirmedLocations: "",
+					Monitor: MonitorReference{
+						UUID:     "mon_abc123",
+						Name:     "Test Monitor",
+						URL:      "https://example.com",
+						Protocol: "http",
+					},
 				},
 			},
 			wantErr: false,

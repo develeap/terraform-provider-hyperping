@@ -1,0 +1,289 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
+        url: https://api.hyperping.io/v1/monitors
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '[{"id":115746,"name":"test-monitor","url":"https://httpstat.us/200","uuid":"mon_u4caULGi4rO2XR","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":true,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115934,"name":"[TEST]-StatusPage-Monitor","url":"https://httpstat.us/200","uuid":"mon_fkvswafYt2nOG6","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["frankfurt","california","saopaulo","paris","mumbai","seoul","london","toronto","sydney","tokyo","singapore","bahrain","amsterdam","virginia","nyc","sanfrancisco","capetown","bangalore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115935,"name":"[PROD]-Database-Health","url":"https://api.example.com/internal/db-health","uuid":"mon_HVL4JwlAh2LBH4","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london","frankfurt"],"check_frequency":60,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"check_type\":\"connection_pool\",\"timeout\":5}","request_headers":[{"name":"Content-Type","value":"application/json"},{"name":"X-Internal-Token","value":"internal-check-token"}],"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115936,"name":"[STAGING]-API-Health","url":"https://staging-api.example.com/health","uuid":"mon_GcJl8vygAB0O8n","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":300,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115937,"name":"[PROD]-API-Health","url":"https://api.example.com/health","uuid":"mon_r5OgfTTvl5LdBw","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","frankfurt","virginia","singapore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":[{"name":"User-Agent","value":"Hyperping-Monitor/TechStart"}],"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115938,"name":"[PROD]-Payment-Gateway","url":"https://api.example.com/payments/health","uuid":"mon_a7eoQI0nJ8qZEq","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia","singapore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115939,"name":"[PROD]-WebApp","url":"https://app.example.com","uuid":"mon_m8soFTcOnjKFS7","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115940,"name":"[PROD]-Admin-Dashboard","url":"https://admin.example.com/healthz","uuid":"mon_CTDnCGmtwz8xHC","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":[{"name":"X-Health-Token","value":"healthcheck-token-12345"}],"status":"up","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115941,"name":"[STAGING]-WebApp","url":"https://staging-app.example.com","uuid":"mon_BtEEIKjSnrefo5","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":600,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115942,"name":"[PROD]-Website","url":"https://www.example.com","uuid":"mon_XPKJ1drkfEP71K","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia"],"check_frequency":300,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":35,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115943,"name":"[v1.0.4-TEST]-DB-Health","url":"https://httpstat.us/200","uuid":"mon_2Xdwh8uYTSHNzK","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"check_type\":\"health\"}","request_headers":[{"name":"Content-Type","value":"application/json"}],"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115944,"name":"[v1.0.4-TEST]-API-Monitor","url":"https://httpstat.us/200","uuid":"mon_7Ahjpl5sLIUUf5","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","frankfurt"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":[{"name":"User-Agent","value":"TF-Test-v1.0.4"}],"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115946,"name":"[v1.0.6-TEST]-PUT-Method","url":"https://httpstat.us/200","uuid":"mon_DaF7WQVRIpS2p0","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"PUT","regions":["virginia"],"check_frequency":300,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115947,"name":"[v1.0.6-TEST]-Max-Freq-86400s","url":"https://httpstat.us/200","uuid":"mon_ZfxcoVFOwSs4ok","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["frankfurt"],"check_frequency":86400,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115948,"name":"[v1.0.6-TEST]-POST-with-Body","url":"https://httpstat.us/200","uuid":"mon_HmAq69QRQdTh6N","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london","frankfurt"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"test\":\"data\",\"version\":\"1.0.6\"}","request_headers":[{"name":"Content-Type","value":"application/json"},{"name":"User-Agent","value":"TF-v1.0.6-Test"}],"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115949,"name":"[v1.0.6-TEST]-Min-Freq-10s","url":"https://httpstat.us/200","uuid":"mon_YQxIeHE8iXxmbh","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":10,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115950,"name":"[v1.0.6-TEST]-Basic-GET","url":"https://httpstat.us/200","uuid":"mon_2HOnKnkou1tvAp","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115951,"name":"[v1.0.6-TEST]-DELETE-Method","url":"https://httpstat.us/200","uuid":"mon_MdnOEmCL1uSAoV","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"DELETE","regions":["singapore"],"check_frequency":600,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null}]'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9cb9030dfb147d95-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Tue, 10 Feb 2026 04:55:02 GMT
+            Etag:
+                - W/"2476-UgwMHfiFWc1VtbsFt70QcVIoCuo"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=796; t=3569'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=XgMaXaBlR4wBiYViPS3vbeaSQs%2Bu3HVspyR9Fw4MZnhXLwtSFS0gue%2B4u5Uh4MPbcCnoz6wF1s0LMah57TqM9HeM%2FNwPCobBwx22LIUvGhM%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 426.361343ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 194
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: '{"monitorUuid":"mon_u4caULGi4rO2XR","startDate":"2026-02-09T04:55:02Z","endDate":"2026-02-09T05:55:02Z","statusCode":500,"description":"Manual outage for contract testing","outageType":"manual"}'
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
+        url: https://api.hyperping.io/v2/outages
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: 190
+        uncompressed: false
+        body: '{"message":"Incident created","outage":{"uuid":"outage_Ag5weALaIEUo7N","startDate":"2026-02-10T04:55:02.307Z","description":"Manual outage for contract testing","escalationPolicyUuid":null}}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9cb9030eeb967d95-TLV
+            Content-Length:
+                - "190"
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Tue, 10 Feb 2026 04:55:02 GMT
+            Etag:
+                - W/"be-bZxHNJbjGPevf6qsTuHu1ydGc/o"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=795; t=3569'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Kk3YXBnCNmKFGqj8nmcofntkBdznWadRE4mRq8cgBIRIBRoFe%2F8FxqFjuDkIl%2B8JwfC9W6gsK9OiCB%2BVibxo%2B9k%2Bx81of3chXM1hjuvxBh4%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 201 Created
+        code: 201
+        duration: 133.337296ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
+        url: https://api.hyperping.io/v2/outages/outage_Ag5weALaIEUo7N
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '{"outage":{"id":4586931,"uuid":"outage_Ag5weALaIEUo7N","startDate":"2026-02-10T04:55:02.000Z","endDate":null,"durationMs":430,"statusCode":0,"description":"Manual outage for contract testing","isResolved":false,"detectedLocation":"manual","confirmedLocations":"","protocol":"manual","errorHeader":null,"acknowledgedAt":null,"acknowledgedBy":null,"monitor":{"uuid":null,"name":"Manual outage for contract testing","url":null,"protocol":"manual"},"escalationPolicy":null,"alertedChannels":[]}}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9cb9030fcbf87d95-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Tue, 10 Feb 2026 04:55:02 GMT
+            Etag:
+                - W/"1eb-RxupexhhGbOGSxaVs1N1nk063BY"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=794; t=3569'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=4oUo0LtFHMkDkBwq9stmOzY4D7mdT0BfRr%2BA1Rco1xrPcJDSQJjOYe%2FIIyHWqGPIS2mVei2ffBjjoocFh80%2BqnFMA5RL3YF5uN%2FF3WxwRXI%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 113.487316ms
+    - id: 3
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
+        url: https://api.hyperping.io/v2/outages/outage_Ag5weALaIEUo7N
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '{"message":"Outage deleted"}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9cb903107c607d95-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Tue, 10 Feb 2026 04:55:02 GMT
+            Etag:
+                - W/"1c-v3sdzRGlX8HeWgOoTBK4QmRjyIQ"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=793; t=3569'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=5pf0ZnOfF8VSDyelwVI36uFT%2B3OJ1mDxf5t63lbfepZwkFMWGvGdzSgetu7o9sojDsaUCcYes84DI3fcJufCBOWLzUO1oheGIs2IQiPXD1Q%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 114.853943ms

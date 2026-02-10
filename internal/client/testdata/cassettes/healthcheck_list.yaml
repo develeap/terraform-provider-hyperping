@@ -1,0 +1,74 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
+        url: https://api.hyperping.io/v2/healthchecks
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: -1
+        uncompressed: true
+        body: '{"healthchecks":[{"uuid":"tok_hy4GCxOqbwahr4ctj0cNOIIp","name":"vcr-test-healthcheck","cron":null,"tz":"UTC","slug":null,"period":60,"periodValue":60,"periodType":"seconds","gracePeriod":300,"gracePeriodValue":300,"gracePeriodType":"seconds","createdAt":"2026-02-09T10:11:32.000Z","lastPing":null,"dueDate":null,"isDown":false,"pingUrl":"https://hc.hyperping.io/tok_hy4GCxOqbwahr4ctj0cNOIIp","lastLogStartDate":null,"lastLogEndDate":null}]}'
+        headers:
+            Access-Control-Allow-Credentials:
+                - "true"
+            Access-Control-Allow-Headers:
+                - Origin, Content-Type, Access-Control-Allow-Headers, Authorization, userId, X-Requested-With, Accept, projectUuid
+            Access-Control-Allow-Methods:
+                - GET,PUT,PATCH,POST,HEAD,DELETE
+            Access-Control-Allow-Origin:
+                - https://app.hyperping.io
+            Alt-Svc:
+                - h3=":443"; ma=86400
+            Cache-Control:
+                - no-cache
+            Cf-Cache-Status:
+                - DYNAMIC
+            Cf-Ray:
+                - 9cb2964f8ee27d94-TLV
+            Content-Type:
+                - application/json; charset=utf-8
+            Date:
+                - Mon, 09 Feb 2026 10:12:13 GMT
+            Etag:
+                - W/"1b8-70O9BgcaxiUgQMkI8ITJrTf9PxI"
+            Nel:
+                - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
+            Ratelimit:
+                - '"800-in-1hr"; r=794; t=3542'
+            Ratelimit-Policy:
+                - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
+            Report-To:
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=p0wp%2FhXr3%2BoN5xRikZaO3spSjJOO3F6FASNiMyMUMG45pVjJ3LEEDzdvEwULbGd4wOTUU%2FFK0W9JIckYkn%2FSNZTAEnXQ927mHuIUt5gIE1Q%3D"}]}'
+            Server:
+                - cloudflare
+            Vary:
+                - Accept-Encoding
+        status: 200 OK
+        code: 200
+        duration: 260.959838ms
