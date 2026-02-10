@@ -49,22 +49,29 @@ func TestContract_Incident_CRUD_ResponseStructure(t *testing.T) {
 		StatusPages: []string{statusPageUUID},
 	}
 
-	incident, err := client.CreateIncident(ctx, createReq)
+	createResp, err := client.CreateIncident(ctx, createReq)
 	if err != nil {
 		t.Fatalf("CreateIncident failed: %v", err)
 	}
 
+	// CreateIncident returns minimal response with UUID only
+	// Read full incident details to validate structure
+	incident, err := client.GetIncident(ctx, createResp.UUID)
+	if err != nil {
+		t.Fatalf("GetIncident after create failed: %v", err)
+	}
+
 	// Validate required fields are present and correct types
-	validateIncidentStructure(t, incident, "CreateIncident")
+	validateIncidentStructure(t, incident, "GetIncident")
 
 	// Validate specific values match request
 	if incident.Title.En != "VCR Test Incident" {
-		t.Errorf("CreateIncident: expected Title.En 'VCR Test Incident', got '%s'", incident.Title.En)
+		t.Errorf("GetIncident: expected Title.En 'VCR Test Incident', got '%s'", incident.Title.En)
 	}
 	// Note: The Hyperping API does NOT return the 'text' field in GET responses,
 	// even though it's required in POST requests. This is API behavior.
 	if incident.Type != "incident" {
-		t.Errorf("CreateIncident: expected Type 'incident', got '%s'", incident.Type)
+		t.Errorf("GetIncident: expected Type 'incident', got '%s'", incident.Type)
 	}
 
 	// Test Delete - Should succeed without error

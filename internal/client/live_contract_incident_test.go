@@ -87,23 +87,32 @@ func TestLiveContract_Incident_CRUD(t *testing.T) {
 		StatusPages: []string{statusPageUUID},
 	}
 
-	incident, err := client.CreateIncident(ctx, createReq)
+	createResp, err := client.CreateIncident(ctx, createReq)
 	if err != nil {
 		t.Fatalf("CreateIncident failed: %v", err)
 	}
 
-	t.Logf("Created incident: %s", incident.UUID)
-	responseJSON, _ := json.MarshalIndent(incident, "", "  ")
-	t.Logf("Incident response:\n%s", string(responseJSON))
+	t.Logf("Created incident: %s", createResp.UUID)
 
-	if incident.UUID == "" {
-		t.Error("expected UUID to be set")
+	if createResp.UUID == "" {
+		t.Fatal("expected UUID to be set in create response")
 	}
+
+	// CreateIncident returns minimal response with UUID only
+	// Read full incident details to validate
+	incident, err := client.GetIncident(ctx, createResp.UUID)
+	if err != nil {
+		t.Fatalf("GetIncident after create failed: %v", err)
+	}
+
+	responseJSON, _ := json.MarshalIndent(incident, "", "  ")
+	t.Logf("Full incident response:\n%s", string(responseJSON))
+
 	if incident.Title.En != "VCR Test Incident" {
 		t.Errorf("expected Title.En 'VCR Test Incident', got '%s'", incident.Title.En)
 	}
 
-	// Test Delete (read-after-create already validated full incident details above)
+	// Test Delete
 	if err = client.DeleteIncident(ctx, incident.UUID); err != nil {
 		t.Fatalf("DeleteIncident failed: %v", err)
 	}
