@@ -27,7 +27,7 @@ func TestAccOutageResource_basic(t *testing.T) {
 	startDate := now.Add(-1 * time.Hour).Format(time.RFC3339)
 	endDate := now.Format(time.RFC3339)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create and Read testing
@@ -59,7 +59,7 @@ func TestAccOutageResource_full(t *testing.T) {
 	startDate := now.Add(-2 * time.Hour).Format(time.RFC3339)
 	endDate := now.Add(-1 * time.Hour).Format(time.RFC3339)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -84,7 +84,7 @@ func TestAccOutageResource_ongoing(t *testing.T) {
 	now := time.Now().UTC()
 	startDate := now.Add(-1 * time.Hour).Format(time.RFC3339)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -107,7 +107,7 @@ func TestAccOutageResource_disappears(t *testing.T) {
 	startDate := now.Add(-1 * time.Hour).Format(time.RFC3339)
 	endDate := now.Format(time.RFC3339)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -132,7 +132,7 @@ func TestAccOutageResource_createError(t *testing.T) {
 	startDate := now.Add(-1 * time.Hour).Format(time.RFC3339)
 	endDate := now.Format(time.RFC3339)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

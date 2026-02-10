@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -16,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
@@ -106,10 +108,13 @@ func (r *MaintenanceResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Default:             stringdefault.StaticString("scheduled"),
 			},
 			"notification_minutes": schema.Int64Attribute{
-				MarkdownDescription: "Number of minutes before the maintenance to notify subscribers. Defaults to `60`. Only used when notification_option is `scheduled`.",
+				MarkdownDescription: "Number of minutes before the maintenance to notify subscribers. Defaults to `60`. Only used when notification_option is `scheduled`. Must be at least 1.",
 				Optional:            true,
 				Computed:            true,
 				Default:             int64default.StaticInt64(client.DefaultNotifyBeforeMinutes),
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
 			},
 		},
 	}
@@ -291,6 +296,16 @@ func (r *MaintenanceResource) Update(ctx context.Context, req resource.UpdateReq
 	if !plan.Name.Equal(state.Name) {
 		name := plan.Name.ValueString()
 		updateReq.Name = &name
+	}
+
+	if !plan.Title.Equal(state.Title) && !plan.Title.IsNull() {
+		title := client.LocalizedText{En: plan.Title.ValueString()}
+		updateReq.Title = &title
+	}
+
+	if !plan.Text.Equal(state.Text) && !plan.Text.IsNull() {
+		text := client.LocalizedText{En: plan.Text.ValueString()}
+		updateReq.Text = &text
 	}
 
 	if !plan.StartDate.Equal(state.StartDate) {

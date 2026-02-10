@@ -44,7 +44,7 @@ func TestAccHealthchecksDataSource_basic(t *testing.T) {
 		"createdAt":        "2026-01-01T00:00:00Z",
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -63,7 +63,7 @@ func TestAccHealthchecksDataSource_empty(t *testing.T) {
 
 	// No healthchecks created
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -99,7 +99,7 @@ func TestAccHealthchecksDataSource_many(t *testing.T) {
 		}
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

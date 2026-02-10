@@ -30,7 +30,7 @@ func TestAccHealthcheckDataSource_basic(t *testing.T) {
 		"createdAt":        "2026-01-01T00:00:00Z",
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -75,7 +75,7 @@ func TestAccHealthcheckDataSource_withEscalationPolicy(t *testing.T) {
 		},
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

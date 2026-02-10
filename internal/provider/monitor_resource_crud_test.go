@@ -14,7 +14,7 @@ func TestAccMonitorResource_basic(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create and Read testing
@@ -53,7 +53,7 @@ func TestAccMonitorResource_full(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -80,7 +80,7 @@ func TestAccMonitorResource_paused(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -105,7 +105,7 @@ func TestAccMonitorResource_disappears(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -125,7 +125,7 @@ func TestAccMonitorResource_updateAllFields(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with minimal config
@@ -157,7 +157,7 @@ func TestAccMonitorResource_headersUpdate(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with headers
@@ -182,7 +182,7 @@ func TestAccMonitorResource_bodyUpdate(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with body
@@ -207,7 +207,7 @@ func TestAccMonitorResource_regionsUpdate(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with specific regions
@@ -232,7 +232,7 @@ func TestAccMonitorResource_pauseUnpause(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create unpaused
@@ -264,7 +264,7 @@ func TestAccMonitorResource_removeOptionalFields(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with all optional fields
@@ -291,7 +291,7 @@ func TestAccMonitorResource_clearRegions(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with regions
@@ -313,7 +313,7 @@ func TestAccMonitorResource_clearHeaders(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with headers
@@ -335,7 +335,7 @@ func TestAccMonitorResource_clearBody(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with body

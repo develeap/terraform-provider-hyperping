@@ -34,7 +34,7 @@ func TestAccMaintenanceWindowsDataSource_basic(t *testing.T) {
 		}
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -51,7 +51,7 @@ func TestAccMaintenanceWindowsDataSource_empty(t *testing.T) {
 	server := newMockMaintenanceServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

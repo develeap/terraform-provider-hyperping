@@ -27,7 +27,7 @@ func TestAccMonitorsDataSource_basic(t *testing.T) {
 	server.createTestMonitor("mon-1", "Monitor One")
 	server.createTestMonitor("mon-2", "Monitor Two")
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -47,7 +47,7 @@ func TestAccMonitorsDataSource_empty(t *testing.T) {
 
 	// No monitors created - should return empty list
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -67,7 +67,7 @@ func TestAccMonitorsDataSource_withAllFields(t *testing.T) {
 	// Create a monitor with all fields populated
 	server.createFullMonitor()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -99,7 +99,7 @@ func TestAccMonitorsDataSource_readError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -119,7 +119,7 @@ func TestAccMonitorsDataSource_manyMonitors(t *testing.T) {
 		server.createTestMonitor(fmt.Sprintf("mon-%d", i), fmt.Sprintf("Monitor %d", i))
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

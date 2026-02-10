@@ -44,7 +44,7 @@ func TestAccMonitorDataSource_basic(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -105,7 +105,7 @@ func TestAccMonitorDataSource_withAllFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -143,7 +143,7 @@ func TestAccMonitorDataSource_notFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -170,7 +170,7 @@ func TestAccMonitorDataSource_serverError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

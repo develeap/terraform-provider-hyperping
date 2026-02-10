@@ -15,7 +15,7 @@ func TestAccStatusPageDataSource_basic(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -35,7 +35,7 @@ func TestAccStatusPageDataSource_withSections(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -53,7 +53,7 @@ func TestAccStatusPageDataSource_notFound(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

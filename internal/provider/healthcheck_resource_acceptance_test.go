@@ -22,7 +22,7 @@ func TestAccHealthcheckResource_basic(t *testing.T) {
 	server := newMockHealthcheckServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create and Read testing
@@ -61,7 +61,7 @@ func TestAccHealthcheckResource_full(t *testing.T) {
 	server := newMockHealthcheckServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -86,7 +86,7 @@ func TestAccHealthcheckResource_pause(t *testing.T) {
 	server := newMockHealthcheckServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create unpaused
@@ -118,7 +118,7 @@ func TestAccHealthcheckResource_disappears(t *testing.T) {
 	server := newMockHealthcheckServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -137,7 +137,7 @@ func TestAccHealthcheckResource_updateAll(t *testing.T) {
 	server := newMockHealthcheckServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with minimal config
@@ -176,7 +176,7 @@ func TestAccHealthcheckResource_createError(t *testing.T) {
 
 	server.setCreateError(true)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

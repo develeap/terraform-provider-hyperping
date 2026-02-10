@@ -103,7 +103,7 @@ locals {
   # Default regions by tier
   tier1_regions = ["london", "virginia", "tokyo"]      # Critical
   tier2_regions = ["frankfurt", "singapore"]            # Important
-  tier3_regions = ["oregon", "sydney"]                  # Standard
+  tier3_regions = ["tokyo", "sydney"]                  # Standard
 
   # Common request headers
   json_headers = [
@@ -195,7 +195,7 @@ resource "hyperping_monitor" "database_port" {
   protocol        = "port"
   port            = 5432
   check_frequency = 120
-  regions         = ["virginia", "oregon"]
+  regions         = ["virginia", "tokyo"]
 }
 
 # TCP port check (Redis)

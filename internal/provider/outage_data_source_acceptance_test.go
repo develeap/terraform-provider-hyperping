@@ -31,7 +31,7 @@ func TestAccOutageDataSource_basic(t *testing.T) {
 		"description": "Test outage",
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -64,7 +64,7 @@ func TestAccOutageDataSource_ongoing(t *testing.T) {
 		"is_resolved":  false,
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

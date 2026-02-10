@@ -163,7 +163,7 @@ resource "hyperping_monitor" "api" {
 
 **Valid regions:**
 - `london`, `frankfurt`, `singapore`, `sydney`
-- `virginia`, `oregon`, `saopaulo`, `tokyo`, `bahrain`
+- `virginia`, `tokyo`, `saopaulo`, `tokyo`, `bahrain`
 
 ### 5. Invalid Protocol/URL Combination
 

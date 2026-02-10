@@ -16,7 +16,7 @@ func TestAccStatusPageSubscriberResource_email(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create status page first
@@ -48,7 +48,7 @@ func TestAccStatusPageSubscriberResource_sms(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -67,7 +67,7 @@ func TestAccStatusPageSubscriberResource_teams(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -86,7 +86,7 @@ func TestAccStatusPageSubscriberResource_slackRejected(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -101,7 +101,7 @@ func TestAccStatusPageSubscriberResource_multipleSubscribers(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -264,7 +264,7 @@ func TestAccStatusPageSubscriberResource_emailRequired(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -279,7 +279,7 @@ func TestAccStatusPageSubscriberResource_phonRequired(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -294,7 +294,7 @@ func TestAccStatusPageSubscriberResource_teamsWebhookRequired(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

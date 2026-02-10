@@ -214,6 +214,35 @@ func TestContractMaintenance_MarshalCreateRequest(t *testing.T) {
 	assertJSONNotContains(t, data, "monitorUuids")
 }
 
+func TestContractMaintenance_UnmarshalListResponse(t *testing.T) {
+	data := loadTestData(t, "maintenance/list_response.json")
+
+	var maintenances []Maintenance
+	err := json.Unmarshal(data, &maintenances)
+	if err != nil {
+		t.Fatalf("failed to unmarshal maintenance list: %v", err)
+	}
+
+	if len(maintenances) != 2 {
+		t.Errorf("expected 2 maintenance windows, got %d", len(maintenances))
+	}
+
+	// Verify first maintenance has expected UUID
+	if maintenances[0].UUID != "mw_TY2vFNUbdzdskD" {
+		t.Errorf("expected first maintenance UUID 'mw_TY2vFNUbdzdskD', got %q", maintenances[0].UUID)
+	}
+
+	// Verify first maintenance has name
+	if maintenances[0].Name != "Scheduled API Upgrade" {
+		t.Errorf("expected first maintenance name 'Scheduled API Upgrade', got %q", maintenances[0].Name)
+	}
+
+	// Verify second maintenance has expected UUID
+	if maintenances[1].UUID != "mw_ABC123xyz" {
+		t.Errorf("expected second maintenance UUID 'mw_ABC123xyz', got %q", maintenances[1].UUID)
+	}
+}
+
 // =============================================================================
 // Incident Contract Tests
 // =============================================================================
@@ -298,6 +327,236 @@ func TestContractIncident_UnmarshalListResponse(t *testing.T) {
 	// Verify first incident has type "outage"
 	if incidents[0].Type != "outage" {
 		t.Errorf("expected first incident type 'outage', got %q", incidents[0].Type)
+	}
+}
+
+// =============================================================================
+// Healthcheck Contract Tests
+// =============================================================================
+
+func TestContractHealthcheck_UnmarshalResponse(t *testing.T) {
+	data := loadTestData(t, "healthchecks/response.json")
+
+	var healthcheck Healthcheck
+	err := json.Unmarshal(data, &healthcheck)
+	if err != nil {
+		t.Fatalf("failed to unmarshal healthcheck response: %v", err)
+	}
+
+	if healthcheck.UUID != "tok_hy4GCxOqbwahr4ctj0cNOIIp" {
+		t.Errorf("expected UUID 'tok_hy4GCxOqbwahr4ctj0cNOIIp', got %q", healthcheck.UUID)
+	}
+	if healthcheck.Name != "vcr-test-healthcheck" {
+		t.Errorf("expected Name 'vcr-test-healthcheck', got %q", healthcheck.Name)
+	}
+	if healthcheck.PeriodValue == nil || *healthcheck.PeriodValue != 60 {
+		if healthcheck.PeriodValue == nil {
+			t.Error("expected PeriodValue to be set")
+		} else {
+			t.Errorf("expected PeriodValue 60, got %d", *healthcheck.PeriodValue)
+		}
+	}
+	if healthcheck.PeriodType != "seconds" {
+		t.Errorf("expected PeriodType 'seconds', got %q", healthcheck.PeriodType)
+	}
+	if healthcheck.GracePeriodValue != 300 {
+		t.Errorf("expected GracePeriodValue 300, got %d", healthcheck.GracePeriodValue)
+	}
+	if healthcheck.PingURL != "https://hc.hyperping.io/tok_hy4GCxOqbwahr4ctj0cNOIIp" {
+		t.Errorf("expected PingURL to be set, got %q", healthcheck.PingURL)
+	}
+}
+
+func TestContractHealthcheck_MarshalCreateRequest(t *testing.T) {
+	periodValue := 60
+	periodType := "seconds"
+	req := CreateHealthcheckRequest{
+		Name:             "test-healthcheck",
+		PeriodValue:      &periodValue,
+		PeriodType:       &periodType,
+		GracePeriodValue: 300,
+		GracePeriodType:  "seconds",
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal healthcheck create request: %v", err)
+	}
+
+	// Must use snake_case field names
+	assertJSONContains(t, data, "name")
+	assertJSONContains(t, data, "period_value")
+	assertJSONContains(t, data, "period_type")
+	assertJSONContains(t, data, "grace_period_value")
+	assertJSONContains(t, data, "grace_period_type")
+}
+
+func TestContractHealthcheck_UnmarshalListResponse(t *testing.T) {
+	data := loadTestData(t, "healthchecks/list_response.json")
+
+	var response struct {
+		Healthchecks []Healthcheck `json:"healthchecks"`
+	}
+	err := json.Unmarshal(data, &response)
+	if err != nil {
+		t.Fatalf("failed to unmarshal healthcheck list: %v", err)
+	}
+
+	if len(response.Healthchecks) != 1 {
+		t.Errorf("expected 1 healthcheck, got %d", len(response.Healthchecks))
+	}
+
+	if len(response.Healthchecks) > 0 {
+		if response.Healthchecks[0].UUID != "tok_hy4GCxOqbwahr4ctj0cNOIIp" {
+			t.Errorf("expected first healthcheck UUID 'tok_hy4GCxOqbwahr4ctj0cNOIIp', got %q", response.Healthchecks[0].UUID)
+		}
+	}
+}
+
+// =============================================================================
+// Outage Contract Tests
+// =============================================================================
+
+func TestContractOutage_UnmarshalResponse(t *testing.T) {
+	data := loadTestData(t, "outages/response.json")
+
+	var outage Outage
+	err := json.Unmarshal(data, &outage)
+	if err != nil {
+		t.Fatalf("failed to unmarshal outage response: %v", err)
+	}
+
+	if outage.UUID != "outage_nqZWRijx1VQEQg" {
+		t.Errorf("expected UUID 'outage_nqZWRijx1VQEQg', got %q", outage.UUID)
+	}
+	if outage.StatusCode != 500 {
+		t.Errorf("expected StatusCode 500, got %d", outage.StatusCode)
+	}
+	if outage.Description != "Internal Server Error" {
+		t.Errorf("expected Description 'Internal Server Error', got %q", outage.Description)
+	}
+	if outage.Monitor.UUID == "" {
+		t.Error("expected Monitor.UUID to be set")
+	} else if outage.Monitor.UUID != "mon_MdnOEmCL1uSAoV" {
+		t.Errorf("expected Monitor.UUID 'mon_MdnOEmCL1uSAoV', got %q", outage.Monitor.UUID)
+	}
+}
+
+func TestContractOutage_MarshalCreateRequest(t *testing.T) {
+	endDate := "2026-02-09T05:00:00.000Z"
+	req := CreateOutageRequest{
+		MonitorUUID: "mon_abc123",
+		StartDate:   "2026-02-09T04:00:00.000Z",
+		EndDate:     &endDate,
+		StatusCode:  500,
+		Description: "Manual outage",
+		OutageType:  "manual",
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal outage create request: %v", err)
+	}
+
+	// Must use correct field names
+	assertJSONContains(t, data, "monitorUuid")
+	assertJSONContains(t, data, "startDate")
+	assertJSONContains(t, data, "endDate")
+	assertJSONContains(t, data, "statusCode")
+	assertJSONContains(t, data, "description")
+	assertJSONContains(t, data, "outageType")
+}
+
+func TestContractOutage_UnmarshalListResponse(t *testing.T) {
+	data := loadTestData(t, "outages/list_response.json")
+
+	var outages []Outage
+	err := json.Unmarshal(data, &outages)
+	if err != nil {
+		t.Fatalf("failed to unmarshal outage list: %v", err)
+	}
+
+	if len(outages) != 1 {
+		t.Errorf("expected 1 outage, got %d", len(outages))
+	}
+
+	if len(outages) > 0 {
+		if outages[0].UUID != "outage_nqZWRijx1VQEQg" {
+			t.Errorf("expected first outage UUID 'outage_nqZWRijx1VQEQg', got %q", outages[0].UUID)
+		}
+	}
+}
+
+// =============================================================================
+// StatusPage Contract Tests
+// =============================================================================
+
+func TestContractStatusPage_UnmarshalResponse(t *testing.T) {
+	data := loadTestData(t, "statuspages/response.json")
+
+	var statusPage StatusPage
+	err := json.Unmarshal(data, &statusPage)
+	if err != nil {
+		t.Fatalf("failed to unmarshal status page response: %v", err)
+	}
+
+	if statusPage.UUID != "sp_ide5MNPlpQBQgV" {
+		t.Errorf("expected UUID 'sp_ide5MNPlpQBQgV', got %q", statusPage.UUID)
+	}
+	if statusPage.Name != "VCR Test Status Page" {
+		t.Errorf("expected Name 'VCR Test Status Page', got %q", statusPage.Name)
+	}
+	if statusPage.HostedSubdomain != "vcr-test-20260205095502.hyperping.app" {
+		t.Errorf("expected HostedSubdomain to be set, got %q", statusPage.HostedSubdomain)
+	}
+	if statusPage.Settings.Theme != "system" {
+		t.Errorf("expected Settings.Theme 'system', got %q", statusPage.Settings.Theme)
+	}
+	if len(statusPage.Settings.Languages) != 1 {
+		t.Errorf("expected 1 language, got %d", len(statusPage.Settings.Languages))
+	}
+}
+
+func TestContractStatusPage_MarshalCreateRequest(t *testing.T) {
+	subdomain := "test-statuspage"
+	req := CreateStatusPageRequest{
+		Name:      "Test Status Page",
+		Subdomain: &subdomain,
+		Languages: []string{"en"},
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal status page create request: %v", err)
+	}
+
+	// Must use correct field names
+	assertJSONContains(t, data, "name")
+	assertJSONContains(t, data, "subdomain")
+	assertJSONContains(t, data, "languages")
+}
+
+func TestContractStatusPage_UnmarshalListResponse(t *testing.T) {
+	data := loadTestData(t, "statuspages/list_response.json")
+
+	var response StatusPagePaginatedResponse
+	err := json.Unmarshal(data, &response)
+	if err != nil {
+		t.Fatalf("failed to unmarshal status page list: %v", err)
+	}
+
+	if len(response.StatusPages) != 1 {
+		t.Errorf("expected 1 status page, got %d", len(response.StatusPages))
+	}
+
+	if len(response.StatusPages) > 0 {
+		if response.StatusPages[0].UUID != "sp_ide5MNPlpQBQgV" {
+			t.Errorf("expected first status page UUID 'sp_ide5MNPlpQBQgV', got %q", response.StatusPages[0].UUID)
+		}
+	}
+
+	if response.Total != 1 {
+		t.Errorf("expected Total 1, got %d", response.Total)
 	}
 }
 

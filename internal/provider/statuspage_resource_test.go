@@ -22,7 +22,7 @@ func TestAccStatusPageResource_basic(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create and Read testing
@@ -40,6 +40,14 @@ func TestAccStatusPageResource_basic(t *testing.T) {
 				ResourceName:      "hyperping_statuspage.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+				// API auto-populates all 5 description language fields even if not set
+				ImportStateVerifyIgnore: []string{
+					"settings.description.%",
+					"settings.description.fr",
+					"settings.description.de",
+					"settings.description.ru",
+					"settings.description.nl",
+				},
 			},
 		},
 	})
@@ -49,7 +57,7 @@ func TestAccStatusPageResource_full(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -75,7 +83,7 @@ func TestAccStatusPageResource_withSections(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with sections
@@ -103,7 +111,7 @@ func TestAccStatusPageResource_updateSettings(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create with default settings
@@ -135,7 +143,7 @@ func TestAccStatusPageResource_disappears(t *testing.T) {
 	server := newMockStatusPageServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -163,7 +171,7 @@ resource "hyperping_statuspage" "test" {
   hosted_subdomain = "test-status"
 
   settings = {
-    name      = "Test Settings"
+    name      = "Test Status Page"
     languages = ["en"]
   }
 }
@@ -182,7 +190,7 @@ resource "hyperping_statuspage" "test" {
   hosted_subdomain = "prod-status"
 
   settings = {
-    name         = "Production Settings"
+    name         = "Production Status"
     theme        = "dark"
     font         = "Inter"
     accent_color = "#0066cc"
@@ -222,7 +230,7 @@ resource "hyperping_statuspage" "test" {
   hosted_subdomain = "test-status"
 
   settings = {
-    name      = "Test Settings"
+    name      = "Test Status Page"
     languages = ["en"]
   }
 
@@ -256,7 +264,7 @@ resource "hyperping_statuspage" "test" {
   hosted_subdomain = "test-status"
 
   settings = {
-    name      = "Test Settings"
+    name      = "Test Status Page"
     languages = ["en"]
   }
 
@@ -284,7 +292,7 @@ resource "hyperping_statuspage" "test" {
   hosted_subdomain = "test-status"
 
   settings = {
-    name      = "Test Settings"
+    name      = "Test Status Page"
     languages = ["en"]
     theme     = %[2]q
   }
@@ -401,15 +409,10 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 	}
 
 	// Build nested settings object from flat request fields
-	// Derive settings.name from the top-level name
-	// Real API likely does the same since provider doesn't send this field
-	settingsName := "Settings"
+	// Real API copies the top-level name to settings.name
+	settingsName := "Status Page"
 	if topName, ok := req["name"].(string); ok && topName != "" {
-		// Extract first word: "Test Status Page" → "Test"
-		parts := strings.Fields(topName)
-		if len(parts) > 0 {
-			settingsName = parts[0] + " Settings"
-		}
+		settingsName = topName
 	}
 
 	settings := map[string]interface{}{
@@ -419,9 +422,9 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 		"font":                     getOrDefault(req, "font", "Inter"),
 		"accent_color":             getOrDefault(req, "accent_color", "#36b27e"),
 		"default_language":         "en",
-		"logo_height":              "40px",
+		"logo_height":              "32px",
 		"auto_refresh":             getOrDefaultBool(req, "auto_refresh", false),
-		"banner_header":            getOrDefaultBool(req, "banner_header", false),
+		"banner_header":            getOrDefaultBool(req, "banner_header", true),
 		"hide_powered_by":          getOrDefaultBool(req, "hide_powered_by", false),
 		"hide_from_search_engines": getOrDefaultBool(req, "hide_from_search_engines", false),
 	}
@@ -442,9 +445,25 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 	} else {
 		settings["languages"] = []string{}
 	}
-	if description, ok := req["description"].(map[string]interface{}); ok {
-		settings["description"] = description
+
+	// Real API auto-populates ALL 5 language fields in description
+	// even if only some languages are specified in the request
+	description := map[string]string{
+		"en": "",
+		"fr": "",
+		"de": "",
+		"ru": "",
+		"nl": "",
 	}
+	if reqDesc, ok := req["description"].(map[string]interface{}); ok {
+		// Merge user-provided descriptions with defaults
+		for lang, val := range reqDesc {
+			if valStr, ok := val.(string); ok {
+				description[lang] = valStr
+			}
+		}
+	}
+	settings["description"] = description
 	if logo, ok := req["logo"].(string); ok {
 		settings["logo"] = logo
 	}
@@ -578,6 +597,13 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 	// Update top-level fields
 	if name, ok := req["name"]; ok {
 		page["name"] = name
+		// Real API also updates settings.name when top-level name changes
+		settings, _ := page["settings"].(map[string]interface{})
+		if settings == nil {
+			settings = make(map[string]interface{})
+			page["settings"] = settings
+		}
+		settings["name"] = name
 	}
 	if subdomain, ok := req["subdomain"].(string); ok {
 		// Real API returns hostedsubdomain WITH the .hyperping.app suffix
@@ -638,7 +664,22 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 		}
 	}
 	if description, ok := req["description"]; ok {
-		settings["description"] = description
+		// Real API auto-populates ALL 5 language fields in description
+		descMap := map[string]string{
+			"en": "",
+			"fr": "",
+			"de": "",
+			"ru": "",
+			"nl": "",
+		}
+		if reqDesc, ok := description.(map[string]interface{}); ok {
+			for lang, val := range reqDesc {
+				if valStr, ok := val.(string); ok {
+					descMap[lang] = valStr
+				}
+			}
+		}
+		settings["description"] = descMap
 	}
 	if subscribe, ok := req["subscribe"]; ok {
 		settings["subscribe"] = subscribe

@@ -57,7 +57,7 @@ func TestAccMaintenanceResource_basic(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -126,7 +126,7 @@ func TestAccMaintenanceResource_full(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -209,7 +209,7 @@ func TestAccMaintenanceResource_timeUpdate(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -296,7 +296,7 @@ func TestAccMaintenanceResource_disappears(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -354,7 +354,7 @@ func TestAccMaintenanceResource_createError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -404,7 +404,7 @@ func TestAccMaintenanceResource_readAfterCreateError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -434,7 +434,7 @@ func TestAccMaintenanceResource_invalidTimeRange(t *testing.T) {
 	start := now.Add(24 * time.Hour).Truncate(time.Second)
 	end := now.Add(2 * time.Hour) // End before start
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -460,7 +460,7 @@ resource "hyperping_maintenance" "test" {
 }
 
 func TestAccMaintenanceResource_invalidTimeFormat(t *testing.T) {
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -728,7 +728,7 @@ func TestAccMaintenanceResource_withMonitors(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -793,7 +793,7 @@ func TestAccMaintenanceResource_import(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},
@@ -869,7 +869,7 @@ func TestAccMaintenanceResource_deleteNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
 			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
 		},

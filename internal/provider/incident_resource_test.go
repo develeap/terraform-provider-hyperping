@@ -25,7 +25,7 @@ func TestAccIncidentResource_basic(t *testing.T) {
 	server := newMockIncidentServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create and Read testing
@@ -59,7 +59,7 @@ func TestAccIncidentResource_full(t *testing.T) {
 	server := newMockIncidentServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -79,7 +79,7 @@ func TestAccIncidentResource_typeChange(t *testing.T) {
 	server := newMockIncidentServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Start with incident type
@@ -104,7 +104,7 @@ func TestAccIncidentResource_disappears(t *testing.T) {
 	server := newMockIncidentServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -125,7 +125,7 @@ func TestAccIncidentResource_createError(t *testing.T) {
 
 	server.setCreateError(true)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -140,7 +140,7 @@ func TestAccIncidentResource_updateError(t *testing.T) {
 	server := newMockIncidentServerWithErrors(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -159,7 +159,7 @@ func TestAccIncidentResource_readError(t *testing.T) {
 	server := newMockIncidentServerWithErrors(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -183,7 +183,7 @@ func TestAccIncidentResource_readAfterCreateError(t *testing.T) {
 	// Enable read-after-create error: POST succeeds but GET fails
 	server.setReadAfterCreateError(true)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -366,7 +366,7 @@ func TestAccIncidentResource_withAffectedComponents(t *testing.T) {
 	server := newMockIncidentServer(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

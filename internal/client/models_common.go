@@ -149,28 +149,17 @@ var (
 	// Combined from official Hyperping API documentation and real API responses.
 	AllowedRegions = []string{
 		// Europe
-		"paris",
-		"frankfurt",
-		"amsterdam",
 		"london",
+		"frankfurt",
 		// Asia Pacific
 		"singapore",
 		"sydney",
 		"tokyo",
-		"seoul",
-		"mumbai",
-		"bangalore",
 		// Americas
 		"virginia",
-		"california",
-		"sanfrancisco",
-		"oregon",
-		"nyc",
-		"toronto",
 		"saopaulo",
-		// Middle East / Africa
+		// Middle East
 		"bahrain",
-		"capetown",
 	}
 
 	// AllowedIncidentTypes contains valid incident type values.

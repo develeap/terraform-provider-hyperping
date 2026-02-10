@@ -221,7 +221,7 @@ Valid check frequencies (in seconds):
 ### Available Regions
 
 Choose from 19 global regions:
-- Americas: `sanfrancisco`, `california`, `virginia`, `nyc`, `oregon`, `toronto`, `saopaulo`
+- Americas: `sanfrancisco`, `california`, `virginia`, `nyc`, `tokyo`, `toronto`, `saopaulo`
 - Europe: `london`, `paris`, `frankfurt`, `amsterdam`
 - Asia: `tokyo`, `singapore`, `seoul`, `mumbai`, `bangalore`, `bahrain`
 - Africa: `capetown`

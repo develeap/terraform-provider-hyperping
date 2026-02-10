@@ -55,7 +55,7 @@ variable "default_regions" {
       for r in var.default_regions : contains([
         "paris", "frankfurt", "amsterdam", "london",
         "singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore",
-        "virginia", "california", "sanfrancisco", "oregon", "nyc", "toronto", "saopaulo",
+        "virginia", "california", "sanfrancisco", "tokyo", "nyc", "toronto", "saopaulo",
         "bahrain", "capetown"
       ], r)
     ])

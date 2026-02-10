@@ -79,7 +79,7 @@ resource "hyperping_monitor" "api_health" {
   check_frequency      = 30
   expected_status_code = "200"
 
-  regions = ["london", "frankfurt", "virginia", "oregon"]
+  regions = ["london", "frankfurt", "virginia", "sydney"]
 
   request_headers = var.api_token != "" ? [
     {
@@ -137,7 +137,7 @@ resource "hyperping_monitor" "database" {
   expected_status_code = "200"
   paused               = false
 
-  regions = ["virginia", "oregon"]
+  regions = ["virginia", "sydney"]
 }
 
 # =============================================================================

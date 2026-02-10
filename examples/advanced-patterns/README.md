@@ -463,7 +463,7 @@ locals {
   region_rotation = {
     service1 = ["london", "virginia"]
     service2 = ["frankfurt", "singapore"]
-    service3 = ["oregon", "tokyo"]
+    service3 = ["tokyo", "tokyo"]
   }
 }
 ```

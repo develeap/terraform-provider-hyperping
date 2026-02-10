@@ -19,7 +19,7 @@ func TestAccMonitorResource_createError(t *testing.T) {
 
 	server.setCreateError(true)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -34,7 +34,7 @@ func TestAccMonitorResource_updateError(t *testing.T) {
 	server := newMockHyperpingServerWithErrors(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -53,7 +53,7 @@ func TestAccMonitorResource_readError(t *testing.T) {
 	server := newMockHyperpingServerWithErrors(t)
 	defer server.Close()
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -76,7 +76,7 @@ func TestAccMonitorResource_pauseError(t *testing.T) {
 
 	server.setPauseError(true)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -97,7 +97,7 @@ func TestAccMonitorResource_deleteErrorNon404(t *testing.T) {
 
 	var monitorID string
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create a monitor

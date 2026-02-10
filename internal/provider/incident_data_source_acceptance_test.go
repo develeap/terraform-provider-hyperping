@@ -23,7 +23,7 @@ func TestAccIncidentDataSource_basic(t *testing.T) {
 		"statuspages": []string{"sp_main"},
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -53,7 +53,7 @@ func TestAccIncidentDataSource_withComponents(t *testing.T) {
 		"affectedComponents": []interface{}{"comp_1", "comp_2"},
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

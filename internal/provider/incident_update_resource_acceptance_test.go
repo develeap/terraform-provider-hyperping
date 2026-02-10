@@ -26,7 +26,7 @@ func TestAccIncidentUpdateResource_basic(t *testing.T) {
 		"updates":     []interface{}{},
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create and Read testing
@@ -51,29 +51,33 @@ func TestAccIncidentUpdateResource_basic(t *testing.T) {
 }
 
 func TestAccIncidentUpdateResource_allTypes(t *testing.T) {
-	server := newMockIncidentServer(t)
-	defer server.Close()
-
-	// Pre-create an incident
-	server.incidents["inci_types"] = map[string]interface{}{
-		"uuid":        "inci_types",
-		"title":       map[string]interface{}{"en": "Types Test"},
-		"text":        map[string]interface{}{"en": "Testing all update types"},
-		"type":        "incident",
-		"statuspages": []string{"sp_main"},
-		"updates":     []interface{}{},
-	}
-
 	updateTypes := []string{"investigating", "identified", "update", "monitoring", "resolved"}
 
 	for _, updateType := range updateTypes {
+		updateType := updateType // Capture range variable
 		t.Run(updateType, func(t *testing.T) {
-			tfresource.Test(t, tfresource.TestCase{
+			// Each subtest gets its own mock server to avoid conflicts
+			server := newMockIncidentServer(t)
+			defer server.Close()
+
+			// Pre-create a unique incident for this subtest
+			incidentID := fmt.Sprintf("inci_%s", updateType)
+			server.incidents[incidentID] = map[string]interface{}{
+				"uuid":        incidentID,
+				"title":       map[string]interface{}{"en": fmt.Sprintf("Test %s", updateType)},
+				"text":        map[string]interface{}{"en": "Testing update type"},
+				"type":        "incident",
+				"statuspages": []string{"sp_main"},
+				"updates":     []interface{}{},
+			}
+
+			tfresource.ParallelTest(t, tfresource.TestCase{
 				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 				Steps: []tfresource.TestStep{
 					{
-						Config: testAccIncidentUpdateResourceConfig_withType(server.URL, updateType),
+						Config: testAccIncidentUpdateResourceConfig_withTypeAndIncident(server.URL, incidentID, updateType),
 						Check: tfresource.ComposeAggregateTestCheckFunc(
+							tfresource.TestCheckResourceAttr("hyperping_incident_update.test", "incident_id", incidentID),
 							tfresource.TestCheckResourceAttr("hyperping_incident_update.test", "type", updateType),
 						),
 					},
@@ -97,7 +101,7 @@ func TestAccIncidentUpdateResource_disappears(t *testing.T) {
 		"updates":     []interface{}{},
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -128,7 +132,7 @@ func TestAccIncidentUpdateResource_createError(t *testing.T) {
 
 	server.setUpdateError(true)
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
@@ -169,6 +173,21 @@ resource "hyperping_incident_update" "test" {
   type        = %[2]q
 }
 `, baseURL, updateType)
+}
+
+func testAccIncidentUpdateResourceConfig_withTypeAndIncident(baseURL, incidentID, updateType string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "test_api_key"
+  base_url = %[1]q
+}
+
+resource "hyperping_incident_update" "test" {
+  incident_id = %[2]q
+  text        = "Update of type %[3]s"
+  type        = %[3]q
+}
+`, baseURL, incidentID, updateType)
 }
 
 func testAccIncidentUpdateResourceConfig_disappear(baseURL string) string {

@@ -116,7 +116,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"regions": schema.ListAttribute{
-				MarkdownDescription: "List of regions to check from. Valid values: `paris`, `frankfurt`, `amsterdam`, `london`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`, `california`, `oregon`, `nyc`, `toronto`, `seoul`, `mumbai`, `bangalore`.",
+				MarkdownDescription: "List of regions to check from. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.",
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,

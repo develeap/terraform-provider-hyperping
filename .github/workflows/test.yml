@@ -130,22 +130,54 @@ jobs:
         with:
           sarif_file: gosec-results.sarif
 
-  # Run unit tests (no API key required)
-  unit-test:
-    name: Unit Tests
+  # Run ALL tests: unit, contract, and acceptance tests
+  # Optimized with parallel execution and smart caching
+  test-suite:
+    name: 'All Tests: Terraform ${{ matrix.terraform }}'
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20  # Increased for acceptance tests
+    strategy:
+      fail-fast: false
+      matrix:
+        # Test with multiple Terraform versions
+        terraform:
+          - '1.7.*'
+          - '1.8.*'
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
           cache: true
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ matrix.terraform }}
+          terraform_wrapper: false
+
+      # Cache VCR cassettes for faster test execution
+      - name: Cache VCR cassettes
+        uses: actions/cache@v4
+        with:
+          path: internal/client/testdata/cassettes
+          key: vcr-cassettes-${{ hashFiles('internal/client/testdata/cassettes/**') }}
+          restore-keys: |
+            vcr-cassettes-
+
       - run: go mod download
-      - name: Run unit tests with coverage
+
+      # Run unit tests + contract tests with parallel execution
+      - name: Run unit & contract tests with coverage
         run: |
-          go test -v -race -coverprofile=coverage.out -covermode=atomic ./internal/...
+          # Parallel execution: -p 4 packages, -parallel 10 tests per package
+          go test -v -race -p 4 -parallel 10 \
+            -coverprofile=coverage.out -covermode=atomic \
+            ./internal/...
       - name: Check coverage threshold
         run: |
           # Coverage Analysis:
@@ -184,6 +216,32 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
         continue-on-error: true
+
+      # Run acceptance tests with parallel execution (only if API key available)
+      - name: Run acceptance tests (E2E)
+        if: env.HYPERPING_API_KEY != ''
+        env:
+          TF_ACC: "1"
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
+          # Optimize parallel execution for acceptance tests
+          GOMAXPROCS: "4"
+        run: |
+          # Run with parallelism: -p 2 packages (limit API load), -parallel 10 tests per package
+          # Timeout: 30m for comprehensive E2E testing
+          go test -v -p 2 -parallel 10 -timeout 30m ./internal/provider/
+        continue-on-error: false
+
+      - name: Acceptance tests skipped (no API key)
+        if: env.HYPERPING_API_KEY == ''
+        env:
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
+        run: |
+          echo "⚠️  Acceptance tests skipped - HYPERPING_API_KEY not available"
+          echo "This is expected for:"
+          echo "  - Pull requests from forks"
+          echo "  - First-time contributors"
+          echo ""
+          echo "Unit and contract tests have passed. Maintainers will run acceptance tests."
 
   # API Sync Check - ensures provider matches documented API
   # This blocks PRs if the provider is out of sync with API documentation
@@ -239,42 +297,3 @@ jobs:
         run: |
           echo "::warning::Sync check skipped - no API snapshots available. Run 'API Documentation Scraper' workflow first."
 
-  # Run acceptance tests in a matrix with Terraform CLI versions
-  # Only runs when API key is available (not on PRs from forks)
-  acceptance-test:
-    name: 'Acceptance Tests: Terraform ${{ matrix.terraform }}'
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Only run acceptance tests when we have access to secrets
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    strategy:
-      fail-fast: false
-      matrix:
-        # Terraform versions
-        # Supporting TF 1.7.x (current stable) and 1.8.x (latest)
-        terraform:
-          - '1.7.*'
-          - '1.8.*'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ matrix.terraform }}
-          terraform_wrapper: false
-      - run: go mod download
-      - name: Run acceptance tests
-        env:
-          TF_ACC: "1"
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
-        run: go test -v -cover -timeout 120m ./internal/provider/
-        if: env.HYPERPING_API_KEY != ''
-      - name: Skip acceptance tests (no API key)
-        if: env.HYPERPING_API_KEY == ''
-        run: echo "Skipping acceptance tests - HYPERPING_API_KEY not available"
-        env:
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}

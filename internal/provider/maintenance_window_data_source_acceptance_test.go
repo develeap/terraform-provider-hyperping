@@ -36,7 +36,7 @@ func TestAccMaintenanceWindowDataSource_basic(t *testing.T) {
 		"monitors":   []string{"mon_123"},
 	}
 
-	tfresource.Test(t, tfresource.TestCase{
+	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

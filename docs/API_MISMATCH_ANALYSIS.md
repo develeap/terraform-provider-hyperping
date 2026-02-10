@@ -23,7 +23,7 @@ GET Response:    { /* text field missing */ }    ❌ Not returned
 // In mapIncidentToModel():
 model.Text = types.StringValue(incident.Text.En)  // incident.Text.En is ""
 
-// Terraform comparison:
+// Terraform comlondonon:
 Plan:  text = "Testing..."
 State: text = ""
 Result: INCONSISTENT RESULT AFTER APPLY ❌

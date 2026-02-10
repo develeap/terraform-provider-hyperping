@@ -72,7 +72,7 @@ Error: Invalid region specified
 **Solutions:**
 Valid regions are:
 - `london`, `frankfurt`, `singapore`, `sydney`
-- `virginia`, `oregon`, `saopaulo`, `tokyo`, `bahrain`
+- `virginia`, `tokyo`, `saopaulo`, `tokyo`, `bahrain`
 
 ---
 

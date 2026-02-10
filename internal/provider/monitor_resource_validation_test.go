@@ -122,16 +122,16 @@ func TestMonitorResource_Schema(t *testing.T) {
 
 func TestAllowedRegions(t *testing.T) {
 	// Verify client.AllowedRegions contains expected values
-	// Combined from official API docs and real API responses (19 regions)
+	// From official API documentation (8 regions)
 	expectedRegions := []string{
 		// Europe
-		"paris", "frankfurt", "amsterdam", "london",
+		"london", "frankfurt",
 		// Asia Pacific
-		"singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore",
+		"singapore", "sydney", "tokyo",
 		// Americas
-		"virginia", "california", "sanfrancisco", "oregon", "nyc", "toronto", "saopaulo",
-		// Middle East / Africa
-		"bahrain", "capetown",
+		"virginia", "saopaulo",
+		// Middle East
+		"bahrain",
 	}
 
 	if len(client.AllowedRegions) != len(expectedRegions) {
