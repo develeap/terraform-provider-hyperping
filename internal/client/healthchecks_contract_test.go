@@ -258,6 +258,9 @@ func TestContract_Healthcheck_CronSupport(t *testing.T) {
 	}
 
 	// Validate request can be marshaled with cron fields
+	if req.Name != "cron-healthcheck" {
+		t.Errorf("expected Name 'cron-healthcheck', got %q", req.Name)
+	}
 	if req.Cron == nil {
 		t.Error("expected Cron to be set")
 	}
@@ -269,6 +272,12 @@ func TestContract_Healthcheck_CronSupport(t *testing.T) {
 	}
 	if *req.Timezone != "America/New_York" {
 		t.Errorf("expected Timezone 'America/New_York', got %q", *req.Timezone)
+	}
+	if req.GracePeriodValue != 300 {
+		t.Errorf("expected GracePeriodValue 300, got %d", req.GracePeriodValue)
+	}
+	if req.GracePeriodType != "seconds" {
+		t.Errorf("expected GracePeriodType 'seconds', got %q", req.GracePeriodType)
 	}
 
 	t.Log("Cron field structure validation passed")

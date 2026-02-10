@@ -165,12 +165,12 @@ func ValidateArrayLength(t *testing.T, fieldName string, value interface{}, minL
 }
 
 // ValidateIntegerRange checks that an integer is within a valid range.
-func ValidateIntegerRange(t *testing.T, fieldName string, value, min, max int) {
+func ValidateIntegerRange(t *testing.T, fieldName string, value, minVal, maxVal int) {
 	t.Helper()
-	assert.GreaterOrEqual(t, value, min,
-		"%s should be >= %d, got %d", fieldName, min, value)
-	assert.LessOrEqual(t, value, max,
-		"%s should be <= %d, got %d", fieldName, max, value)
+	assert.GreaterOrEqual(t, value, minVal,
+		"%s should be >= %d, got %d", fieldName, minVal, value)
+	assert.LessOrEqual(t, value, maxVal,
+		"%s should be <= %d, got %d", fieldName, maxVal, value)
 }
 
 // ValidatePositiveInteger checks that an integer is positive.
@@ -180,10 +180,10 @@ func ValidatePositiveInteger(t *testing.T, fieldName string, value int) {
 }
 
 // ValidateOptionalInteger checks that an optional integer is valid when present.
-func ValidateOptionalInteger(t *testing.T, fieldName string, value *int, min, max int) {
+func ValidateOptionalInteger(t *testing.T, fieldName string, value *int, minVal, maxVal int) {
 	t.Helper()
 	if value != nil {
-		ValidateIntegerRange(t, fieldName, *value, min, max)
+		ValidateIntegerRange(t, fieldName, *value, minVal, maxVal)
 	}
 }
 

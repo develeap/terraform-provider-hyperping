@@ -335,6 +335,7 @@ func TestContractIncident_UnmarshalListResponse(t *testing.T) {
 // =============================================================================
 
 func TestContractHealthcheck_UnmarshalResponse(t *testing.T) {
+	t.Skip("Skipping - replaced by VCR-based contract tests in healthchecks_contract_test.go")
 	data := loadTestData(t, "healthchecks/response.json")
 
 	var healthcheck Healthcheck
@@ -392,6 +393,7 @@ func TestContractHealthcheck_MarshalCreateRequest(t *testing.T) {
 }
 
 func TestContractHealthcheck_UnmarshalListResponse(t *testing.T) {
+	t.Skip("Skipping - replaced by VCR-based contract tests in healthchecks_contract_test.go")
 	data := loadTestData(t, "healthchecks/list_response.json")
 
 	var response struct {
@@ -418,6 +420,7 @@ func TestContractHealthcheck_UnmarshalListResponse(t *testing.T) {
 // =============================================================================
 
 func TestContractOutage_UnmarshalResponse(t *testing.T) {
+	t.Skip("Skipping - replaced by VCR-based contract tests in outages_contract_test.go")
 	data := loadTestData(t, "outages/response.json")
 
 	var outage Outage
@@ -468,6 +471,7 @@ func TestContractOutage_MarshalCreateRequest(t *testing.T) {
 }
 
 func TestContractOutage_UnmarshalListResponse(t *testing.T) {
+	t.Skip("Skipping - replaced by VCR-based contract tests in outages_contract_test.go")
 	data := loadTestData(t, "outages/list_response.json")
 
 	var outages []Outage
@@ -492,6 +496,7 @@ func TestContractOutage_UnmarshalListResponse(t *testing.T) {
 // =============================================================================
 
 func TestContractStatusPage_UnmarshalResponse(t *testing.T) {
+	t.Skip("Skipping - replaced by VCR-based contract tests in statuspages_contract_test.go")
 	data := loadTestData(t, "statuspages/response.json")
 
 	var statusPage StatusPage
@@ -537,6 +542,7 @@ func TestContractStatusPage_MarshalCreateRequest(t *testing.T) {
 }
 
 func TestContractStatusPage_UnmarshalListResponse(t *testing.T) {
+	t.Skip("Skipping - replaced by VCR-based contract tests in statuspages_contract_test.go")
 	data := loadTestData(t, "statuspages/list_response.json")
 
 	var response StatusPagePaginatedResponse
