@@ -384,10 +384,11 @@ func TestLiveContract_Report_List(t *testing.T) {
 	client := NewClient(apiKey, WithHTTPClient(httpClient))
 	ctx := context.Background()
 
-	to := time.Now().UTC()
-	from := to.Add(-7 * 24 * time.Hour)
+	// Use static timestamps to match VCR cassette
+	from := "2026-02-03T05:36:12Z"
+	to := "2026-02-10T05:36:12Z"
 
-	reports, err := client.ListMonitorReports(ctx, from.Format(time.RFC3339), to.Format(time.RFC3339))
+	reports, err := client.ListMonitorReports(ctx, from, to)
 	if err != nil {
 		t.Fatalf("ListMonitorReports failed: %v", err)
 	}
