@@ -17,8 +17,15 @@ pre-commit:
       run: |
         echo "📝 Generating Terraform provider documentation..."
 
-        # Backup manual documentation
-        [ -d "docs/guides" ] && cp -r docs/guides /tmp/docs-guides-backup
+        # VALIDATION: Fail if nested guides/ directory exists (prevents bug escalation)
+        if [ -d "docs/guides/guides" ]; then
+          echo "❌ ERROR: Nested docs/guides/guides/ directory detected!"
+          echo "This is a known bug. Fix with: rm -rf docs/guides/guides"
+          exit 1
+        fi
+
+        # Backup manual documentation (files only, not subdirectories)
+        [ -d "docs/guides" ] && mkdir -p /tmp/docs-guides-backup && cp docs/guides/*.md /tmp/docs-guides-backup/ 2>/dev/null || true
         [ -f "docs/index.md" ] && cp docs/index.md /tmp/docs-index-backup.md
         [ -f "docs/TROUBLESHOOTING.md" ] && cp docs/TROUBLESHOOTING.md /tmp/docs-troubleshooting-backup.md
 
@@ -26,10 +33,14 @@ pre-commit:
         cd tools && go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-dir .. --provider-name hyperping
         cd ..
 
-        # Restore manual documentation
-        [ -d "/tmp/docs-guides-backup" ] && cp -r /tmp/docs-guides-backup docs/guides
+        # Restore manual documentation (ensure directory exists first)
+        mkdir -p docs/guides
+        [ -d "/tmp/docs-guides-backup" ] && cp /tmp/docs-guides-backup/*.md docs/guides/ 2>/dev/null || true
         [ -f "/tmp/docs-index-backup.md" ] && cp /tmp/docs-index-backup.md docs/index.md
         [ -f "/tmp/docs-troubleshooting-backup.md" ] && cp /tmp/docs-troubleshooting-backup.md docs/TROUBLESHOOTING.md
+
+        # Cleanup temporary backup files
+        rm -rf /tmp/docs-guides-backup /tmp/docs-index-backup.md /tmp/docs-troubleshooting-backup.md
 
         # Only stage generated docs (resources, data-sources)
         if ! git diff --exit-code --quiet docs/resources/ docs/data-sources/; then
