@@ -369,8 +369,15 @@ func (m *mockHealthcheckServer) createHealthcheck(w http.ResponseWriter, r *http
 
 	m.healthchecks[id] = healthcheck
 
+	// API returns wrapped response: {"message":"...","healthcheck":{...}}
+	// This matches the real API format documented in the VCR cassettes
+	response := map[string]interface{}{
+		"message":     "Healthcheck created",
+		"healthcheck": healthcheck,
+	}
+
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(healthcheck)
+	json.NewEncoder(w).Encode(response)
 }
 
 func (m *mockHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +390,12 @@ func (m *mockHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	json.NewEncoder(w).Encode(healthcheck)
+	// API GET returns wrapped response: {"healthcheck":{...}}
+	// This matches the real API format documented in the VCR cassettes
+	response := map[string]interface{}{
+		"healthcheck": healthcheck,
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http.Request) {
@@ -438,7 +450,14 @@ func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http
 	}
 
 	m.healthchecks[id] = healthcheck
-	json.NewEncoder(w).Encode(healthcheck)
+
+	// API PUT returns wrapped response: {"message":"...","healthcheck":{...}}
+	// This matches the real API format documented in the VCR cassettes
+	response := map[string]interface{}{
+		"message":     "Healthcheck updated",
+		"healthcheck": healthcheck,
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 func (m *mockHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *http.Request) {

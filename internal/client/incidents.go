@@ -86,13 +86,8 @@ func (c *Client) CreateIncident(ctx context.Context, req CreateIncidentRequest) 
 		return nil, fmt.Errorf("failed to create incident: %w", err)
 	}
 
-	// Read full incident details (create response only contains UUID)
-	incident, err := c.GetIncident(ctx, createResp.UUID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read incident after creation: %w", err)
-	}
-
-	return incident, nil
+	// Return minimal incident with UUID - provider will read full details
+	return &Incident{UUID: createResp.UUID}, nil
 }
 
 // UpdateIncident updates an existing incident.
