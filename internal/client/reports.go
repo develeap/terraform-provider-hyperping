@@ -41,6 +41,7 @@ func (c *Client) GetMonitorReport(ctx context.Context, uuid string, from, to str
 
 // ListMonitorReports returns reports for all monitors.
 // Optional from/to parameters can be provided for date filtering.
+// API returns wrapped response: {"period": {...}, "monitors": [...]}
 func (c *Client) ListMonitorReports(ctx context.Context, from, to string) ([]MonitorReport, error) {
 	path := reportsBasePath
 
@@ -56,9 +57,9 @@ func (c *Client) ListMonitorReports(ctx context.Context, from, to string) ([]Mon
 		path = path + "?" + params.Encode()
 	}
 
-	var reports []MonitorReport
-	if err := c.doRequest(ctx, "GET", path, nil, &reports); err != nil {
+	var response ListMonitorReportsResponse
+	if err := c.doRequest(ctx, "GET", path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to list monitor reports: %w", err)
 	}
-	return reports, nil
+	return response.Monitors, nil
 }

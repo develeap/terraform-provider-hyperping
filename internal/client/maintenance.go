@@ -29,6 +29,7 @@ func (c *Client) ListMaintenance(ctx context.Context) ([]Maintenance, error) {
 }
 
 // parseMaintenanceListResponse handles the various response formats the API might return.
+// The API typically returns: {"maintenanceWindows": [...], "hasNextPage": bool, "total": int}
 func parseMaintenanceListResponse(raw json.RawMessage) ([]Maintenance, error) {
 	// Try direct array first
 	var maintenance []Maintenance
@@ -36,23 +37,31 @@ func parseMaintenanceListResponse(raw json.RawMessage) ([]Maintenance, error) {
 		return maintenance, nil
 	}
 
-	// Try wrapped formats
+	// Try wrapped formats with pagination metadata
 	var wrapped struct {
-		Maintenance []Maintenance `json:"maintenance"`
-		Data        []Maintenance `json:"data"`
+		MaintenanceWindows []Maintenance `json:"maintenanceWindows"`
+		Data               []Maintenance `json:"data"`
+		Maintenance        []Maintenance `json:"maintenance"`
+		HasNextPage        bool          `json:"hasNextPage,omitempty"`
+		Total              int           `json:"total,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &wrapped); err != nil {
 		return nil, err
 	}
 
-	if len(wrapped.Maintenance) > 0 {
-		return wrapped.Maintenance, nil
+	// API uses "maintenanceWindows" as the standard key
+	if len(wrapped.MaintenanceWindows) > 0 {
+		return wrapped.MaintenanceWindows, nil
 	}
 	if len(wrapped.Data) > 0 {
 		return wrapped.Data, nil
 	}
+	if len(wrapped.Maintenance) > 0 {
+		return wrapped.Maintenance, nil
+	}
 
-	// Empty response
+	// Empty response - check if it's wrapped but empty
+	// This handles {"maintenanceWindows": [], "hasNextPage": false, "total": 0}
 	return []Maintenance{}, nil
 }
 
@@ -70,15 +79,28 @@ func (c *Client) GetMaintenance(ctx context.Context, uuid string) (*Maintenance,
 }
 
 // CreateMaintenance creates a new maintenance window.
+// API POST returns minimal response: {"uuid": "mw_xxx"}
+// We follow up with a GET to retrieve the full maintenance details.
 func (c *Client) CreateMaintenance(ctx context.Context, req CreateMaintenanceRequest) (*Maintenance, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("CreateMaintenance: %w", err)
 	}
-	var maintenance Maintenance
-	if err := c.doRequest(ctx, "POST", maintenanceBasePath, req, &maintenance); err != nil {
+
+	// API POST returns only UUID, not full object
+	var createResp struct {
+		UUID string `json:"uuid"`
+	}
+	if err := c.doRequest(ctx, "POST", maintenanceBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create maintenance: %w", err)
 	}
-	return &maintenance, nil
+
+	// Read full maintenance details after creation
+	maintenance, err := c.GetMaintenance(ctx, createResp.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read created maintenance %s: %w", createResp.UUID, err)
+	}
+
+	return maintenance, nil
 }
 
 // UpdateMaintenance updates an existing maintenance window.

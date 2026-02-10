@@ -44,3 +44,11 @@ type OutageDetail struct {
 	Duration          int    `json:"duration,omitempty"`          // Duration in seconds
 	DurationFormatted string `json:"durationFormatted,omitempty"` // Human-readable duration
 }
+
+// ListMonitorReportsResponse wraps the list response from the API.
+// API: GET /v2/reporting/monitor-reports
+// Response format: {"period": {...}, "monitors": [...]}
+type ListMonitorReportsResponse struct {
+	Period   ReportPeriod    `json:"period"`
+	Monitors []MonitorReport `json:"monitors"`
+}

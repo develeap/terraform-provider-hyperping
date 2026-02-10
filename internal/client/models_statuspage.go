@@ -56,7 +56,7 @@ type StatusPageAuthenticationSettings struct {
 	PasswordProtection bool     `json:"password_protection"`
 	GoogleSSO          bool     `json:"google_sso"`
 	SAMLSSO            bool     `json:"saml_sso"`
-	AllowedDomains     []string `json:"allowed_domains"`
+	AllowedDomains     []string `json:"google_allowed_domains"`
 }
 
 // StatusPageSection represents a section on a status page.
@@ -127,7 +127,7 @@ type CreateStatusPageAuthenticationSettings struct {
 	PasswordProtection *bool    `json:"password_protection,omitempty"`
 	GoogleSSO          *bool    `json:"google_sso,omitempty"`
 	SAMLSSO            *bool    `json:"saml_sso,omitempty"`
-	AllowedDomains     []string `json:"allowed_domains,omitempty"`
+	AllowedDomains     []string `json:"google_allowed_domains,omitempty"`
 }
 
 // CreateStatusPageSection represents a section in create requests.

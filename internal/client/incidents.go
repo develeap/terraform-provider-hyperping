@@ -70,15 +70,29 @@ func (c *Client) GetIncident(ctx context.Context, uuid string) (*Incident, error
 }
 
 // CreateIncident creates a new incident.
+// API POST returns minimal response: {"message":"...","uuid":"..."}
+// We must then call GetIncident to retrieve the full incident details.
 func (c *Client) CreateIncident(ctx context.Context, req CreateIncidentRequest) (*Incident, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("CreateIncident: %w", err)
 	}
-	var incident Incident
-	if err := c.doRequest(ctx, "POST", incidentsBasePath, req, &incident); err != nil {
+
+	// API POST returns minimal wrapped response: {"message":"...","uuid":"..."}
+	var createResp struct {
+		Message string `json:"message"`
+		UUID    string `json:"uuid"`
+	}
+	if err := c.doRequest(ctx, "POST", incidentsBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create incident: %w", err)
 	}
-	return &incident, nil
+
+	// Read full incident details (create response only contains UUID)
+	incident, err := c.GetIncident(ctx, createResp.UUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read incident after creation: %w", err)
+	}
+
+	return incident, nil
 }
 
 // UpdateIncident updates an existing incident.
