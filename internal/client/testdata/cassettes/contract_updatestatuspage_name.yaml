@@ -1,0 +1,120 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 85
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: '{"name":"VCR Contract Test Original","subdomain":"vcr-test-contract-update","languages":["en"]}'
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev
+        url: https://api.hyperping.io/v2/statuspages
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: 500
+        uncompressed: false
+        body: '{"message":"Status page created","statuspage":{"uuid":"sp_contract001","name":"VCR Contract Test Original","hostname":null,"hostedsubdomain":"vcr-test-contract-update.hyperping.app","url":"https://vcr-test-contract-update.hyperping.app","password_protected":false,"settings":{"name":"VCR Contract Test Original","website":"","description":{},"languages":["en"],"default_language":"en","theme":"light","font":"Inter","accent_color":"#36b27e","auto_refresh":true,"banner_header":false,"logo":null,"logo_height":"40px","favicon":null,"hide_powered_by":false,"hide_from_search_engines":false,"google_analytics":null,"subscribe":{"enabled":true,"email":true,"slack":false,"teams":false,"sms":false},"authentication":{"password_protection":false,"google_sso":false,"saml_sso":false,"google_allowed_domains":[]}},"sections":[]}}'
+        headers:
+            Content-Type:
+                - application/json; charset=utf-8
+        status: 201 Created
+        code: 201
+        duration: 200ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 42
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: '{"name":"VCR Contract Test Updated"}'
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev
+        url: https://api.hyperping.io/v2/statuspages/sp_contract001
+        method: PUT
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: 500
+        uncompressed: false
+        body: '{"message":"Status page updated","statuspage":{"uuid":"sp_contract001","name":"VCR Contract Test Updated","hostname":null,"hostedsubdomain":"vcr-test-contract-update.hyperping.app","url":"https://vcr-test-contract-update.hyperping.app","password_protected":false,"settings":{"name":"VCR Contract Test Updated","website":"","description":{},"languages":["en"],"default_language":"en","theme":"light","font":"Inter","accent_color":"#36b27e","auto_refresh":true,"banner_header":false,"logo":null,"logo_height":"40px","favicon":null,"hide_powered_by":false,"hide_from_search_engines":false,"google_analytics":null,"subscribe":{"enabled":true,"email":true,"slack":false,"teams":false,"sms":false},"authentication":{"password_protection":false,"google_sso":false,"saml_sso":false,"google_allowed_domains":[]}},"sections":[]}}'
+        headers:
+            Content-Type:
+                - application/json; charset=utf-8
+        status: 200 OK
+        code: 200
+        duration: 150ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        transfer_encoding: []
+        trailer: {}
+        host: api.hyperping.io
+        remote_addr: ""
+        request_uri: ""
+        body: ""
+        form: {}
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer [MASKED]
+            Content-Type:
+                - application/json
+            User-Agent:
+                - terraform-provider-hyperping/dev
+        url: https://api.hyperping.io/v2/statuspages/sp_contract001
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        transfer_encoding: []
+        trailer: {}
+        content_length: 0
+        uncompressed: false
+        body: ""
+        headers:
+            Content-Type:
+                - application/json; charset=utf-8
+        status: 204 No Content
+        code: 204
+        duration: 100ms

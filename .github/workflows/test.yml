@@ -150,16 +150,32 @@ jobs:
           go test -v -race -p 4 -parallel 10 \
             -coverprofile=coverage.out -covermode=atomic \
             ./internal/...
+
+          # Exclude test infrastructure from coverage calculation
+          # These files are test helpers, not production code that needs testing
+          echo "Filtering out test infrastructure from coverage..."
+          grep -v "contract_validators.go" coverage.out | \
+          grep -v "contract_test_helpers.go" | \
+          grep -v "contract_example_test.go" > coverage_filtered.out || true
+
+          # Use filtered coverage if it has content, otherwise keep original
+          if [ -s coverage_filtered.out ]; then
+            mv coverage_filtered.out coverage.out
+            echo "✅ Excluded test infrastructure from coverage"
+          fi
       - name: Check coverage threshold
         run: |
           # Coverage Analysis:
           # - Client package: 99%+ (pure unit tests - full coverage)
           # - Provider non-CRUD code: 100% (factory, Configure, Metadata, Schema, mapping)
           # - Provider CRUD: 0% unit tests (tested via acceptance tests - TF framework limitation)
-          # - Total: 52%+ (reflects unit testable code)
+          # - Total: ~51% (reflects unit testable code, excluding test infrastructure)
           #
           # Note: CRUD operations (Create/Read/Update/Delete/ImportState) require TF Plugin
           # Framework fixtures to unit test. These are thoroughly tested via acceptance tests.
+          #
+          # Excluded from coverage: Test infrastructure helpers (contract_validators.go,
+          # contract_test_helpers.go) - these are reusable test utilities, not production code.
 
           echo "=== Coverage Analysis ==="
           go tool cover -func=coverage.out | grep -E "total:"
@@ -167,20 +183,21 @@ jobs:
           TOTAL_COVERAGE=$(go tool cover -func=coverage.out | grep "^total:" | awk '{print $3}' | tr -d '%')
 
           echo ""
-          echo "Unit test coverage: ${TOTAL_COVERAGE}%"
+          echo "Production code coverage: ${TOTAL_COVERAGE}%"
           echo ""
           echo "Coverage breakdown:"
-          echo "  - Client package: ~99% (full unit test coverage)"
+          echo "  - Client API code: ~95%+ (comprehensive unit tests)"
           echo "  - Provider helpers/mapping: 100%"
           echo "  - Provider CRUD: tested via acceptance tests (TestAcc*)"
+          echo "  - Test infrastructure: excluded from coverage"
           echo ""
 
-          # Threshold: 42% (unit-testable code without TF framework fixtures)
-          if [ $(echo "$TOTAL_COVERAGE < 42" | bc -l) -eq 1 ]; then
-            echo "❌ Coverage ${TOTAL_COVERAGE}% is below 42% threshold"
+          # Threshold: 50% (production code only, excluding test infrastructure)
+          if [ $(echo "$TOTAL_COVERAGE < 50" | bc -l) -eq 1 ]; then
+            echo "❌ Coverage ${TOTAL_COVERAGE}% is below 50% threshold"
             exit 1
           fi
-          echo "✅ Unit test coverage ${TOTAL_COVERAGE}% meets 42% threshold"
+          echo "✅ Production code coverage ${TOTAL_COVERAGE}% meets 50% threshold"
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:

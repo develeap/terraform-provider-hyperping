@@ -2,6 +2,38 @@
 // SPDX-License-Identifier: MPL-2.0
 
 // Package testutil provides testing utilities for the Hyperping provider.
+//
+// VCR (Video Cassette Recorder) Testing:
+//
+// This package provides VCR support for recording and replaying HTTP interactions
+// in tests. This enables fast, deterministic tests without hitting real APIs.
+//
+// # Basic Usage
+//
+//	func TestAPICall(t *testing.T) {
+//	    rec, client := testutil.NewVCRRecorder(t, testutil.VCRConfig{
+//	        CassetteName: "api_call",
+//	        Mode:         testutil.GetRecordMode(),
+//	    })
+//	    defer rec.Stop()
+//
+//	    // Use client for HTTP requests - they'll be recorded/replayed
+//	    resp, err := client.Get("https://api.example.com/v1/test")
+//	    // ...
+//	}
+//
+// # Recording Mode
+//
+// Set RECORD_MODE=true to record new interactions:
+//
+//	RECORD_MODE=true go test ./...
+//
+// Without this flag, tests replay from existing cassettes.
+//
+// # Security
+//
+// Sensitive data (Authorization headers, cookies, API keys in URLs) is automatically
+// masked in recorded cassettes to prevent credential leaks.
 package testutil
 
 import (

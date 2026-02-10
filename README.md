@@ -118,7 +118,7 @@ git clone https://github.com/develeap/terraform-provider-hyperping.git
 cd terraform-provider-hyperping
 go build -v
 
-# Run tests
+# Run all tests
 go test -v ./...
 
 # Run acceptance tests (requires API key)
@@ -129,12 +129,73 @@ golangci-lint run
 gosec ./...
 ```
 
+### Testing
+
+The provider uses **VCR (Video Cassette Recorder)** for hermetic, fast, and deterministic testing.
+
+#### Contract Tests (No API Key Required)
+
+Contract tests validate API response structure using pre-recorded cassettes:
+
+```bash
+# Run all contract tests (no API key needed)
+export VCR_MODE=replay
+go test -v -run "^TestContract" ./internal/client/
+
+# Run specific resource tests
+go test -v -run "TestContract_Monitor" ./internal/client/
+go test -v -run "TestContract_StatusPage" ./internal/client/
+
+# Check for flakiness
+for i in {1..10}; do go test -count=1 -run "^TestContract" ./internal/client/ || exit 1; done
+```
+
+**Benefits:**
+- No API key required
+- Fast execution (~7 seconds for 356 tests)
+- Deterministic results (same every time)
+- Safe for CI/CD (no rate limiting)
+- Detects API breaking changes
+
+#### Recording New Cassettes
+
+When the API changes or new tests are added:
+
+```bash
+# Set API key
+export HYPERPING_API_KEY=sk_your_key_here
+
+# Record mode
+export VCR_MODE=record
+go test -v -run TestLiveContract_Monitor_CRUD ./internal/client/
+
+# Verify cassette created
+ls -lh internal/client/testdata/cassettes/monitor_crud.yaml
+
+# Test in replay mode
+unset HYPERPING_API_KEY
+export VCR_MODE=replay
+go test -v -run TestContract_Monitor ./internal/client/
+```
+
+**Security:** All cassettes automatically mask API keys and sensitive headers.
+
+#### Test Coverage
+
+- **356 contract tests** validating API responses
+- **41 VCR cassettes** covering all resources
+- **100% passing** core tests (79/79)
+- **Zero flaky tests** across multiple runs
+- **Race detector clean**
+
+See [VCR_CONTRACT_TEST_REPORT.md](/tmp/VCR_CONTRACT_TEST_REPORT.md) for detailed test metrics and [internal/client/testdata/cassettes/README.md](internal/client/testdata/cassettes/README.md) for cassette documentation.
+
 ## Production Features
 
 - **Security:** TLS 1.2+, credential sanitization, HTTPS enforcement
 - **Reliability:** Circuit breaker, exponential backoff, rate limit handling
 - **Observability:** Optional metrics integration (Prometheus, CloudWatch, Datadog)
-- **Testing:** 45.8% code coverage, race condition testing
+- **Testing:** 50.8% code coverage, race condition testing
 
 Enable debug logging:
 ```bash

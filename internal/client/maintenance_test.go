@@ -202,22 +202,6 @@ func TestClient_CreateMaintenance(t *testing.T) {
 			return
 		}
 
-		// Handle GET - return full maintenance
-		if r.Method == http.MethodGet && r.URL.Path == MaintenanceBasePath+"/mw_new" {
-			startDate := "2025-12-20T02:00:00.000Z"
-			endDate := "2025-12-20T06:00:00.000Z"
-			maintenance := Maintenance{
-				UUID:      "mw_new",
-				Name:      "Planned Downtime",
-				Title:     LocalizedText{En: "System Maintenance"},
-				StartDate: &startDate,
-				EndDate:   &endDate,
-				Monitors:  []string{"mon_123"},
-			}
-			json.NewEncoder(w).Encode(maintenance)
-			return
-		}
-
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
@@ -239,11 +223,10 @@ func TestClient_CreateMaintenance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	// CreateMaintenance now returns minimal maintenance with only UUID
+	// Provider is responsible for reading full details
 	if maintenance.UUID != "mw_new" {
 		t.Errorf("expected UUID 'mw_new', got %s", maintenance.UUID)
-	}
-	if maintenance.Name != "Planned Downtime" {
-		t.Errorf("expected name 'Planned Downtime', got %s", maintenance.Name)
 	}
 }
 
@@ -273,43 +256,7 @@ func TestClient_CreateMaintenance_ValidationError(t *testing.T) {
 }
 
 func TestClient_CreateMaintenance_ReadAfterCreateFailure(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Handle POST - return UUID successfully
-		if r.Method == http.MethodPost && r.URL.Path == MaintenanceBasePath {
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]string{"uuid": "mw_new"})
-			return
-		}
-
-		// Handle GET - return 404 (simulating failure to read created resource)
-		if r.Method == http.MethodGet && r.URL.Path == MaintenanceBasePath+"/mw_new" {
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
-
-	client := NewClient("test_key", WithBaseURL(server.URL))
-	notifyMinutes := 60
-	req := CreateMaintenanceRequest{
-		Name:                "Test Maintenance",
-		Title:               LocalizedText{En: "Test"},
-		StartDate:           "2025-12-20T02:00:00.000Z",
-		EndDate:             "2025-12-20T06:00:00.000Z",
-		Monitors:            []string{"mon_123"},
-		NotificationMinutes: &notifyMinutes,
-	}
-	_, err := client.CreateMaintenance(context.Background(), req)
-
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if !strings.Contains(err.Error(), "failed to read created maintenance") {
-		t.Errorf("expected read-after-create error, got: %v", err)
-	}
+	t.Skip("Client no longer does read-after-create - provider handles this instead")
 }
 
 func TestClient_UpdateMaintenance(t *testing.T) {

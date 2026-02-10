@@ -94,13 +94,8 @@ func (c *Client) CreateMaintenance(ctx context.Context, req CreateMaintenanceReq
 		return nil, fmt.Errorf("failed to create maintenance: %w", err)
 	}
 
-	// Read full maintenance details after creation
-	maintenance, err := c.GetMaintenance(ctx, createResp.UUID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read created maintenance %s: %w", createResp.UUID, err)
-	}
-
-	return maintenance, nil
+	// Return minimal maintenance with UUID - provider will read full details
+	return &Maintenance{UUID: createResp.UUID}, nil
 }
 
 // UpdateMaintenance updates an existing maintenance window.

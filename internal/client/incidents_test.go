@@ -199,18 +199,6 @@ func TestClient_CreateIncident(t *testing.T) {
 			return
 		}
 
-		// Handle GET request - returns full incident
-		if r.Method == "GET" && r.URL.Path == IncidentsBasePath+"/inci_new" {
-			json.NewEncoder(w).Encode(Incident{
-				UUID:        "inci_new",
-				Title:       createReqReceived.Title,
-				Text:        createReqReceived.Text,
-				Type:        createReqReceived.Type,
-				StatusPages: createReqReceived.StatusPages,
-			})
-			return
-		}
-
 		t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 	}))
 	defer server.Close()
@@ -227,11 +215,10 @@ func TestClient_CreateIncident(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
+	// CreateIncident now returns minimal incident with only UUID
+	// Provider is responsible for reading full details
 	if incident.UUID != "inci_new" {
 		t.Errorf("expected UUID 'inci_new', got '%s'", incident.UUID)
-	}
-	if incident.Title.En != "New Incident" {
-		t.Errorf("expected Title.En 'New Incident', got '%s'", incident.Title.En)
 	}
 }
 
@@ -254,17 +241,6 @@ func TestClient_CreateIncident_WithComponents(t *testing.T) {
 			return
 		}
 
-		// Handle GET request - returns full incident
-		// Note: Real API returns empty affectedComponents, not the values from POST
-		if r.Method == "GET" && r.URL.Path == IncidentsBasePath+"/inci_with_components" {
-			json.NewEncoder(w).Encode(Incident{
-				UUID:               "inci_with_components",
-				Title:              createReqReceived.Title,
-				AffectedComponents: []string{}, // Real API behavior: always returns empty
-			})
-			return
-		}
-
 		t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 	}))
 	defer server.Close()
@@ -282,55 +258,15 @@ func TestClient_CreateIncident_WithComponents(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Note: The real Hyperping API returns empty affectedComponents on GET,
-	// even if components were sent in the POST request. This matches actual API behavior
-	// as verified in VCR cassette incident_crud.yaml.
-	// The mock reflects this real API behavior.
+	// CreateIncident now returns minimal incident with only UUID
+	// Provider is responsible for reading full details
 	if incident.UUID != "inci_with_components" {
 		t.Errorf("expected UUID 'inci_with_components', got '%s'", incident.UUID)
-	}
-	if incident.Title.En != "Incident with Components" {
-		t.Errorf("expected Title.En 'Incident with Components', got '%s'", incident.Title.En)
 	}
 }
 
 func TestClient_CreateIncident_ReadAfterCreateFails(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Handle POST request - returns minimal response
-		if r.Method == "POST" && r.URL.Path == IncidentsBasePath {
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]string{
-				"message": "Incident created successfully",
-				"uuid":    "inci_created_but_not_readable",
-			})
-			return
-		}
-
-		// Handle GET request - simulates failure reading the newly created incident
-		if r.Method == "GET" && r.URL.Path == IncidentsBasePath+"/inci_created_but_not_readable" {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Database error"})
-			return
-		}
-
-		t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
-	}))
-	defer server.Close()
-
-	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
-
-	_, err := c.CreateIncident(context.Background(), CreateIncidentRequest{
-		Title:       LocalizedText{En: "Test Incident"},
-		Text:        LocalizedText{En: "Test"},
-		Type:        "incident",
-		StatusPages: []string{"sp_main"},
-	})
-	if err == nil {
-		t.Error("expected error when read-after-create fails, got nil")
-	}
-	if !strings.Contains(err.Error(), "failed to read incident after creation") {
-		t.Errorf("expected 'failed to read incident after creation' error, got: %v", err)
-	}
+	t.Skip("Client no longer does read-after-create - provider handles this instead")
 }
 
 func TestClient_CreateIncident_ValidationError(t *testing.T) {

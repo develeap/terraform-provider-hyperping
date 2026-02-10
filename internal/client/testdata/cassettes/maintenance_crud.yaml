@@ -33,7 +33,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '[{"id":115746,"name":"test-monitor","url":"https://httpstat.us/200","uuid":"mon_u4caULGi4rO2XR","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":true,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115934,"name":"[TEST]-StatusPage-Monitor","url":"https://httpstat.us/200","uuid":"mon_fkvswafYt2nOG6","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["frankfurt","california","saopaulo","paris","mumbai","seoul","london","toronto","sydney","tokyo","singapore","bahrain","amsterdam","virginia","nyc","sanfrancisco","capetown","bangalore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115935,"name":"[PROD]-Database-Health","url":"https://api.example.com/internal/db-health","uuid":"mon_HVL4JwlAh2LBH4","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london","frankfurt"],"check_frequency":60,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"check_type\":\"connection_pool\",\"timeout\":5}","request_headers":[{"name":"Content-Type","value":"application/json"},{"name":"X-Internal-Token","value":"internal-check-token"}],"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115936,"name":"[STAGING]-API-Health","url":"https://staging-api.example.com/health","uuid":"mon_GcJl8vygAB0O8n","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":300,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115937,"name":"[PROD]-API-Health","url":"https://api.example.com/health","uuid":"mon_r5OgfTTvl5LdBw","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","frankfurt","virginia","singapore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":[{"name":"User-Agent","value":"Hyperping-Monitor/TechStart"}],"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115938,"name":"[PROD]-Payment-Gateway","url":"https://api.example.com/payments/health","uuid":"mon_a7eoQI0nJ8qZEq","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia","singapore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115939,"name":"[PROD]-WebApp","url":"https://app.example.com","uuid":"mon_m8soFTcOnjKFS7","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115940,"name":"[PROD]-Admin-Dashboard","url":"https://admin.example.com/healthz","uuid":"mon_CTDnCGmtwz8xHC","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":[{"name":"X-Health-Token","value":"healthcheck-token-12345"}],"status":"up","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115941,"name":"[STAGING]-WebApp","url":"https://staging-app.example.com","uuid":"mon_BtEEIKjSnrefo5","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":600,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115942,"name":"[PROD]-Website","url":"https://www.example.com","uuid":"mon_XPKJ1drkfEP71K","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia"],"check_frequency":300,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":35,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115943,"name":"[v1.0.4-TEST]-DB-Health","url":"https://httpstat.us/200","uuid":"mon_2Xdwh8uYTSHNzK","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"check_type\":\"health\"}","request_headers":[{"name":"Content-Type","value":"application/json"}],"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115944,"name":"[v1.0.4-TEST]-API-Monitor","url":"https://httpstat.us/200","uuid":"mon_7Ahjpl5sLIUUf5","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","frankfurt"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":[{"name":"User-Agent","value":"TF-Test-v1.0.4"}],"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115946,"name":"[v1.0.6-TEST]-PUT-Method","url":"https://httpstat.us/200","uuid":"mon_DaF7WQVRIpS2p0","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"PUT","regions":["virginia"],"check_frequency":300,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115947,"name":"[v1.0.6-TEST]-Max-Freq-86400s","url":"https://httpstat.us/200","uuid":"mon_ZfxcoVFOwSs4ok","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["frankfurt"],"check_frequency":86400,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115948,"name":"[v1.0.6-TEST]-POST-with-Body","url":"https://httpstat.us/200","uuid":"mon_HmAq69QRQdTh6N","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london","frankfurt"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"test\":\"data\",\"version\":\"1.0.6\"}","request_headers":[{"name":"Content-Type","value":"application/json"},{"name":"User-Agent","value":"TF-v1.0.6-Test"}],"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115949,"name":"[v1.0.6-TEST]-Min-Freq-10s","url":"https://httpstat.us/200","uuid":"mon_YQxIeHE8iXxmbh","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":10,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115950,"name":"[v1.0.6-TEST]-Basic-GET","url":"https://httpstat.us/200","uuid":"mon_2HOnKnkou1tvAp","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115951,"name":"[v1.0.6-TEST]-DELETE-Method","url":"https://httpstat.us/200","uuid":"mon_MdnOEmCL1uSAoV","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"DELETE","regions":["singapore"],"check_frequency":600,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null}]'
+        body: '[{"id":115746,"name":"test-monitor","url":"https://httpstat.us/200","uuid":"mon_u4caULGi4rO2XR","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":true,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115934,"name":"[TEST]-StatusPage-Monitor","url":"https://httpstat.us/200","uuid":"mon_fkvswafYt2nOG6","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["frankfurt","california","saopaulo","paris","mumbai","seoul","london","toronto","sydney","tokyo","singapore","bahrain","amsterdam","virginia","nyc","sanfrancisco","capetown","bangalore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115935,"name":"[PROD]-Database-Health","url":"https://api.example.com/internal/db-health","uuid":"mon_HVL4JwlAh2LBH4","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london","frankfurt"],"check_frequency":60,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"check_type\":\"connection_pool\",\"timeout\":5}","request_headers":[{"name":"Content-Type","value":"application/json"},{"name":"X-Internal-Token","value":"internal-check-token"}],"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115936,"name":"[STAGING]-API-Health","url":"https://staging-api.example.com/health","uuid":"mon_GcJl8vygAB0O8n","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":300,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115937,"name":"[PROD]-API-Health","url":"https://api.example.com/health","uuid":"mon_r5OgfTTvl5LdBw","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","frankfurt","virginia","singapore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":[{"name":"User-Agent","value":"Hyperping-Monitor/TechStart"}],"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115938,"name":"[PROD]-Payment-Gateway","url":"https://api.example.com/payments/health","uuid":"mon_a7eoQI0nJ8qZEq","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia","singapore"],"check_frequency":60,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115939,"name":"[PROD]-WebApp","url":"https://app.example.com","uuid":"mon_m8soFTcOnjKFS7","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115940,"name":"[PROD]-Admin-Dashboard","url":"https://admin.example.com/healthz","uuid":"mon_CTDnCGmtwz8xHC","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":[{"name":"X-Health-Token","value":"healthcheck-token-12345"}],"status":"up","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115941,"name":"[STAGING]-WebApp","url":"https://staging-app.example.com","uuid":"mon_BtEEIKjSnrefo5","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":600,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":-20494,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115942,"name":"[PROD]-Website","url":"https://www.example.com","uuid":"mon_XPKJ1drkfEP71K","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","virginia"],"check_frequency":300,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":34,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115943,"name":"[v1.0.4-TEST]-DB-Health","url":"https://httpstat.us/200","uuid":"mon_2Xdwh8uYTSHNzK","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"check_type\":\"health\"}","request_headers":[{"name":"Content-Type","value":"application/json"}],"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115944,"name":"[v1.0.4-TEST]-API-Monitor","url":"https://httpstat.us/200","uuid":"mon_7Ahjpl5sLIUUf5","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london","frankfurt"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":[{"name":"User-Agent","value":"TF-Test-v1.0.4"}],"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115946,"name":"[v1.0.6-TEST]-PUT-Method","url":"https://httpstat.us/200","uuid":"mon_DaF7WQVRIpS2p0","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"PUT","regions":["virginia"],"check_frequency":300,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115947,"name":"[v1.0.6-TEST]-Max-Freq-86400s","url":"https://httpstat.us/200","uuid":"mon_ZfxcoVFOwSs4ok","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["frankfurt"],"check_frequency":86400,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115948,"name":"[v1.0.6-TEST]-POST-with-Body","url":"https://httpstat.us/200","uuid":"mon_HmAq69QRQdTh6N","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"POST","regions":["london","frankfurt"],"check_frequency":120,"follow_redirects":true,"expected_status_code":200,"request_body":"{\"test\":\"data\",\"version\":\"1.0.6\"}","request_headers":[{"name":"Content-Type","value":"application/json"},{"name":"User-Agent","value":"TF-v1.0.6-Test"}],"status":"up","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115949,"name":"[v1.0.6-TEST]-Min-Freq-10s","url":"https://httpstat.us/200","uuid":"mon_YQxIeHE8iXxmbh","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":10,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115950,"name":"[v1.0.6-TEST]-Basic-GET","url":"https://httpstat.us/200","uuid":"mon_2HOnKnkou1tvAp","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"GET","regions":["london"],"check_frequency":60,"follow_redirects":true,"expected_status_code":"2xx","request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null},{"id":115951,"name":"[v1.0.6-TEST]-DELETE-Method","url":"https://httpstat.us/200","uuid":"mon_MdnOEmCL1uSAoV","protocol":"http","projectUuid":"proj_pPheL3Vn01uYjq","paused":false,"port":null,"http_method":"DELETE","regions":["singapore"],"check_frequency":600,"follow_redirects":true,"expected_status_code":200,"request_body":"","request_headers":null,"status":"down","ssl_expiration":27,"alerts_wait":0,"group_id":null,"sort_order":0,"show_url":false,"escalation_policy":null}]'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -50,28 +50,28 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cb944102e21c227-TLV
+                - 9cbb094f0c77c231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 05:39:24 GMT
+                - Tue, 10 Feb 2026 10:48:49 GMT
             Etag:
-                - W/"2476-UgwMHfiFWc1VtbsFt70QcVIoCuo"
+                - W/"2476-3VRFGEfsrgxUf1yV/vM3ud8RsGY"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=780; t=907'
+                - '"800-in-1hr"; r=777; t=3585'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=%2FRwPWD7uRMhu2oqyY7b3p20lLVUpdMEDRI312bxFL1pnZJngDZh3mxg1FMoto9K47QTjyKKd3VHeKWU%2B0ipQA41kMLLfqTgJjWK8Y4DgPQU%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=0jEupTK6yML9uG%2B%2BP2awdvC0ezRJsfjq6g%2B1xLvx2lhRFRgCH3ovt6o2pZ6613yoSYoIooNnoum5sKn35uWUKB20IJgAcMOr8zZ%2FsucNuTQ%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 226.448771ms
+        duration: 121.749345ms
     - id: 1
       request:
         proto: HTTP/1.1
@@ -83,7 +83,7 @@ interactions:
         host: api.hyperping.io
         remote_addr: ""
         request_uri: ""
-        body: '{"name":"vcr-test-maintenance","title":{"en":"VCR Test Maintenance Window"},"text":{"en":"This is a test maintenance window"},"start_date":"2026-02-11T05:39:24Z","end_date":"2026-02-11T07:39:24Z","monitors":["mon_u4caULGi4rO2XR"]}'
+        body: '{"name":"vcr-test-maintenance","title":{"en":"VCR Test Maintenance Window"},"text":{"en":"This is a test maintenance window"},"start_date":"2026-02-11T10:48:49Z","end_date":"2026-02-11T12:48:49Z","monitors":["mon_u4caULGi4rO2XR"]}'
         form: {}
         headers:
             Accept:
@@ -104,7 +104,7 @@ interactions:
         trailer: {}
         content_length: 28
         uncompressed: false
-        body: '{"uuid":"mw_qlpuMehyUxg5Bz"}'
+        body: '{"uuid":"mw_OgCL9eGfpposhZ"}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -121,30 +121,30 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cb94410fee4c227-TLV
+                - 9cbb094fcd71c231-TLV
             Content-Length:
                 - "28"
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 05:39:25 GMT
+                - Tue, 10 Feb 2026 10:48:50 GMT
             Etag:
-                - W/"1c-J/D1sXER8La/GQQ2L90stqeu6fo"
+                - W/"1c-eaA9n99AtlKu+UT5LBQtAhcNrQQ"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=779; t=906'
+                - '"800-in-1hr"; r=776; t=3585'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=3hdZ89adNxs6x9JeNtV2dHAfZ8cP1tI4oOc8sTQJkohVvYC%2BfDGGaboZmnVkdwpXKLoJekJoVYLxWi18eGsouNuyJMnD3pTRU7B3baGnFVU%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=iBV2YganB63I6xOvZ2Bz6iNTxxpMN4xUDiD9mkULfPBD%2FeWw7Y7Cl3u1U%2FVD66t4zoos2fjYO23rYlagT%2FVDyAY0DvQsM%2FuryQqPSbaD5JI%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 201 Created
         code: 201
-        duration: 113.770435ms
+        duration: 197.328223ms
     - id: 2
       request:
         proto: HTTP/1.1
@@ -167,7 +167,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v1/maintenance-windows/mw_qlpuMehyUxg5Bz
+        url: https://api.hyperping.io/v1/maintenance-windows/mw_OgCL9eGfpposhZ
         method: GET
       response:
         proto: HTTP/2.0
@@ -177,7 +177,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '{"uuid":"mw_qlpuMehyUxg5Bz","name":"vcr-test-maintenance","title":{"en":"VCR Test Maintenance Window"},"start_date":"2026-02-11T05:39:24.000Z","end_date":"2026-02-11T07:39:24.000Z","timezone":"UTC","monitors":["mon_u4caULGi4rO2XR"],"statuspages":[],"bulkUuid":null,"createdBy":"khaled.salhab@develeap.com","createdAt":"2026-02-10T05:39:25.000Z","notificationOption":"none","notificationMinutes":60,"updates":[],"createdByProfilePictureUrl":null,"createdBySsoPictureUrl":"https://lh3.googleusercontent.com/a/ACg8ocLzgtI6SJEZJN6p7raaA6iOLR0-DusNtdLQQ21gL7iWj5YxIP8=s96-c","scheduledNotificationStatus":null,"scheduledNotificationSentAt":null,"scheduledNotificationBreakdown":null,"status":"upcoming"}'
+        body: '{"uuid":"mw_OgCL9eGfpposhZ","name":"vcr-test-maintenance","title":{"en":"VCR Test Maintenance Window"},"start_date":"2026-02-11T10:48:49.000Z","end_date":"2026-02-11T12:48:49.000Z","timezone":"UTC","monitors":["mon_u4caULGi4rO2XR"],"statuspages":[],"bulkUuid":null,"createdBy":"khaled.salhab@develeap.com","createdAt":"2026-02-10T10:48:49.000Z","notificationOption":"none","notificationMinutes":60,"updates":[],"createdByProfilePictureUrl":null,"createdBySsoPictureUrl":"https://lh3.googleusercontent.com/a/ACg8ocLzgtI6SJEZJN6p7raaA6iOLR0-DusNtdLQQ21gL7iWj5YxIP8=s96-c","scheduledNotificationStatus":null,"scheduledNotificationSentAt":null,"scheduledNotificationBreakdown":null,"status":"upcoming"}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -194,28 +194,28 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cb94411afc0c227-TLV
+                - 9cbb0950ff27c231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 05:39:25 GMT
+                - Tue, 10 Feb 2026 10:48:50 GMT
             Etag:
-                - W/"2ba-rUPYRr1bDxiIQCwr67q6tntVAb0"
+                - W/"2ba-qh8z6Qg58T7D0cA3HXJDQ9ikIPA"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=778; t=906'
+                - '"800-in-1hr"; r=775; t=3585'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=Yer75ekSLTM618l7HuB71Zrk%2BtOW3fVqNpb3otepweQcNUInz9Z8tOGvRw95sRPmKHoIL6tuRUZgGfkq0W3t74f2I94KvqBnrggxKrjakJU%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=AQ8F3mJraWpWnkusWo4dDQlvWAqcquhemE%2FvvN1RjehqqUfnEqGvkyWFWpTzw6Hgfgonkvp9ZmFdd09ikcTwTgz%2FluhGUk9RVBbS45kSqfc%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 107.198433ms
+        duration: 121.58218ms
     - id: 3
       request:
         proto: HTTP/1.1
@@ -238,7 +238,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v1/maintenance-windows/mw_qlpuMehyUxg5Bz
+        url: https://api.hyperping.io/v1/maintenance-windows/mw_OgCL9eGfpposhZ
         method: GET
       response:
         proto: HTTP/2.0
@@ -248,7 +248,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '{"uuid":"mw_qlpuMehyUxg5Bz","name":"vcr-test-maintenance","title":{"en":"VCR Test Maintenance Window"},"start_date":"2026-02-11T05:39:24.000Z","end_date":"2026-02-11T07:39:24.000Z","timezone":"UTC","monitors":["mon_u4caULGi4rO2XR"],"statuspages":[],"bulkUuid":null,"createdBy":"khaled.salhab@develeap.com","createdAt":"2026-02-10T05:39:25.000Z","notificationOption":"none","notificationMinutes":60,"updates":[],"createdByProfilePictureUrl":null,"createdBySsoPictureUrl":"https://lh3.googleusercontent.com/a/ACg8ocLzgtI6SJEZJN6p7raaA6iOLR0-DusNtdLQQ21gL7iWj5YxIP8=s96-c","scheduledNotificationStatus":null,"scheduledNotificationSentAt":null,"scheduledNotificationBreakdown":null,"status":"upcoming"}'
+        body: '{"uuid":"mw_OgCL9eGfpposhZ","name":"vcr-test-maintenance","title":{"en":"VCR Test Maintenance Window"},"start_date":"2026-02-11T10:48:49.000Z","end_date":"2026-02-11T12:48:49.000Z","timezone":"UTC","monitors":["mon_u4caULGi4rO2XR"],"statuspages":[],"bulkUuid":null,"createdBy":"khaled.salhab@develeap.com","createdAt":"2026-02-10T10:48:49.000Z","notificationOption":"none","notificationMinutes":60,"updates":[],"createdByProfilePictureUrl":null,"createdBySsoPictureUrl":"https://lh3.googleusercontent.com/a/ACg8ocLzgtI6SJEZJN6p7raaA6iOLR0-DusNtdLQQ21gL7iWj5YxIP8=s96-c","scheduledNotificationStatus":null,"scheduledNotificationSentAt":null,"scheduledNotificationBreakdown":null,"status":"upcoming"}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -265,28 +265,28 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cb944125858c227-TLV
+                - 9cbb0951b847c231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 05:39:25 GMT
+                - Tue, 10 Feb 2026 10:48:50 GMT
             Etag:
-                - W/"2ba-rUPYRr1bDxiIQCwr67q6tntVAb0"
+                - W/"2ba-qh8z6Qg58T7D0cA3HXJDQ9ikIPA"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=777; t=906'
+                - '"800-in-1hr"; r=774; t=3585'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=qlmxK92vUNCcoas6sR06kJbszMCZSn7h2qQ3um7Lf8GBggy9D0sr4AnsGYkND5HrCumRAbQaCy5cUmG8S2AkhfpiWWFKQZovp3KqW65VEiM%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=3jmvj%2Bce51ObL0gn163iToDHnRj6bV74kXXAIQ1guo%2BntjdU91nv8hkv7sJHWC49AOEgzO3lAaEKk3r%2FsybaUYQuz4YDLAA8TnoWaCl%2Bno8%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 107.735418ms
+        duration: 120.193264ms
     - id: 4
       request:
         proto: HTTP/1.1
@@ -309,7 +309,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v1/maintenance-windows/mw_qlpuMehyUxg5Bz
+        url: https://api.hyperping.io/v1/maintenance-windows/mw_OgCL9eGfpposhZ
         method: PUT
       response:
         proto: HTTP/2.0
@@ -319,7 +319,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '{"uuid":"mw_qlpuMehyUxg5Bz","name":"vcr-test-maintenance-updated","title":{"en":"VCR Test Maintenance Window"},"start_date":"2026-02-11T05:39:24.000Z","end_date":"2026-02-11T07:39:24.000Z","timezone":"UTC","monitors":["mon_u4caULGi4rO2XR"],"statuspages":[],"bulkUuid":null,"createdBy":"usr_dcnH5V1JEGsoiN","createdAt":"2026-02-10T05:39:25.000Z","notificationOption":"none","notificationMinutes":60,"updates":[]}'
+        body: '{"uuid":"mw_OgCL9eGfpposhZ","name":"vcr-test-maintenance-updated","title":{"en":"VCR Test Maintenance Window"},"start_date":"2026-02-11T10:48:49.000Z","end_date":"2026-02-11T12:48:49.000Z","timezone":"UTC","monitors":["mon_u4caULGi4rO2XR"],"statuspages":[],"bulkUuid":null,"createdBy":"usr_dcnH5V1JEGsoiN","createdAt":"2026-02-10T10:48:49.000Z","notificationOption":"none","notificationMinutes":60,"updates":[]}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -336,28 +336,28 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cb9441308bec227-TLV
+                - 9cbb0952795fc231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 05:39:26 GMT
+                - Tue, 10 Feb 2026 10:48:51 GMT
             Etag:
-                - W/"19b-BdpQJHuKnzxpcgQj3RG9APUwiEs"
+                - W/"19b-/F1z/UaX0ltnZnrDECFtowq1O3I"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=776; t=906'
+                - '"800-in-1hr"; r=773; t=3585'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=dxAUt7oABsD20V5U%2B3GyUkarH0xrHhNHq4%2FPPC9TCVdVkEfGoaMwAecWMdOoiCS%2B8IIrydUeC4f2E6YkgYt5OySyQJR%2B6u3pvtVdHymXuQA%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=28ln945gzLmruft7UyOYtnUzLc3G94s8pAr4aGWnWbhCfMqkgM9u4QpHdSkYCN%2BSF5FHpf4paBxhGWIF4zSUiismoycuaQepTk%2F0EKzmNO8%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 1.38293582s
+        duration: 1.590085723s
     - id: 5
       request:
         proto: HTTP/1.1
@@ -380,7 +380,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v1/maintenance-windows/mw_qlpuMehyUxg5Bz
+        url: https://api.hyperping.io/v1/maintenance-windows/mw_OgCL9eGfpposhZ
         method: DELETE
       response:
         proto: HTTP/2.0
@@ -407,25 +407,25 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9cb9441baea1c227-TLV
+                - 9cbb095c4f37c231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Tue, 10 Feb 2026 05:39:26 GMT
+                - Tue, 10 Feb 2026 10:48:52 GMT
             Etag:
                 - W/"10-/joFRKz/gr6105uVVzyNqD3EVJg"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=775; t=905'
+                - '"800-in-1hr"; r=772; t=3583'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=W1peYM6pwEWgWG0mYw32CVG6bseP6WqeW9b9VqQfqnfugJLKSITD65W%2FthI%2F3K1kFTQ%2FcEZkTj6uM4ceP2w5270fq8qAXutZADMh1NGRUuc%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=LoElBQZuyuM4%2BOTBsiMXGDVbOZcgN0Njb0NGkbr1250w0xK79EuZ1xI0tOhpVOYt8fkas4BmlBYkUpMWfQTW9aLQ3L9IZmnuOGvDSQkmbn4%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 188.168664ms
+        duration: 184.662998ms

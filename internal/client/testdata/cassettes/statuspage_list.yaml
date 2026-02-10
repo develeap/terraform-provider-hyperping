@@ -22,7 +22,7 @@ interactions:
             Content-Type:
                 - application/json
             User-Agent:
-                - terraform-provider-hyperping/dev (go1.24.12; linux/amd64)
+                - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
         url: https://api.hyperping.io/v2/statuspages
         method: GET
       response:
@@ -33,7 +33,7 @@ interactions:
         trailer: {}
         content_length: -1
         uncompressed: true
-        body: '{"statuspages":[],"hasNextPage":false,"total":0,"page":0,"resultsPerPage":20}'
+        body: '{"statuspages":[{"uuid":"sp_6crHEAwIwKkdOl","name":"v1.0.6 Test Multi Section","hostname":null,"hostedsubdomain":"v106-multi-202602090922.hyperping.app","url":"v106-multi-202602090922.hyperping.app","password_protected":false},{"uuid":"sp_vBrPnrF6UYYl33","name":"v1.0.6 Settings Test","hostname":null,"hostedsubdomain":"v106-settings-202602090922.hyperping.app","url":"v106-settings-202602090922.hyperping.app","password_protected":false},{"uuid":"sp_pzQj1Nhw4qDLiA","name":"v1.0.6 Test Single Section","hostname":null,"hostedsubdomain":"v106-single-202602090922.hyperping.app","url":"v106-single-202602090922.hyperping.app","password_protected":false},{"uuid":"sp_az5p8hHthiO5Na","name":"v1.0.4 Test Status Page","hostname":null,"hostedsubdomain":"v104-test-20260209071018.hyperping.app","url":"v104-test-20260209071018.hyperping.app","password_protected":false},{"uuid":"sp_o5fvNkgLhyiu7g","name":"TechStart Service Status","hostname":null,"hostedsubdomain":"techstart-status.hyperping.app","url":"techstart-status.hyperping.app","password_protected":false},{"uuid":"sp_n6Lq1xAXWNJ7ne","name":"Test Status Page","hostname":null,"hostedsubdomain":"test-terraform-20260209044851.hyperping.app","url":"test-terraform-20260209044851.hyperping.app","password_protected":false}],"hasNextPage":false,"total":6,"page":0,"resultsPerPage":20}'
         headers:
             Access-Control-Allow-Credentials:
                 - "true"
@@ -50,25 +50,25 @@ interactions:
             Cf-Cache-Status:
                 - DYNAMIC
             Cf-Ray:
-                - 9c90d7aaf9b07546-TLV
+                - 9cbb09acdd01c231-TLV
             Content-Type:
                 - application/json; charset=utf-8
             Date:
-                - Thu, 05 Feb 2026 07:54:54 GMT
+                - Tue, 10 Feb 2026 10:49:04 GMT
             Etag:
-                - W/"4d-OMLuqRp5mCIAWzFd5YCfjcewp6I"
+                - W/"536-q1wq6JFjxb89L6LEsN1q2+nqIb0"
             Nel:
                 - '{"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}'
             Ratelimit:
-                - '"800-in-1hr"; r=780; t=1880'
+                - '"800-in-1hr"; r=745; t=3570'
             Ratelimit-Policy:
                 - '"800-in-1hr"; q=800; w=3600; pk=:MGMzN2I2ZTVmZGY2:'
             Report-To:
-                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=LgC8feiHxAO1slGSs2KAmVtTveaw5DGBDuOrms5J1QWUgWGizTdtcxYQG1gLnl4Eq%2Bwt%2FcA4sYk6VfSoZdVYms9HdvYEFvw1QVbwo6VS2oc%3D"}]}'
+                - '{"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=ZcHbQpBilGcsVt02crq6VXs1xn2RGN3WgvGbmYy6l8W6rSPMGmWFjfetg5%2BIuLU8ipgW%2FUppnf3KPTXcuzQ5F1ezXt3h0IWTQnTT2seGfB8%3D"}]}'
             Server:
                 - cloudflare
             Vary:
                 - Accept-Encoding
         status: 200 OK
         code: 200
-        duration: 399.016643ms
+        duration: 121.921433ms

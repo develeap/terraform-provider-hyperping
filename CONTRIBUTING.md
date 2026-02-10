@@ -104,7 +104,7 @@ gosec ./...
 - Keep functions under 50 lines where possible
 - Write clear, descriptive variable names
 - Add comments for complex logic
-- Maintain test coverage above 42%
+- Maintain test coverage above 50%
 
 ### Provider Development Guidelines
 

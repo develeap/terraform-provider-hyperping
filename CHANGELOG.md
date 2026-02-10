@@ -10,6 +10,35 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-02-10
+
+### Fixed
+
+- **Documentation**: Fixed critical nested `docs/guides/` directories bug caused by backup/restore loop in lefthook
+- **Documentation**: Updated coverage statistics to reflect current state (50.8%, 881 tests passing)
+- **lefthook**: Fixed backup/restore logic to only copy markdown files, preventing directory recursion
+- **lefthook**: Added validation check to fail if nested directories are detected
+
+### Removed
+
+- Removed 26 temporary development files (~1.5 MB):
+  - Coverage output files (7 files)
+  - Old scraper reports (13 files)
+  - Temporary development tools (2 files)
+  - Resolved issue documentation (2 files)
+  - Old development plans (1 file)
+  - Backup files (1 file)
+
+### Added
+
+- `docs/NESTED_GUIDES_BUG_ANALYSIS.md` - Comprehensive root cause analysis of directory nesting bug
+- `docs/DOCUMENTATION_AUDIT_2026-02-10.md` - Complete documentation audit report
+
+### Changed
+
+- Updated CONTRIBUTING.md coverage threshold from 42% to 50%
+- Updated README.md test coverage from 45.8% to 50.8%
+
 ## [1.0.6] - 2026-02-09
 
 ### Fixed
@@ -164,7 +193,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.6...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.7...HEAD
+[1.0.7]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.3...v1.0.4

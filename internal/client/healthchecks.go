@@ -110,11 +110,15 @@ func (c *Client) UpdateHealthcheck(ctx context.Context, uuid string, req UpdateH
 	}
 	path := fmt.Sprintf("%s/%s", healthchecksBasePath, uuid)
 
-	var healthcheck Healthcheck
-	if err := c.doRequest(ctx, "PUT", path, req, &healthcheck); err != nil {
+	// API PUT returns wrapped response: {"message":"...","healthcheck":{...}}
+	var updateResp struct {
+		Message     string      `json:"message"`
+		Healthcheck Healthcheck `json:"healthcheck"`
+	}
+	if err := c.doRequest(ctx, "PUT", path, req, &updateResp); err != nil {
 		return nil, fmt.Errorf("failed to update healthcheck: %w", err)
 	}
-	return &healthcheck, nil
+	return &updateResp.Healthcheck, nil
 }
 
 // DeleteHealthcheck deletes a healthcheck.

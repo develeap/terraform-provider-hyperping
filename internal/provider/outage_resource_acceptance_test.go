@@ -294,8 +294,15 @@ func (m *mockOutageServer) createOutage(w http.ResponseWriter, r *http.Request) 
 
 	m.outages[id] = outage
 
+	// API POST returns wrapped response: {"message":"...","outage":{...}}
+	// This matches the real API format
+	response := map[string]interface{}{
+		"message": "Incident created",
+		"outage":  outage,
+	}
+
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(outage)
+	json.NewEncoder(w).Encode(response)
 }
 
 func (m *mockOutageServer) getOutage(w http.ResponseWriter, r *http.Request) {
@@ -308,7 +315,12 @@ func (m *mockOutageServer) getOutage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(outage)
+	// API GET returns wrapped response: {"outage":{...}}
+	// This matches the real API format
+	response := map[string]interface{}{
+		"outage": outage,
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 func (m *mockOutageServer) deleteOutage(w http.ResponseWriter, r *http.Request) {
