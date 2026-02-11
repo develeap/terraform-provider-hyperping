@@ -10,6 +10,16 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-02-11
+
+### Fixed
+
+- **hyperping_monitor**: Fixed critical bug where port and ICMP monitors failed with "Provider produced inconsistent result after apply" (ISS-ICMP-002)
+  - Root cause: HTTP-specific schema defaults (http_method, expected_status_code, follow_redirects) were applied to all monitor types, but API returns empty/null for non-HTTP protocols
+  - Solution: Implemented save-restore pattern in Create, Read, and Update functions to preserve plan values for HTTP fields when monitor protocol is not "http"
+  - Impact: Port and ICMP monitors now work correctly without state drift
+  - Verified: Comprehensive testing with HTTP, Port (PostgreSQL/Redis), and ICMP (Google DNS/Cloudflare) monitors - all protocols create successfully with zero drift
+
 ## [1.0.7] - 2026-02-10
 
 ### Fixed

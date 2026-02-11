@@ -236,10 +236,28 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	// Preserve HTTP-specific plan values for non-HTTP monitors (ISS-ICMP-002)
+	planHTTPMethod := plan.HTTPMethod
+	planExpectedStatusCode := plan.ExpectedStatusCode
+	planFollowRedirects := plan.FollowRedirects
+
 	// Map API response to Terraform state
 	r.mapMonitorToModel(monitor, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// Restore HTTP fields for non-HTTP monitors (API returns empty/null)
+	if monitor.Protocol != "http" {
+		if !planHTTPMethod.IsNull() {
+			plan.HTTPMethod = planHTTPMethod
+		}
+		if !planExpectedStatusCode.IsNull() {
+			plan.ExpectedStatusCode = planExpectedStatusCode
+		}
+		if !planFollowRedirects.IsNull() {
+			plan.FollowRedirects = planFollowRedirects
+		}
 	}
 
 	// Handle pause state via separate API call if needed
@@ -272,9 +290,27 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
+	// Preserve HTTP-specific state values for non-HTTP monitors (ISS-ICMP-002)
+	stateHTTPMethod := state.HTTPMethod
+	stateExpectedStatusCode := state.ExpectedStatusCode
+	stateFollowRedirects := state.FollowRedirects
+
 	r.mapMonitorToModel(monitor, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// Restore HTTP fields for non-HTTP monitors (API returns empty/null)
+	if monitor.Protocol != "http" {
+		if !stateHTTPMethod.IsNull() {
+			state.HTTPMethod = stateHTTPMethod
+		}
+		if !stateExpectedStatusCode.IsNull() {
+			state.ExpectedStatusCode = stateExpectedStatusCode
+		}
+		if !stateFollowRedirects.IsNull() {
+			state.FollowRedirects = stateFollowRedirects
+		}
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -304,10 +340,28 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	// Preserve HTTP-specific plan values for non-HTTP monitors (ISS-ICMP-002)
+	planHTTPMethod := plan.HTTPMethod
+	planExpectedStatusCode := plan.ExpectedStatusCode
+	planFollowRedirects := plan.FollowRedirects
+
 	// Map API response to Terraform state
 	r.mapMonitorToModel(monitor, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// Restore HTTP fields for non-HTTP monitors (API returns empty/null)
+	if monitor.Protocol != "http" {
+		if !planHTTPMethod.IsNull() {
+			plan.HTTPMethod = planHTTPMethod
+		}
+		if !planExpectedStatusCode.IsNull() {
+			plan.ExpectedStatusCode = planExpectedStatusCode
+		}
+		if !planFollowRedirects.IsNull() {
+			plan.FollowRedirects = planFollowRedirects
+		}
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -349,11 +403,13 @@ func (r *MonitorResource) mapMonitorToModel(monitor *client.Monitor, model *Moni
 	model.Name = types.StringValue(monitor.Name)
 	model.URL = types.StringValue(monitor.URL)
 	model.Protocol = types.StringValue(monitor.Protocol)
-	model.HTTPMethod = types.StringValue(monitor.HTTPMethod)
 	model.CheckFrequency = types.Int64Value(int64(monitor.CheckFrequency))
+	model.Paused = types.BoolValue(monitor.Paused)
+
+	// HTTP-specific fields (will be preserved for non-HTTP monitors in calling function)
+	model.HTTPMethod = types.StringValue(monitor.HTTPMethod)
 	model.ExpectedStatusCode = types.StringValue(string(monitor.ExpectedStatusCode))
 	model.FollowRedirects = types.BoolValue(monitor.FollowRedirects)
-	model.Paused = types.BoolValue(monitor.Paused)
 
 	// Handle regions
 	model.Regions = mapStringSliceToList(monitor.Regions, diags)
