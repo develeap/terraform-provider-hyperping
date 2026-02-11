@@ -168,7 +168,7 @@ func TestAccIncidentResource_readError(t *testing.T) {
 			{
 				PreConfig:          func() { server.setReadError(true) },
 				Config:             testAccIncidentResourceConfig_basic(server.URL, "read-error-test"),
-				ExpectError:        regexp.MustCompile(`Could not read incident`),
+				ExpectError:        regexp.MustCompile(`Unable to read Incident`),
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: true,
 			},

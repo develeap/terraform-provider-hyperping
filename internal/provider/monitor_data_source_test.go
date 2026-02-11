@@ -157,7 +157,7 @@ data "hyperping_monitor" "test" {
   id = "non-existent-id"
 }
 `, server.URL),
-				ExpectError: regexp.MustCompile(`Could not read monitor`),
+				ExpectError: regexp.MustCompile(`Unable to read Monitor`),
 			},
 		},
 	})
@@ -184,7 +184,7 @@ data "hyperping_monitor" "test" {
   id = "mon-error-123"
 }
 `, server.URL),
-				ExpectError: regexp.MustCompile(`Could not read monitor`),
+				ExpectError: regexp.MustCompile(`Unable to read Monitor`),
 			},
 		},
 	})
