@@ -41,6 +41,10 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: latest
+          # Explicit cache configuration for visibility
+          skip-cache: false
+          skip-pkg-cache: false
+          skip-build-cache: false
 
   # Documentation check: Verify docs are up-to-date (generated via lefthook pre-commit)
   generate:
