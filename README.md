@@ -102,7 +102,7 @@ Or configure in the provider block (not recommended for production).
 - **[Terraform Registry](https://registry.terraform.io/providers/develeap/hyperping/latest/docs)** - Complete resource/data source reference
 - **[Examples](./examples/)** - Real-world usage examples
 - **[Changelog](./CHANGELOG.md)** - Version history and release notes
-- **[Hyperping API Docs](https://hyperping.notion.site/Hyperping-API-documentation-a0dc48fb818e4542a8f7fb4163ede2c3)** - Official API documentation
+- **[Hyperping API Docs](https://hyperping.com/docs/api/overview)** - Official API documentation
 
 ## Requirements
 
@@ -188,7 +188,7 @@ go test -v -run TestContract_Monitor ./internal/client/
 - **Zero flaky tests** across multiple runs
 - **Race detector clean**
 
-See [VCR_CONTRACT_TEST_REPORT.md](/tmp/VCR_CONTRACT_TEST_REPORT.md) for detailed test metrics and [internal/client/testdata/cassettes/README.md](internal/client/testdata/cassettes/README.md) for cassette documentation.
+See [internal/client/testdata/cassettes/README.md](internal/client/testdata/cassettes/README.md) for cassette documentation.
 
 ## Production Features
 
