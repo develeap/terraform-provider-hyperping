@@ -13,9 +13,9 @@ import (
 )
 
 // sweepOutages deletes all test outages (those with title prefixed with "tf-acc-test-")
-func sweepOutages(region string) error {
+func sweepOutages(_ string) error {
 	ctx := context.Background()
-	c, err := sharedClientForRegion(region)
+	c, err := sharedClientForRegion("")
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
 	}

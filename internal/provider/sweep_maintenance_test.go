@@ -13,9 +13,9 @@ import (
 )
 
 // sweepMaintenance deletes all test maintenance windows (those with name prefixed with "tf-acc-test-")
-func sweepMaintenance(region string) error {
+func sweepMaintenance(_ string) error {
 	ctx := context.Background()
-	c, err := sharedClientForRegion(region)
+	c, err := sharedClientForRegion("")
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
 	}

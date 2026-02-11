@@ -13,9 +13,9 @@ import (
 )
 
 // sweepStatusPages deletes all test status pages (those with name prefixed with "tf-acc-test-")
-func sweepStatusPages(region string) error {
+func sweepStatusPages(_ string) error {
 	ctx := context.Background()
-	c, err := sharedClientForRegion(region)
+	c, err := sharedClientForRegion("")
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
 	}

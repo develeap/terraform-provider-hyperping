@@ -13,9 +13,9 @@ import (
 )
 
 // sweepIncidents deletes all test incidents (those with title prefixed with "tf-acc-test-")
-func sweepIncidents(region string) error {
+func sweepIncidents(_ string) error {
 	ctx := context.Background()
-	c, err := sharedClientForRegion(region)
+	c, err := sharedClientForRegion("")
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
 	}

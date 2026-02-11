@@ -13,9 +13,9 @@ import (
 )
 
 // sweepHealthchecks deletes all test healthchecks (those with name prefixed with "tf-acc-test-")
-func sweepHealthchecks(region string) error {
+func sweepHealthchecks(_ string) error {
 	ctx := context.Background()
-	c, err := sharedClientForRegion(region)
+	c, err := sharedClientForRegion("")
 	if err != nil {
 		return fmt.Errorf("error getting client: %w", err)
 	}

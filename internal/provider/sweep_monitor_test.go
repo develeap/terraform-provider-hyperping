@@ -45,7 +45,8 @@ func sweepMonitors(region string) error {
 }
 
 // sharedClientForRegion creates a Hyperping client for sweeper operations
-func sharedClientForRegion(region string) (*client.Client, error) {
+// region parameter is required by Sweeper interface but unused (Hyperping has no regional endpoints)
+func sharedClientForRegion(_ string) (*client.Client, error) {
 	apiKey := os.Getenv("HYPERPING_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("HYPERPING_API_KEY must be set for sweepers")
