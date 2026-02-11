@@ -163,10 +163,7 @@ func (d *MonitorReportDataSource) Read(ctx context.Context, req datasource.ReadR
 
 	report, err := d.client.GetMonitorReport(ctx, config.ID.ValueString(), from, to)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading monitor report",
-			fmt.Sprintf("Could not read monitor report %s: %s", config.ID.ValueString(), err),
-		)
+		resp.Diagnostics.Append(newReadError("Monitor Report", config.ID.ValueString(), err))
 		return
 	}
 

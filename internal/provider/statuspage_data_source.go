@@ -281,10 +281,7 @@ func (d *StatusPageDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	// Fetch status page from API
 	statusPage, err := d.client.GetStatusPage(ctx, config.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading status page",
-			fmt.Sprintf("Could not read status page %s: %s", config.ID.ValueString(), err.Error()),
-		)
+		resp.Diagnostics.Append(newReadError("Status Page", config.ID.ValueString(), err))
 		return
 	}
 

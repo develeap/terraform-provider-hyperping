@@ -176,10 +176,7 @@ func (d *OutageDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	outage, err := d.client.GetOutage(ctx, config.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading outage",
-			fmt.Sprintf("Could not read outage %s: %s", config.ID.ValueString(), err),
-		)
+		resp.Diagnostics.Append(newReadError("Outage", config.ID.ValueString(), err))
 		return
 	}
 
