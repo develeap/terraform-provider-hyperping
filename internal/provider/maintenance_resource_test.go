@@ -5,13 +5,9 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"regexp"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -23,38 +19,19 @@ import (
 )
 
 func TestAccMaintenanceResource_basic(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(24 * time.Hour).Truncate(time.Second)
-	end := start.Add(2 * time.Hour)
-	startStr := start.Format(time.RFC3339)
-	endStr := end.Format(time.RFC3339)
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
 
-	maintenance := map[string]interface{}{
-		"uuid":       "mw_test_123",
-		"name":       "Test Maintenance",
-		"title":      map[string]interface{}{"en": "Test Maintenance Title"},
-		"text":       map[string]interface{}{"en": "Test maintenance description"},
-		"start_date": startStr,
-		"end_date":   endStr,
-		"monitors":   []string{"mon_123"},
+	fixture := &maintenanceTestFixture{
+		UUID:      "mw_test_123",
+		Name:      "Test Maintenance",
+		Title:     "Test Maintenance Title",
+		Text:      "Test maintenance description",
+		StartDate: startStr,
+		EndDate:   endStr,
+		Monitors:  []string{"mon_123"},
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			// Return ONLY UUID (simulating real Hyperping API behavior)
-			// The provider must do a GET to fetch the full maintenance window
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_test_123":
-			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_test_123":
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server := newSimpleMaintenanceServer(fixture)
 	defer server.Close()
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
@@ -63,21 +40,7 @@ func TestAccMaintenanceResource_basic(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Test Maintenance"
-  title      = "Test Maintenance Title"
-  text       = "Test maintenance description"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, startStr, endStr),
+				Config: generateMaintenanceConfig(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "id", "mw_test_123"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "name", "Test Maintenance"),
@@ -89,41 +52,22 @@ resource "hyperping_maintenance" "test" {
 }
 
 func TestAccMaintenanceResource_full(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(48 * time.Hour).Truncate(time.Second)
-	end := start.Add(4 * time.Hour)
-	startStr := start.Format(time.RFC3339)
-	endStr := end.Format(time.RFC3339)
+	startStr, endStr := generateMaintenanceTimeRange(48, 4)
 
-	maintenance := map[string]interface{}{
-		"uuid":                "mw_full_123",
-		"name":                "Full Maintenance",
-		"title":               map[string]interface{}{"en": "Full Maintenance Title"},
-		"text":                map[string]interface{}{"en": "Complete maintenance description"},
-		"start_date":          startStr,
-		"end_date":            endStr,
-		"monitors":            []string{"mon_123", "mon_456"},
-		"statuspages":         []string{"sp_main"},
-		"notificationOption":  "scheduled",
-		"notificationMinutes": 120,
+	fixture := &maintenanceTestFixture{
+		UUID:                "mw_full_123",
+		Name:                "Full Maintenance",
+		Title:               "Full Maintenance Title",
+		Text:                "Complete maintenance description",
+		StartDate:           startStr,
+		EndDate:             endStr,
+		Monitors:            []string{"mon_123", "mon_456"},
+		StatusPages:         []string{"sp_main"},
+		NotificationOption:  "scheduled",
+		NotificationMinutes: 120,
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			// Return ONLY UUID (simulating real Hyperping API behavior)
-			// The provider must do a GET to fetch the full maintenance window
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_full_123":
-			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_full_123":
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server := newSimpleMaintenanceServer(fixture)
 	defer server.Close()
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
@@ -132,24 +76,7 @@ func TestAccMaintenanceResource_full(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name                 = "Full Maintenance"
-  title                = "Full Maintenance Title"
-  text                 = "Complete maintenance description"
-  start_date           = %q
-  end_date             = %q
-  monitors             = ["mon_123", "mon_456"]
-  status_pages         = ["sp_main"]
-  notification_option  = "scheduled"
-  notification_minutes = 120
-}
-`, server.URL, startStr, endStr),
+				Config: generateMaintenanceConfigFull(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors, fixture.StatusPages, fixture.NotificationOption, fixture.NotificationMinutes),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "id", "mw_full_123"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "name", "Full Maintenance"),
@@ -163,50 +90,20 @@ resource "hyperping_maintenance" "test" {
 }
 
 func TestAccMaintenanceResource_timeUpdate(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(24 * time.Hour).Truncate(time.Second)
-	end := start.Add(2 * time.Hour)
-	newStart := now.Add(48 * time.Hour).Truncate(time.Second)
-	newEnd := newStart.Add(4 * time.Hour)
-	startStr := start.Format(time.RFC3339)
-	endStr := end.Format(time.RFC3339)
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
+	newStartStr, newEndStr := generateMaintenanceTimeRange(48, 4)
 
-	maintenance := map[string]interface{}{
-		"uuid":       "mw_time_123",
-		"name":       "Time Update Test",
-		"title":      map[string]interface{}{"en": "Time Update Test"},
-		"text":       map[string]interface{}{"en": "Testing time updates"},
-		"start_date": startStr,
-		"end_date":   endStr,
-		"monitors":   []string{"mon_123"},
+	fixture := &maintenanceTestFixture{
+		UUID:      "mw_time_123",
+		Name:      "Time Update Test",
+		Title:     "Time Update Test",
+		Text:      "Testing time updates",
+		StartDate: startStr,
+		EndDate:   endStr,
+		Monitors:  []string{"mon_123"},
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			// Return ONLY UUID (simulating real Hyperping API behavior)
-			// The provider must do a GET to fetch the full maintenance window
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
-		case r.Method == http.MethodPut && r.URL.Path == client.MaintenanceBasePath+"/mw_time_123":
-			var req map[string]interface{}
-			json.NewDecoder(r.Body).Decode(&req)
-			if sd, ok := req["start_date"].(string); ok {
-				maintenance["start_date"] = sd
-			}
-			if ed, ok := req["end_date"].(string); ok {
-				maintenance["end_date"] = ed
-			}
-			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_time_123":
-			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_time_123":
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server, _ := newMaintenanceServerWithUpdateCapture(fixture)
 	defer server.Close()
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
@@ -215,86 +112,34 @@ func TestAccMaintenanceResource_timeUpdate(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Time Update Test"
-  title      = "Time Update Test"
-  text       = "Testing time updates"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, startStr, endStr),
-				Check: tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "name", "Time Update Test"),
+				Config: generateMaintenanceConfig(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors),
+				Check:  tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "name", "Time Update Test"),
 			},
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Time Update Test"
-  title      = "Time Update Test"
-  text       = "Testing time updates"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, newStart.Format(time.RFC3339), newEnd.Format(time.RFC3339)),
-				Check: tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "name", "Time Update Test"),
+				Config: generateMaintenanceConfig(server.URL, fixture.Name, fixture.Title, fixture.Text, newStartStr, newEndStr, fixture.Monitors),
+				Check:  tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "name", "Time Update Test"),
 			},
 		},
 	})
 }
 
 func TestAccMaintenanceResource_disappears(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(24 * time.Hour).Truncate(time.Second)
-	end := start.Add(2 * time.Hour)
-	startStr := start.Format(time.RFC3339)
-	endStr := end.Format(time.RFC3339)
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
 
-	maintenance := map[string]interface{}{
-		"uuid":       "mw_disappear_123",
-		"name":       "Disappearing Maintenance",
-		"title":      map[string]interface{}{"en": "Disappearing Title"},
-		"text":       map[string]interface{}{"en": "This will disappear"},
-		"start_date": startStr,
-		"end_date":   endStr,
-		"monitors":   []string{"mon_123"},
+	fixture := &maintenanceTestFixture{
+		UUID:      "mw_disappear_123",
+		Name:      "Disappearing Maintenance",
+		Title:     "Disappearing Title",
+		Text:      "This will disappear",
+		StartDate: startStr,
+		EndDate:   endStr,
+		Monitors:  []string{"mon_123"},
 	}
-	deleted := false
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			// Return ONLY UUID (simulating real Hyperping API behavior)
-			// The provider must do a GET to fetch the full maintenance window
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_disappear_123":
-			if deleted {
-				w.WriteHeader(http.StatusNotFound)
-				json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
-				return
-			}
-			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_disappear_123":
-			deleted = true
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server, deleted := newMaintenanceServerWithDisappear(fixture)
 	defer server.Close()
+
+	config := generateMaintenanceConfig(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors)
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
@@ -302,42 +147,14 @@ func TestAccMaintenanceResource_disappears(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Disappearing Maintenance"
-  title      = "Disappearing Title"
-  text       = "This will disappear"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, startStr, endStr),
-				Check: tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "id", "mw_disappear_123"),
+				Config: config,
+				Check:  tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "id", "mw_disappear_123"),
 			},
 			{
 				PreConfig: func() {
-					deleted = true
+					*deleted = true
 				},
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Disappearing Maintenance"
-  title      = "Disappearing Title"
-  text       = "This will disappear"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, startStr, endStr),
+				Config:             config,
 				PlanOnly:           true,
 				ExpectNonEmptyPlan: true,
 			},
@@ -346,12 +163,9 @@ resource "hyperping_maintenance" "test" {
 }
 
 func TestAccMaintenanceResource_createError(t *testing.T) {
-	start := time.Now().UTC().Add(24 * time.Hour).Truncate(time.Second)
-	end := start.Add(2 * time.Hour)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "internal error"})
-	}))
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
+
+	server := newErrorServer(http.StatusInternalServerError, "internal error")
 	defer server.Close()
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
@@ -360,19 +174,7 @@ func TestAccMaintenanceResource_createError(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Error Test"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, start.Format(time.RFC3339), end.Format(time.RFC3339)),
+				Config:      generateMaintenanceConfigMinimal(server.URL, "Error Test", startStr, endStr, []string{"mon_123"}),
 				ExpectError: regexp.MustCompile("Failed to Create Maintenance Window"),
 			},
 		},
@@ -380,28 +182,9 @@ resource "hyperping_maintenance" "test" {
 }
 
 func TestAccMaintenanceResource_readAfterCreateError(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(24 * time.Hour).Truncate(time.Second)
-	end := start.Add(2 * time.Hour)
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
 
-	createCalled := false
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			// POST succeeds, return only UUID
-			createCalled = true
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": "mw_read_error_123"})
-		case r.Method == http.MethodGet && createCalled:
-			// GET after create fails
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server := newMaintenanceServerReadAfterCreateError("mw_read_error_123")
 	defer server.Close()
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
@@ -410,19 +193,7 @@ func TestAccMaintenanceResource_readAfterCreateError(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Read After Create Error Test"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, start.Format(time.RFC3339), end.Format(time.RFC3339)),
+				Config:      generateMaintenanceConfigMinimal(server.URL, "Read After Create Error Test", startStr, endStr, []string{"mon_123"}),
 				ExpectError: regexp.MustCompile("Maintenance Window Created But Read Failed"),
 			},
 		},
@@ -430,9 +201,8 @@ resource "hyperping_maintenance" "test" {
 }
 
 func TestAccMaintenanceResource_invalidTimeRange(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(24 * time.Hour).Truncate(time.Second)
-	end := now.Add(2 * time.Hour) // End before start
+	start, _ := generateMaintenanceTimeRange(24, 2)
+	_, end := generateMaintenanceTimeRange(2, 2) // End before start
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
@@ -440,19 +210,7 @@ func TestAccMaintenanceResource_invalidTimeRange(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = "http://localhost:9999"
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Invalid Time"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, start.Format(time.RFC3339), end.Format(time.RFC3339)),
+				Config:      generateMaintenanceConfigMinimal("http://localhost:9999", "Invalid Time", start, end, []string{"mon_123"}),
 				ExpectError: regexp.MustCompile("end_date must be after start_date"),
 			},
 		},
@@ -694,38 +452,19 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 }
 
 func TestAccMaintenanceResource_withMonitors(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(24 * time.Hour).Truncate(time.Second)
-	end := start.Add(2 * time.Hour)
-	startStr := start.Format(time.RFC3339)
-	endStr := end.Format(time.RFC3339)
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
 
-	maintenance := map[string]interface{}{
-		"uuid":       "mw_monitors_123",
-		"name":       "Monitor Test",
-		"title":      map[string]interface{}{"en": "Monitor Test Title"},
-		"text":       map[string]interface{}{"en": "Test with monitors"},
-		"start_date": startStr,
-		"end_date":   endStr,
-		"monitors":   []string{"mon_123", "mon_456"},
+	fixture := &maintenanceTestFixture{
+		UUID:      "mw_monitors_123",
+		Name:      "Monitor Test",
+		Title:     "Monitor Test Title",
+		Text:      "Test with monitors",
+		StartDate: startStr,
+		EndDate:   endStr,
+		Monitors:  []string{"mon_123", "mon_456"},
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			// Return ONLY UUID (simulating real Hyperping API behavior)
-			// The provider must do a GET to fetch the full maintenance window
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_monitors_123":
-			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_monitors_123":
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server := newSimpleMaintenanceServer(fixture)
 	defer server.Close()
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
@@ -734,21 +473,7 @@ func TestAccMaintenanceResource_withMonitors(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Monitor Test"
-  title      = "Monitor Test Title"
-  text       = "Test with monitors"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123", "mon_456"]
-}
-`, server.URL, startStr, endStr),
+				Config: generateMaintenanceConfig(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "name", "Monitor Test"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "monitors.#", "2"),
@@ -759,38 +484,19 @@ resource "hyperping_maintenance" "test" {
 }
 
 func TestAccMaintenanceResource_import(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(24 * time.Hour).Truncate(time.Second)
-	end := start.Add(2 * time.Hour)
-	startStr := start.Format(time.RFC3339)
-	endStr := end.Format(time.RFC3339)
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
 
-	maintenance := map[string]interface{}{
-		"uuid":       "mw_import_123",
-		"name":       "Import Test",
-		"title":      map[string]interface{}{"en": "Import Test Title"},
-		"text":       map[string]interface{}{"en": "Import test description"},
-		"start_date": startStr,
-		"end_date":   endStr,
-		"monitors":   []string{"mon_123"},
+	fixture := &maintenanceTestFixture{
+		UUID:      "mw_import_123",
+		Name:      "Import Test",
+		Title:     "Import Test Title",
+		Text:      "Import test description",
+		StartDate: startStr,
+		EndDate:   endStr,
+		Monitors:  []string{"mon_123"},
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			// Return ONLY UUID (simulating real Hyperping API behavior)
-			// The provider must do a GET to fetch the full maintenance window
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_import_123":
-			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_import_123":
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server := newSimpleMaintenanceServer(fixture)
 	defer server.Close()
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
@@ -799,21 +505,7 @@ func TestAccMaintenanceResource_import(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Import Test"
-  title      = "Import Test Title"
-  text       = "Import test description"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, startStr, endStr),
+				Config: generateMaintenanceConfig(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors),
 			},
 			{
 				ResourceName:            "hyperping_maintenance.test",
@@ -826,47 +518,19 @@ resource "hyperping_maintenance" "test" {
 }
 
 func TestAccMaintenanceResource_deleteNotFound(t *testing.T) {
-	now := time.Now().UTC()
-	start := now.Add(24 * time.Hour).Truncate(time.Second)
-	end := start.Add(2 * time.Hour)
-	startStr := start.Format(time.RFC3339)
-	endStr := end.Format(time.RFC3339)
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
 
-	maintenance := map[string]interface{}{
-		"uuid":       "mw_delete_nf_123",
-		"name":       "Delete Not Found Test",
-		"title":      map[string]interface{}{"en": "Delete Test Title"},
-		"text":       map[string]interface{}{"en": "Delete not found test"},
-		"start_date": startStr,
-		"end_date":   endStr,
-		"monitors":   []string{"mon_123"},
+	fixture := &maintenanceTestFixture{
+		UUID:      "mw_delete_nf_123",
+		Name:      "Delete Not Found Test",
+		Title:     "Delete Test Title",
+		Text:      "Delete not found test",
+		StartDate: startStr,
+		EndDate:   endStr,
+		Monitors:  []string{"mon_123"},
 	}
-	deleted := false
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			// Return ONLY UUID (simulating real Hyperping API behavior)
-			// The provider must do a GET to fetch the full maintenance window
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": maintenance["uuid"]})
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/mw_delete_nf_123":
-			if deleted {
-				w.WriteHeader(http.StatusNotFound)
-				json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
-				return
-			}
-			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/mw_delete_nf_123":
-			// Return not found - should not error since resource is already gone
-			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
-			deleted = true
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server := newMaintenanceServerDeleteNotFound(fixture)
 	defer server.Close()
 
 	tfresource.ParallelTest(t, tfresource.TestCase{
@@ -875,31 +539,11 @@ func TestAccMaintenanceResource_deleteNotFound(t *testing.T) {
 		},
 		Steps: []tfresource.TestStep{
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-
-resource "hyperping_maintenance" "test" {
-  name       = "Delete Not Found Test"
-  title      = "Delete Test Title"
-  text       = "Delete not found test"
-  start_date = %q
-  end_date   = %q
-  monitors   = ["mon_123"]
-}
-`, server.URL, startStr, endStr),
+				Config: generateMaintenanceConfig(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors),
 			},
 			{
-				Config: fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "hp_test_key"
-  base_url = %q
-}
-`, server.URL),
+				Config:  generateProviderOnlyConfig(server.URL),
 				Destroy: true,
-				// Should succeed even though delete returns 404
 			},
 		},
 	})
