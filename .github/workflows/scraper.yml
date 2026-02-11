@@ -37,14 +37,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # Full history for proper caching
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.22'
+          go-version-file: 'go.mod'
           cache-dependency-path: tools/cmd/scraper/go.sum
 
       - name: Install Chrome
@@ -152,12 +152,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.22'
+          go-version-file: 'go.mod'
           cache-dependency-path: tools/cmd/scraper/go.sum
 
       - name: Restore snapshots from cache
