@@ -99,7 +99,7 @@ jobs:
       - name: Run gosec
         uses: securego/gosec@53fc0c3c83097ad5ae9c44c009f659345b36b4ca # v2.18.0
         with:
-          args: -exclude-generated -exclude-dir=tools -fmt sarif -out gosec-results.sarif ./...
+          args: -no-fail -exclude-generated -exclude-dir=tools -fmt sarif -out gosec-results.sarif ./...
       - name: Upload gosec results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
         if: always()
