@@ -93,7 +93,7 @@ jobs:
         run: govulncheck ./...
         continue-on-error: true  # Don't fail build for stdlib vulnerabilities we can't control
       - name: Run gosec
-        uses: securego/gosec@d39ce5b701e5e9db15da2e5e7b37d6c8b1ad3e10 # v2.18.0
+        uses: securego/gosec@53fc0c3c83097ad5ae9c44c009f659345b36b4ca # v2.18.0
         with:
           args: -exclude-generated -exclude-dir=tools -fmt sarif -out gosec-results.sarif ./...
       - name: Upload gosec results to GitHub Security
