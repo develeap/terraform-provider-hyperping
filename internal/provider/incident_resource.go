@@ -191,10 +191,7 @@ func (r *IncidentResource) Read(ctx context.Context, req resource.ReadRequest, r
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError(
-			"Error reading incident",
-			fmt.Sprintf("Could not read incident %s: %s", state.ID.ValueString(), err),
-		)
+		resp.Diagnostics.Append(newReadError("Incident", state.ID.ValueString(), err))
 		return
 	}
 
@@ -294,10 +291,7 @@ func (r *IncidentResource) Delete(ctx context.Context, req resource.DeleteReques
 			// Already deleted, no error
 			return
 		}
-		resp.Diagnostics.AddError(
-			"Error deleting incident",
-			fmt.Sprintf("Could not delete incident %s: %s", state.ID.ValueString(), err),
-		)
+		resp.Diagnostics.Append(newDeleteError("Incident", state.ID.ValueString(), err))
 		return
 	}
 }

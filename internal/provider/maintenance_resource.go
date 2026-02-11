@@ -263,10 +263,7 @@ func (r *MaintenanceResource) Read(ctx context.Context, req resource.ReadRequest
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.AddError(
-			"Error reading maintenance window",
-			fmt.Sprintf("Could not read maintenance window %s: %s", state.ID.ValueString(), err),
-		)
+		resp.Diagnostics.Append(newReadError("Maintenance Window", state.ID.ValueString(), err))
 		return
 	}
 
@@ -366,10 +363,7 @@ func (r *MaintenanceResource) Delete(ctx context.Context, req resource.DeleteReq
 			// Already deleted, no error
 			return
 		}
-		resp.Diagnostics.AddError(
-			"Error deleting maintenance window",
-			fmt.Sprintf("Could not delete maintenance window %s: %s", state.ID.ValueString(), err),
-		)
+		resp.Diagnostics.Append(newDeleteError("Maintenance Window", state.ID.ValueString(), err))
 		return
 	}
 }
