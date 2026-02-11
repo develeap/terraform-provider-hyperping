@@ -1,0 +1,38 @@
+# Auto-detect text files and normalize line endings to LF
+* text=auto
+
+# Go source files
+*.go text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# YAML files (workflows, configs)
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Markdown documentation
+*.md text eol=lf
+
+# Terraform files
+*.tf text eol=lf
+*.tfvars text eol=lf
+
+# Configuration files
+*.json text eol=lf
+*.toml text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+
+# Binary files (explicit)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+
+# VCR cassettes (YAML)
+*.yaml text eol=lf
