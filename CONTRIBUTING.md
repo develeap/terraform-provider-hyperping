@@ -90,11 +90,43 @@ go tool cover -html=coverage.out
 # Acceptance tests (requires HYPERPING_API_KEY)
 HYPERPING_API_KEY=your_key TF_ACC=1 go test -v ./internal/provider/
 
+# Clean up test resources (sweepers)
+HYPERPING_API_KEY=your_key go test -v -sweep=all -sweep-run=. ./internal/provider/
+
+# Clean up specific resource type
+HYPERPING_API_KEY=your_key go test -v -sweep=all -sweep-run=hyperping_monitor ./internal/provider/
+
 # Linting
 golangci-lint run
 
 # Security scan
 gosec ./...
+```
+
+#### Resource Sweepers
+
+Resource sweepers automatically clean up orphaned test resources from your Hyperping account. Always run sweepers after acceptance testing to prevent resource accumulation.
+
+**Important:** All acceptance test resources MUST be named with the prefix `tf-acc-test-` for sweepers to identify and delete them safely.
+
+**Available sweepers:**
+- `hyperping_monitor` - Cleans up test monitors
+- `hyperping_incident` - Cleans up test incidents
+- `hyperping_maintenance` - Cleans up test maintenance windows
+- `hyperping_healthcheck` - Cleans up test healthchecks
+- `hyperping_statuspage` - Cleans up test status pages
+- `hyperping_outage` - Cleans up test outages (filtered by monitor name)
+
+**Usage examples:**
+```bash
+# Run all sweepers (recommended after testing)
+HYPERPING_API_KEY=your_key go test -v -sweep=all -sweep-run=. ./internal/provider/
+
+# Run specific sweeper
+HYPERPING_API_KEY=your_key go test -v -sweep=all -sweep-run=hyperping_monitor ./internal/provider/
+
+# Dry run (see what would be deleted)
+HYPERPING_API_KEY=your_key go test -v -sweep=all -sweep-run=hyperping_monitor -sweep-dry-run ./internal/provider/
 ```
 
 ### Code Style
@@ -125,6 +157,8 @@ gosec ./...
    - Add acceptance tests for resources/data sources
    - Test error conditions
    - Verify state updates
+   - **Test naming convention**: Prefix all test resources with `tf-acc-test-`
+   - **Resource cleanup**: Use sweepers to clean up orphaned test resources
 
 4. **Documentation**
    - Update resource/data source docs
