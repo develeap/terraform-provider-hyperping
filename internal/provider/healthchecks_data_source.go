@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
@@ -32,7 +33,8 @@ type HealthchecksDataSource struct {
 
 // HealthchecksDataSourceModel describes the data source data model.
 type HealthchecksDataSourceModel struct {
-	Healthchecks []HealthcheckDataModel `tfsdk:"healthchecks"`
+	Healthchecks []HealthcheckDataModel  `tfsdk:"healthchecks"`
+	Filter       *HealthcheckFilterModel `tfsdk:"filter"`
 }
 
 // HealthcheckDataModel describes a single healthcheck in the list data source.
@@ -66,6 +68,7 @@ func (d *HealthchecksDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 		MarkdownDescription: "Fetches the list of all Hyperping healthchecks.",
 
 		Attributes: map[string]schema.Attribute{
+			"filter": HealthcheckFilterSchema(),
 			"healthchecks": schema.ListNestedAttribute{
 				MarkdownDescription: "List of healthchecks.",
 				Computed:            true,
@@ -162,7 +165,13 @@ func (d *HealthchecksDataSource) Configure(_ context.Context, req datasource.Con
 
 // Read refreshes the Terraform state with the latest data.
 func (d *HealthchecksDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state HealthchecksDataSourceModel
+	var config HealthchecksDataSourceModel
+
+	// Get configuration (includes filter if provided)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	healthchecks, err := d.client.ListHealthchecks(ctx)
 	if err != nil {
@@ -173,9 +182,24 @@ func (d *HealthchecksDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	state.Healthchecks = make([]HealthcheckDataModel, len(healthchecks))
-	for i, hc := range healthchecks {
-		d.mapHealthcheckToDataModel(&hc, &state.Healthchecks[i])
+	// Apply client-side filtering if filter provided
+	var filteredHealthchecks []client.Healthcheck
+	if config.Filter != nil {
+		for _, hc := range healthchecks {
+			if d.shouldIncludeHealthcheck(&hc, config.Filter, &resp.Diagnostics) {
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				filteredHealthchecks = append(filteredHealthchecks, hc)
+			}
+		}
+	} else {
+		filteredHealthchecks = healthchecks
+	}
+
+	config.Healthchecks = make([]HealthcheckDataModel, len(filteredHealthchecks))
+	for i, hc := range filteredHealthchecks {
+		d.mapHealthcheckToDataModel(&hc, &config.Healthchecks[i])
 		// Currently mapHealthcheckToDataModel doesn't produce errors, but checking
 		// provides symmetry with outages data source and future-proofs against changes.
 		if resp.Diagnostics.HasError() {
@@ -183,7 +207,42 @@ func (d *HealthchecksDataSource) Read(ctx context.Context, req datasource.ReadRe
 		}
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+}
+
+// shouldIncludeHealthcheck determines if a healthcheck matches the filter criteria.
+func (d *HealthchecksDataSource) shouldIncludeHealthcheck(hc *client.Healthcheck, filter *HealthcheckFilterModel, diags *diag.Diagnostics) bool {
+	return ApplyAllFilters(
+		// Name regex filter
+		func() bool {
+			match, err := MatchesNameRegex(hc.Name, filter.NameRegex)
+			if err != nil {
+				diags.AddError(
+					"Invalid filter regex",
+					fmt.Sprintf("Failed to compile name_regex pattern: %s", err),
+				)
+				return false
+			}
+			return match
+		},
+		// Status filter - for healthchecks, we interpret "status" as "down" or "up"
+		// We can filter based on IsDown field
+		func() bool {
+			if isNullOrUnknown(filter.Status) {
+				return true
+			}
+			statusFilter := filter.Status.ValueString()
+			switch statusFilter {
+			case "down":
+				return hc.IsDown
+			case "up":
+				return !hc.IsDown
+			default:
+				// If status is something else, we don't match
+				return true
+			}
+		},
+	)
 }
 
 // mapHealthcheckToDataModel maps a client.Healthcheck to the list data model

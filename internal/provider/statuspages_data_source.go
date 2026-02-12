@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
@@ -29,11 +30,12 @@ type StatusPagesDataSource struct {
 
 // StatusPagesDataSourceModel describes the data source data model.
 type StatusPagesDataSourceModel struct {
-	StatusPages types.List   `tfsdk:"statuspages"`
-	Page        types.Int64  `tfsdk:"page"`
-	Search      types.String `tfsdk:"search"`
-	HasNextPage types.Bool   `tfsdk:"has_next_page"`
-	Total       types.Int64  `tfsdk:"total"`
+	StatusPages types.List             `tfsdk:"statuspages"`
+	Page        types.Int64            `tfsdk:"page"`
+	Search      types.String           `tfsdk:"search"`
+	Filter      *StatusPageFilterModel `tfsdk:"filter"`
+	HasNextPage types.Bool             `tfsdk:"has_next_page"`
+	Total       types.Int64            `tfsdk:"total"`
 }
 
 func (d *StatusPagesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -51,9 +53,10 @@ func (d *StatusPagesDataSource) Schema(ctx context.Context, req datasource.Schem
 				Optional:            true,
 			},
 			"search": schema.StringAttribute{
-				MarkdownDescription: "Search filter for name, hostname, or subdomain",
+				MarkdownDescription: "Search filter for name, hostname, or subdomain (server-side)",
 				Optional:            true,
 			},
+			"filter": StatusPageFilterSchema(),
 			"has_next_page": schema.BoolAttribute{
 				MarkdownDescription: "Whether there are more pages available",
 				Computed:            true,
@@ -212,6 +215,31 @@ func (d *StatusPagesDataSource) Schema(ctx context.Context, req datasource.Schem
 	}
 }
 
+// shouldIncludeStatusPage determines if a status page matches the filter criteria.
+func (d *StatusPagesDataSource) shouldIncludeStatusPage(sp *client.StatusPage, filter *StatusPageFilterModel, diags *diag.Diagnostics) bool {
+	return ApplyAllFilters(
+		// Name regex filter
+		func() bool {
+			match, err := MatchesNameRegex(sp.Settings.Name, filter.NameRegex)
+			if err != nil {
+				diags.AddError(
+					"Invalid filter regex",
+					fmt.Sprintf("Failed to compile name_regex pattern: %s", err),
+				)
+				return false
+			}
+			return match
+		},
+		// Hostname filter
+		func() bool {
+			if sp.Hostname == nil {
+				return isNullOrUnknown(filter.Hostname)
+			}
+			return MatchesExact(*sp.Hostname, filter.Hostname)
+		},
+	)
+}
+
 func (d *StatusPagesDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -261,13 +289,33 @@ func (d *StatusPagesDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	// Map pagination metadata
+	// Apply client-side filtering if filter provided
+	var filteredStatusPages []client.StatusPage
+	if config.Filter != nil {
+		for _, sp := range paginatedResp.StatusPages {
+			if d.shouldIncludeStatusPage(&sp, config.Filter, &resp.Diagnostics) {
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				filteredStatusPages = append(filteredStatusPages, sp)
+			}
+		}
+	} else {
+		filteredStatusPages = paginatedResp.StatusPages
+	}
+
+	// Map pagination metadata (update total if client-side filtering applied)
 	config.HasNextPage = types.BoolValue(paginatedResp.HasNextPage)
-	config.Total = types.Int64Value(int64(paginatedResp.Total))
+	if config.Filter != nil {
+		// If client-side filtering is applied, update total to reflect filtered count
+		config.Total = types.Int64Value(int64(len(filteredStatusPages)))
+	} else {
+		config.Total = types.Int64Value(int64(paginatedResp.Total))
+	}
 
 	// Map status pages to list
-	statusPages := make([]StatusPageCommonFields, len(paginatedResp.StatusPages))
-	for i, sp := range paginatedResp.StatusPages {
+	statusPages := make([]StatusPageCommonFields, len(filteredStatusPages))
+	for i, sp := range filteredStatusPages {
 		statusPages[i] = MapStatusPageCommonFields(&sp, &resp.Diagnostics)
 	}
 

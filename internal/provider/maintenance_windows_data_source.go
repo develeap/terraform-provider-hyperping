@@ -34,6 +34,7 @@ type MaintenanceWindowsDataSource struct {
 // MaintenanceWindowsDataSourceModel describes the data source data model.
 type MaintenanceWindowsDataSourceModel struct {
 	MaintenanceWindows []MaintenanceWindowDataModel `tfsdk:"maintenance_windows"`
+	Filter             *MaintenanceFilterModel      `tfsdk:"filter"`
 }
 
 // MaintenanceWindowDataModel describes a single maintenance window in the data source.
@@ -61,6 +62,7 @@ func (d *MaintenanceWindowsDataSource) Schema(_ context.Context, _ datasource.Sc
 		MarkdownDescription: "Fetches the list of all Hyperping maintenance windows.",
 
 		Attributes: map[string]schema.Attribute{
+			"filter": MaintenanceFilterSchema(),
 			"maintenance_windows": schema.ListNestedAttribute{
 				MarkdownDescription: "List of maintenance windows.",
 				Computed:            true,
@@ -135,7 +137,13 @@ func (d *MaintenanceWindowsDataSource) Configure(_ context.Context, req datasour
 
 // Read refreshes the Terraform state with the latest data.
 func (d *MaintenanceWindowsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state MaintenanceWindowsDataSourceModel
+	var config MaintenanceWindowsDataSourceModel
+
+	// Get configuration (includes filter if provided)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Fetch all maintenance windows from API
 	maintenances, err := d.client.ListMaintenance(ctx)
@@ -147,16 +155,60 @@ func (d *MaintenanceWindowsDataSource) Read(ctx context.Context, req datasource.
 		return
 	}
 
+	// Apply client-side filtering if filter provided
+	var filteredMaintenances []client.Maintenance
+	if config.Filter != nil {
+		for _, maint := range maintenances {
+			if d.shouldIncludeMaintenance(&maint, config.Filter, &resp.Diagnostics) {
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				filteredMaintenances = append(filteredMaintenances, maint)
+			}
+		}
+	} else {
+		filteredMaintenances = maintenances
+	}
+
 	// Map response to model
-	state.MaintenanceWindows = make([]MaintenanceWindowDataModel, len(maintenances))
-	for i, maint := range maintenances {
-		d.mapMaintenanceToDataModel(&maint, &state.MaintenanceWindows[i], &resp.Diagnostics)
+	config.MaintenanceWindows = make([]MaintenanceWindowDataModel, len(filteredMaintenances))
+	for i, maint := range filteredMaintenances {
+		d.mapMaintenanceToDataModel(&maint, &config.MaintenanceWindows[i], &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+}
+
+// shouldIncludeMaintenance determines if a maintenance window matches the filter criteria.
+func (d *MaintenanceWindowsDataSource) shouldIncludeMaintenance(maint *client.Maintenance, filter *MaintenanceFilterModel, diags *diag.Diagnostics) bool {
+	return ApplyAllFilters(
+		// Name regex filter (matches title or name)
+		func() bool {
+			match, err := MatchesNameRegex(maint.Title.En, filter.NameRegex)
+			if err != nil {
+				diags.AddError(
+					"Invalid filter regex",
+					fmt.Sprintf("Failed to compile name_regex pattern: %s", err),
+				)
+				return false
+			}
+			// If title doesn't match, try name
+			if !match {
+				match, err = MatchesNameRegex(maint.Name, filter.NameRegex)
+				if err != nil {
+					return false
+				}
+			}
+			return match
+		},
+		// Status filter
+		func() bool {
+			return MatchesExact(maint.Status, filter.Status)
+		},
+	)
 }
 
 // mapMaintenanceToDataModel maps a client.Maintenance to the Terraform data model.
