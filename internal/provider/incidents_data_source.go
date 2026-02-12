@@ -34,7 +34,8 @@ type IncidentsDataSource struct {
 
 // IncidentsDataSourceModel describes the data source data model.
 type IncidentsDataSourceModel struct {
-	Incidents []IncidentDataModel `tfsdk:"incidents"`
+	Incidents []IncidentDataModel  `tfsdk:"incidents"`
+	Filter    *IncidentFilterModel `tfsdk:"filter"`
 }
 
 // IncidentDataModel describes a single incident in the data source.
@@ -70,6 +71,7 @@ func (d *IncidentsDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 		MarkdownDescription: "Fetches the list of all Hyperping incidents.",
 
 		Attributes: map[string]schema.Attribute{
+			"filter": IncidentFilterSchema(),
 			"incidents": schema.ListNestedAttribute{
 				MarkdownDescription: "List of incidents.",
 				Computed:            true,
@@ -156,7 +158,13 @@ func (d *IncidentsDataSource) Configure(_ context.Context, req datasource.Config
 
 // Read refreshes the Terraform state with the latest data.
 func (d *IncidentsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state IncidentsDataSourceModel
+	var config IncidentsDataSourceModel
+
+	// Get configuration (includes filter if provided)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Fetch all incidents from API
 	incidents, err := d.client.ListIncidents(ctx)
@@ -168,16 +176,57 @@ func (d *IncidentsDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
+	// Apply client-side filtering if filter provided
+	var filteredIncidents []client.Incident
+	if config.Filter != nil {
+		for _, incident := range incidents {
+			if d.shouldIncludeIncident(&incident, config.Filter, &resp.Diagnostics) {
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				filteredIncidents = append(filteredIncidents, incident)
+			}
+		}
+	} else {
+		filteredIncidents = incidents
+	}
+
 	// Map response to model
-	state.Incidents = make([]IncidentDataModel, len(incidents))
-	for i, incident := range incidents {
-		d.mapIncidentToDataModel(&incident, &state.Incidents[i], &resp.Diagnostics)
+	config.Incidents = make([]IncidentDataModel, len(filteredIncidents))
+	for i, incident := range filteredIncidents {
+		d.mapIncidentToDataModel(&incident, &config.Incidents[i], &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+}
+
+// shouldIncludeIncident determines if an incident matches the filter criteria.
+func (d *IncidentsDataSource) shouldIncludeIncident(incident *client.Incident, filter *IncidentFilterModel, diags *diag.Diagnostics) bool {
+	return ApplyAllFilters(
+		// Name regex filter (matches title)
+		func() bool {
+			match, err := MatchesNameRegex(incident.Title.En, filter.NameRegex)
+			if err != nil {
+				diags.AddError(
+					"Invalid filter regex",
+					fmt.Sprintf("Failed to compile name_regex pattern: %s", err),
+				)
+				return false
+			}
+			return match
+		},
+		// Type filter (using Status field in filter model, but matching Type in API)
+		func() bool {
+			return MatchesExact(incident.Type, filter.Status)
+		},
+		// Severity filter - incidents don't have severity, so always pass
+		func() bool {
+			return isNullOrUnknown(filter.Severity)
+		},
+	)
 }
 
 // mapIncidentToDataModel maps a client.Incident to the Terraform data model.

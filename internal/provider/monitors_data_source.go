@@ -33,7 +33,8 @@ type MonitorsDataSource struct {
 
 // MonitorsDataSourceModel describes the data source data model.
 type MonitorsDataSourceModel struct {
-	Monitors []MonitorDataModel `tfsdk:"monitors"`
+	Monitors []MonitorDataModel  `tfsdk:"monitors"`
+	Filter   *MonitorFilterModel `tfsdk:"filter"`
 }
 
 // MonitorDataModel describes a single monitor in the data source.
@@ -67,6 +68,7 @@ func (d *MonitorsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 		MarkdownDescription: "Fetches the list of all Hyperping monitors.",
 
 		Attributes: map[string]schema.Attribute{
+			"filter": MonitorFilterSchema(),
 			"monitors": schema.ListNestedAttribute{
 				MarkdownDescription: "List of monitors.",
 				Computed:            true,
@@ -176,7 +178,13 @@ func (d *MonitorsDataSource) Configure(_ context.Context, req datasource.Configu
 
 // Read refreshes the Terraform state with the latest data.
 func (d *MonitorsDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state MonitorsDataSourceModel
+	var config MonitorsDataSourceModel
+
+	// Get configuration (includes filter if provided)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Fetch all monitors from API
 	monitors, err := d.client.ListMonitors(ctx)
@@ -188,16 +196,57 @@ func (d *MonitorsDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
+	// Apply client-side filtering if filter provided
+	var filteredMonitors []client.Monitor
+	if config.Filter != nil {
+		for _, monitor := range monitors {
+			if d.shouldIncludeMonitor(&monitor, config.Filter, &resp.Diagnostics) {
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				filteredMonitors = append(filteredMonitors, monitor)
+			}
+		}
+	} else {
+		filteredMonitors = monitors
+	}
+
 	// Map response to model
-	state.Monitors = make([]MonitorDataModel, len(monitors))
-	for i, monitor := range monitors {
-		d.mapMonitorToDataModel(&monitor, &state.Monitors[i], &resp.Diagnostics)
+	config.Monitors = make([]MonitorDataModel, len(filteredMonitors))
+	for i, monitor := range filteredMonitors {
+		d.mapMonitorToDataModel(&monitor, &config.Monitors[i], &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+}
+
+// shouldIncludeMonitor determines if a monitor matches the filter criteria.
+func (d *MonitorsDataSource) shouldIncludeMonitor(monitor *client.Monitor, filter *MonitorFilterModel, diags *diag.Diagnostics) bool {
+	return ApplyAllFilters(
+		// Name regex filter
+		func() bool {
+			match, err := MatchesNameRegex(monitor.Name, filter.NameRegex)
+			if err != nil {
+				diags.AddError(
+					"Invalid filter regex",
+					fmt.Sprintf("Failed to compile name_regex pattern: %s", err),
+				)
+				return false
+			}
+			return match
+		},
+		// Protocol filter
+		func() bool {
+			return MatchesExact(monitor.Protocol, filter.Protocol)
+		},
+		// Paused filter
+		func() bool {
+			return MatchesBool(monitor.Paused, filter.Paused)
+		},
+	)
 }
 
 // mapMonitorToDataModel maps a client.Monitor to the Terraform data model.

@@ -33,7 +33,8 @@ type OutagesDataSource struct {
 
 // OutagesDataSourceModel describes the data source data model.
 type OutagesDataSourceModel struct {
-	Outages []OutageDataModel `tfsdk:"outages"`
+	Outages []OutageDataModel  `tfsdk:"outages"`
+	Filter  *OutageFilterModel `tfsdk:"filter"`
 }
 
 // OutageDataModel describes a single outage in the list data source.
@@ -63,6 +64,7 @@ func (d *OutagesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 		MarkdownDescription: "Fetches the list of all Hyperping outages.",
 
 		Attributes: map[string]schema.Attribute{
+			"filter": OutageFilterSchema(),
 			"outages": schema.ListNestedAttribute{
 				MarkdownDescription: "List of outages.",
 				Computed:            true,
@@ -175,7 +177,13 @@ func (d *OutagesDataSource) Configure(_ context.Context, req datasource.Configur
 
 // Read refreshes the Terraform state with the latest data.
 func (d *OutagesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state OutagesDataSourceModel
+	var config OutagesDataSourceModel
+
+	// Get configuration (includes filter if provided)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	outages, err := d.client.ListOutages(ctx)
 	if err != nil {
@@ -186,15 +194,52 @@ func (d *OutagesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	state.Outages = make([]OutageDataModel, len(outages))
-	for i, outage := range outages {
-		d.mapOutageToDataModel(&outage, &state.Outages[i], &resp.Diagnostics)
+	// Apply client-side filtering if filter provided
+	var filteredOutages []client.Outage
+	if config.Filter != nil {
+		for _, outage := range outages {
+			if d.shouldIncludeOutage(&outage, config.Filter, &resp.Diagnostics) {
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				filteredOutages = append(filteredOutages, outage)
+			}
+		}
+	} else {
+		filteredOutages = outages
+	}
+
+	config.Outages = make([]OutageDataModel, len(filteredOutages))
+	for i, outage := range filteredOutages {
+		d.mapOutageToDataModel(&outage, &config.Outages[i], &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
+}
+
+// shouldIncludeOutage determines if an outage matches the filter criteria.
+func (d *OutagesDataSource) shouldIncludeOutage(outage *client.Outage, filter *OutageFilterModel, diags *diag.Diagnostics) bool {
+	return ApplyAllFilters(
+		// Name regex filter (matches monitor name)
+		func() bool {
+			match, err := MatchesNameRegex(outage.Monitor.Name, filter.NameRegex)
+			if err != nil {
+				diags.AddError(
+					"Invalid filter regex",
+					fmt.Sprintf("Failed to compile name_regex pattern: %s", err),
+				)
+				return false
+			}
+			return match
+		},
+		// Monitor UUID filter
+		func() bool {
+			return MatchesExact(outage.Monitor.UUID, filter.MonitorUUID)
+		},
+	)
 }
 
 // mapOutageToDataModel maps a client.Outage to the list data model
