@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -108,7 +109,7 @@ func TestAccDataSourceFilters_invalidRegex(t *testing.T) {
 						}
 					}
 				`,
-				ExpectError: nil, // Will be set by framework
+				ExpectError: regexp.MustCompile("Invalid filter regex|Failed to compile name_regex pattern|error parsing regexp"),
 			},
 		},
 	})
