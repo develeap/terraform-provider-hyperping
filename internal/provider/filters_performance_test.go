@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
 // generateTestMonitors creates n test monitors for performance testing.
