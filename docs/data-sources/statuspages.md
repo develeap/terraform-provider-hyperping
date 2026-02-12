@@ -95,24 +95,14 @@ output "status_page_urls" {
 
 ### Optional
 
-- `filter` (Attributes) Filter criteria for status pages (see [below for nested schema](#nestedatt--filter))
 - `page` (Number) Page number (0-indexed) for pagination. Defaults to 0.
-- `search` (String) Search filter for name, hostname, or subdomain (server-side)
+- `search` (String) Search filter for name, hostname, or subdomain
 
 ### Read-Only
 
 - `has_next_page` (Boolean) Whether there are more pages available
 - `statuspages` (Attributes List) List of status pages (see [below for nested schema](#nestedatt--statuspages))
 - `total` (Number) Total number of status pages matching filters
-
-<a id="nestedatt--filter"></a>
-### Nested Schema for `filter`
-
-Optional:
-
-- `hostname` (String) Filter by custom hostname
-- `name_regex` (String) Regular expression to match status page names
-
 
 <a id="nestedatt--statuspages"></a>
 ### Nested Schema for `statuspages`

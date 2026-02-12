@@ -24,9 +24,11 @@ type APIClient interface {
 
 // Generator generates Terraform import commands and HCL from Hyperping resources.
 type Generator struct {
-	client    APIClient
-	prefix    string
-	resources []string
+	client          APIClient
+	prefix          string
+	resources       []string
+	showProgress    bool
+	continueOnError bool
 }
 
 // ResourceData holds fetched resource data for generation.
@@ -65,6 +67,8 @@ func (g *Generator) Generate(ctx context.Context, format string) (string, error)
 		sb.WriteString("# ============================================\n")
 		sb.WriteString("# Add this to your .tf files:\n\n")
 		g.generateHCL(&sb, data)
+	case "script":
+		return g.generateScript(data), nil
 	default:
 		return "", fmt.Errorf("unknown format: %s", format)
 	}
@@ -75,51 +79,99 @@ func (g *Generator) Generate(ctx context.Context, format string) (string, error)
 func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 	data := &ResourceData{}
 
+	// Set up progress reporter
+	progress := NewProgressReporter(g.showProgress)
+	progress.SetTotal(len(g.resources))
+
 	for _, r := range g.resources {
 		switch r {
 		case "monitors":
+			progress.Step("monitors")
 			monitors, err := g.client.ListMonitors(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("fetching monitors: %w", err)
+				if g.continueOnError {
+					progress.Error(err)
+				} else {
+					return nil, fmt.Errorf("fetching monitors: %w", err)
+				}
+			} else {
+				data.Monitors = monitors
+				progress.Report(len(monitors), "monitor(s)")
 			}
-			data.Monitors = monitors
 
 		case "healthchecks":
+			progress.Step("healthchecks")
 			healthchecks, err := g.client.ListHealthchecks(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("fetching healthchecks: %w", err)
+				if g.continueOnError {
+					progress.Error(err)
+				} else {
+					return nil, fmt.Errorf("fetching healthchecks: %w", err)
+				}
+			} else {
+				data.Healthchecks = healthchecks
+				progress.Report(len(healthchecks), "healthcheck(s)")
 			}
-			data.Healthchecks = healthchecks
 
 		case "statuspages":
+			progress.Step("status pages")
 			resp, err := g.client.ListStatusPages(ctx, nil, nil)
 			if err != nil {
-				return nil, fmt.Errorf("fetching status pages: %w", err)
+				if g.continueOnError {
+					progress.Error(err)
+				} else {
+					return nil, fmt.Errorf("fetching status pages: %w", err)
+				}
+			} else {
+				data.StatusPages = resp.StatusPages
+				progress.Report(len(resp.StatusPages), "status page(s)")
 			}
-			data.StatusPages = resp.StatusPages
 
 		case "incidents":
+			progress.Step("incidents")
 			incidents, err := g.client.ListIncidents(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("fetching incidents: %w", err)
+				if g.continueOnError {
+					progress.Error(err)
+				} else {
+					return nil, fmt.Errorf("fetching incidents: %w", err)
+				}
+			} else {
+				data.Incidents = incidents
+				progress.Report(len(incidents), "incident(s)")
 			}
-			data.Incidents = incidents
 
 		case "maintenance":
+			progress.Step("maintenance windows")
 			maintenance, err := g.client.ListMaintenance(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("fetching maintenance: %w", err)
+				if g.continueOnError {
+					progress.Error(err)
+				} else {
+					return nil, fmt.Errorf("fetching maintenance: %w", err)
+				}
+			} else {
+				data.Maintenance = maintenance
+				progress.Report(len(maintenance), "maintenance window(s)")
 			}
-			data.Maintenance = maintenance
 
 		case "outages":
+			progress.Step("outages")
 			outages, err := g.client.ListOutages(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("fetching outages: %w", err)
+				if g.continueOnError {
+					progress.Error(err)
+				} else {
+					return nil, fmt.Errorf("fetching outages: %w", err)
+				}
+			} else {
+				data.Outages = outages
+				progress.Report(len(outages), "outage(s)")
 			}
-			data.Outages = outages
 		}
 	}
+
+	progress.Complete()
 
 	return data, nil
 }
