@@ -10,6 +10,48 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-02-13
+
+### Added
+
+- **All Resources**: Import validation and comprehensive acceptance tests for import workflows (8 resources, 20+ test scenarios)
+  - Import state validation for all resource types (monitors, healthchecks, incidents, maintenance, outages, status pages, subscribers, incident updates)
+  - ID format validation before import
+  - Post-import state verification
+  - Documentation for import usage patterns
+- **Data Sources**: Client-side filtering support for 12 data sources with comprehensive filter framework
+  - `hyperping_monitors` - Filter by name_regex, protocol, paused status
+  - `hyperping_healthchecks` - Filter by name_regex, status
+  - `hyperping_incidents` - Filter by name_regex, status, severity
+  - `hyperping_maintenance_windows` - Filter by name_regex, status, time ranges
+  - `hyperping_outages` - Filter by name_regex, monitor_uuid
+  - `hyperping_statuspage` - Filter by name_regex, hostname
+  - Singular data sources (`hyperping_monitor`, `hyperping_healthcheck`, etc.) - Filter by exact ID or name
+  - Support for regex patterns, exact matching, case-insensitive matching, boolean filters, and numeric ranges
+  - Short-circuit evaluation for optimal performance
+  - 100% test coverage for filter framework (45+ unit tests)
+- **Error Handling**: Enhanced error messages with context-aware troubleshooting guidance
+  - Automatic error type detection (not_found, auth_error, rate_limit, server_error, validation, unknown)
+  - Context-specific troubleshooting steps for each error type
+  - Dashboard links for quick resource access (https://app.hyperping.io)
+  - Rate limit errors include retry timing guidance
+  - Auth errors provide API key verification steps
+  - Validation errors highlight required fields and format requirements
+  - 63 new integration tests validating error propagation across all CRUD operations
+  - `docs/guides/error-handling.md` - Comprehensive error handling guide (4,000+ words)
+
+### Changed
+
+- **Import workflow**: All resources now validate IDs before import to provide clearer error messages
+- **Filter framework**: Reusable filter schemas and matching functions available for all data sources
+- **Error messages**: All CRUD operations (Create, Read, Update, Delete, List) now provide actionable troubleshooting steps
+
+### Fixed
+
+- Import errors now include resource type context and validation hints
+- Data source pagination works correctly with client-side filtering
+- Error messages no longer expose internal implementation details
+
 ## [1.0.8] - 2026-02-11
 
 ### Fixed
@@ -203,7 +245,9 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.7...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.8...v1.0.9
+[1.0.8]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.4...v1.0.5
