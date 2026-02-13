@@ -74,6 +74,9 @@ func (r *MaintenanceResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The internal name of the maintenance window.",
 				Required:            true,
+				Validators: []validator.String{
+					StringLength(1, 255),
+				},
 			},
 			"title": schema.StringAttribute{
 				MarkdownDescription: "The public title of the maintenance window (English).",

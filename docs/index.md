@@ -73,7 +73,19 @@ provider "hyperping" {
 
 ## Guides
 
+### Getting Started
+- [Quickstart Guide](guides/quickstart.md) - Get up and running in 5 minutes
 - [Migration Guide](guides/migration.md) - Migrate from manual Hyperping management to Terraform
+
+### Use Cases
+- [Monitoring Microservices](guides/use-case-microservices.md) - Monitor microservices architectures
+- [Monitoring Kubernetes](guides/use-case-kubernetes.md) - Monitor K8s clusters, ingress, and services
+- [Monitoring API Gateways](guides/use-case-api-gateway.md) - Monitor Kong, AWS API Gateway, NGINX, Traefik
+
+### Advanced Topics
+- [Filtering Data Sources](guides/filtering-data-sources.md) - Query and filter monitors efficiently
+- [Importing Resources](guides/importing-resources.md) - Import existing Hyperping resources
+- [Error Handling](guides/error-handling.md) - Handle failures gracefully
 - [Rate Limits Guide](guides/rate-limits.md) - Capacity planning for large deployments
 - [Validation Guide](guides/validation.md) - Catch configuration errors early with `terraform validate`
 

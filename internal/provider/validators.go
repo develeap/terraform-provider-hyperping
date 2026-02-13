@@ -6,9 +6,13 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/robfig/cron/v3"
 )
 
 // reservedHeaderNames lists HTTP headers that users must not override.
@@ -168,4 +172,142 @@ func (v uuidFormatValidator) ValidateString(_ context.Context, req validator.Str
 // UUIDFormat returns a validator that checks for valid UUID or resource ID format.
 func UUIDFormat() validator.String {
 	return uuidFormatValidator{}
+}
+
+// urlFormatValidator validates that a string is a valid HTTP or HTTPS URL.
+type urlFormatValidator struct{}
+
+func (v urlFormatValidator) Description(_ context.Context) string {
+	return "value must be a valid HTTP or HTTPS URL"
+}
+
+func (v urlFormatValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v urlFormatValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueString()
+	u, err := url.Parse(value)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid URL Format",
+			fmt.Sprintf("The value %q must be a valid HTTP or HTTPS URL", value),
+		)
+	}
+}
+
+// URLFormat returns a validator that checks for valid HTTP or HTTPS URLs.
+func URLFormat() validator.String {
+	return urlFormatValidator{}
+}
+
+// stringLengthValidator validates that a string is between min and max characters.
+type stringLengthValidator struct {
+	minLength int
+	maxLength int
+}
+
+func (v stringLengthValidator) Description(_ context.Context) string {
+	return fmt.Sprintf("string length must be between %d and %d characters", v.minLength, v.maxLength)
+}
+
+func (v stringLengthValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v stringLengthValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueString()
+	length := utf8.RuneCountInString(value)
+
+	if length < v.minLength || length > v.maxLength {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid String Length",
+			fmt.Sprintf("The value must be between %d and %d characters, got %d", v.minLength, v.maxLength, length),
+		)
+	}
+}
+
+// StringLength returns a validator that checks string length (in Unicode characters).
+func StringLength(minLength, maxLength int) validator.String {
+	return stringLengthValidator{minLength: minLength, maxLength: maxLength}
+}
+
+// cronExpressionValidator validates that a string is a valid cron expression.
+type cronExpressionValidator struct{}
+
+func (v cronExpressionValidator) Description(_ context.Context) string {
+	return "value must be a valid cron expression (format: 'minute hour day month weekday')"
+}
+
+func (v cronExpressionValidator) MarkdownDescription(_ context.Context) string {
+	return "value must be a valid cron expression (format: `minute hour day month weekday`)"
+}
+
+func (v cronExpressionValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueString()
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	_, err := parser.Parse(value)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Cron Expression",
+			fmt.Sprintf("The value %q is not a valid cron expression: %v\n"+
+				"Expected format: 'minute hour day month weekday' (e.g., '0 0 * * *' for daily at midnight)",
+				value, err),
+		)
+	}
+}
+
+// CronExpression returns a validator that checks for valid cron expressions.
+func CronExpression() validator.String {
+	return cronExpressionValidator{}
+}
+
+// timezoneValidator validates that a string is a valid IANA timezone.
+type timezoneValidator struct{}
+
+func (v timezoneValidator) Description(_ context.Context) string {
+	return "value must be a valid IANA timezone (e.g., 'America/New_York', 'Europe/London', 'UTC')"
+}
+
+func (v timezoneValidator) MarkdownDescription(_ context.Context) string {
+	return "value must be a valid IANA timezone (e.g., `America/New_York`, `Europe/London`, `UTC`)"
+}
+
+func (v timezoneValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueString()
+	_, err := time.LoadLocation(value)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Timezone",
+			fmt.Sprintf("The value %q is not a valid IANA timezone.\n"+
+				"Use standard timezone names like 'America/New_York', 'Europe/London', or 'UTC'.\n"+
+				"See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for valid values.",
+				value),
+		)
+	}
+}
+
+// Timezone returns a validator that checks for valid IANA timezones.
+func Timezone() validator.String {
+	return timezoneValidator{}
 }

@@ -83,10 +83,16 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the monitor.",
 				Required:            true,
+				Validators: []validator.String{
+					StringLength(1, 255),
+				},
 			},
 			"url": schema.StringAttribute{
 				MarkdownDescription: "The URL to monitor.",
 				Required:            true,
+				Validators: []validator.String{
+					URLFormat(),
+				},
 			},
 			"protocol": schema.StringAttribute{
 				MarkdownDescription: "The protocol type. Valid values: `http`, `port`, `icmp`. Defaults to `http`.",
