@@ -1,0 +1,238 @@
+# Example Usage - Multi-Environment Module
+#
+# This file demonstrates various usage patterns for the multi-environment module.
+# Copy and adapt these examples for your own use cases.
+#
+# NOTE: This is an example file showing how to use the module.
+# To use these examples, copy them to your own Terraform configuration
+# and configure the Hyperping provider in your root module:
+#
+# provider "hyperping" {
+#   api_key = var.hyperping_api_key  # or set HYPERPING_API_KEY env var
+# }
+
+# Example 1: Basic Multi-Environment Setup
+# Deploy same service across dev/staging/prod with different configurations
+module "user_api" {
+  source = "./multi-environment"
+
+  service_name = "UserAPI"
+
+  environments = {
+    dev = {
+      url       = "https://dev-users.example.com/health"
+      frequency = 300 # 5 minutes
+      regions   = ["virginia"]
+    }
+    staging = {
+      url       = "https://staging-users.example.com/health"
+      frequency = 120 # 2 minutes
+      regions   = ["virginia", "london"]
+    }
+    prod = {
+      url       = "https://users.example.com/health"
+      frequency = 60 # 1 minute
+      regions   = ["virginia", "london", "singapore"]
+    }
+  }
+}
+
+# Example 2: Advanced Configuration with Custom Defaults
+# POST health checks with authentication headers
+module "payment_api" {
+  source = "./multi-environment"
+
+  service_name = "PaymentService"
+  name_format  = "[%s] %s Health Check"
+
+  # Defaults applied to all environments
+  default_method               = "POST"
+  default_expected_status_code = "200"
+  default_headers = {
+    "Content-Type"  = "application/json"
+    "Authorization" = "Bearer ${var.health_check_token}"
+  }
+  default_body = jsonencode({
+    action = "health_check"
+  })
+
+  environments = {
+    dev = {
+      url              = "https://dev-payments.example.com/health"
+      frequency        = 300
+      regions          = ["virginia"]
+      required_keyword = "healthy"
+      paused           = false
+    }
+    staging = {
+      url              = "https://staging-payments.example.com/health"
+      frequency        = 120
+      regions          = ["virginia", "london"]
+      required_keyword = "healthy"
+      alerts_wait      = 60
+    }
+    prod = {
+      url               = "https://payments.example.com/health"
+      frequency         = 30
+      regions           = ["virginia", "london", "singapore", "sydney"]
+      required_keyword  = "healthy"
+      alerts_wait       = 0 # Immediate alerts
+      escalation_policy = var.prod_escalation_policy_id
+    }
+  }
+}
+
+# Example 3: Progressive Deployment
+# Start with dev, enable staging/prod later
+module "new_service" {
+  source = "./multi-environment"
+
+  service_name = "NewFeatureAPI"
+
+  environments = {
+    dev = {
+      url     = "https://dev-newfeature.example.com/health"
+      enabled = true # Active
+    }
+    staging = {
+      url     = "https://staging-newfeature.example.com/health"
+      enabled = false # Not deployed yet
+    }
+    prod = {
+      url     = "https://newfeature.example.com/health"
+      enabled = false # Not deployed yet
+    }
+  }
+}
+
+# Example 4: Environment-Specific Escalation
+# Different escalation policies per environment
+module "critical_api" {
+  source = "./multi-environment"
+
+  service_name = "CriticalAPI"
+
+  environments = {
+    dev = {
+      url               = "https://dev-critical.example.com/health"
+      frequency         = 300
+      escalation_policy = null # No escalation for dev
+    }
+    staging = {
+      url               = "https://staging-critical.example.com/health"
+      frequency         = 120
+      escalation_policy = var.staging_escalation_policy_id
+      alerts_wait       = 60
+    }
+    prod = {
+      url               = "https://critical.example.com/health"
+      frequency         = 30
+      escalation_policy = var.prod_escalation_policy_id
+      alerts_wait       = 0
+    }
+  }
+}
+
+# Example 5: Canary Deployment Monitoring
+# Monitor both stable and canary versions in production
+module "api_canary" {
+  source = "./multi-environment"
+
+  service_name = "API"
+
+  environments = {
+    prod-stable = {
+      url       = "https://api.example.com/health"
+      frequency = 60
+      regions   = ["virginia", "london", "singapore"]
+    }
+    prod-canary = {
+      url              = "https://canary.api.example.com/health"
+      frequency        = 60
+      regions          = ["virginia"] # Single region for canary
+      required_keyword = "canary-ok"
+      alerts_wait      = 120 # More lenient for canary
+    }
+  }
+}
+
+# Example 6: Multiple Services
+# Monitor several microservices across environments
+locals {
+  services = ["users", "orders", "products", "inventory"]
+}
+
+module "microservices" {
+  for_each = toset(local.services)
+
+  source = "./multi-environment"
+
+  service_name = "${title(each.value)}API"
+
+  environments = {
+    dev = {
+      url       = "https://dev-${each.value}.example.com/health"
+      frequency = 300
+    }
+    staging = {
+      url       = "https://staging-${each.value}.example.com/health"
+      frequency = 120
+    }
+    prod = {
+      url       = "https://${each.value}.example.com/health"
+      frequency = 60
+    }
+  }
+
+  default_regions = ["virginia", "london", "singapore"]
+}
+
+# Outputs demonstrating various use cases
+
+# Get all production monitor IDs for incident management
+output "all_production_monitors" {
+  description = "All production monitor IDs across all services"
+  value = concat(
+    module.user_api.production_monitor_ids,
+    module.payment_api.production_monitor_ids,
+    module.critical_api.production_monitor_ids
+  )
+}
+
+# Get specific environment monitors by service
+output "user_api_monitors" {
+  description = "User API monitor details by environment"
+  value       = module.user_api.by_environment
+}
+
+# Create an incident affecting all production services
+resource "hyperping_incident" "prod_outage" {
+  title   = "Production Services Degradation"
+  message = "Investigating elevated error rates across production APIs"
+  status  = "investigating"
+
+  monitor_uuids = concat(
+    module.user_api.production_monitor_ids,
+    module.payment_api.production_monitor_ids
+  )
+}
+
+# Variables (referenced in examples above)
+variable "health_check_token" {
+  description = "Bearer token for health check authentication"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "staging_escalation_policy_id" {
+  description = "Escalation policy UUID for staging environment"
+  type        = string
+  default     = null
+}
+
+variable "prod_escalation_policy_id" {
+  description = "Escalation policy UUID for production environment"
+  type        = string
+  default     = null
+}
