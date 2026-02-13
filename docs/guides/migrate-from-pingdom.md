@@ -8,8 +8,76 @@ description: |-
 
 This guide provides a comprehensive migration path from Pingdom to Hyperping using Terraform. Whether you're migrating a handful of checks or hundreds, this guide covers everything from exporting Pingdom data to automating the bulk creation of equivalent Hyperping monitors.
 
+## Automated Migration Tool
+
+**🚀 New: Automated CLI Tool Available!**
+
+Simplify your Pingdom migration with our automated CLI tool:
+
+```bash
+# Install the Pingdom migration tool
+go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom@latest
+
+# Run full automated migration
+migrate-pingdom migrate \
+  --source-api-key $PINGDOM_API_KEY \
+  --dest-api-key $HYPERPING_API_KEY \
+  --output ./hyperping-migration
+
+# Apply generated configuration
+cd hyperping-migration
+terraform init
+terraform plan
+terraform apply
+```
+
+**Automation benefits:**
+- ✅ **Export all checks** from Pingdom API automatically
+- ✅ **Convert check types** (HTTP, TCP, Transaction, etc.)
+- ✅ **Map tags and naming** to structured conventions
+- ✅ **Generate Terraform** with proper resource dependencies
+- ✅ **Create import scripts** for easy resource management
+- ✅ **Validate compatibility** and report any issues
+
+**Migration time comparison:**
+
+| Organization Size | Checks | Manual Time | Automated Time | Savings |
+|-------------------|--------|-------------|----------------|---------|
+| Small | 1-25 | 1-2 days | 30 minutes | 95% |
+| Medium | 26-100 | 3-5 days | 1 hour | 90% |
+| Large | 100-500 | 1-2 weeks | 2-3 hours | 85% |
+| Enterprise | 500+ | 2-4 weeks | 4-6 hours | 80% |
+
+**📚 Comprehensive documentation:** [Automated Migration Tools Guide](./automated-migration.md)
+
+**Tool vs. Manual comparison:**
+
+| Feature | Automated Tool | Manual Process |
+|---------|---------------|----------------|
+| **Export** | Single command | Manual API calls + scripting |
+| **Conversion** | Built-in mapping logic | Write custom scripts |
+| **Validation** | Automatic compatibility checks | Manual review |
+| **Time** | 30 minutes - 6 hours | 1-4 weeks |
+| **Accuracy** | Validated conversions | Prone to human error |
+| **Best for** | Standard checks, bulk migrations | Custom configs, learning |
+
+**When to use automated tool:**
+- ✅ Migrating 10+ checks
+- ✅ Standard HTTP/HTTPS/TCP checks
+- ✅ Time-sensitive migration
+- ✅ Need repeatable process
+
+**When to use manual process (this guide):**
+- ⚠️ <10 checks (manual may be comparable)
+- ⚠️ Highly customized check configurations
+- ⚠️ Learning migration process in detail
+- ⚠️ Need granular control over every aspect
+
+---
+
 ## Table of Contents
 
+- [Automated Migration Tool](#automated-migration-tool)
 - [Why Migrate from Pingdom?](#why-migrate-from-pingdom)
 - [Migration Overview](#migration-overview)
 - [Prerequisites](#prerequisites)

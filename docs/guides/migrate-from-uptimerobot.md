@@ -9,6 +9,54 @@ description: |-
 
 This guide provides comprehensive instructions for migrating your monitoring infrastructure from UptimeRobot to Hyperping using Terraform. Whether you have a handful of monitors or hundreds, this guide covers everything from planning to execution.
 
+## Automated Migration Tool
+
+**🚀 New: Automated CLI Tool Available!**
+
+Automate your UptimeRobot to Hyperping migration with our CLI tool:
+
+```bash
+# Install tool
+go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot@latest
+
+# Run automated migration
+migrate-uptimerobot migrate \
+  --source-api-key $UPTIMEROBOT_API_KEY \
+  --dest-api-key $HYPERPING_API_KEY \
+  --output ./hyperping-migration
+
+# Review and apply
+cd hyperping-migration
+terraform init
+terraform apply
+```
+
+**What gets automated:**
+- ✅ Export monitors, alert contacts, and status pages
+- ✅ Convert HTTP(S), Port, Keyword, and Ping monitors
+- ✅ Map alert contacts to status page subscribers
+- ✅ Generate Terraform configuration with proper naming
+- ✅ Create executable import scripts
+- ✅ Validate and report compatibility issues
+
+**Time comparison:**
+- **Manual migration:** 4-8 hours for typical deployment
+- **Automated migration:** 15-30 minutes
+- **Time savings:** ~85-90%
+
+**📚 Complete guide:** [Automated Migration Tools](./automated-migration.md)
+
+**Quick comparison:**
+
+| Aspect | Automated Tool | Manual Process (This Guide) |
+|--------|---------------|---------------------------|
+| **Time** | 15-30 minutes | 4-8 hours |
+| **Accuracy** | Validated conversions | Manual mapping required |
+| **Use case** | 10+ monitors, standard configs | <10 monitors, complex setups |
+| **Best for** | Quick migrations, consistency | Learning, custom needs |
+
+---
+
 ## Table of Contents
 
 - [Why Migrate?](#why-migrate)

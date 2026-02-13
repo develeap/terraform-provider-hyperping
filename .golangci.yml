@@ -74,6 +74,10 @@ linters:
       - linters:
           - all
         path: docs/
+      - linters:
+          - gocritic
+          - prealloc
+        path: ^cmd/migrate-
     paths:
       - third_party$
       - builtin$
