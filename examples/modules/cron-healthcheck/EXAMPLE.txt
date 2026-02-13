@@ -1,0 +1,67 @@
+# Example usage of the Cron Healthcheck Module
+#
+# This file demonstrates how to use the module in your own Terraform configuration.
+# Copy and customize as needed.
+
+# Example 1: Basic daily and hourly jobs
+module "cron_jobs" {
+  source = "./modules/cron-healthcheck"
+
+  jobs = {
+    daily_backup = {
+      cron     = "0 2 * * *" # 2 AM every day
+      timezone = "America/New_York"
+      grace    = 30 # 30 minutes grace period
+    }
+    hourly_sync = {
+      cron     = "0 * * * *" # Every hour
+      timezone = "UTC"
+      grace    = 10 # 10 minutes grace period
+    }
+  }
+}
+
+# Output ping URLs for use in cron scripts
+output "backup_ping_url" {
+  description = "Use in cron: curl $PING_URL"
+  value       = module.cron_jobs.ping_urls["daily_backup"]
+  sensitive   = true
+}
+
+output "sync_ping_url" {
+  description = "Use in cron: curl $PING_URL"
+  value       = module.cron_jobs.ping_urls["hourly_sync"]
+  sensitive   = true
+}
+
+# Example 2: Production jobs with name prefix
+module "prod_cron_jobs" {
+  source = "./modules/cron-healthcheck"
+
+  jobs = {
+    db_backup = {
+      cron     = "0 3 * * *"
+      timezone = "UTC"
+      grace    = 60
+    }
+    cache_warmup = {
+      cron     = "0 */6 * * *" # Every 6 hours
+      timezone = "UTC"
+      grace    = 20
+    }
+  }
+
+  name_prefix           = "PROD"
+  default_timezone      = "UTC"
+  default_grace_minutes = 30
+}
+
+# Example 3: Integration with bash script
+# After applying, use the ping URL in your cron script:
+#
+# #!/bin/bash
+# PING_URL="$(terraform output -raw backup_ping_url)"
+# /usr/local/bin/backup.sh
+# if [ $? -eq 0 ]; then
+#     curl -fsS --retry 3 "$PING_URL" > /dev/null
+# fi
