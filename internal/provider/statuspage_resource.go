@@ -76,9 +76,6 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 				MarkdownDescription: "Custom domain for the status page (optional). If not provided, uses hosted subdomain.",
 				Optional:            true,
 				Computed:            true,
-				Validators: []validator.String{
-					URLFormat(),
-				},
 			},
 			"hosted_subdomain": schema.StringAttribute{
 				MarkdownDescription: "Hyperping-hosted subdomain (e.g., 'status' for status.hyperping.app)",
