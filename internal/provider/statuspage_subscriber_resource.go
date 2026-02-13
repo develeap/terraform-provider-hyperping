@@ -92,6 +92,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				Optional:            true,
 				Validators: []validator.String{
 					RequiredWhenValueIs(path.Root("type"), "email", "type"),
+					EmailFormat(),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),

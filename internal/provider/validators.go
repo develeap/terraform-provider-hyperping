@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -310,4 +311,121 @@ func (v timezoneValidator) ValidateString(_ context.Context, req validator.Strin
 // Timezone returns a validator that checks for valid IANA timezones.
 func Timezone() validator.String {
 	return timezoneValidator{}
+}
+
+// portRangeValidator validates that an int64 is a valid TCP/UDP port (1-65535).
+type portRangeValidator struct{}
+
+func (v portRangeValidator) Description(_ context.Context) string {
+	return "value must be a valid port number between 1 and 65535"
+}
+
+func (v portRangeValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v portRangeValidator) ValidateInt64(_ context.Context, req validator.Int64Request, resp *validator.Int64Response) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueInt64()
+	if value < 1 || value > 65535 {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Port Number",
+			fmt.Sprintf("Port must be between 1 and 65535, got %d", value),
+		)
+	}
+}
+
+// PortRange returns a validator that checks for valid TCP/UDP port numbers.
+func PortRange() validator.Int64 {
+	return portRangeValidator{}
+}
+
+// hexColorValidator validates that a string is a valid 6-digit hex color (#RRGGBB).
+type hexColorValidator struct{}
+
+func (v hexColorValidator) Description(_ context.Context) string {
+	return "value must be a 6-digit hex color (e.g., '#ff5733', '#000000')"
+}
+
+func (v hexColorValidator) MarkdownDescription(_ context.Context) string {
+	return "value must be a 6-digit hex color (e.g., `#ff5733`, `#000000`)"
+}
+
+func (v hexColorValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueString()
+	matched, err := regexp.MatchString(`^#[0-9A-Fa-f]{6}$`, value)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Validation Error",
+			fmt.Sprintf("Error validating hex color: %v", err),
+		)
+		return
+	}
+	if !matched {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Hex Color",
+			fmt.Sprintf("The value %q must be a 6-digit hex color (e.g., '#ff5733', '#000000')", value),
+		)
+	}
+}
+
+// HexColor returns a validator that checks for valid 6-digit hex colors.
+func HexColor() validator.String {
+	return hexColorValidator{}
+}
+
+// emailFormatValidator validates that a string is a valid email address.
+// Uses a simplified RFC 5322 regex pattern.
+type emailFormatValidator struct{}
+
+func (v emailFormatValidator) Description(_ context.Context) string {
+	return "value must be a valid email address"
+}
+
+func (v emailFormatValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v emailFormatValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueString()
+	// RFC 5322 simplified regex
+	// Matches: local-part@domain where:
+	// - local-part: alphanumeric, dots, underscores, percent, plus, hyphens
+	// - domain: alphanumeric and hyphens
+	// - TLD: at least 2 characters, letters only
+	matched, err := regexp.MatchString(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`, value)
+	if err != nil {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Validation Error",
+			fmt.Sprintf("Error validating email format: %v", err),
+		)
+		return
+	}
+	if !matched {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Email Format",
+			fmt.Sprintf("The value %q is not a valid email address", value),
+		)
+	}
+}
+
+// EmailFormat returns a validator that checks for valid email address format.
+func EmailFormat() validator.String {
+	return emailFormatValidator{}
 }

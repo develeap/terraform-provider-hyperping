@@ -154,6 +154,9 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 						Optional:            true,
 						Computed:            true,
 						Default:             stringdefault.StaticString("#36b27e"),
+						Validators: []validator.String{
+							HexColor(),
+						},
 					},
 					"auto_refresh": schema.BoolAttribute{
 						MarkdownDescription: "Enable auto-refresh of status page",

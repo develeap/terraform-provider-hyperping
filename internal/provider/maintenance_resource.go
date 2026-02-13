@@ -150,39 +150,14 @@ func (r *MaintenanceResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	// Validate date format and order
+	// Validate date format, order, and add warnings
+	resp.Diagnostics.Append(validateMaintenanceDates(&plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	startDate := plan.StartDate.ValueString()
 	endDate := plan.EndDate.ValueString()
-
-	// Parse to validate format
-	startTime, err := time.Parse(time.RFC3339, startDate)
-	if err != nil {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("start_date"),
-			"Invalid Start Date",
-			fmt.Sprintf("Could not parse start_date as ISO 8601 time: %s", err),
-		)
-		return
-	}
-
-	endTime, err := time.Parse(time.RFC3339, endDate)
-	if err != nil {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("end_date"),
-			"Invalid End Date",
-			fmt.Sprintf("Could not parse end_date as ISO 8601 time: %s", err),
-		)
-		return
-	}
-
-	// Validate end is after start
-	if !endTime.After(startTime) {
-		resp.Diagnostics.AddError(
-			"Invalid Time Range",
-			"end_date must be after start_date",
-		)
-		return
-	}
 
 	// Build create request
 	createReq := client.CreateMaintenanceRequest{
@@ -289,6 +264,14 @@ func (r *MaintenanceResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
+	// Validate dates if they changed
+	if !plan.StartDate.Equal(state.StartDate) || !plan.EndDate.Equal(state.EndDate) {
+		resp.Diagnostics.Append(validateMaintenanceDates(&plan)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	// Build update request
 	updateReq := client.UpdateMaintenanceRequest{}
 
@@ -379,6 +362,80 @@ func (r *MaintenanceResource) ImportState(ctx context.Context, req resource.Impo
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// validateMaintenanceDates validates the maintenance date range and adds diagnostics.
+// It checks:
+// - Both dates can be parsed as ISO 8601 (RFC3339)
+// - end_date is after start_date (error)
+// - start_date is in the future (warning)
+// - duration is reasonable (< 7 days warning)
+func validateMaintenanceDates(plan *MaintenanceResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	if plan.StartDate.IsNull() || plan.EndDate.IsNull() {
+		return diags
+	}
+
+	startDateStr := plan.StartDate.ValueString()
+	endDateStr := plan.EndDate.ValueString()
+
+	// Parse start date
+	startTime, err := time.Parse(time.RFC3339, startDateStr)
+	if err != nil {
+		diags.AddAttributeError(
+			path.Root("start_date"),
+			"Invalid Start Date",
+			fmt.Sprintf("Could not parse start_date as ISO 8601 time: %s", err),
+		)
+		return diags
+	}
+
+	// Parse end date
+	endTime, err := time.Parse(time.RFC3339, endDateStr)
+	if err != nil {
+		diags.AddAttributeError(
+			path.Root("end_date"),
+			"Invalid End Date",
+			fmt.Sprintf("Could not parse end_date as ISO 8601 time: %s", err),
+		)
+		return diags
+	}
+
+	// Validate end is after start (error)
+	if !endTime.After(startTime) {
+		diags.AddAttributeError(
+			path.Root("end_date"),
+			"Invalid Date Range",
+			"end_date must be after start_date",
+		)
+		return diags
+	}
+
+	// Check if start date is in the past (warning)
+	now := time.Now()
+	if startTime.Before(now) {
+		diags.AddAttributeWarning(
+			path.Root("start_date"),
+			"Past Start Date",
+			fmt.Sprintf("start_date is in the past (%s). This maintenance window may not trigger as expected. "+
+				"Consider using a future date for scheduled maintenance.", startTime.Format(time.RFC3339)),
+		)
+	}
+
+	// Check duration (warning if > 7 days)
+	duration := endTime.Sub(startTime)
+	if duration > 7*24*time.Hour {
+		diags.AddAttributeWarning(
+			path.Root("end_date"),
+			"Long Maintenance Window",
+			fmt.Sprintf("Maintenance window duration is %v (%.1f days). "+
+				"Consider breaking long maintenance into multiple shorter windows for better visibility.",
+				duration.Round(time.Hour), duration.Hours()/24),
+		)
+	}
+
+	return diags
 }
 
 // mapMaintenanceToModel maps a client.Maintenance to the Terraform model.
