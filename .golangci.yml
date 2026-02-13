@@ -74,6 +74,10 @@ linters:
       - linters:
           - all
         path: docs/
+      - linters:
+          - gocritic
+          - prealloc
+        path: ^cmd/migrate-
     paths:
       - third_party$
       - builtin$
@@ -81,6 +85,12 @@ linters:
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    # Migration tools use relaxed linting for stylistic issues
+    - path: cmd/migrate-.*
+      linters:
+        - gocritic
+        - prealloc
 formatters:
   enable:
     - gofmt

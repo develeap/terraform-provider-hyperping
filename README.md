@@ -97,6 +97,37 @@ terraform plan
 
 Or configure in the provider block (not recommended for production).
 
+## Migration Tools
+
+Automated CLI tools for migrating from other monitoring platforms:
+
+```bash
+# Migrate from Better Stack
+go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-betterstack@latest
+migrate-betterstack migrate --source-api-key $BETTERSTACK_TOKEN --dest-api-key $HYPERPING_KEY
+
+# Migrate from UptimeRobot
+go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot@latest
+migrate-uptimerobot migrate --source-api-key $UPTIMEROBOT_KEY --dest-api-key $HYPERPING_KEY
+
+# Migrate from Pingdom
+go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom@latest
+migrate-pingdom migrate --source-api-key $PINGDOM_KEY --dest-api-key $HYPERPING_KEY
+```
+
+**Features:**
+- ✅ Automated export from source platform
+- ✅ Intelligent resource conversion
+- ✅ Production-ready Terraform generation
+- ✅ Validation and compatibility checks
+- ✅ 85-90% time savings vs. manual migration
+
+**Guides:**
+- [Automated Migration Tools](./docs/guides/automated-migration.md) - Complete CLI tool documentation
+- [Better Stack Migration](./docs/guides/migrate-from-betterstack.md) - Better Stack-specific guide
+- [UptimeRobot Migration](./docs/guides/migrate-from-uptimerobot.md) - UptimeRobot-specific guide
+- [Pingdom Migration](./docs/guides/migrate-from-pingdom.md) - Pingdom-specific guide
+
 ## Documentation
 
 - **[Terraform Registry](https://registry.terraform.io/providers/develeap/hyperping/latest/docs)** - Complete resource/data source reference

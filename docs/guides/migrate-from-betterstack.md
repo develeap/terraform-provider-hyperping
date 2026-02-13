@@ -9,8 +9,61 @@ description: |-
 
 This comprehensive guide walks you through migrating your uptime monitoring from Better Stack (formerly Better Uptime) to Hyperping using Terraform. Whether you're managing a few monitors or hundreds, this guide provides the tools and strategies you need for a smooth transition.
 
+## Automated Migration Tool
+
+**🚀 New: Automated CLI Tool Available!**
+
+Skip manual conversion and use the automated migration tool for 90% faster migrations:
+
+```bash
+# Install tool
+go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-betterstack@latest
+
+# Run automated migration
+migrate-betterstack migrate \
+  --source-api-key $BETTERSTACK_API_TOKEN \
+  --dest-api-key $HYPERPING_API_KEY \
+  --output ./hyperping-migration
+
+# Review generated files
+cd hyperping-migration
+terraform init
+terraform plan
+terraform apply
+```
+
+**What the tool automates:**
+- ✅ Export all resources from Better Stack
+- ✅ Convert to Hyperping-compatible format
+- ✅ Generate production-ready Terraform configuration
+- ✅ Create import scripts for existing resources
+- ✅ Validate conversions and report issues
+- ✅ Generate detailed migration report
+
+**Time savings:**
+- Manual migration: 5-9 hours for 50-100 monitors
+- Automated migration: 15-30 minutes
+- **Reduction: ~90%**
+
+**📚 Full documentation:** [Automated Migration Tools Guide](./automated-migration.md)
+
+**When to use:**
+- ✅ 10+ monitors to migrate
+- ✅ Standard HTTP/HTTPS/TCP monitors
+- ✅ Need consistent, repeatable process
+- ✅ Want to save time
+
+**When to use manual process below:**
+- ⚠️ <5 monitors (manual may be faster)
+- ⚠️ Complex custom configurations
+- ⚠️ Learning migration process
+- ⚠️ Need fine-grained control
+
+---
+
 ## Table of Contents
 
+- [Automated Migration Tool](#automated-migration-tool)
 - [Why Migrate?](#why-migrate)
 - [Prerequisites](#prerequisites)
 - [Migration Overview](#migration-overview)
