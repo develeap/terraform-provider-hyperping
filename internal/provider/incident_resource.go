@@ -69,6 +69,9 @@ func (r *IncidentResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"title": schema.StringAttribute{
 				MarkdownDescription: "The title of the incident (English).",
 				Required:            true,
+				Validators: []validator.String{
+					StringLength(1, 255),
+				},
 			},
 			"text": schema.StringAttribute{
 				MarkdownDescription: "The description text of the incident (English).",

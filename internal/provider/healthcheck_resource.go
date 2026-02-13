@@ -78,6 +78,9 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the healthcheck.",
 				Required:            true,
+				Validators: []validator.String{
+					StringLength(1, 255),
+				},
 			},
 			"ping_url": schema.StringAttribute{
 				MarkdownDescription: "The auto-generated ping URL. Your cron job pings this URL to prove it ran.",
@@ -89,10 +92,16 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"cron": schema.StringAttribute{
 				MarkdownDescription: "Cron expression defining the schedule (e.g., `0 0 * * *`). Mutually exclusive with `period_value`/`period_type`.",
 				Optional:            true,
+				Validators: []validator.String{
+					CronExpression(),
+				},
 			},
 			"timezone": schema.StringAttribute{
 				MarkdownDescription: "Timezone for the cron expression (e.g., `America/New_York`). Required when `cron` is set.",
 				Optional:            true,
+				Validators: []validator.String{
+					Timezone(),
+				},
 			},
 			"period_value": schema.Int64Attribute{
 				MarkdownDescription: "Numeric value for the expected interval. Mutually exclusive with `cron`/`tz`.",

@@ -83,10 +83,16 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the monitor.",
 				Required:            true,
+				Validators: []validator.String{
+					StringLength(1, 255),
+				},
 			},
 			"url": schema.StringAttribute{
 				MarkdownDescription: "The URL to monitor.",
 				Required:            true,
+				Validators: []validator.String{
+					URLFormat(),
+				},
 			},
 			"protocol": schema.StringAttribute{
 				MarkdownDescription: "The protocol type. Valid values: `http`, `port`, `icmp`. Defaults to `http`.",
@@ -172,6 +178,9 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"port": schema.Int64Attribute{
 				MarkdownDescription: "Port number to check. Required when `protocol` is `port`.",
 				Optional:            true,
+				Validators: []validator.Int64{
+					PortRange(),
+				},
 			},
 			"alerts_wait": schema.Int64Attribute{
 				MarkdownDescription: "Seconds to wait before sending alerts after an outage is detected. Allows time for transient issues to resolve.",
