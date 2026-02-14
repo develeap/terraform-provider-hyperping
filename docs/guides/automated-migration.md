@@ -12,6 +12,7 @@ This guide covers the automated CLI tools that streamline migrating monitoring i
 ## Table of Contents
 
 - [Overview](#overview)
+- [Interactive Mode (New!)](#interactive-mode)
 - [When to Use Automated vs Manual Migration](#when-to-use-automated-vs-manual-migration)
 - [Prerequisites](#prerequisites)
 - [Common Workflow](#common-workflow)
@@ -67,6 +68,55 @@ All tools provide the following automated capabilities:
 - Generated code follows Terraform best practices
 - Consistent naming conventions
 - Proper resource dependencies
+
+## Interactive Mode
+
+**NEW:** All migration tools now support interactive mode! Simply run the tool without any flags for a guided wizard experience:
+
+```bash
+# Just run without flags
+cd cmd/migrate-betterstack
+go run .
+```
+
+### Interactive Mode Features
+
+✅ **Automatic activation** when no flags provided
+✅ **Step-by-step guidance** through the migration process
+✅ **API connection testing** before migration starts
+✅ **Real-time progress bars** for batch operations
+✅ **Input validation** with helpful error messages
+✅ **Migration preview** with confirmation prompt
+✅ **Detailed summary** with next steps
+
+### When to Use Interactive vs Command-Line Mode
+
+| Mode | Best For | Example Use Case |
+|------|----------|------------------|
+| **Interactive** | First-time users, manual migrations | Testing migration on development monitors |
+| **Command-line** | Automation, CI/CD, scripting | Automated nightly migrations in pipeline |
+
+### Quick Start with Interactive Mode
+
+```bash
+# Better Stack
+cd cmd/migrate-betterstack && go run .
+
+# UptimeRobot
+cd cmd/migrate-uptimerobot && go run .
+
+# Pingdom
+cd cmd/migrate-pingdom && go run .
+```
+
+The tool will guide you through:
+1. API credentials (with connection testing)
+2. Migration mode selection (full or dry-run)
+3. Output file configuration
+4. Migration preview
+5. Execution with real-time progress
+
+For complete interactive mode documentation, see [Interactive Mode Guide](../INTERACTIVE_MODE.md).
 
 ## When to Use Automated vs Manual Migration
 
@@ -230,6 +280,67 @@ migrate-pingdom --version
 
 All migration tools follow the same workflow pattern:
 
+### Step 0: Preview with Dry-Run (Recommended)
+
+**Always start with dry-run mode** to preview your migration before making any changes:
+
+```bash
+# Basic dry-run
+export BETTERSTACK_API_TOKEN="your_token"
+migrate-betterstack --dry-run
+
+# Verbose mode (show all resources)
+migrate-betterstack --dry-run --verbose
+
+# JSON output for automation
+migrate-betterstack --dry-run --format > preview.json
+```
+
+**What you get:**
+- Compatibility score (0-100%)
+- Migration complexity rating (Simple/Medium/Complex)
+- Side-by-side comparison of source vs target configuration
+- Preview of generated Terraform code
+- List of warnings and manual steps required
+- Performance estimates (time, API calls, file sizes)
+
+**Example output:**
+
+```
+🔍 DRY RUN MODE - Migration Preview
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Source Platform:  Better Stack
+Total Monitors:   42
+Total Heartbeats: 7
+
+Expected Output:
+  - hyperping_monitor:     35 resources
+  - hyperping_healthcheck: 7 resources
+  - Total TF size:         ~1,245 lines (~42 KB)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 COMPATIBILITY SCORE: 85.7% (GOOD)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Migration Complexity: MEDIUM
+
+Breakdown:
+  ✅ Clean migrations:  36/42 (85.7%)
+  ⚠️  With warnings:     6/42 (14.3%)
+  ❌ Errors:            0/42 (0.0%)
+```
+
+**When to proceed:**
+- **Score ≥ 90%**: Proceed immediately, migration is straightforward
+- **Score 75-89%**: Review warnings, then proceed
+- **Score 50-74%**: Significant manual work required, plan accordingly
+- **Score < 50%**: Consider whether Hyperping is the right fit
+
+See [Dry-Run Guide](../DRY_RUN_GUIDE.md) for complete documentation.
+
 ### Step 1: Export from Source Platform
 
 ```bash
@@ -388,27 +499,52 @@ Migrates from Better Stack (formerly Better Uptime) to Hyperping.
 
 #### Quick Start
 
-```bash
-# Full automated migration
-migrate-betterstack migrate \
-  --source-api-key $BETTERSTACK_API_TOKEN \
-  --dest-api-key $HYPERPING_API_KEY \
-  --output ./hyperping-migration
+**Recommended: Start with dry-run**
 
-# Output structure:
-# hyperping-migration/
-# ├── migrated-resources.tf
-# ├── variables.tf
-# ├── outputs.tf
-# ├── terraform.tfvars
-# ├── import.sh
-# ├── migration-report.json
-# └── manual-steps.md
+```bash
+# Preview migration (no changes made)
+export BETTERSTACK_API_TOKEN="your_token"
+migrate-betterstack --dry-run
+
+# Review output, then proceed with actual migration
+migrate-betterstack \
+  --betterstack-token $BETTERSTACK_API_TOKEN \
+  --output hyperping.tf \
+  --import-script import.sh \
+  --report migration-report.json
 ```
+
+**Output files created:**
+- `hyperping.tf` - Terraform configuration for all resources
+- `import.sh` - Import script (if importing existing resources)
+- `migration-report.json` - Detailed migration report
+- `manual-steps.md` - Manual steps required post-migration
 
 #### Step-by-Step Usage
 
-**1. Export from Better Stack:**
+**1. Preview with Dry-Run:**
+
+```bash
+export BETTERSTACK_API_TOKEN="your_token"
+
+# Basic preview
+migrate-betterstack --dry-run
+
+# Detailed preview
+migrate-betterstack --dry-run --verbose
+
+# JSON format for automation
+migrate-betterstack --dry-run --format > preview.json
+```
+
+**2. Review Compatibility:**
+
+Check the compatibility score and warnings:
+- Score ≥ 90%: Excellent, proceed
+- Score 75-89%: Good, review warnings
+- Score < 75%: Plan for manual work
+
+**3. Execute Migration:**
 
 ```bash
 migrate-betterstack export \
