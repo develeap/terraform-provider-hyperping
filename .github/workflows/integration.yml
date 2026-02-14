@@ -64,7 +64,7 @@ jobs:
         if: env.BETTERSTACK_API_TOKEN != '' && env.HYPERPING_API_KEY != ''
         env:
           BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
         run: |
           echo "Running Better Stack integration tests..."
 
@@ -86,7 +86,7 @@ jobs:
         if: env.BETTERSTACK_API_TOKEN == '' || env.HYPERPING_API_KEY == ''
         env:
           BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
         run: |
           echo "⚠️  Better Stack integration tests skipped - credentials not available"
           echo "This is expected for pull requests from forks."
@@ -124,7 +124,7 @@ jobs:
         if: env.UPTIMEROBOT_API_KEY != '' && env.HYPERPING_API_KEY != ''
         env:
           UPTIMEROBOT_API_KEY: ${{ secrets.UPTIMEROBOT_API_KEY }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
         run: |
           echo "Running UptimeRobot integration tests..."
 
@@ -146,7 +146,7 @@ jobs:
         if: env.UPTIMEROBOT_API_KEY == '' || env.HYPERPING_API_KEY == ''
         env:
           UPTIMEROBOT_API_KEY: ${{ secrets.UPTIMEROBOT_API_KEY }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
         run: |
           echo "⚠️  UptimeRobot integration tests skipped - credentials not available"
           echo "This is expected for pull requests from forks."
@@ -184,7 +184,7 @@ jobs:
         if: env.PINGDOM_API_KEY != '' && env.HYPERPING_API_KEY != ''
         env:
           PINGDOM_API_KEY: ${{ secrets.PINGDOM_API_KEY }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
         run: |
           echo "Running Pingdom integration tests..."
 
@@ -206,7 +206,7 @@ jobs:
         if: env.PINGDOM_API_KEY == '' || env.HYPERPING_API_KEY == ''
         env:
           PINGDOM_API_KEY: ${{ secrets.PINGDOM_API_KEY }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
         run: |
           echo "⚠️  Pingdom integration tests skipped - credentials not available"
           echo "This is expected for pull requests from forks."
