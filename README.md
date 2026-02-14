@@ -221,6 +221,38 @@ go test -v -run TestContract_Monitor ./internal/client/
 
 See [internal/client/testdata/cassettes/README.md](internal/client/testdata/cassettes/README.md) for cassette documentation.
 
+#### Integration Tests for Migration Tools
+
+Integration tests validate end-to-end workflows for all 3 migration tools with real APIs:
+
+```bash
+# Setup credentials
+export BETTERSTACK_API_TOKEN=your_token
+export UPTIMEROBOT_API_KEY=your_key
+export PINGDOM_API_KEY=your_key
+export HYPERPING_API_KEY=sk_your_key
+
+# Run all integration tests
+go test -v -tags=integration -timeout=30m ./cmd/migrate-betterstack/...
+go test -v -tags=integration -timeout=30m ./cmd/migrate-uptimerobot/...
+go test -v -tags=integration -timeout=30m ./cmd/migrate-pingdom/...
+
+# Run specific scenarios
+go test -v -tags=integration -run=".*SmallScenario" ./cmd/migrate-betterstack/...
+```
+
+**Each test validates:**
+1. API connection to source platform
+2. Migration tool execution without errors
+3. All 4 output files generated (.tf, import.sh, report.json, manual-steps.md)
+4. Terraform validation passes (terraform validate)
+5. Terraform plan shows expected resources (0 errors)
+6. Import script is executable with valid syntax
+7. Report and manual steps files are valid JSON/Markdown
+8. Resource count matches expected scenario
+
+See [docs/INTEGRATION_TESTING.md](docs/INTEGRATION_TESTING.md) for complete documentation.
+
 ## Production Features
 
 - **Security:** TLS 1.2+, credential sanitization, HTTPS enforcement

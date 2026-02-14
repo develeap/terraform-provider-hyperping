@@ -1,0 +1,238 @@
+# Integration Tests Workflow for Migration Tools
+name: Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cmd/migrate-**/**'
+      - 'test/integration/**'
+      - '.github/workflows/integration.yml'
+  pull_request:
+    paths:
+      - 'cmd/migrate-**/**'
+      - 'test/integration/**'
+      - '.github/workflows/integration.yml'
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Test scenario to run (small/medium/large/all)'
+        required: false
+        default: 'small'
+        type: choice
+        options:
+          - small
+          - medium
+          - large
+          - all
+
+permissions:
+  contents: read
+
+jobs:
+  integration-betterstack:
+    name: 'Integration: Better Stack'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Run on: manual trigger, main branch, or PRs from same repo (not forks)
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.8.*'
+          terraform_wrapper: false
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run Better Stack integration tests
+        if: env.BETTERSTACK_API_TOKEN != '' && env.HYPERPING_API_KEY != ''
+        env:
+          BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        run: |
+          echo "Running Better Stack integration tests..."
+
+          # Determine which tests to run based on scenario
+          TEST_PATTERN="."
+          if [ "${{ github.event.inputs.scenario }}" = "small" ]; then
+            TEST_PATTERN="SmallScenario"
+          elif [ "${{ github.event.inputs.scenario }}" = "medium" ]; then
+            TEST_PATTERN="MediumScenario"
+          elif [ "${{ github.event.inputs.scenario }}" = "large" ]; then
+            TEST_PATTERN="LargeScenario"
+          fi
+
+          go test -v -tags=integration -timeout=30m \
+            -run="TestBetterStack.*$TEST_PATTERN" \
+            ./cmd/migrate-betterstack/
+
+      - name: Skip notice (missing credentials)
+        if: env.BETTERSTACK_API_TOKEN == '' || env.HYPERPING_API_KEY == ''
+        env:
+          BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        run: |
+          echo "⚠️  Better Stack integration tests skipped - credentials not available"
+          echo "This is expected for pull requests from forks."
+
+  integration-uptimerobot:
+    name: 'Integration: UptimeRobot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Run on: manual trigger, main branch, or PRs from same repo (not forks)
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.8.*'
+          terraform_wrapper: false
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run UptimeRobot integration tests
+        if: env.UPTIMEROBOT_API_KEY != '' && env.HYPERPING_API_KEY != ''
+        env:
+          UPTIMEROBOT_API_KEY: ${{ secrets.UPTIMEROBOT_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        run: |
+          echo "Running UptimeRobot integration tests..."
+
+          # Determine which tests to run based on scenario
+          TEST_PATTERN="."
+          if [ "${{ github.event.inputs.scenario }}" = "small" ]; then
+            TEST_PATTERN="SmallScenario"
+          elif [ "${{ github.event.inputs.scenario }}" = "medium" ]; then
+            TEST_PATTERN="MediumScenario"
+          elif [ "${{ github.event.inputs.scenario }}" = "large" ]; then
+            TEST_PATTERN="LargeScenario"
+          fi
+
+          go test -v -tags=integration -timeout=30m \
+            -run="TestUptimeRobot.*$TEST_PATTERN" \
+            ./cmd/migrate-uptimerobot/
+
+      - name: Skip notice (missing credentials)
+        if: env.UPTIMEROBOT_API_KEY == '' || env.HYPERPING_API_KEY == ''
+        env:
+          UPTIMEROBOT_API_KEY: ${{ secrets.UPTIMEROBOT_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        run: |
+          echo "⚠️  UptimeRobot integration tests skipped - credentials not available"
+          echo "This is expected for pull requests from forks."
+
+  integration-pingdom:
+    name: 'Integration: Pingdom'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Run on: manual trigger, main branch, or PRs from same repo (not forks)
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.8.*'
+          terraform_wrapper: false
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run Pingdom integration tests
+        if: env.PINGDOM_API_KEY != '' && env.HYPERPING_API_KEY != ''
+        env:
+          PINGDOM_API_KEY: ${{ secrets.PINGDOM_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        run: |
+          echo "Running Pingdom integration tests..."
+
+          # Determine which tests to run based on scenario
+          TEST_PATTERN="."
+          if [ "${{ github.event.inputs.scenario }}" = "small" ]; then
+            TEST_PATTERN="SmallScenario"
+          elif [ "${{ github.event.inputs.scenario }}" = "medium" ]; then
+            TEST_PATTERN="MediumScenario"
+          elif [ "${{ github.event.inputs.scenario }}" = "large" ]; then
+            TEST_PATTERN="LargeScenario"
+          fi
+
+          go test -v -tags=integration -timeout=30m \
+            -run="TestPingdom.*$TEST_PATTERN" \
+            ./cmd/migrate-pingdom/
+
+      - name: Skip notice (missing credentials)
+        if: env.PINGDOM_API_KEY == '' || env.HYPERPING_API_KEY == ''
+        env:
+          PINGDOM_API_KEY: ${{ secrets.PINGDOM_API_KEY }}
+          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        run: |
+          echo "⚠️  Pingdom integration tests skipped - credentials not available"
+          echo "This is expected for pull requests from forks."
+
+  integration-summary:
+    name: 'Integration Tests Summary'
+    runs-on: ubuntu-latest
+    needs: [integration-betterstack, integration-uptimerobot, integration-pingdom]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "=== Integration Tests Summary ==="
+          echo ""
+          echo "Better Stack: ${{ needs.integration-betterstack.result }}"
+          echo "UptimeRobot: ${{ needs.integration-uptimerobot.result }}"
+          echo "Pingdom: ${{ needs.integration-pingdom.result }}"
+          echo ""
+
+          # Fail if any job failed (but allow skipped)
+          if [ "${{ needs.integration-betterstack.result }}" = "failure" ] || \
+             [ "${{ needs.integration-uptimerobot.result }}" = "failure" ] || \
+             [ "${{ needs.integration-pingdom.result }}" = "failure" ]; then
+            echo "❌ One or more integration test jobs failed"
+            exit 1
+          fi
+
+          echo "✅ All integration tests passed or were skipped"
