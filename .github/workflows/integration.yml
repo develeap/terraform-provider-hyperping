@@ -35,10 +35,11 @@ jobs:
     name: 'Integration: Better Stack'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Run on: manual trigger, main branch, or PRs from same repo (not forks)
     if: |
       github.event_name == 'workflow_dispatch' ||
-      contains(github.event.head_commit.message, '[integration]') ||
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
 
     steps:
       - name: Checkout code
@@ -94,10 +95,11 @@ jobs:
     name: 'Integration: UptimeRobot'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Run on: manual trigger, main branch, or PRs from same repo (not forks)
     if: |
       github.event_name == 'workflow_dispatch' ||
-      contains(github.event.head_commit.message, '[integration]') ||
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
 
     steps:
       - name: Checkout code
@@ -153,10 +155,11 @@ jobs:
     name: 'Integration: Pingdom'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Run on: manual trigger, main branch, or PRs from same repo (not forks)
     if: |
       github.event_name == 'workflow_dispatch' ||
-      contains(github.event.head_commit.message, '[integration]') ||
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
 
     steps:
       - name: Checkout code
