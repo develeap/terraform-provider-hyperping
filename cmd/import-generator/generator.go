@@ -29,6 +29,7 @@ type Generator struct {
 	resources       []string
 	showProgress    bool
 	continueOnError bool
+	filterConfig    *FilterConfig
 }
 
 // ResourceData holds fetched resource data for generation.
@@ -95,6 +96,10 @@ func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 					return nil, fmt.Errorf("fetching monitors: %w", err)
 				}
 			} else {
+				// Apply filters if configured
+				if g.filterConfig != nil {
+					monitors = g.filterConfig.FilterMonitors(monitors)
+				}
 				data.Monitors = monitors
 				progress.Report(len(monitors), "monitor(s)")
 			}
@@ -109,6 +114,9 @@ func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 					return nil, fmt.Errorf("fetching healthchecks: %w", err)
 				}
 			} else {
+				if g.filterConfig != nil {
+					healthchecks = g.filterConfig.FilterHealthchecks(healthchecks)
+				}
 				data.Healthchecks = healthchecks
 				progress.Report(len(healthchecks), "healthcheck(s)")
 			}
@@ -123,8 +131,12 @@ func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 					return nil, fmt.Errorf("fetching status pages: %w", err)
 				}
 			} else {
-				data.StatusPages = resp.StatusPages
-				progress.Report(len(resp.StatusPages), "status page(s)")
+				pages := resp.StatusPages
+				if g.filterConfig != nil {
+					pages = g.filterConfig.FilterStatusPages(pages)
+				}
+				data.StatusPages = pages
+				progress.Report(len(pages), "status page(s)")
 			}
 
 		case "incidents":
@@ -137,6 +149,9 @@ func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 					return nil, fmt.Errorf("fetching incidents: %w", err)
 				}
 			} else {
+				if g.filterConfig != nil {
+					incidents = g.filterConfig.FilterIncidents(incidents)
+				}
 				data.Incidents = incidents
 				progress.Report(len(incidents), "incident(s)")
 			}
@@ -151,6 +166,9 @@ func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 					return nil, fmt.Errorf("fetching maintenance: %w", err)
 				}
 			} else {
+				if g.filterConfig != nil {
+					maintenance = g.filterConfig.FilterMaintenance(maintenance)
+				}
 				data.Maintenance = maintenance
 				progress.Report(len(maintenance), "maintenance window(s)")
 			}
@@ -165,6 +183,9 @@ func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 					return nil, fmt.Errorf("fetching outages: %w", err)
 				}
 			} else {
+				if g.filterConfig != nil {
+					outages = g.filterConfig.FilterOutages(outages)
+				}
 				data.Outages = outages
 				progress.Report(len(outages), "outage(s)")
 			}

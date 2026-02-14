@@ -51,6 +51,7 @@ var (
 	rollbackID          = flag.String("rollback-id", "", "Rollback specific migration ID")
 	rollbackForce       = flag.Bool("force", false, "Force rollback without confirmation")
 	listCheckpointsFlag = flag.Bool("list-checkpoints", false, "List available checkpoints")
+	formatJSON          = flag.Bool("format", false, "Output dry-run report as JSON (use with --dry-run)")
 )
 
 func main() {
@@ -89,6 +90,11 @@ func run() int {
 
 	if *debug && logger.GetLogPath() != "" {
 		logger.Info("Debug logging enabled, log file: %s", logger.GetLogPath())
+	}
+
+	// Check if interactive mode should be used
+	if shouldUseInteractive() {
+		return runInteractive(logger)
 	}
 
 	// Handle list checkpoints
@@ -332,19 +338,25 @@ func run() int {
 		healthcheckIssues,
 	)
 
-	// Dry run mode - just validate
+	// Dry run mode - enhanced preview
 	if *dryRun {
-		fmt.Fprintln(os.Stderr, "\n=== DRY RUN MODE ===")
-		fmt.Fprintf(os.Stderr, "Would create %s (%d bytes)\n", *outputFile, len(tfConfig))
-		fmt.Fprintf(os.Stderr, "Would create %s (%d bytes)\n", *importScript, len(importScriptContent))
-		fmt.Fprintf(os.Stderr, "Would create %s (%d bytes)\n", *reportFile, len(migrationReport.JSON()))
-		fmt.Fprintf(os.Stderr, "Would create %s (%d bytes)\n", *manualStepsFile, len(manualSteps))
-		fmt.Fprintln(os.Stderr, "\nSummary:")
-		migrationReport.PrintSummary(os.Stderr)
+		dryRunReport := buildDryRunReport(
+			monitors,
+			heartbeats,
+			convertedMonitors,
+			convertedHealthchecks,
+			monitorIssues,
+			healthcheckIssues,
+			tfConfig,
+			importScriptContent,
+			manualSteps,
+		)
+
+		printEnhancedDryRun(dryRunReport, *verbose, *formatJSON)
 
 		// Print failure report if any
 		if failureReport := state.getFailureReport(); failureReport != "" {
-			fmt.Fprintln(os.Stderr, failureReport)
+			fmt.Fprintln(os.Stderr, "\n"+failureReport)
 		}
 
 		return 0

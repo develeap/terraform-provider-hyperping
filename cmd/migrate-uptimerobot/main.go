@@ -61,6 +61,11 @@ func main() {
 func run() int {
 	flag.Parse()
 
+	// Check if interactive mode should be used
+	if shouldUseInteractive() {
+		return runInteractive()
+	}
+
 	// Get API keys from flags or environment
 	urAPIKey := *uptimerobotAPIKey
 	if urAPIKey == "" {
