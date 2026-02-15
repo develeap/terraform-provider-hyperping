@@ -352,3 +352,45 @@ func TestAccMonitorResource_clearBody(t *testing.T) {
 		},
 	})
 }
+
+// TestAccMonitorResource_requiredKeyword verifies the bug fix for required_keyword persistence.
+// This field is write-only (API accepts but doesn't return it), so we use save-restore pattern.
+// Regression test for: required_keyword state drift bug (v1.2.1 fix)
+func TestAccMonitorResource_requiredKeyword(t *testing.T) {
+	server := newMockHyperpingServer(t)
+	defer server.Close()
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			// Create with required_keyword
+			{
+				Config: testAccMonitorResourceConfigWithRequiredKeyword(server.URL, "healthy"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "name", "keyword-test"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "required_keyword", "healthy"),
+				),
+			},
+			// ImportState testing - verify required_keyword persists
+			{
+				ResourceName:      "hyperping_monitor.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
+			// Update required_keyword
+			{
+				Config: testAccMonitorResourceConfigWithRequiredKeyword(server.URL, "status:ok"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "required_keyword", "status:ok"),
+				),
+			},
+			// Clear required_keyword
+			{
+				Config: testAccMonitorResourceConfigBasic(server.URL, "keyword-test"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckNoResourceAttr("hyperping_monitor.test", "required_keyword"),
+				),
+			},
+		},
+	})
+}

@@ -572,3 +572,20 @@ func getOrDefaultSlice(m map[string]interface{}, key string, defaultVal []string
 	}
 	return defaultVal
 }
+
+func testAccMonitorResourceConfigWithRequiredKeyword(baseURL, keyword string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "test_api_key"
+  base_url = %[1]q
+}
+
+resource "hyperping_monitor" "test" {
+  name             = "keyword-test"
+  url              = "https://api.example.com/health"
+  http_method      = "POST"
+  request_body     = jsonencode({ service = "test" })
+  required_keyword = %[2]q
+}
+`, baseURL, keyword)
+}

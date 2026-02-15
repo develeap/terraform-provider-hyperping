@@ -10,6 +10,17 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-02-14
+
+### Fixed
+
+- **hyperping_monitor**: Fixed state drift for `required_keyword` field
+  - Root cause: Hyperping API accepts `required_keyword` in POST/PUT but doesn't return it in GET responses (write-only field)
+  - Symptom: Terraform detects inconsistency after apply ("Provider produced inconsistent result")
+  - Solution: Implemented save-restore pattern to preserve plan value (same pattern as `incident.text` fix in v1.0.5)
+  - Impact: `required_keyword` now persists correctly in state across create, read, update operations
+  - Test coverage: Added comprehensive regression test `TestAccMonitorResource_requiredKeyword`
+
 ## [1.2.0] - 2026-02-14
 
 ### Added - User Experience Enhancements
@@ -472,7 +483,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.9...v1.1.0
 [1.0.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.8...v1.0.9
