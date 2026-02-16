@@ -184,6 +184,45 @@ TF_ACC=1 go test ./cmd/migrate-betterstack -tags=integration
 - Critical paths: 80%+ (authentication, CRUD operations)
 - Error handling: High coverage (87.7% in `internal/errors/`)
 
+### Test Patterns & Organization (v1.2.1+)
+
+**As of v1.2.1, comprehensive QA initiative added 42 new acceptance tests. See `docs/QA_TESTING_REPORT.md` for details.**
+
+**Protocol-Specific Tests:**
+- Location: `internal/provider/monitor_resource_protocols_test.go`
+- Tests: 6 (all passing)
+- Coverage: Port, ICMP, HTTP protocol handling
+- Purpose: Regression tests for v1.0.8 bug (HTTP defaults incorrectly applied to non-HTTP protocols)
+- Run: `TF_ACC=1 go test -run="TestAccMonitorResource_.*Protocol" ./internal/provider/ -v`
+
+**Edge Case & Boundary Tests:**
+- Location: `internal/provider/monitor_resource_edge_cases_test.go`
+- Tests: 14 (all passing)
+- Coverage: Boundary values (frequencies, regions, status codes), empty/null handling, previously untested fields (alerts_wait, escalation_policy, port)
+- Purpose: Validate input constraints and field combinations
+- Run: `TF_ACC=1 go test -run="TestAccMonitorResource_.*(Boundaries|Regions|EdgeCases)" ./internal/provider/ -v`
+
+**State Drift Detection:**
+- Location: `internal/provider/*_drift_test.go` (monitor, incident, maintenance)
+- Tests: 15 (5 per resource, all passing)
+- Coverage: External change detection (pause, field updates, deletion, write-only fields)
+- Purpose: Ensure Terraform detects out-of-band configuration changes
+- Run: `TF_ACC=1 go test -run="TestAcc.*driftDetection" ./internal/provider/ -v`
+
+**Integration Tests:**
+- Location: `internal/provider/integration_test.go`
+- Tests: 7 (2 passing, 5 need minor schema fixes)
+- Coverage: Cross-resource relationships, bulk operations, error recovery
+- Purpose: Validate resource interactions and workflows
+- Run: `TF_ACC=1 go test -run="TestAccIntegration" ./internal/provider/ -v`
+
+**Key Testing Principles:**
+1. **Mock servers only**: All acceptance tests use mock HTTP servers (no real API dependency)
+2. **Parallel execution**: Tests use `resource.ParallelTest()` for performance
+3. **Write-only field pattern**: Save-restore pattern for fields API accepts but doesn't return (e.g., `required_keyword`, `incident.text`, `maintenance.text`)
+4. **Protocol-aware testing**: HTTP-specific fields must be tested on all protocol types (http, port, icmp)
+5. **Drift detection**: All resources should have external change detection tests
+
 ## Migration Tools Context
 
 Three CLI tools migrate monitoring from competitors to Hyperping:
