@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"strings"
 	"testing"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -458,11 +459,14 @@ resource "hyperping_statuspage" "test" {
 }
 
 func testAccStatusPageResourceConfig_ssoAuthentication(baseURL string, googleSSO, samlSSO bool, allowedDomains []string) string {
-	domainsJSON := `["` + allowedDomains[0] + `"`
-	for i := 1; i < len(allowedDomains); i++ {
-		domainsJSON += `, "` + allowedDomains[i] + `"`
+	domainsJSON := "[]"
+	if len(allowedDomains) > 0 {
+		domains := make([]string, len(allowedDomains))
+		for i := range allowedDomains {
+			domains[i] = `"` + allowedDomains[i] + `"`
+		}
+		domainsJSON = `[` + strings.Join(domains, ", ") + `]`
 	}
-	domainsJSON += `]`
 
 	return testAccStatusPageProviderConfig(baseURL) + `
 resource "hyperping_statuspage" "test" {
