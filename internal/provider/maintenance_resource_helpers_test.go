@@ -50,9 +50,15 @@ func (f *maintenanceTestFixture) toAPIResponse() map[string]interface{} {
 	}
 	if f.NotificationOption != "" {
 		resp["notificationOption"] = f.NotificationOption
+	} else {
+		// Default to "scheduled" if not set
+		resp["notificationOption"] = "scheduled"
 	}
 	if f.NotificationMinutes > 0 {
 		resp["notificationMinutes"] = f.NotificationMinutes
+	} else {
+		// Default to 60 if not set
+		resp["notificationMinutes"] = 60
 	}
 
 	return resp
@@ -116,8 +122,57 @@ func (m *maintenanceMockServer) handler() http.HandlerFunc {
 		}
 
 		// Custom update handler
-		if r.Method == http.MethodPut && m.updateHandler != nil {
-			m.updateHandler(w, r)
+		if r.Method == http.MethodPut {
+			if m.updateHandler != nil {
+				m.updateHandler(w, r)
+				return
+			}
+			// Default update handler
+			for uuid, f := range m.fixtures {
+				path := client.MaintenanceBasePath + "/" + uuid
+				if r.URL.Path == path {
+					if m.deleted[uuid] {
+						w.WriteHeader(http.StatusNotFound)
+						json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+						return
+					}
+					// Parse update request
+					var req map[string]interface{}
+					json.NewDecoder(r.Body).Decode(&req)
+
+					// Update fixture fields if provided
+					if name, ok := req["name"].(string); ok {
+						f.Name = name
+					}
+					if titleMap, ok := req["title"].(map[string]interface{}); ok {
+						if en, ok := titleMap["en"].(string); ok {
+							f.Title = en
+						}
+					}
+					if textMap, ok := req["text"].(map[string]interface{}); ok {
+						if en, ok := textMap["en"].(string); ok {
+							f.Text = en
+						}
+					}
+					if startDate, ok := req["start_date"].(string); ok {
+						f.StartDate = startDate
+					}
+					if endDate, ok := req["end_date"].(string); ok {
+						f.EndDate = endDate
+					}
+					if notifOpt, ok := req["notificationOption"].(string); ok {
+						f.NotificationOption = notifOpt
+					}
+					if notifMins, ok := req["notificationMinutes"].(float64); ok {
+						f.NotificationMinutes = int(notifMins)
+					}
+
+					json.NewEncoder(w).Encode(f.toAPIResponse())
+					return
+				}
+			}
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
 			return
 		}
 

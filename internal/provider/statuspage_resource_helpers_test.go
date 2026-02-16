@@ -288,6 +288,9 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 	if website, ok := req["website"].(string); ok {
 		settings["website"] = website
 	}
+	if defaultLang, ok := req["default_language"].(string); ok {
+		settings["default_language"] = defaultLang
+	}
 	if languages, ok := req["languages"].([]interface{}); ok {
 		langStrings := make([]string, len(languages))
 		for i, lang := range languages {
@@ -375,9 +378,50 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 				if name, ok := secMap["name"].(string); ok {
 					section["name"] = map[string]string{"en": name}
 				}
+				if nameMap, ok := secMap["name"].(map[string]interface{}); ok {
+					nameStrMap := make(map[string]string)
+					for k, v := range nameMap {
+						if vStr, ok := v.(string); ok {
+							nameStrMap[k] = vStr
+						}
+					}
+					section["name"] = nameStrMap
+				}
 
 				if isSplit, ok := secMap["is_split"].(bool); ok {
 					section["is_split"] = isSplit
+				}
+
+				if servicesReq, ok := secMap["services"].([]interface{}); ok {
+					services := []map[string]interface{}{}
+					for _, svcInterface := range servicesReq {
+						if svcMap, ok := svcInterface.(map[string]interface{}); ok {
+							service := map[string]interface{}{
+								"id":                  "svc_001",
+								"uuid":                getOrDefault(svcMap, "monitor_uuid", "mon_default"),
+								"is_group":            getOrDefaultBool(svcMap, "is_group", false),
+								"show_uptime":         getOrDefaultBool(svcMap, "show_uptime", true),
+								"show_response_times": getOrDefaultBool(svcMap, "show_response_times", true),
+							}
+
+							// Handle both name (map) and name_shown (string)
+							if svcName, ok := svcMap["name"].(map[string]interface{}); ok {
+								nameStrMap := make(map[string]string)
+								for k, v := range svcName {
+									if vStr, ok := v.(string); ok {
+										nameStrMap[k] = vStr
+									}
+								}
+								service["name"] = nameStrMap
+							} else if nameShown, ok := svcMap["name_shown"].(string); ok {
+								// API sends name_shown as string, convert to map
+								service["name"] = map[string]string{"en": nameShown}
+							}
+
+							services = append(services, service)
+						}
+					}
+					section["services"] = services
 				}
 
 				sections = append(sections, section)
@@ -462,9 +506,51 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 				if name, ok := secMap["name"].(string); ok {
 					section["name"] = map[string]string{"en": name}
 				}
+				if nameMap, ok := secMap["name"].(map[string]interface{}); ok {
+					nameStrMap := make(map[string]string)
+					for k, v := range nameMap {
+						if vStr, ok := v.(string); ok {
+							nameStrMap[k] = vStr
+						}
+					}
+					section["name"] = nameStrMap
+				}
 				if isSplit, ok := secMap["is_split"].(bool); ok {
 					section["is_split"] = isSplit
 				}
+
+				if servicesReq, ok := secMap["services"].([]interface{}); ok {
+					services := []map[string]interface{}{}
+					for _, svcInterface := range servicesReq {
+						if svcMap, ok := svcInterface.(map[string]interface{}); ok {
+							service := map[string]interface{}{
+								"id":                  "svc_001",
+								"uuid":                getOrDefault(svcMap, "monitor_uuid", "mon_default"),
+								"is_group":            getOrDefaultBool(svcMap, "is_group", false),
+								"show_uptime":         getOrDefaultBool(svcMap, "show_uptime", true),
+								"show_response_times": getOrDefaultBool(svcMap, "show_response_times", true),
+							}
+
+							// Handle both name (map) and name_shown (string)
+							if svcName, ok := svcMap["name"].(map[string]interface{}); ok {
+								nameStrMap := make(map[string]string)
+								for k, v := range svcName {
+									if vStr, ok := v.(string); ok {
+										nameStrMap[k] = vStr
+									}
+								}
+								service["name"] = nameStrMap
+							} else if nameShown, ok := svcMap["name_shown"].(string); ok {
+								// API sends name_shown as string, convert to map
+								service["name"] = map[string]string{"en": nameShown}
+							}
+
+							services = append(services, service)
+						}
+					}
+					section["services"] = services
+				}
+
 				sections = append(sections, section)
 			}
 		}
@@ -484,6 +570,36 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 	}
 	if accentColor, ok := req["accent_color"].(string); ok {
 		settings["accent_color"] = accentColor
+	}
+	if defaultLang, ok := req["default_language"].(string); ok {
+		settings["default_language"] = defaultLang
+	}
+	if website, ok := req["website"].(string); ok {
+		settings["website"] = website
+	}
+	if logo, ok := req["logo"].(string); ok {
+		settings["logo"] = logo
+	}
+	if logoHeight, ok := req["logo_height"].(string); ok {
+		settings["logo_height"] = logoHeight
+	}
+	if favicon, ok := req["favicon"].(string); ok {
+		settings["favicon"] = favicon
+	}
+	if ga, ok := req["google_analytics"].(string); ok {
+		settings["google_analytics"] = ga
+	}
+	if autoRefresh, ok := req["auto_refresh"].(bool); ok {
+		settings["auto_refresh"] = autoRefresh
+	}
+	if bannerHeader, ok := req["banner_header"].(bool); ok {
+		settings["banner_header"] = bannerHeader
+	}
+	if hidePoweredBy, ok := req["hide_powered_by"].(bool); ok {
+		settings["hide_powered_by"] = hidePoweredBy
+	}
+	if hideFromSearch, ok := req["hide_from_search_engines"].(bool); ok {
+		settings["hide_from_search_engines"] = hideFromSearch
 	}
 	if languages, ok := req["languages"]; ok {
 		if langArr, ok := languages.([]interface{}); ok {

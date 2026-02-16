@@ -697,6 +697,7 @@ func (r *StatusPageResource) buildCreateRequest(_ context.Context, plan *StatusP
 		HideFromSearchEngines: &req.HideFromSearchEngines,
 		Description:           &req.Description,
 		Languages:             &req.Languages,
+		DefaultLanguage:       &req.DefaultLanguage,
 		Subscribe:             &req.Subscribe,
 		Authentication:        &req.Authentication,
 	}, diags)
@@ -732,6 +733,7 @@ func (r *StatusPageResource) buildUpdateRequest(_ context.Context, plan *StatusP
 		HideFromSearchEngines: &req.HideFromSearchEngines,
 		Description:           &req.Description,
 		Languages:             &req.Languages,
+		DefaultLanguage:       &req.DefaultLanguage,
 		Subscribe:             &req.Subscribe,
 		Authentication:        &req.Authentication,
 	}, diags)
@@ -773,6 +775,7 @@ type statusPageSettingsTarget struct {
 	HideFromSearchEngines **bool
 	Description           *map[string]string
 	Languages             *[]string
+	DefaultLanguage       **string
 	Subscribe             **client.CreateStatusPageSubscribeSettings
 	Authentication        **client.CreateStatusPageAuthenticationSettings
 }
@@ -845,6 +848,10 @@ func populateSettingsFields(settings types.Object, target *statusPageSettingsTar
 		if len(langs) > 0 {
 			*target.Languages = langs
 		}
+	}
+
+	if defaultLangAttr, ok := attrs["default_language"].(types.String); ok && !defaultLangAttr.IsNull() {
+		*target.DefaultLanguage = extractOptionalStringPtr(defaultLangAttr)
 	}
 
 	subscribe, auth := mapTFToSettings(settings, diags)

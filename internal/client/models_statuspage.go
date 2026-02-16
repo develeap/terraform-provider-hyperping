@@ -96,6 +96,7 @@ type CreateStatusPageRequest struct {
 	Website               *string                                 `json:"website,omitempty"`
 	Description           map[string]string                       `json:"description,omitempty"`
 	Languages             []string                                `json:"languages,omitempty"`
+	DefaultLanguage       *string                                 `json:"default_language,omitempty"`
 	Theme                 *string                                 `json:"theme,omitempty"`
 	Font                  *string                                 `json:"font,omitempty"`
 	AccentColor           *string                                 `json:"accent_color,omitempty"`
@@ -169,6 +170,7 @@ type UpdateStatusPageRequest struct {
 	Website               *string                                 `json:"website,omitempty"`
 	Description           map[string]string                       `json:"description,omitempty"`
 	Languages             []string                                `json:"languages,omitempty"`
+	DefaultLanguage       *string                                 `json:"default_language,omitempty"`
 	Theme                 *string                                 `json:"theme,omitempty"`
 	Font                  *string                                 `json:"font,omitempty"`
 	AccentColor           *string                                 `json:"accent_color,omitempty"`
