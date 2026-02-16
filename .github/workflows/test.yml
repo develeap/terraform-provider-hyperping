@@ -96,7 +96,7 @@ jobs:
         run: govulncheck ./...
         continue-on-error: true  # Don't fail build for stdlib vulnerabilities we can't control
       - name: Run gosec
-        uses: securego/gosec@53fc0c3c83097ad5ae9c44c009f659345b36b4ca # v2.18.0
+        uses: securego/gosec@398ad549bbf1a51dc978fd966169f660c59774de # v2.23.0
         with:
           args: -no-fail -exclude-generated -exclude-dir=tools -fmt sarif -out gosec-results.sarif ./...
       - name: Upload gosec results to GitHub Security
@@ -137,7 +137,7 @@ jobs:
 
       # Cache VCR cassettes for faster test execution
       - name: Cache VCR cassettes
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: internal/client/testdata/cassettes
           key: vcr-cassettes-${{ hashFiles('internal/client/testdata/cassettes/**') }}
@@ -249,7 +249,7 @@ jobs:
           cache: true
 
       - name: Restore scraper snapshots
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             tools/cmd/scraper/.scraper_cache.json

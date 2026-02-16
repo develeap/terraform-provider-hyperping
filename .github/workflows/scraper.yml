@@ -54,7 +54,7 @@ jobs:
           chromium-browser --version
 
       - name: Restore cache and snapshots
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             tools/cmd/scraper/.scraper_cache.json
@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload scraper logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scraper-logs-${{ github.run_number }}
           path: tools/cmd/scraper/scraper.log
@@ -90,7 +90,7 @@ jobs:
 
       - name: Upload diff reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: diff-reports-${{ github.run_number }}
           path: tools/cmd/scraper/api_changes_*.md
@@ -99,7 +99,7 @@ jobs:
 
       - name: Upload scraped data
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scraped-data-${{ github.run_number }}
           path: tools/cmd/scraper/docs_scraped/
@@ -161,7 +161,7 @@ jobs:
           cache-dependency-path: tools/cmd/scraper/go.sum
 
       - name: Restore snapshots from cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             tools/cmd/scraper/.scraper_cache.json
@@ -192,7 +192,7 @@ jobs:
 
       - name: Upload analysis logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: analysis-logs-${{ github.run_number }}
           path: tools/cmd/scraper/analyze.log
@@ -200,7 +200,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-report-${{ github.run_number }}
           path: tools/cmd/scraper/coverage_report*.md
