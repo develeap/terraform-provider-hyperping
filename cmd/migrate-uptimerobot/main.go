@@ -40,6 +40,13 @@ var (
 	verbose           = flag.Bool("verbose", false, "Enable verbose output")
 )
 
+// runner holds the resolved configuration for a non-interactive run.
+type runner struct {
+	urAPIKey string
+	hpAPIKey string
+	ctx      context.Context
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: migrate-uptimerobot [options]\n\n")
@@ -61,12 +68,42 @@ func main() {
 func run() int {
 	flag.Parse()
 
-	// Check if interactive mode should be used
 	if shouldUseInteractive() {
 		return runInteractive()
 	}
 
-	// Get API keys from flags or environment
+	r, exitCode := newRunner()
+	if exitCode != 0 {
+		return exitCode
+	}
+	if cancel, ok := r.ctx.Value(cancelKey{}).(context.CancelFunc); ok {
+		defer cancel()
+	}
+
+	monitors, alertContacts, exitCode := r.fetchMonitors()
+	if exitCode != 0 {
+		return exitCode
+	}
+
+	if *validate {
+		return runValidation(monitors, alertContacts)
+	}
+
+	conversionResult, migrationReport := r.convertAndReport(monitors, alertContacts)
+
+	if *dryRun {
+		fmt.Fprintln(os.Stderr, "\nDry run complete. No files written.")
+		return 0
+	}
+
+	return r.writeFiles(conversionResult, migrationReport, alertContacts)
+}
+
+// cancelKey is an unexported type used as a context key to avoid collisions.
+type cancelKey struct{}
+
+// newRunner validates flags, resolves API keys, and sets up the context.
+func newRunner() (*runner, int) {
 	urAPIKey := *uptimerobotAPIKey
 	if urAPIKey == "" {
 		urAPIKey = os.Getenv("UPTIMEROBOT_API_KEY")
@@ -77,46 +114,43 @@ func run() int {
 		hpAPIKey = os.Getenv("HYPERPING_API_KEY")
 	}
 
-	// Validate required parameters
 	if urAPIKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: UPTIMEROBOT_API_KEY is required")
 		fmt.Fprintln(os.Stderr, "Set via environment variable or -uptimerobot-api-key flag")
-		return 1
+		return nil, 1
 	}
 
 	if !*validate && !*dryRun && hpAPIKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: HYPERPING_API_KEY is required for migration")
 		fmt.Fprintln(os.Stderr, "Set via environment variable or -hyperping-api-key flag")
-		return 1
+		return nil, 1
 	}
 
-	// Create UptimeRobot client
-	urClient := uptimerobot.NewClient(urAPIKey)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	ctx = context.WithValue(ctx, cancelKey{}, cancel)
+	return &runner{urAPIKey: urAPIKey, hpAPIKey: hpAPIKey, ctx: ctx}, 0
+}
 
-	// Fetch monitors from UptimeRobot
+// fetchMonitors fetches monitors and alert contacts from UptimeRobot.
+func (r *runner) fetchMonitors() ([]uptimerobot.Monitor, []uptimerobot.AlertContact, int) {
+	urClient := uptimerobot.NewClient(r.urAPIKey)
+
 	if *verbose {
 		fmt.Fprintln(os.Stderr, "Fetching monitors from UptimeRobot...")
 	}
 
-	monitors, err := urClient.GetMonitors(ctx)
+	monitors, err := urClient.GetMonitors(r.ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching monitors: %v\n", err)
-		return 1
+		return nil, nil, 1
 	}
 
 	if *verbose {
 		fmt.Fprintf(os.Stderr, "Fetched %d monitors\n", len(monitors))
-	}
-
-	// Fetch alert contacts
-	if *verbose {
 		fmt.Fprintln(os.Stderr, "Fetching alert contacts from UptimeRobot...")
 	}
 
-	alertContacts, err := urClient.GetAlertContacts(ctx)
+	alertContacts, err := urClient.GetAlertContacts(r.ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Error fetching alert contacts: %v\n", err)
 		alertContacts = []uptimerobot.AlertContact{}
@@ -126,23 +160,19 @@ func run() int {
 		fmt.Fprintf(os.Stderr, "Fetched %d alert contacts\n", len(alertContacts))
 	}
 
-	// Validate mode
-	if *validate {
-		return runValidation(monitors, alertContacts)
-	}
+	return monitors, alertContacts, 0
+}
 
-	// Convert monitors to Hyperping resources
+// convertAndReport converts monitors and prints the migration summary.
+func (r *runner) convertAndReport(monitors []uptimerobot.Monitor, alertContacts []uptimerobot.AlertContact) (*converter.ConversionResult, *report.Report) {
 	if *verbose {
 		fmt.Fprintln(os.Stderr, "Converting monitors to Hyperping resources...")
 	}
 
 	conv := converter.NewConverter()
 	conversionResult := conv.Convert(monitors, alertContacts)
-
-	// Generate migration report
 	migrationReport := report.Generate(monitors, alertContacts, conversionResult)
 
-	// Print summary
 	fmt.Fprintln(os.Stderr, "\nMigration Summary:")
 	fmt.Fprintf(os.Stderr, "  Total monitors: %d\n", migrationReport.Summary.TotalMonitors)
 	fmt.Fprintf(os.Stderr, "  Migrated monitors: %d\n", migrationReport.Summary.MigratedMonitors)
@@ -164,41 +194,66 @@ func run() int {
 		}
 	}
 
-	// Dry run mode
-	if *dryRun {
-		fmt.Fprintln(os.Stderr, "\nDry run complete. No files written.")
-		return 0
+	return conversionResult, migrationReport
+}
+
+// writeFiles writes all generated output files.
+func (r *runner) writeFiles(conversionResult *converter.ConversionResult, migrationReport *report.Report, alertContacts []uptimerobot.AlertContact) int {
+	if exitCode := r.writeTerraformConfig(conversionResult); exitCode != 0 {
+		return exitCode
+	}
+	if exitCode := r.writeImportScript(conversionResult); exitCode != 0 {
+		return exitCode
+	}
+	if exitCode := r.writeMigrationReport(migrationReport); exitCode != 0 {
+		return exitCode
+	}
+	if exitCode := r.writeManualSteps(conversionResult, alertContacts); exitCode != 0 {
+		return exitCode
 	}
 
-	// Generate Terraform configuration
+	fmt.Fprintln(os.Stderr, "\nMigration files generated successfully!")
+	fmt.Fprintln(os.Stderr, "\nNext steps:")
+	fmt.Fprintf(os.Stderr, "  1. Review %s and adjust as needed\n", *output)
+	fmt.Fprintf(os.Stderr, "  2. Run: terraform init && terraform plan\n")
+	fmt.Fprintf(os.Stderr, "  3. Run: terraform apply\n")
+	fmt.Fprintf(os.Stderr, "  4. Review %s for manual configuration steps\n", *manualSteps)
+	return 0
+}
+
+// writeTerraformConfig generates and writes the Terraform configuration file.
+func (r *runner) writeTerraformConfig(conversionResult *converter.ConversionResult) int {
 	if *verbose {
 		fmt.Fprintln(os.Stderr, "\nGenerating Terraform configuration...")
 	}
-
 	tfConfig := generator.GenerateTerraform(conversionResult)
-	if err = os.WriteFile(*output, []byte(tfConfig), 0o600); err != nil {
+	if err := os.WriteFile(*output, []byte(tfConfig), 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing Terraform config: %v\n", err)
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "  ✓ Terraform configuration written to %s\n", *output)
+	return 0
+}
 
-	// Generate import script
+// writeImportScript generates and writes the import script file.
+func (r *runner) writeImportScript(conversionResult *converter.ConversionResult) int {
 	if *verbose {
 		fmt.Fprintln(os.Stderr, "Generating import script...")
 	}
-
 	importScriptContent := generator.GenerateImportScript(conversionResult)
-	if err = os.WriteFile(*importScript, []byte(importScriptContent), 0o600); err != nil {
+	if err := os.WriteFile(*importScript, []byte(importScriptContent), 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing import script: %v\n", err)
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "  ✓ Import script written to %s\n", *importScript)
+	return 0
+}
 
-	// Generate migration report
+// writeMigrationReport marshals and writes the JSON migration report.
+func (r *runner) writeMigrationReport(migrationReport *report.Report) int {
 	if *verbose {
 		fmt.Fprintln(os.Stderr, "Writing migration report...")
 	}
-
 	reportJSON, err := json.MarshalIndent(migrationReport, "", "  ")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling report: %v\n", err)
@@ -209,8 +264,11 @@ func run() int {
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "  ✓ Migration report written to %s\n", *reportFile)
+	return 0
+}
 
-	// Generate manual steps documentation
+// writeManualSteps generates and writes the manual steps documentation.
+func (r *runner) writeManualSteps(conversionResult *converter.ConversionResult, alertContacts []uptimerobot.AlertContact) int {
 	if *verbose {
 		fmt.Fprintln(os.Stderr, "Generating manual steps documentation...")
 	}
@@ -221,21 +279,12 @@ func run() int {
 		return 1
 	}
 	fmt.Fprintf(os.Stderr, "  ✓ Manual steps written to %s\n", *manualSteps)
-
-	fmt.Fprintln(os.Stderr, "\nMigration files generated successfully!")
-	fmt.Fprintln(os.Stderr, "\nNext steps:")
-	fmt.Fprintf(os.Stderr, "  1. Review %s and adjust as needed\n", *output)
-	fmt.Fprintf(os.Stderr, "  2. Run: terraform init && terraform plan\n")
-	fmt.Fprintf(os.Stderr, "  3. Run: terraform apply\n")
-	fmt.Fprintf(os.Stderr, "  4. Review %s for manual configuration steps\n", *manualSteps)
-
 	return 0
 }
 
 func runValidation(monitors []uptimerobot.Monitor, alertContacts []uptimerobot.AlertContact) int {
 	fmt.Fprintln(os.Stderr, "Validating UptimeRobot monitors...")
 
-	// Count by type
 	typeCounts := make(map[int]int)
 	for _, m := range monitors {
 		typeCounts[m.Type]++

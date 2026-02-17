@@ -27,22 +27,9 @@ type interactiveConfig struct {
 	dryRun           bool
 }
 
-// runInteractive runs the migration tool in interactive mode.
-func runInteractive(_ *recovery.Logger) int {
-	prompter := interactive.NewPrompter(interactive.DefaultConfig())
-
-	// Welcome message
-	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, "🚀 Hyperping Migration Tool - Better Stack Edition\n")
-	fmt.Fprintf(os.Stderr, "═══════════════════════════════════════════════════\n")
-	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, "This wizard will guide you through migrating your Better Stack\n")
-	fmt.Fprintf(os.Stderr, "monitors to Hyperping.\n")
-	fmt.Fprintf(os.Stderr, "\n")
-
-	config := &interactiveConfig{}
-
-	// Step 1: Source Platform Configuration
+// promptSourceCredentials asks the user for their Better Stack token and tests connectivity.
+// Returns the fetched monitors and heartbeats on success.
+func promptSourceCredentials(prompter *interactive.Prompter) (string, []betterstack.Monitor, []betterstack.Heartbeat, error) {
 	prompter.PrintHeader("Step 1/5: Source Platform Configuration")
 	fmt.Fprintf(os.Stderr, "\n")
 
@@ -52,25 +39,20 @@ func runInteractive(_ *recovery.Logger) int {
 		interactive.SourceAPIKeyValidator("betterstack"),
 	)
 	if err != nil {
-		prompter.PrintError(fmt.Sprintf("Failed to get API token: %v", err))
-		return 1
+		return "", nil, nil, fmt.Errorf("failed to get API token: %w", err)
 	}
-	config.betterstackToken = token
 
-	// Test Better Stack API connection
 	spinner := interactive.NewSpinner("Testing Better Stack API connection...", os.Stderr)
 	spinner.Start()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	bsClient := betterstack.NewClient(config.betterstackToken)
+	bsClient := betterstack.NewClient(token)
 	monitors, err := bsClient.FetchMonitors(ctx)
 	if err != nil {
 		spinner.ErrorMessage(fmt.Sprintf("Connection failed: %v", err))
-		prompter.PrintError("Unable to connect to Better Stack API")
-		prompter.PrintInfo("Please verify your API token and try again")
-		return 1
+		return "", nil, nil, fmt.Errorf("unable to connect to Better Stack API")
 	}
 
 	heartbeats, err := bsClient.FetchHeartbeats(ctx)
@@ -80,128 +62,99 @@ func runInteractive(_ *recovery.Logger) int {
 		heartbeats = []betterstack.Heartbeat{}
 	}
 
-	totalResources := len(monitors) + len(heartbeats)
 	spinner.SuccessMessage(fmt.Sprintf("Connected! Found %d monitors and %d heartbeats", len(monitors), len(heartbeats)))
+	return token, monitors, heartbeats, nil
+}
 
-	// Step 2: Destination Platform Configuration
+// promptDestinationConfig asks about dry-run mode and optional Hyperping API key.
+func promptDestinationConfig(prompter *interactive.Prompter) (bool, error) {
 	prompter.PrintHeader("Step 2/5: Destination Platform Configuration")
 	fmt.Fprintf(os.Stderr, "\n")
 
-	// Ask if this is a dry run
-	dryRun, err := prompter.AskConfirm(
+	dryRunMode, err := prompter.AskConfirm(
 		"Perform dry run only (validate without creating files)?",
 		false,
 	)
 	if err != nil {
-		prompter.PrintError(fmt.Sprintf("Failed to get confirmation: %v", err))
-		return 1
+		return false, fmt.Errorf("failed to get confirmation: %w", err)
 	}
-	config.dryRun = dryRun
 
-	if !dryRun {
+	if !dryRunMode {
 		hyperpingKey, keyErr := prompter.AskPassword(
 			"Enter your Hyperping API key:",
 			"Get it from: https://app.hyperping.io/settings/api",
 			interactive.HyperpingAPIKeyValidator,
 		)
 		if keyErr != nil {
-			prompter.PrintError(fmt.Sprintf("Failed to get API key: %v", keyErr))
-			return 1
+			return false, fmt.Errorf("failed to get API key: %w", keyErr)
 		}
 		_ = hyperpingKey
 	}
 
-	// Step 3: Output Configuration
+	return dryRunMode, nil
+}
+
+// promptOutputConfig asks for the four output file paths.
+func promptOutputConfig(prompter *interactive.Prompter) (outputF, importF, reportF, manualF string, err error) {
 	prompter.PrintHeader("Step 3/5: Output Configuration")
 	fmt.Fprintf(os.Stderr, "\n")
 
-	outputFile, err := prompter.AskString(
-		"Terraform output file:",
-		"migrated-resources.tf",
-		"Main Terraform configuration file",
-		interactive.FilePathValidator,
-	)
+	outputF, err = prompter.AskString("Terraform output file:", "migrated-resources.tf", "Main Terraform configuration file", interactive.FilePathValidator)
 	if err != nil {
-		prompter.PrintError(fmt.Sprintf("Failed to get output file: %v", err))
-		return 1
+		return "", "", "", "", fmt.Errorf("failed to get output file: %w", err)
 	}
-	config.outputFile = outputFile
 
-	importScriptFile, err := prompter.AskString(
-		"Import script file:",
-		"import.sh",
-		"Shell script to import existing resources",
-		interactive.FilePathValidator,
-	)
+	importF, err = prompter.AskString("Import script file:", "import.sh", "Shell script to import existing resources", interactive.FilePathValidator)
 	if err != nil {
-		prompter.PrintError(fmt.Sprintf("Failed to get import script file: %v", err))
-		return 1
+		return "", "", "", "", fmt.Errorf("failed to get import script file: %w", err)
 	}
-	config.importScript = importScriptFile
 
-	reportFileValue, err := prompter.AskString(
-		"Migration report file:",
-		"migration-report.json",
-		"Detailed JSON report of the migration",
-		interactive.FilePathValidator,
-	)
+	reportF, err = prompter.AskString("Migration report file:", "migration-report.json", "Detailed JSON report of the migration", interactive.FilePathValidator)
 	if err != nil {
-		prompter.PrintError(fmt.Sprintf("Failed to get report file: %v", err))
-		return 1
+		return "", "", "", "", fmt.Errorf("failed to get report file: %w", err)
 	}
-	config.reportFile = reportFileValue
 
-	manualStepsFileValue, err := prompter.AskString(
-		"Manual steps file:",
-		"manual-steps.md",
-		"Documentation of manual configuration steps",
-		interactive.FilePathValidator,
-	)
+	manualF, err = prompter.AskString("Manual steps file:", "manual-steps.md", "Documentation of manual configuration steps", interactive.FilePathValidator)
 	if err != nil {
-		prompter.PrintError(fmt.Sprintf("Failed to get manual steps file: %v", err))
-		return 1
+		return "", "", "", "", fmt.Errorf("failed to get manual steps file: %w", err)
 	}
-	config.manualStepsFile = manualStepsFileValue
 
-	// Step 4: Migration Preview
+	return outputF, importF, reportF, manualF, nil
+}
+
+// promptMigrationPreview shows a summary and asks the user to confirm.
+func promptMigrationPreview(prompter *interactive.Prompter, config *interactiveConfig, monitors []betterstack.Monitor, heartbeats []betterstack.Heartbeat) (bool, error) {
 	prompter.PrintHeader("Step 4/5: Migration Preview")
 	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, "  📊 Summary:\n")
+	fmt.Fprintf(os.Stderr, "  Summary:\n")
 	fmt.Fprintf(os.Stderr, "    - Total monitors: %d\n", len(monitors))
 	fmt.Fprintf(os.Stderr, "    - Total heartbeats: %d\n", len(heartbeats))
-	fmt.Fprintf(os.Stderr, "    - Total resources: %d\n", totalResources)
-	if dryRun {
+	fmt.Fprintf(os.Stderr, "    - Total resources: %d\n", len(monitors)+len(heartbeats))
+	if config.dryRun {
 		fmt.Fprintf(os.Stderr, "    - Mode: Dry run (no files will be created)\n")
 	} else {
 		fmt.Fprintf(os.Stderr, "    - Mode: Full migration\n")
 	}
 	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, "  📁 Output files:\n")
+	fmt.Fprintf(os.Stderr, "  Output files:\n")
 	fmt.Fprintf(os.Stderr, "    - %s (Terraform configuration)\n", config.outputFile)
 	fmt.Fprintf(os.Stderr, "    - %s (Import script)\n", config.importScript)
 	fmt.Fprintf(os.Stderr, "    - %s (Migration report)\n", config.reportFile)
 	fmt.Fprintf(os.Stderr, "    - %s (Manual steps)\n", config.manualStepsFile)
 	fmt.Fprintf(os.Stderr, "\n")
 
-	proceed, err := prompter.AskConfirm(
-		"Proceed with migration?",
-		true,
-	)
+	proceed, err := prompter.AskConfirm("Proceed with migration?", true)
 	if err != nil {
-		prompter.PrintError(fmt.Sprintf("Failed to get confirmation: %v", err))
-		return 1
+		return false, fmt.Errorf("failed to get confirmation: %w", err)
 	}
+	return proceed, nil
+}
 
-	if !proceed {
-		prompter.PrintInfo("Migration cancelled by user")
-		return 0
-	}
-
-	// Step 5: Running Migration
-	prompter.PrintHeader("Step 5/5: Running Migration")
-	fmt.Fprintf(os.Stderr, "\n")
-
-	// Convert monitors
+// runInteractiveConversion converts resources and generates output content.
+func runInteractiveConversion(
+	monitors []betterstack.Monitor,
+	heartbeats []betterstack.Heartbeat,
+) ([]converter.ConvertedMonitor, []converter.ConvertedHealthcheck, []converter.ConversionIssue, []converter.ConversionIssue) {
 	conv := converter.New()
 
 	progressBar := interactive.NewProgressBar(int64(len(monitors)), "Converting monitors", os.Stderr)
@@ -218,7 +171,6 @@ func runInteractive(_ *recovery.Logger) int {
 	//nolint:errcheck
 	progressBar.Finish()
 
-	// Convert heartbeats
 	progressBar = interactive.NewProgressBar(int64(len(heartbeats)), "Converting heartbeats", os.Stderr)
 	var convertedHealthchecks []converter.ConvertedHealthcheck
 	var healthcheckIssues []converter.ConversionIssue
@@ -233,74 +185,77 @@ func runInteractive(_ *recovery.Logger) int {
 	//nolint:errcheck
 	progressBar.Finish()
 
-	// Generate files
-	gen := generator.New()
-	tfConfig := gen.GenerateTerraform(convertedMonitors, convertedHealthchecks)
-	importScriptContent := gen.GenerateImportScript(convertedMonitors, convertedHealthchecks)
-	manualSteps := gen.GenerateManualSteps(monitorIssues, healthcheckIssues)
-	migrationReport := report.Generate(
-		monitors,
-		heartbeats,
-		convertedMonitors,
-		convertedHealthchecks,
-		monitorIssues,
-		healthcheckIssues,
-	)
+	return convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues
+}
 
-	// Dry run mode - just validate
-	if config.dryRun {
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "=== DRY RUN MODE ===\n")
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "Would create:\n")
-		fmt.Fprintf(os.Stderr, "  - %s (%d bytes)\n", config.outputFile, len(tfConfig))
-		fmt.Fprintf(os.Stderr, "  - %s (%d bytes)\n", config.importScript, len(importScriptContent))
-		fmt.Fprintf(os.Stderr, "  - %s (%d bytes)\n", config.reportFile, len(migrationReport.JSON()))
-		fmt.Fprintf(os.Stderr, "  - %s (%d bytes)\n", config.manualStepsFile, len(manualSteps))
-		fmt.Fprintf(os.Stderr, "\n")
-		migrationReport.PrintSummary(os.Stderr)
-		return 0
-	}
+// printInteractiveDryRun shows the dry-run output for interactive mode.
+func printInteractiveDryRun(
+	config *interactiveConfig,
+	tfConfig, importScriptContent, manualSteps string,
+	migrationReport *report.Report,
+) {
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "=== DRY RUN MODE ===\n")
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "Would create:\n")
+	fmt.Fprintf(os.Stderr, "  - %s (%d bytes)\n", config.outputFile, len(tfConfig))
+	fmt.Fprintf(os.Stderr, "  - %s (%d bytes)\n", config.importScript, len(importScriptContent))
+	fmt.Fprintf(os.Stderr, "  - %s (%d bytes)\n", config.reportFile, len(migrationReport.JSON()))
+	fmt.Fprintf(os.Stderr, "  - %s (%d bytes)\n", config.manualStepsFile, len(manualSteps))
+	fmt.Fprintf(os.Stderr, "\n")
+	migrationReport.PrintSummary(os.Stderr)
+}
 
-	// Write files
+// writeInteractiveFiles writes all generated files with a spinner.
+func writeInteractiveFiles(
+	config *interactiveConfig,
+	prompter *interactive.Prompter,
+	tfConfig, importScriptContent, manualSteps string,
+	migrationReport *report.Report,
+) int {
 	fileSpinner := interactive.NewSpinner("Writing output files...", os.Stderr)
 	fileSpinner.Start()
 
-	if err := os.WriteFile(config.outputFile, []byte(tfConfig), 0o600); err != nil {
-		fileSpinner.ErrorMessage(fmt.Sprintf("Failed to write %s", config.outputFile))
-		prompter.PrintError(fmt.Sprintf("Error: %v", err))
-		return 1
+	type fileWrite struct {
+		path    string
+		content []byte
 	}
 
-	if err := os.WriteFile(config.importScript, []byte(importScriptContent), 0o600); err != nil {
-		fileSpinner.ErrorMessage(fmt.Sprintf("Failed to write %s", config.importScript))
-		prompter.PrintError(fmt.Sprintf("Error: %v", err))
-		return 1
+	writes := []fileWrite{
+		{config.outputFile, []byte(tfConfig)},
+		{config.importScript, []byte(importScriptContent)},
+		{config.reportFile, []byte(migrationReport.JSON())},
+		{config.manualStepsFile, []byte(manualSteps)},
 	}
 
-	if err := os.WriteFile(config.reportFile, []byte(migrationReport.JSON()), 0o600); err != nil {
-		fileSpinner.ErrorMessage(fmt.Sprintf("Failed to write %s", config.reportFile))
-		prompter.PrintError(fmt.Sprintf("Error: %v", err))
-		return 1
-	}
-
-	if err := os.WriteFile(config.manualStepsFile, []byte(manualSteps), 0o600); err != nil {
-		fileSpinner.ErrorMessage(fmt.Sprintf("Failed to write %s", config.manualStepsFile))
-		prompter.PrintError(fmt.Sprintf("Error: %v", err))
-		return 1
+	for _, w := range writes {
+		if err := os.WriteFile(w.path, w.content, 0o600); err != nil {
+			fileSpinner.ErrorMessage(fmt.Sprintf("Failed to write %s", w.path))
+			prompter.PrintError(fmt.Sprintf("Error: %v", err))
+			return 1
+		}
 	}
 
 	fileSpinner.SuccessMessage("All files written successfully")
+	return 0
+}
 
-	// Final summary
+// printInteractiveSummary prints the final summary after a successful interactive migration.
+func printInteractiveSummary(
+	config *interactiveConfig,
+	prompter *interactive.Prompter,
+	convertedMonitors []converter.ConvertedMonitor,
+	convertedHealthchecks []converter.ConvertedHealthcheck,
+	monitorIssues, healthcheckIssues []converter.ConversionIssue,
+) {
 	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, "✅ Migration complete!\n")
+	fmt.Fprintf(os.Stderr, "Migration complete!\n")
 	fmt.Fprintf(os.Stderr, "\n")
 	fmt.Fprintf(os.Stderr, "Generated files:\n")
-	fmt.Fprintf(os.Stderr, "  📄 %s - Terraform configuration (%d lines)\n", config.outputFile, len(convertedMonitors)+len(convertedHealthchecks))
-	fmt.Fprintf(os.Stderr, "  📜 %s - Import script\n", config.importScript)
-	fmt.Fprintf(os.Stderr, "  📊 %s - Migration report\n", config.reportFile)
-	fmt.Fprintf(os.Stderr, "  📝 %s - Manual configuration steps\n", config.manualStepsFile)
+	fmt.Fprintf(os.Stderr, "  %s - Terraform configuration (%d lines)\n", config.outputFile, len(convertedMonitors)+len(convertedHealthchecks))
+	fmt.Fprintf(os.Stderr, "  %s - Import script\n", config.importScript)
+	fmt.Fprintf(os.Stderr, "  %s - Migration report\n", config.reportFile)
+	fmt.Fprintf(os.Stderr, "  %s - Manual configuration steps\n", config.manualStepsFile)
 	fmt.Fprintf(os.Stderr, "\n")
 
 	if len(monitorIssues) > 0 || len(healthcheckIssues) > 0 {
@@ -314,77 +269,118 @@ func runInteractive(_ *recovery.Logger) int {
 	fmt.Fprintf(os.Stderr, "  3. Run: terraform init && terraform plan\n")
 	fmt.Fprintf(os.Stderr, "  4. Run: terraform apply\n")
 	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, "📚 Documentation: https://github.com/develeap/terraform-provider-hyperping/tree/main/docs/guides\n")
+	fmt.Fprintf(os.Stderr, "Documentation: https://github.com/develeap/terraform-provider-hyperping/tree/main/docs/guides\n")
+	fmt.Fprintf(os.Stderr, "\n")
+}
+
+// runInteractive runs the migration tool in interactive mode.
+func runInteractive(_ *recovery.Logger) int {
+	prompter := interactive.NewPrompter(interactive.DefaultConfig())
+
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "Hyperping Migration Tool - Better Stack Edition\n")
+	fmt.Fprintf(os.Stderr, "===================================================\n")
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "This wizard will guide you through migrating your Better Stack\n")
+	fmt.Fprintf(os.Stderr, "monitors to Hyperping.\n")
 	fmt.Fprintf(os.Stderr, "\n")
 
+	token, monitors, heartbeats, err := promptSourceCredentials(prompter)
+	if err != nil {
+		prompter.PrintError(err.Error())
+		return 1
+	}
+
+	config := &interactiveConfig{betterstackToken: token}
+
+	dryRunMode, err := promptDestinationConfig(prompter)
+	if err != nil {
+		prompter.PrintError(err.Error())
+		return 1
+	}
+	config.dryRun = dryRunMode
+
+	config.outputFile, config.importScript, config.reportFile, config.manualStepsFile, err = promptOutputConfig(prompter)
+	if err != nil {
+		prompter.PrintError(err.Error())
+		return 1
+	}
+
+	proceed, err := promptMigrationPreview(prompter, config, monitors, heartbeats)
+	if err != nil {
+		prompter.PrintError(err.Error())
+		return 1
+	}
+	if !proceed {
+		prompter.PrintInfo("Migration cancelled by user")
+		return 0
+	}
+
+	prompter.PrintHeader("Step 5/5: Running Migration")
+	fmt.Fprintf(os.Stderr, "\n")
+
+	convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues := runInteractiveConversion(monitors, heartbeats)
+
+	gen := generator.New()
+	tfConfig := gen.GenerateTerraform(convertedMonitors, convertedHealthchecks)
+	importScriptContent := gen.GenerateImportScript(convertedMonitors, convertedHealthchecks)
+	manualSteps := gen.GenerateManualSteps(monitorIssues, healthcheckIssues)
+	migrationReport := report.Generate(monitors, heartbeats, convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues)
+
+	if config.dryRun {
+		printInteractiveDryRun(config, tfConfig, importScriptContent, manualSteps, migrationReport)
+		return 0
+	}
+
+	if code := writeInteractiveFiles(config, prompter, tfConfig, importScriptContent, manualSteps, migrationReport); code != 0 {
+		return code
+	}
+
+	printInteractiveSummary(config, prompter, convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues)
 	return 0
 }
 
 // shouldUseInteractive determines if interactive mode should be used.
 func shouldUseInteractive() bool {
-	// Don't use interactive mode if any flags are set
 	if isFlagPassed() {
 		return false
 	}
-
-	// Check if we're in a TTY
 	if !interactive.IsInteractive() {
 		return false
 	}
-
 	return true
 }
 
 // isFlagPassed checks if any command-line flags were passed.
 func isFlagPassed() bool {
-	// Check if any relevant flags were explicitly set
-	if *betterstackToken != "" {
-		return true
+	stringChecks := []struct {
+		val  *string
+		dflt string
+	}{
+		{betterstackToken, ""},
+		{hyperpingAPIKey, ""},
+		{outputFile, "migrated-resources.tf"},
+		{importScript, "import.sh"},
+		{reportFile, "migration-report.json"},
+		{manualStepsFile, "manual-steps.md"},
+		{resumeID, ""},
+		{rollbackID, ""},
 	}
-	if *hyperpingAPIKey != "" {
-		return true
+
+	for _, c := range stringChecks {
+		if *c.val != c.dflt {
+			return true
+		}
 	}
-	if *outputFile != "migrated-resources.tf" {
-		return true
+
+	boolChecks := []*bool{
+		dryRun, validateTF, verbose, debug, resume, rollback, rollbackForce, listCheckpointsFlag,
 	}
-	if *importScript != "import.sh" {
-		return true
-	}
-	if *reportFile != "migration-report.json" {
-		return true
-	}
-	if *manualStepsFile != "manual-steps.md" {
-		return true
-	}
-	if *dryRun {
-		return true
-	}
-	if *validateTF {
-		return true
-	}
-	if *verbose {
-		return true
-	}
-	if *debug {
-		return true
-	}
-	if *resume {
-		return true
-	}
-	if *resumeID != "" {
-		return true
-	}
-	if *rollback {
-		return true
-	}
-	if *rollbackID != "" {
-		return true
-	}
-	if *rollbackForce {
-		return true
-	}
-	if *listCheckpointsFlag {
-		return true
+
+	for _, b := range boolChecks {
+		if *b {
+			return true
+		}
 	}
 
 	// Also check environment variables

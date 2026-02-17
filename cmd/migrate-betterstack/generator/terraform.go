@@ -40,7 +40,6 @@ func (g *Generator) GenerateTerraform(monitors []converter.ConvertedMonitor, hea
 	sb.WriteString("  # API key from HYPERPING_API_KEY environment variable\n")
 	sb.WriteString("}\n\n")
 
-	// Generate monitors
 	if len(monitors) > 0 {
 		sb.WriteString("# ===== MONITORS =====\n\n")
 		for _, m := range monitors {
@@ -48,7 +47,6 @@ func (g *Generator) GenerateTerraform(monitors []converter.ConvertedMonitor, hea
 		}
 	}
 
-	// Generate healthchecks
 	if len(healthchecks) > 0 {
 		sb.WriteString("# ===== HEALTHCHECKS =====\n\n")
 		for _, h := range healthchecks {
@@ -59,88 +57,94 @@ func (g *Generator) GenerateTerraform(monitors []converter.ConvertedMonitor, hea
 	return sb.String()
 }
 
+// monitorOptionalField describes a single optional HCL field for a monitor block.
+type monitorOptionalField struct {
+	name  string
+	value string
+	skip  bool
+}
+
+// buildMonitorOptionalFields collects all optional fields that should be emitted.
+func buildMonitorOptionalFields(m converter.ConvertedMonitor) []monitorOptionalField {
+	return []monitorOptionalField{
+		{name: "protocol", value: quoteString(m.Protocol), skip: m.Protocol == "http"},
+		{name: "http_method", value: quoteString(m.HTTPMethod), skip: m.HTTPMethod == "GET" || m.Protocol != "http"},
+		{name: "expected_status_code", value: quoteString(m.ExpectedStatusCode), skip: m.ExpectedStatusCode == "200"},
+		{name: "follow_redirects", value: "false", skip: m.FollowRedirects},
+		{name: "paused", value: "true", skip: !m.Paused},
+		{name: "port", value: fmt.Sprintf("%d", m.Port), skip: m.Port <= 0 || m.Protocol != "port"},
+	}
+}
+
+// writeMonitorMigrationNotes writes any migration issue comments at the top of a block.
+func writeMonitorMigrationNotes(sb *strings.Builder, issues []string) {
+	if len(issues) == 0 {
+		return
+	}
+	sb.WriteString("# MIGRATION NOTES:\n")
+	for _, issue := range issues {
+		fmt.Fprintf(sb, "# - %s\n", issue)
+	}
+}
+
+// writeMonitorRegions writes the regions block if regions are present.
+func writeMonitorRegions(sb *strings.Builder, regions []string) {
+	if len(regions) == 0 {
+		return
+	}
+	sb.WriteString("\n  regions = [\n")
+	for _, region := range regions {
+		fmt.Fprintf(sb, "    %s,\n", quoteString(region))
+	}
+	sb.WriteString("  ]\n")
+}
+
+// writeMonitorRequestHeaders writes the request_headers block if headers are present.
+func writeMonitorRequestHeaders(sb *strings.Builder, headers []converter.RequestHeader) {
+	if len(headers) == 0 {
+		return
+	}
+	sb.WriteString("\n  request_headers = [\n")
+	for _, header := range headers {
+		sb.WriteString("    {\n")
+		fmt.Fprintf(sb, "      name  = %s\n", quoteString(header.Name))
+		fmt.Fprintf(sb, "      value = %s\n", quoteString(header.Value))
+		sb.WriteString("    },\n")
+	}
+	sb.WriteString("  ]\n")
+}
+
 func (g *Generator) generateMonitorBlock(m converter.ConvertedMonitor) string {
 	var sb strings.Builder
 
-	// Add issues as comments if any
-	if len(m.Issues) > 0 {
-		sb.WriteString("# MIGRATION NOTES:\n")
-		for _, issue := range m.Issues {
-			sb.WriteString(fmt.Sprintf("# - %s\n", issue))
-		}
-	}
+	writeMonitorMigrationNotes(&sb, m.Issues)
 
 	sb.WriteString(fmt.Sprintf("resource \"hyperping_monitor\" %q {\n", m.ResourceName))
 	sb.WriteString(fmt.Sprintf("  name                 = %s\n", quoteString(m.Name)))
 	sb.WriteString(fmt.Sprintf("  url                  = %s\n", quoteString(m.URL)))
 
-	// Protocol (only if not default)
-	if m.Protocol != "http" {
-		sb.WriteString(fmt.Sprintf("  protocol             = %s\n", quoteString(m.Protocol)))
-	}
-
-	// HTTP method (only if not GET)
-	if m.HTTPMethod != "GET" && m.Protocol == "http" {
-		sb.WriteString(fmt.Sprintf("  http_method          = %s\n", quoteString(m.HTTPMethod)))
+	for _, f := range buildMonitorOptionalFields(m) {
+		if !f.skip {
+			sb.WriteString(fmt.Sprintf("  %-20s = %s\n", f.name, f.value))
+		}
 	}
 
 	sb.WriteString(fmt.Sprintf("  check_frequency      = %d\n", m.CheckFrequency))
 
-	// Expected status code (only if not 200)
-	if m.ExpectedStatusCode != "200" {
-		sb.WriteString(fmt.Sprintf("  expected_status_code = %s\n", quoteString(m.ExpectedStatusCode)))
-	}
+	writeMonitorRegions(&sb, m.Regions)
+	writeMonitorRequestHeaders(&sb, m.RequestHeaders)
 
-	// Follow redirects (only if false)
-	if !m.FollowRedirects {
-		sb.WriteString("  follow_redirects     = false\n")
-	}
-
-	// Paused (only if true)
-	if m.Paused {
-		sb.WriteString("  paused               = true\n")
-	}
-
-	// Port (only for port protocol)
-	if m.Port > 0 && m.Protocol == "port" {
-		sb.WriteString(fmt.Sprintf("  port                 = %d\n", m.Port))
-	}
-
-	// Regions
-	if len(m.Regions) > 0 {
-		sb.WriteString("\n  regions = [\n")
-		for _, region := range m.Regions {
-			sb.WriteString(fmt.Sprintf("    %s,\n", quoteString(region)))
-		}
-		sb.WriteString("  ]\n")
-	}
-
-	// Request headers
-	if len(m.RequestHeaders) > 0 {
-		sb.WriteString("\n  request_headers = [\n")
-		for _, header := range m.RequestHeaders {
-			sb.WriteString("    {\n")
-			sb.WriteString(fmt.Sprintf("      name  = %s\n", quoteString(header.Name)))
-			sb.WriteString(fmt.Sprintf("      value = %s\n", quoteString(header.Value)))
-			sb.WriteString("    },\n")
-		}
-		sb.WriteString("  ]\n")
-	}
-
-	// Request body
 	if m.RequestBody != "" {
 		sb.WriteString(fmt.Sprintf("\n  request_body = %s\n", quoteString(m.RequestBody)))
 	}
 
 	sb.WriteString("}\n\n")
-
 	return sb.String()
 }
 
 func (g *Generator) generateHealthcheckBlock(h converter.ConvertedHealthcheck) string {
 	var sb strings.Builder
 
-	// Add issues as comments if any
 	if len(h.Issues) > 0 {
 		sb.WriteString("# MIGRATION NOTES:\n")
 		for _, issue := range h.Issues {
@@ -151,13 +155,10 @@ func (g *Generator) generateHealthcheckBlock(h converter.ConvertedHealthcheck) s
 	sb.WriteString(fmt.Sprintf("resource \"hyperping_healthcheck\" %q {\n", h.ResourceName))
 	sb.WriteString(fmt.Sprintf("  name               = %s\n", quoteString(h.Name)))
 
-	// Note: Hyperping uses cron format, Better Stack uses simple period
-	// Convert period to cron expression
 	cronExpr := periodToCron(h.Period)
 	sb.WriteString(fmt.Sprintf("  cron               = %s\n", quoteString(cronExpr)))
 	sb.WriteString("  timezone           = \"UTC\"\n")
 
-	// Grace period
 	gracePeriodMinutes := h.Grace / 60
 	if gracePeriodMinutes < 1 {
 		gracePeriodMinutes = 1
@@ -165,18 +166,15 @@ func (g *Generator) generateHealthcheckBlock(h converter.ConvertedHealthcheck) s
 	sb.WriteString(fmt.Sprintf("  grace_period_value = %d\n", gracePeriodMinutes))
 	sb.WriteString("  grace_period_type  = \"minutes\"\n")
 
-	// Paused (only if true)
 	if h.Paused {
 		sb.WriteString("  paused             = true\n")
 	}
 
 	sb.WriteString("}\n\n")
-
 	return sb.String()
 }
 
 func quoteString(s string) string {
-	// Escape special characters
 	escaped := strings.ReplaceAll(s, "\\", "\\\\")
 	escaped = strings.ReplaceAll(escaped, "\"", "\\\"")
 	escaped = strings.ReplaceAll(escaped, "\n", "\\n")
@@ -186,20 +184,18 @@ func quoteString(s string) string {
 }
 
 func periodToCron(periodSeconds int) string {
-	// Convert period in seconds to cron expression
 	switch {
 	case periodSeconds <= 60:
-		return "* * * * *" // Every minute
+		return "* * * * *"
 	case periodSeconds < 3600:
 		minutes := periodSeconds / 60
-		return fmt.Sprintf("*/%d * * * *", minutes) // Every N minutes
+		return fmt.Sprintf("*/%d * * * *", minutes)
 	case periodSeconds == 3600:
-		return "0 * * * *" // Every hour at minute 0
+		return "0 * * * *"
 	case periodSeconds < 86400:
 		hours := periodSeconds / 3600
-		return fmt.Sprintf("0 */%d * * *", hours) // Every N hours
+		return fmt.Sprintf("0 */%d * * *", hours)
 	default:
-		// Daily or longer - default to daily at midnight
 		return "0 0 * * *"
 	}
 }

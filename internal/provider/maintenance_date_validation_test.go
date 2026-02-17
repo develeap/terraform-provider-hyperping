@@ -7,21 +7,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func TestValidateMaintenanceDates(t *testing.T) {
-	t.Parallel()
+type maintenanceDateCase struct {
+	name          string
+	startDate     string
+	endDate       string
+	wantError     bool
+	wantWarning   bool
+	errorContains string
+	warningType   string // "past_start" or "long_duration"
+}
 
-	tests := []struct {
-		name          string
-		startDate     string
-		endDate       string
-		wantError     bool
-		wantWarning   bool
-		errorContains string
-		warningType   string // "past_start" or "long_duration"
-	}{
+func buildMaintenanceDateCases() []maintenanceDateCase {
+	return []maintenanceDateCase{
 		{
 			name:        "valid future dates 2h duration",
 			startDate:   time.Now().Add(24 * time.Hour).Format(time.RFC3339),
@@ -55,7 +56,7 @@ func TestValidateMaintenanceDates(t *testing.T) {
 		{
 			name:          "duration > 7 days",
 			startDate:     time.Now().Add(24 * time.Hour).Format(time.RFC3339),
-			endDate:       time.Now().Add(24*time.Hour + 8*24*time.Hour).Format(time.RFC3339), // 8 days
+			endDate:       time.Now().Add(24*time.Hour + 8*24*time.Hour).Format(time.RFC3339),
 			wantError:     false,
 			wantWarning:   true,
 			warningType:   "long_duration",
@@ -66,11 +67,11 @@ func TestValidateMaintenanceDates(t *testing.T) {
 			startDate:   time.Now().Add(24 * time.Hour).Format(time.RFC3339),
 			endDate:     time.Now().Add(24*time.Hour + 7*24*time.Hour).Format(time.RFC3339),
 			wantError:   false,
-			wantWarning: false, // Exactly 7 days should NOT warn
+			wantWarning: false,
 		},
 		{
 			name:          "invalid start date format",
-			startDate:     "2026-01-29 10:00:00", // Space instead of T
+			startDate:     "2026-01-29 10:00:00",
 			endDate:       time.Now().Add(26 * time.Hour).Format(time.RFC3339),
 			wantError:     true,
 			errorContains: "Could not parse start_date",
@@ -97,68 +98,79 @@ func TestValidateMaintenanceDates(t *testing.T) {
 			wantWarning: false,
 		},
 	}
+}
 
-	for _, tt := range tests {
+func TestValidateMaintenanceDates(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range buildMaintenanceDateCases() {
 		t.Run(tt.name, func(t *testing.T) {
-			model := &MaintenanceResourceModel{}
-
-			if tt.startDate != "" {
-				model.StartDate = types.StringValue(tt.startDate)
-			} else {
-				model.StartDate = types.StringNull()
-			}
-
-			if tt.endDate != "" {
-				model.EndDate = types.StringValue(tt.endDate)
-			} else {
-				model.EndDate = types.StringNull()
-			}
-
+			model := buildMaintenanceModel(tt.startDate, tt.endDate)
 			diags := validateMaintenanceDates(model)
 
-			hasError := diags.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("validateMaintenanceDates(): got error=%v, want error=%v", hasError, tt.wantError)
-				for _, d := range diags.Errors() {
-					t.Logf("  Error: %s - %s", d.Summary(), d.Detail())
-				}
-			}
-
-			if tt.wantError && tt.errorContains != "" {
-				found := false
-				for _, d := range diags.Errors() {
-					if containsString(d.Detail(), tt.errorContains) || containsString(d.Summary(), tt.errorContains) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("validateMaintenanceDates(): expected error containing %q, got errors: %v", tt.errorContains, diags.Errors())
-				}
-			}
-
-			hasWarning := len(diags.Warnings()) > 0
-			if hasWarning != tt.wantWarning {
-				t.Errorf("validateMaintenanceDates(): got warning=%v, want warning=%v", hasWarning, tt.wantWarning)
-				for _, d := range diags.Warnings() {
-					t.Logf("  Warning: %s - %s", d.Summary(), d.Detail())
-				}
-			}
-
-			if tt.wantWarning && tt.errorContains != "" {
-				found := false
-				for _, d := range diags.Warnings() {
-					if containsString(d.Detail(), tt.errorContains) || containsString(d.Summary(), tt.errorContains) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("validateMaintenanceDates(): expected warning containing %q, got warnings: %v", tt.errorContains, diags.Warnings())
-				}
-			}
+			assertMaintenanceErrors(t, diags, tt.wantError, tt.errorContains)
+			assertMaintenanceWarnings(t, diags, tt.wantWarning, tt.errorContains)
 		})
 	}
+}
+
+// buildMaintenanceModel constructs a MaintenanceResourceModel from string dates.
+func buildMaintenanceModel(startDate, endDate string) *MaintenanceResourceModel {
+	model := &MaintenanceResourceModel{}
+	if startDate != "" {
+		model.StartDate = types.StringValue(startDate)
+	} else {
+		model.StartDate = types.StringNull()
+	}
+	if endDate != "" {
+		model.EndDate = types.StringValue(endDate)
+	} else {
+		model.EndDate = types.StringNull()
+	}
+	return model
+}
+
+// assertMaintenanceErrors checks error presence and optional substring match.
+func assertMaintenanceErrors(t *testing.T, diags diag.Diagnostics, wantError bool, errorContains string) {
+	t.Helper()
+	hasError := diags.HasError()
+	if hasError != wantError {
+		t.Errorf("got error=%v, want error=%v", hasError, wantError)
+		for _, d := range diags.Errors() {
+			t.Logf("  Error: %s - %s", d.Summary(), d.Detail())
+		}
+	}
+	if !wantError || errorContains == "" {
+		return
+	}
+	assertDiagContains(t, diags.Errors(), errorContains, "error")
+}
+
+// assertMaintenanceWarnings checks warning presence and optional substring match.
+func assertMaintenanceWarnings(t *testing.T, diags diag.Diagnostics, wantWarning bool, errorContains string) {
+	t.Helper()
+	hasWarning := len(diags.Warnings()) > 0
+	if hasWarning != wantWarning {
+		t.Errorf("got warning=%v, want warning=%v", hasWarning, wantWarning)
+		for _, d := range diags.Warnings() {
+			t.Logf("  Warning: %s - %s", d.Summary(), d.Detail())
+		}
+	}
+	if !wantWarning || errorContains == "" {
+		return
+	}
+	assertDiagContains(t, diags.Warnings(), errorContains, "warning")
+}
+
+// assertDiagContains checks that at least one diagnostic contains the expected substring.
+func assertDiagContains(t *testing.T, entries []diag.Diagnostic, substr, kind string) {
+	t.Helper()
+	for _, d := range entries {
+		if containsString(d.Detail(), substr) || containsString(d.Summary(), substr) {
+			return
+		}
+	}
+	t.Errorf("expected %s containing %q, got: %v", kind, substr, entries)
 }
 
 func TestValidateMaintenanceDates_BothNull(t *testing.T) {
@@ -179,10 +191,9 @@ func TestValidateMaintenanceDates_BothNull(t *testing.T) {
 }
 
 func TestValidateMaintenanceDates_PastStartAndLongDuration(t *testing.T) {
-	// Test case where both warnings should trigger
 	model := &MaintenanceResourceModel{
 		StartDate: types.StringValue(time.Now().Add(-2 * time.Hour).Format(time.RFC3339)),
-		EndDate:   types.StringValue(time.Now().Add(8*24*time.Hour - 2*time.Hour).Format(time.RFC3339)), // ~8 days from start
+		EndDate:   types.StringValue(time.Now().Add(8*24*time.Hour - 2*time.Hour).Format(time.RFC3339)),
 	}
 
 	diags := validateMaintenanceDates(model)

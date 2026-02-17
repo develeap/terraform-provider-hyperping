@@ -36,6 +36,13 @@ var (
 	verbose          = flag.Bool("verbose", false, "Verbose output")
 )
 
+// pingdomRunner holds resolved configuration for a non-interactive run.
+type pingdomRunner struct {
+	pingdomKey   string
+	hyperpingKey string
+	ctx          context.Context
+}
+
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: migrate-pingdom [options]\n\n")
@@ -57,12 +64,39 @@ func main() {
 func run() int {
 	flag.Parse()
 
-	// Check if interactive mode should be used
 	if shouldUseInteractive() {
 		return runInteractive()
 	}
 
-	// Get API keys from flags or environment
+	r, exitCode := newPingdomRunner()
+	if exitCode != 0 {
+		return exitCode
+	}
+
+	checks, results, exitCode := r.fetchAndConvert()
+	if exitCode != 0 {
+		return exitCode
+	}
+
+	reporter := report.NewReporter()
+	migrationReport := reporter.GenerateReport(checks, results)
+
+	if exitCode := r.writeReports(reporter, migrationReport); exitCode != 0 {
+		return exitCode
+	}
+
+	createdResources := r.createHyperpingResources(checks, results)
+
+	if exitCode := r.writeImportScript(checks, results, createdResources); exitCode != 0 {
+		return exitCode
+	}
+
+	printRunSummary(migrationReport)
+	return 0
+}
+
+// newPingdomRunner validates flags, resolves API keys, and sets up the context.
+func newPingdomRunner() (*pingdomRunner, int) {
 	pingdomKey := *pingdomAPIKey
 	if pingdomKey == "" {
 		pingdomKey = os.Getenv("PINGDOM_API_KEY")
@@ -78,41 +112,45 @@ func run() int {
 
 	if pingdomKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: Pingdom API key is required (--pingdom-api-key or PINGDOM_API_KEY)")
-		return 1
+		return nil, 1
 	}
 
 	if hyperpingKey == "" && !*dryRun {
 		fmt.Fprintln(os.Stderr, "Error: Hyperping API key is required (--hyperping-api-key or HYPERPING_API_KEY)")
 		fmt.Fprintln(os.Stderr, "Hint: Use --dry-run to generate configs without creating resources")
-		return 1
+		return nil, 1
 	}
 
-	// Create output directory
 	if err := os.MkdirAll(*outputDir, 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
-		return 1
+		return nil, 1
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+	_ = cancel // caller manages lifetime via os.Exit
 
-	// Step 1: Fetch Pingdom checks
+	return &pingdomRunner{
+		pingdomKey:   pingdomKey,
+		hyperpingKey: hyperpingKey,
+		ctx:          ctx,
+	}, 0
+}
+
+// fetchAndConvert fetches Pingdom checks and converts them to Hyperping format.
+func (r *pingdomRunner) fetchAndConvert() ([]pingdom.Check, []converter.ConversionResult, int) {
 	log("Fetching Pingdom checks...")
-	pingdomClient := createPingdomClient(pingdomKey)
+	pingdomClient := createPingdomClient(r.pingdomKey)
 
-	checks, err := pingdomClient.ListChecks(ctx)
+	checks, err := pingdomClient.ListChecks(r.ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching Pingdom checks: %v\n", err)
-		return 1
+		return nil, nil, 1
 	}
-
 	log(fmt.Sprintf("Fetched %d checks from Pingdom", len(checks)))
 
-	// Step 2: Convert checks
 	log("Converting checks to Hyperping format...")
 	checkConverter := converter.NewCheckConverter()
 	results := make([]converter.ConversionResult, len(checks))
-
 	supportedCount := 0
 	for i, check := range checks {
 		results[i] = checkConverter.Convert(check)
@@ -120,10 +158,8 @@ func run() int {
 			supportedCount++
 		}
 	}
-
 	log(fmt.Sprintf("Converted %d/%d checks (%d unsupported)", supportedCount, len(checks), len(checks)-supportedCount))
 
-	// Step 3: Generate Terraform configuration
 	log("Generating Terraform configuration...")
 	tfGen := generator.NewTerraformGenerator(*prefix)
 	hclContent := tfGen.GenerateHCL(checks, results)
@@ -131,30 +167,28 @@ func run() int {
 	hclPath := filepath.Join(*outputDir, "monitors.tf")
 	if writeErr := os.WriteFile(hclPath, []byte(hclContent), 0o600); writeErr != nil {
 		fmt.Fprintf(os.Stderr, "Error writing Terraform configuration: %v\n", writeErr)
-		return 1
+		return nil, nil, 1
 	}
-
 	log(fmt.Sprintf("Terraform configuration written to %s", hclPath))
 
-	// Step 4: Generate reports
-	log("Generating migration report...")
-	reporter := report.NewReporter()
-	migrationReport := reporter.GenerateReport(checks, results)
+	return checks, results, 0
+}
 
-	// JSON report
+// writeReports generates and writes all report files.
+func (r *pingdomRunner) writeReports(reporter *report.Reporter, migrationReport *report.MigrationReport) int {
+	log("Generating migration report...")
+
 	jsonReport, err := reporter.GenerateJSONReport(migrationReport)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating JSON report: %v\n", err)
 		return 1
 	}
-
 	jsonPath := filepath.Join(*outputDir, "report.json")
 	if writeErr := os.WriteFile(jsonPath, []byte(jsonReport), 0o600); writeErr != nil {
 		fmt.Fprintf(os.Stderr, "Error writing JSON report: %v\n", writeErr)
 		return 1
 	}
 
-	// Text report
 	textReport := reporter.GenerateTextReport(migrationReport)
 	textPath := filepath.Join(*outputDir, "report.txt")
 	if writeErr := os.WriteFile(textPath, []byte(textReport), 0o600); writeErr != nil {
@@ -162,7 +196,6 @@ func run() int {
 		return 1
 	}
 
-	// Manual steps markdown
 	manualSteps := reporter.GenerateManualStepsMarkdown(migrationReport)
 	manualPath := filepath.Join(*outputDir, "manual-steps.md")
 	if writeErr := os.WriteFile(manualPath, []byte(manualSteps), 0o600); writeErr != nil {
@@ -171,61 +204,74 @@ func run() int {
 	}
 
 	log(fmt.Sprintf("Reports written to %s", *outputDir))
+	return 0
+}
 
-	// Step 5: Create resources in Hyperping (if not dry run)
+// createHyperpingResources creates monitors in Hyperping (skipped in dry-run mode).
+func (r *pingdomRunner) createHyperpingResources(checks []pingdom.Check, results []converter.ConversionResult) map[int]string {
 	createdResources := make(map[int]string)
-
-	if !*dryRun {
-		log("Creating monitors in Hyperping...")
-		hyperpingClient := createHyperpingClient(hyperpingKey)
-
-		createdCount := 0
-		errorCount := 0
-
-		for i, check := range checks {
-			result := results[i]
-
-			if !result.Supported || result.Monitor == nil {
-				continue
-			}
-
-			monitor, err := hyperpingClient.CreateMonitor(ctx, *result.Monitor)
-			if err != nil {
-				errorCount++
-				fmt.Fprintf(os.Stderr, "Warning: Failed to create monitor for check %d (%s): %v\n", check.ID, check.Name, err)
-				continue
-			}
-
-			createdResources[check.ID] = monitor.UUID
-			createdCount++
-
-			if *verbose {
-				log(fmt.Sprintf("Created monitor %s for check %d (%s)", monitor.UUID, check.ID, check.Name))
-			}
-		}
-
-		log(fmt.Sprintf("Created %d monitors in Hyperping (%d errors)", createdCount, errorCount))
+	if *dryRun {
+		return createdResources
 	}
 
-	// Step 6: Generate import script
+	log("Creating monitors in Hyperping...")
+	hyperpingClient := createHyperpingClient(r.hyperpingKey)
+	createdCount := 0
+	errorCount := 0
+
+	for i, check := range checks {
+		result := results[i]
+		if !result.Supported || result.Monitor == nil {
+			continue
+		}
+
+		monitor, err := hyperpingClient.CreateMonitor(r.ctx, *result.Monitor)
+		if err != nil {
+			errorCount++
+			fmt.Fprintf(os.Stderr, "Warning: Failed to create monitor for check %d (%s): %v\n", check.ID, check.Name, err)
+			continue
+		}
+
+		createdResources[check.ID] = monitor.UUID
+		createdCount++
+
+		if *verbose {
+			log(fmt.Sprintf("Created monitor %s for check %d (%s)", monitor.UUID, check.ID, check.Name))
+		}
+	}
+
+	log(fmt.Sprintf("Created %d monitors in Hyperping (%d errors)", createdCount, errorCount))
+	return createdResources
+}
+
+// writeImportScript generates and writes the import shell script.
+func (r *pingdomRunner) writeImportScript(checks []pingdom.Check, results []converter.ConversionResult, createdResources map[int]string) int {
 	log("Generating import script...")
 	importGen := generator.NewImportGenerator(*prefix)
-	importScript := importGen.GenerateImportScript(checks, results, createdResources)
+	importScriptContent := importGen.GenerateImportScript(checks, results, createdResources)
 
 	importPath := filepath.Join(*outputDir, "import.sh")
-	if writeErr := os.WriteFile(importPath, []byte(importScript), 0o600); writeErr != nil {
+	if writeErr := os.WriteFile(importPath, []byte(importScriptContent), 0o600); writeErr != nil {
 		fmt.Fprintf(os.Stderr, "Error writing import script: %v\n", writeErr)
 		return 1
 	}
 
-	// Make script executable
 	if chmodErr := os.Chmod(importPath, 0o600); chmodErr != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to make import.sh executable: %v\n", chmodErr)
 	}
 
 	log(fmt.Sprintf("Import script written to %s", importPath))
+	return 0
+}
 
-	// Summary
+// printRunSummary prints the final migration summary and next steps.
+func printRunSummary(migrationReport *report.MigrationReport) {
+	hclPath := filepath.Join(*outputDir, "monitors.tf")
+	importPath := filepath.Join(*outputDir, "import.sh")
+	jsonPath := filepath.Join(*outputDir, "report.json")
+	textPath := filepath.Join(*outputDir, "report.txt")
+	manualPath := filepath.Join(*outputDir, "manual-steps.md")
+
 	fmt.Println()
 	fmt.Println("=================================================================")
 	fmt.Println("Migration Complete!")
@@ -253,8 +299,6 @@ func run() int {
 	}
 
 	fmt.Println()
-
-	// Print summary from report
 	fmt.Printf("Summary: %d total checks, %d supported, %d unsupported\n",
 		migrationReport.TotalChecks,
 		migrationReport.SupportedChecks,
@@ -263,8 +307,6 @@ func run() int {
 	if len(migrationReport.ManualSteps) > 0 {
 		fmt.Printf("Manual steps required: %d (see manual-steps.md)\n", len(migrationReport.ManualSteps))
 	}
-
-	return 0
 }
 
 func createPingdomClient(apiKey string) *pingdom.Client {

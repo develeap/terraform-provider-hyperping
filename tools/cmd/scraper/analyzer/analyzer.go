@@ -130,84 +130,111 @@ func (a *Analyzer) analyzeResource(mapping ResourceMapping, apiParams []extracto
 		TerraformResource: mapping.TerraformResource,
 	}
 
-	// Find the provider schema for this resource
-	var providerSchema *ResourceSchema
+	providerSchema := a.findProviderSchema(mapping.TerraformResource)
+	apiFieldSet := buildAPIFieldSet(apiParams)
+	tfFieldSet := buildTFFieldSet(providerSchema)
+
+	coverage.APIFields = len(apiFieldSet)
+	coverage.ImplementedFields, coverage.MissingFields = countImplementedFields(apiFieldSet, tfFieldSet, &mapping)
+	coverage.StaleFields = countStaleFields(tfFieldSet, apiFieldSet, &mapping)
+	coverage.CoveragePercent = calculateCoveragePercent(coverage.APIFields, coverage.ImplementedFields)
+
+	return coverage
+}
+
+// findProviderSchema returns the schema for the given terraform resource name, or nil.
+func (a *Analyzer) findProviderSchema(terraformResource string) *ResourceSchema {
 	for i := range a.ProviderSchemas {
-		if a.ProviderSchemas[i].Name == mapping.TerraformResource {
-			providerSchema = &a.ProviderSchemas[i]
-			break
+		if a.ProviderSchemas[i].Name == terraformResource {
+			return &a.ProviderSchemas[i]
 		}
 	}
+	return nil
+}
 
-	// Build sets for comparison
-	apiFieldSet := make(map[string]extractor.APIParameter)
+// buildAPIFieldSet builds a normalized name-keyed set from API parameters.
+func buildAPIFieldSet(apiParams []extractor.APIParameter) map[string]extractor.APIParameter {
+	fieldSet := make(map[string]extractor.APIParameter)
 	for _, param := range apiParams {
 		if IsSkippedField(param.Name) {
 			continue
 		}
 		normalizedName := CamelToSnake(param.Name)
-		apiFieldSet[normalizedName] = param
+		fieldSet[normalizedName] = param
 	}
+	return fieldSet
+}
 
-	tfFieldSet := make(map[string]SchemaField)
-	if providerSchema != nil {
-		for _, field := range providerSchema.Fields {
-			if IsSkippedField(field.TerraformName) {
-				continue
-			}
-			tfFieldSet[field.TerraformName] = field
+// buildTFFieldSet builds a name-keyed set from a provider schema (nil-safe).
+func buildTFFieldSet(schema *ResourceSchema) map[string]SchemaField {
+	fieldSet := make(map[string]SchemaField)
+	if schema == nil {
+		return fieldSet
+	}
+	for _, field := range schema.Fields {
+		if IsSkippedField(field.TerraformName) {
+			continue
 		}
+		fieldSet[field.TerraformName] = field
 	}
+	return fieldSet
+}
 
-	coverage.APIFields = len(apiFieldSet)
-
-	// Count implemented fields (fields in both API and TF)
+// countImplementedFields returns implemented and missing counts by comparing api vs tf fields.
+func countImplementedFields(apiFieldSet map[string]extractor.APIParameter, tfFieldSet map[string]SchemaField, mapping *ResourceMapping) (implemented, missing int) {
 	for apiName := range apiFieldSet {
-		tfName := MapAPIFieldToTerraform(apiName, &mapping)
+		tfName := MapAPIFieldToTerraform(apiName, mapping)
 		if _, exists := tfFieldSet[tfName]; exists {
-			coverage.ImplementedFields++
+			implemented++
 		} else if _, exists := tfFieldSet[apiName]; exists {
-			// Also check direct match
-			coverage.ImplementedFields++
-		} else if IsNestedField(apiName, &mapping) {
-			// Field is implemented but nested inside another TF attribute (e.g., settings.website)
-			coverage.ImplementedFields++
+			implemented++
+		} else if IsNestedField(apiName, mapping) {
+			implemented++
 		} else {
-			coverage.MissingFields++
+			missing++
 		}
 	}
+	return implemented, missing
+}
 
-	// Count stale fields (fields in TF but not in API)
-	for tfName := range tfFieldSet {
-		found := false
-		for apiName := range apiFieldSet {
-			mappedName := MapAPIFieldToTerraform(apiName, &mapping)
-			if tfName == mappedName || tfName == apiName {
-				found = true
-				break
-			}
+// countStaleFields returns the number of TF fields not present in the API.
+func countStaleFields(tfFieldSet map[string]SchemaField, apiFieldSet map[string]extractor.APIParameter, mapping *ResourceMapping) int {
+	stale := 0
+	for tfName, field := range tfFieldSet {
+		if isFieldFoundInAPI(tfName, apiFieldSet, mapping) {
+			continue
 		}
-		if !found && !IsSkippedField(tfName) {
-			// Check if it's an expected stale field (computed-only or known API doc gap)
-			if IsExpectedStaleField(tfName, &mapping) {
-				continue
-			}
-			// Also check AST-extracted schema for computed-only fields
-			if field, ok := tfFieldSet[tfName]; ok && field.Computed && !field.Required && !field.Optional {
-				continue
-			}
-			coverage.StaleFields++
+		if IsSkippedField(tfName) {
+			continue
+		}
+		if IsExpectedStaleField(tfName, mapping) {
+			continue
+		}
+		if field.Computed && !field.Required && !field.Optional {
+			continue
+		}
+		stale++
+	}
+	return stale
+}
+
+// isFieldFoundInAPI checks whether a TF field name maps back to any API field.
+func isFieldFoundInAPI(tfName string, apiFieldSet map[string]extractor.APIParameter, mapping *ResourceMapping) bool {
+	for apiName := range apiFieldSet {
+		mappedName := MapAPIFieldToTerraform(apiName, mapping)
+		if tfName == mappedName || tfName == apiName {
+			return true
 		}
 	}
+	return false
+}
 
-	// Calculate coverage percentage
-	if coverage.APIFields > 0 {
-		coverage.CoveragePercent = float64(coverage.ImplementedFields) / float64(coverage.APIFields) * 100
-	} else {
-		coverage.CoveragePercent = 100 // No API fields = 100% coverage
+// calculateCoveragePercent computes the coverage percentage, returning 100 when there are no API fields.
+func calculateCoveragePercent(apiFields, implemented int) float64 {
+	if apiFields > 0 {
+		return float64(implemented) / float64(apiFields) * 100
 	}
-
-	return coverage
+	return 100
 }
 
 // findAllGaps collects all coverage gaps across resources

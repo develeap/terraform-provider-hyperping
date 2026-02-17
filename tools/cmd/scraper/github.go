@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 	"io"
 	"net/http"
 	"os"
@@ -102,21 +103,9 @@ func (gc *GitHubClient) CreateIssue(report DiffReport, snapshotURL string) error
 func (gc *GitHubClient) formatIssueBody(report DiffReport, snapshotURL string) string {
 	var body strings.Builder
 
-	body.WriteString("## Summary\n\n")
-	body.WriteString(fmt.Sprintf("**Detected:** %s\n\n", report.Timestamp.Format("2006-01-02 15:04:05 MST")))
-	body.WriteString(fmt.Sprintf("**Changes:** %s\n\n", report.Summary))
+	body.WriteString(formatIssueSummaryBlock(report))
 
-	if report.Breaking {
-		body.WriteString("⚠️ **WARNING: This includes breaking changes that require immediate attention!**\n\n")
-	}
-
-	body.WriteString("---\n\n")
-
-	// Group diffs by section
-	sections := make(map[string][]APIDiff)
-	for _, diff := range report.APIDiffs {
-		sections[diff.Section] = append(sections[diff.Section], diff)
-	}
+	sections := groupDiffsBySectionForIssue(report.APIDiffs)
 
 	if len(sections) == 0 {
 		body.WriteString("✅ No parameter-level changes detected.\n\n")
@@ -124,104 +113,146 @@ func (gc *GitHubClient) formatIssueBody(report DiffReport, snapshotURL string) s
 		return body.String()
 	}
 
-	// Write each section
 	for section, diffs := range sections {
 		body.WriteString(fmt.Sprintf("## %s API\n\n", strings.Title(section)))
-
 		for _, diff := range diffs {
-			// Endpoint header
-			endpointName := diff.Method
-			if endpointName == "" {
-				endpointName = "Overview"
-			}
-			body.WriteString(fmt.Sprintf("### %s\n\n", strings.Title(endpointName)))
-
-			if diff.Breaking {
-				body.WriteString("⚠️ **BREAKING CHANGE**\n\n")
-			}
-
-			// Added parameters
-			if len(diff.AddedParams) > 0 {
-				body.WriteString("#### 🆕 Added Parameters\n\n")
-				for _, p := range diff.AddedParams {
-					required := "optional"
-					if p.Required {
-						required = "**required**"
-					}
-					body.WriteString(fmt.Sprintf("- **`%s`** (%s, %s)\n", p.Name, p.Type, required))
-					if p.Description != "" {
-						body.WriteString(fmt.Sprintf("  - %s\n", p.Description))
-					}
-				}
-				body.WriteString("\n")
-			}
-
-			// Removed parameters
-			if len(diff.RemovedParams) > 0 {
-				body.WriteString("#### ❌ Removed Parameters\n\n")
-				for _, p := range diff.RemovedParams {
-					required := "optional"
-					if p.Required {
-						required = "**required**"
-					}
-					body.WriteString(fmt.Sprintf("- **`%s`** (%s, %s)\n", p.Name, p.Type, required))
-				}
-				body.WriteString("\n")
-			}
-
-			// Modified parameters
-			if len(diff.ModifiedParams) > 0 {
-				body.WriteString("#### 📝 Modified Parameters\n\n")
-				for _, change := range diff.ModifiedParams {
-					body.WriteString(fmt.Sprintf("- **`%s`**\n", change.Name))
-
-					if change.OldType != change.NewType {
-						body.WriteString(fmt.Sprintf("  - Type: `%s` → `%s`\n", change.OldType, change.NewType))
-					}
-
-					if change.OldRequired != change.NewRequired {
-						oldReq := "optional"
-						newReq := "optional"
-						if change.OldRequired {
-							oldReq = "required"
-						}
-						if change.NewRequired {
-							newReq = "required"
-						}
-						body.WriteString(fmt.Sprintf("  - Status: `%s` → `%s`", oldReq, newReq))
-						if !change.OldRequired && change.NewRequired {
-							body.WriteString(" ⚠️ **BREAKING**")
-						}
-						body.WriteString("\n")
-					}
-				}
-				body.WriteString("\n")
-			}
-
-			body.WriteString("---\n\n")
+			body.WriteString(formatIssueDiffSection(diff))
 		}
 	}
 
-	// Action items
+	body.WriteString(formatIssueActionItems(report.Breaking))
+	body.WriteString(formatIssueFooter(snapshotURL))
+
+	return body.String()
+}
+
+// formatIssueSummaryBlock renders the header/summary of the issue body.
+func formatIssueSummaryBlock(report DiffReport) string {
+	var body strings.Builder
+	body.WriteString("## Summary\n\n")
+	body.WriteString(fmt.Sprintf("**Detected:** %s\n\n", report.Timestamp.Format("2006-01-02 15:04:05 MST")))
+	body.WriteString(fmt.Sprintf("**Changes:** %s\n\n", report.Summary))
+	if report.Breaking {
+		body.WriteString("⚠️ **WARNING: This includes breaking changes that require immediate attention!**\n\n")
+	}
+	body.WriteString("---\n\n")
+	return body.String()
+}
+
+// groupDiffsBySectionForIssue groups all diffs (including empty ones) by section.
+func groupDiffsBySectionForIssue(diffs []APIDiff) map[string][]APIDiff {
+	sections := make(map[string][]APIDiff)
+	for _, diff := range diffs {
+		sections[diff.Section] = append(sections[diff.Section], diff)
+	}
+	return sections
+}
+
+// formatIssueDiffSection renders one APIDiff block inside an issue.
+func formatIssueDiffSection(diff APIDiff) string {
+	var body strings.Builder
+
+	endpointName := diff.Method
+	if endpointName == "" {
+		endpointName = "Overview"
+	}
+	body.WriteString(fmt.Sprintf("### %s\n\n", strings.Title(endpointName)))
+
+	if diff.Breaking {
+		body.WriteString("⚠️ **BREAKING CHANGE**\n\n")
+	}
+
+	body.WriteString(formatIssueAddedParams(diff.AddedParams))
+	body.WriteString(formatIssueRemovedParams(diff.RemovedParams))
+	body.WriteString(formatIssueModifiedParams(diff.ModifiedParams))
+	body.WriteString("---\n\n")
+
+	return body.String()
+}
+
+// formatIssueAddedParams renders added parameters for an issue body.
+func formatIssueAddedParams(params []extractor.APIParameter) string {
+	if len(params) == 0 {
+		return ""
+	}
+	var body strings.Builder
+	body.WriteString("#### 🆕 Added Parameters\n\n")
+	for _, p := range params {
+		required := "optional"
+		if p.Required {
+			required = "**required**"
+		}
+		body.WriteString(fmt.Sprintf("- **`%s`** (%s, %s)\n", p.Name, p.Type, required))
+		if p.Description != "" {
+			body.WriteString(fmt.Sprintf("  - %s\n", p.Description))
+		}
+	}
+	body.WriteString("\n")
+	return body.String()
+}
+
+// formatIssueRemovedParams renders removed parameters for an issue body.
+func formatIssueRemovedParams(params []extractor.APIParameter) string {
+	if len(params) == 0 {
+		return ""
+	}
+	var body strings.Builder
+	body.WriteString("#### ❌ Removed Parameters\n\n")
+	for _, p := range params {
+		required := "optional"
+		if p.Required {
+			required = "**required**"
+		}
+		body.WriteString(fmt.Sprintf("- **`%s`** (%s, %s)\n", p.Name, p.Type, required))
+	}
+	body.WriteString("\n")
+	return body.String()
+}
+
+// formatIssueModifiedParams renders modified parameters for an issue body.
+func formatIssueModifiedParams(changes []ParameterChange) string {
+	if len(changes) == 0 {
+		return ""
+	}
+	var body strings.Builder
+	body.WriteString("#### 📝 Modified Parameters\n\n")
+	for _, change := range changes {
+		body.WriteString(fmt.Sprintf("- **`%s`**\n", change.Name))
+		if change.OldType != change.NewType {
+			body.WriteString(fmt.Sprintf("  - Type: `%s` → `%s`\n", change.OldType, change.NewType))
+		}
+		if change.OldRequired != change.NewRequired {
+			body.WriteString(formatRequiredChange(change))
+		}
+	}
+	body.WriteString("\n")
+	return body.String()
+}
+
+// formatIssueActionItems renders the action-items checklist for an issue.
+func formatIssueActionItems(breaking bool) string {
+	var body strings.Builder
 	body.WriteString("## Action Items\n\n")
 	body.WriteString("- [ ] Review all changes\n")
 	body.WriteString("- [ ] Update Terraform provider schema\n")
 	body.WriteString("- [ ] Update validation logic\n")
 	body.WriteString("- [ ] Update tests\n")
 	body.WriteString("- [ ] Update documentation\n")
-
-	if report.Breaking {
+	if breaking {
 		body.WriteString("- [ ] ⚠️ Plan migration strategy for breaking changes\n")
 		body.WriteString("- [ ] Communicate breaking changes to users\n")
 	}
+	return body.String()
+}
 
-	// Footer
+// formatIssueFooter renders the footer with optional snapshot link.
+func formatIssueFooter(snapshotURL string) string {
+	var body strings.Builder
 	body.WriteString("\n---\n\n")
 	if snapshotURL != "" {
 		body.WriteString(fmt.Sprintf("📸 [View API Snapshot](%s)\n\n", snapshotURL))
 	}
 	body.WriteString("🤖 Auto-detected by API scraper\n")
-
 	return body.String()
 }
 

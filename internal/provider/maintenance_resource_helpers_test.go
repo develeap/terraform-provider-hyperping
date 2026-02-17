@@ -95,116 +95,124 @@ func (m *maintenanceMockServer) setDeleted(uuid string, deleted bool) {
 	m.deleted[uuid] = deleted
 }
 
-func (m *maintenanceMockServer) handler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-
-		// Custom create handler
-		if r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath {
-			if m.createHandler != nil {
-				m.createHandler(w, r)
-				return
-			}
-			// Default: extract UUID from fixtures and return
-			var req map[string]interface{}
-			json.NewDecoder(r.Body).Decode(&req)
-			// Find matching fixture by name
-			for _, f := range m.fixtures {
-				if nameVal, ok := req["name"].(string); ok && nameVal == f.Name {
-					w.WriteHeader(http.StatusCreated)
-					json.NewEncoder(w).Encode(map[string]interface{}{"uuid": f.UUID})
-					return
-				}
-			}
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "fixture not found"})
+// handleCreate handles POST requests to create a maintenance window.
+func (m *maintenanceMockServer) handleCreate(w http.ResponseWriter, r *http.Request) {
+	if m.createHandler != nil {
+		m.createHandler(w, r)
+		return
+	}
+	var req map[string]interface{}
+	json.NewDecoder(r.Body).Decode(&req)
+	for _, f := range m.fixtures {
+		if nameVal, ok := req["name"].(string); ok && nameVal == f.Name {
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": f.UUID})
 			return
 		}
+	}
+	w.WriteHeader(http.StatusInternalServerError)
+	json.NewEncoder(w).Encode(map[string]string{"error": "fixture not found"})
+}
 
-		// Custom update handler
-		if r.Method == http.MethodPut {
-			if m.updateHandler != nil {
-				m.updateHandler(w, r)
-				return
-			}
-			// Default update handler
-			for uuid, f := range m.fixtures {
-				path := client.MaintenanceBasePath + "/" + uuid
-				if r.URL.Path == path {
-					if m.deleted[uuid] {
-						w.WriteHeader(http.StatusNotFound)
-						json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
-						return
-					}
-					// Parse update request
-					var req map[string]interface{}
-					json.NewDecoder(r.Body).Decode(&req)
+// applyFixtureUpdate applies request fields onto the fixture.
+func applyFixtureUpdate(f *maintenanceTestFixture, req map[string]interface{}) {
+	if name, ok := req["name"].(string); ok {
+		f.Name = name
+	}
+	if titleMap, ok := req["title"].(map[string]interface{}); ok {
+		if en, ok := titleMap["en"].(string); ok {
+			f.Title = en
+		}
+	}
+	if textMap, ok := req["text"].(map[string]interface{}); ok {
+		if en, ok := textMap["en"].(string); ok {
+			f.Text = en
+		}
+	}
+	if startDate, ok := req["start_date"].(string); ok {
+		f.StartDate = startDate
+	}
+	if endDate, ok := req["end_date"].(string); ok {
+		f.EndDate = endDate
+	}
+	if notifOpt, ok := req["notificationOption"].(string); ok {
+		f.NotificationOption = notifOpt
+	}
+	if notifMins, ok := req["notificationMinutes"].(float64); ok {
+		f.NotificationMinutes = int(notifMins)
+	}
+}
 
-					// Update fixture fields if provided
-					if name, ok := req["name"].(string); ok {
-						f.Name = name
-					}
-					if titleMap, ok := req["title"].(map[string]interface{}); ok {
-						if en, ok := titleMap["en"].(string); ok {
-							f.Title = en
-						}
-					}
-					if textMap, ok := req["text"].(map[string]interface{}); ok {
-						if en, ok := textMap["en"].(string); ok {
-							f.Text = en
-						}
-					}
-					if startDate, ok := req["start_date"].(string); ok {
-						f.StartDate = startDate
-					}
-					if endDate, ok := req["end_date"].(string); ok {
-						f.EndDate = endDate
-					}
-					if notifOpt, ok := req["notificationOption"].(string); ok {
-						f.NotificationOption = notifOpt
-					}
-					if notifMins, ok := req["notificationMinutes"].(float64); ok {
-						f.NotificationMinutes = int(notifMins)
-					}
-
-					json.NewEncoder(w).Encode(f.toAPIResponse())
-					return
-				}
-			}
+// handleUpdate handles PUT requests to update a maintenance window.
+func (m *maintenanceMockServer) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	if m.updateHandler != nil {
+		m.updateHandler(w, r)
+		return
+	}
+	for uuid, f := range m.fixtures {
+		if r.URL.Path != client.MaintenanceBasePath+"/"+uuid {
+			continue
+		}
+		if m.deleted[uuid] {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
 			return
 		}
+		var req map[string]interface{}
+		json.NewDecoder(r.Body).Decode(&req)
+		applyFixtureUpdate(f, req)
+		json.NewEncoder(w).Encode(f.toAPIResponse())
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+	json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+}
 
-		// GET single maintenance
-		if r.Method == http.MethodGet {
-			for uuid, f := range m.fixtures {
-				path := client.MaintenanceBasePath + "/" + uuid
-				if r.URL.Path == path {
-					if m.deleted[uuid] {
-						w.WriteHeader(http.StatusNotFound)
-						json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
-						return
-					}
-					json.NewEncoder(w).Encode(f.toAPIResponse())
-					return
-				}
-			}
+// handleGet handles GET requests for a single maintenance window.
+func (m *maintenanceMockServer) handleGet(w http.ResponseWriter, r *http.Request) {
+	for uuid, f := range m.fixtures {
+		if r.URL.Path != client.MaintenanceBasePath+"/"+uuid {
+			continue
 		}
-
-		// DELETE maintenance
-		if r.Method == http.MethodDelete {
-			for uuid := range m.fixtures {
-				path := client.MaintenanceBasePath + "/" + uuid
-				if r.URL.Path == path {
-					m.deleted[uuid] = true
-					w.WriteHeader(http.StatusNoContent)
-					return
-				}
-			}
+		if m.deleted[uuid] {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+			return
 		}
+		json.NewEncoder(w).Encode(f.toAPIResponse())
+		return
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
 
-		w.WriteHeader(http.StatusNotFound)
+// handleDelete handles DELETE requests for a maintenance window.
+func (m *maintenanceMockServer) handleDelete(w http.ResponseWriter, r *http.Request) {
+	for uuid := range m.fixtures {
+		if r.URL.Path == client.MaintenanceBasePath+"/"+uuid {
+			m.deleted[uuid] = true
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+func (m *maintenanceMockServer) handler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+
+		switch r.Method {
+		case http.MethodPost:
+			m.handleCreate(w, r)
+		case http.MethodPut:
+			m.handleUpdate(w, r)
+		case http.MethodGet:
+			m.handleGet(w, r)
+		case http.MethodDelete:
+			m.handleDelete(w, r)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}
 }
 

@@ -150,171 +150,177 @@ func TestAllowedRegions(t *testing.T) {
 	}
 }
 
+// monitorToModelCase defines a single test scenario for mapMonitorToModel.
+type monitorToModelCase struct {
+	name    string
+	monitor *client.Monitor
+	verify  func(*testing.T, *MonitorResourceModel)
+}
+
+func buildMonitorToModelCases() []monitorToModelCase {
+	port := 8080
+	policy := "policy_abc123"
+	keyword := "HEALTHY"
+
+	return []monitorToModelCase{
+		{
+			name: "all fields populated",
+			monitor: &client.Monitor{
+				UUID:               "mon-123",
+				Name:               "Test Monitor",
+				URL:                "https://example.com",
+				Protocol:           "http",
+				HTTPMethod:         "GET",
+				CheckFrequency:     60,
+				ExpectedStatusCode: "200",
+				FollowRedirects:    true,
+				Paused:             false,
+				Regions:            []string{"london", "frankfurt"},
+				RequestHeaders:     []client.RequestHeader{{Name: "X-Custom", Value: "value"}},
+				RequestBody:        "test body",
+			},
+			verify: func(t *testing.T, m *MonitorResourceModel) {
+				t.Helper()
+				if m.ID.ValueString() != "mon-123" {
+					t.Errorf("expected ID 'mon-123', got %s", m.ID.ValueString())
+				}
+				if m.RequestBody.ValueString() != "test body" {
+					t.Errorf("expected body 'test body', got %s", m.RequestBody.ValueString())
+				}
+			},
+		},
+		{
+			name: "empty body",
+			monitor: &client.Monitor{
+				UUID:               "mon-456",
+				Name:               "No Body",
+				URL:                "https://example.com",
+				Protocol:           "http",
+				HTTPMethod:         "GET",
+				CheckFrequency:     60,
+				ExpectedStatusCode: "200",
+				FollowRedirects:    true,
+				RequestBody:        "",
+			},
+			verify: func(t *testing.T, m *MonitorResourceModel) {
+				t.Helper()
+				if !m.RequestBody.IsNull() {
+					t.Error("expected RequestBody to be null for empty string")
+				}
+			},
+		},
+		{
+			name: "empty regions and headers",
+			monitor: &client.Monitor{
+				UUID:               "mon-000",
+				Name:               "Empty Collections",
+				URL:                "https://example.com",
+				Protocol:           "http",
+				HTTPMethod:         "GET",
+				CheckFrequency:     60,
+				ExpectedStatusCode: "200",
+				FollowRedirects:    true,
+				Regions:            []string{},
+				RequestHeaders:     []client.RequestHeader{},
+			},
+			verify: func(t *testing.T, m *MonitorResourceModel) {
+				t.Helper()
+				if !m.Regions.IsNull() {
+					t.Error("expected Regions to be null for empty slice")
+				}
+				if !m.RequestHeaders.IsNull() {
+					t.Error("expected RequestHeaders to be null for empty slice")
+				}
+			},
+		},
+		{
+			name: "new optional fields populated",
+			monitor: &client.Monitor{
+				UUID:               "mon-new",
+				Name:               "Monitor with New Fields",
+				URL:                "https://example.com:8080",
+				Protocol:           "port",
+				HTTPMethod:         "GET",
+				CheckFrequency:     60,
+				ExpectedStatusCode: "200",
+				FollowRedirects:    true,
+				Paused:             false,
+				Port:               &port,
+				AlertsWait:         30,
+				EscalationPolicy:   &policy,
+				RequiredKeyword:    &keyword,
+			},
+			verify: verifyNewFieldsPopulated,
+		},
+		{
+			name: "new optional fields null when not set",
+			monitor: &client.Monitor{
+				UUID:               "mon-null",
+				Name:               "Monitor without New Fields",
+				URL:                "https://example.com",
+				Protocol:           "http",
+				HTTPMethod:         "GET",
+				CheckFrequency:     60,
+				ExpectedStatusCode: "200",
+				FollowRedirects:    true,
+				Port:               nil,
+				AlertsWait:         0,
+				EscalationPolicy:   nil,
+				RequiredKeyword:    nil,
+			},
+			verify: verifyNewFieldsNull,
+		},
+	}
+}
+
+// verifyNewFieldsPopulated checks that new optional fields are correctly set.
+func verifyNewFieldsPopulated(t *testing.T, m *MonitorResourceModel) {
+	t.Helper()
+	if m.Port.ValueInt64() != 8080 {
+		t.Errorf("expected Port 8080, got %d", m.Port.ValueInt64())
+	}
+	if m.AlertsWait.ValueInt64() != 30 {
+		t.Errorf("expected AlertsWait 30, got %d", m.AlertsWait.ValueInt64())
+	}
+	if m.EscalationPolicy.ValueString() != "policy_abc123" {
+		t.Errorf("expected EscalationPolicy 'policy_abc123', got %s", m.EscalationPolicy.ValueString())
+	}
+	if m.RequiredKeyword.ValueString() != "HEALTHY" {
+		t.Errorf("expected RequiredKeyword 'HEALTHY', got %s", m.RequiredKeyword.ValueString())
+	}
+}
+
+// verifyNewFieldsNull checks that new optional fields are null when not set.
+func verifyNewFieldsNull(t *testing.T, m *MonitorResourceModel) {
+	t.Helper()
+	if !m.Port.IsNull() {
+		t.Error("expected Port to be null when not set")
+	}
+	if !m.AlertsWait.IsNull() {
+		t.Error("expected AlertsWait to be null when 0")
+	}
+	if !m.EscalationPolicy.IsNull() {
+		t.Error("expected EscalationPolicy to be null when not set")
+	}
+	if !m.RequiredKeyword.IsNull() {
+		t.Error("expected RequiredKeyword to be null when not set")
+	}
+}
+
 func TestMonitorResource_mapMonitorToModel(t *testing.T) {
 	r := &MonitorResource{}
 
-	t.Run("all fields populated", func(t *testing.T) {
-		monitor := &client.Monitor{
-			UUID:               "mon-123",
-			Name:               "Test Monitor",
-			URL:                "https://example.com",
-			Protocol:           "http",
-			HTTPMethod:         "GET",
-			CheckFrequency:     60,
-			ExpectedStatusCode: "200",
-			FollowRedirects:    true,
-			Paused:             false,
-			Regions:            []string{"london", "frankfurt"},
-			RequestHeaders: []client.RequestHeader{
-				{Name: "X-Custom", Value: "value"},
-			},
-			RequestBody: "test body",
-		}
+	for _, tt := range buildMonitorToModelCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			model := &MonitorResourceModel{}
+			diags := &diag.Diagnostics{}
+			r.mapMonitorToModel(tt.monitor, model, diags)
 
-		model := &MonitorResourceModel{}
-		diags := &diag.Diagnostics{}
-		r.mapMonitorToModel(monitor, model, diags)
-
-		if diags.HasError() {
-			t.Errorf("unexpected error: %v", diags)
-		}
-		if model.ID.ValueString() != "mon-123" {
-			t.Errorf("expected ID 'mon-123', got %s", model.ID.ValueString())
-		}
-		if model.RequestBody.ValueString() != "test body" {
-			t.Errorf("expected body 'test body', got %s", model.RequestBody.ValueString())
-		}
-	})
-
-	t.Run("empty body", func(t *testing.T) {
-		monitor := &client.Monitor{
-			UUID:               "mon-456",
-			Name:               "No Body",
-			URL:                "https://example.com",
-			Protocol:           "http",
-			HTTPMethod:         "GET",
-			CheckFrequency:     60,
-			ExpectedStatusCode: "200",
-			FollowRedirects:    true,
-			RequestBody:        "", // Empty body
-		}
-
-		model := &MonitorResourceModel{}
-		diags := &diag.Diagnostics{}
-		r.mapMonitorToModel(monitor, model, diags)
-
-		if diags.HasError() {
-			t.Errorf("unexpected error: %v", diags)
-		}
-		if !model.RequestBody.IsNull() {
-			t.Error("expected RequestBody to be null for empty string")
-		}
-	})
-
-	t.Run("empty regions and headers", func(t *testing.T) {
-		monitor := &client.Monitor{
-			UUID:               "mon-000",
-			Name:               "Empty Collections",
-			URL:                "https://example.com",
-			Protocol:           "http",
-			HTTPMethod:         "GET",
-			CheckFrequency:     60,
-			ExpectedStatusCode: "200",
-			FollowRedirects:    true,
-			Regions:            []string{},               // Empty slice
-			RequestHeaders:     []client.RequestHeader{}, // Empty slice
-		}
-
-		model := &MonitorResourceModel{}
-		diags := &diag.Diagnostics{}
-		r.mapMonitorToModel(monitor, model, diags)
-
-		if diags.HasError() {
-			t.Errorf("unexpected error: %v", diags)
-		}
-		if !model.Regions.IsNull() {
-			t.Error("expected Regions to be null for empty slice")
-		}
-		if !model.RequestHeaders.IsNull() {
-			t.Error("expected RequestHeaders to be null for empty slice")
-		}
-	})
-
-	t.Run("new optional fields populated", func(t *testing.T) {
-		port := 8080
-		policy := "policy_abc123"
-		keyword := "HEALTHY"
-		monitor := &client.Monitor{
-			UUID:               "mon-new",
-			Name:               "Monitor with New Fields",
-			URL:                "https://example.com:8080",
-			Protocol:           "port",
-			HTTPMethod:         "GET",
-			CheckFrequency:     60,
-			ExpectedStatusCode: "200",
-			FollowRedirects:    true,
-			Paused:             false,
-			Port:               &port,
-			AlertsWait:         30,
-			EscalationPolicy:   &policy,
-			RequiredKeyword:    &keyword,
-		}
-
-		model := &MonitorResourceModel{}
-		diags := &diag.Diagnostics{}
-		r.mapMonitorToModel(monitor, model, diags)
-
-		if diags.HasError() {
-			t.Errorf("unexpected error: %v", diags)
-		}
-		if model.Port.ValueInt64() != 8080 {
-			t.Errorf("expected Port 8080, got %d", model.Port.ValueInt64())
-		}
-		if model.AlertsWait.ValueInt64() != 30 {
-			t.Errorf("expected AlertsWait 30, got %d", model.AlertsWait.ValueInt64())
-		}
-		if model.EscalationPolicy.ValueString() != "policy_abc123" {
-			t.Errorf("expected EscalationPolicy 'policy_abc123', got %s", model.EscalationPolicy.ValueString())
-		}
-		if model.RequiredKeyword.ValueString() != "HEALTHY" {
-			t.Errorf("expected RequiredKeyword 'HEALTHY', got %s", model.RequiredKeyword.ValueString())
-		}
-	})
-
-	t.Run("new optional fields null when not set", func(t *testing.T) {
-		monitor := &client.Monitor{
-			UUID:               "mon-null",
-			Name:               "Monitor without New Fields",
-			URL:                "https://example.com",
-			Protocol:           "http",
-			HTTPMethod:         "GET",
-			CheckFrequency:     60,
-			ExpectedStatusCode: "200",
-			FollowRedirects:    true,
-			Port:               nil,
-			AlertsWait:         0,
-			EscalationPolicy:   nil,
-			RequiredKeyword:    nil,
-		}
-
-		model := &MonitorResourceModel{}
-		diags := &diag.Diagnostics{}
-		r.mapMonitorToModel(monitor, model, diags)
-
-		if diags.HasError() {
-			t.Errorf("unexpected error: %v", diags)
-		}
-		if !model.Port.IsNull() {
-			t.Error("expected Port to be null when not set")
-		}
-		if !model.AlertsWait.IsNull() {
-			t.Error("expected AlertsWait to be null when 0")
-		}
-		if !model.EscalationPolicy.IsNull() {
-			t.Error("expected EscalationPolicy to be null when not set")
-		}
-		if !model.RequiredKeyword.IsNull() {
-			t.Error("expected RequiredKeyword to be null when not set")
-		}
-	})
+			if diags.HasError() {
+				t.Errorf("unexpected error: %v", diags)
+				return
+			}
+			tt.verify(t, model)
+		})
+	}
 }

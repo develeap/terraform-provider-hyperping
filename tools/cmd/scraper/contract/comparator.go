@@ -54,6 +54,23 @@ type DocumentedField struct {
 	Required bool
 }
 
+// docFieldMaps groups the two lookup maps built from documented fields.
+type docFieldMaps struct {
+	exact      map[string]DocumentedField // keyed by original name
+	normalized map[string]DocumentedField // keyed by snake_case name
+}
+
+// buildDocFieldMaps creates exact and normalized lookup maps from a slice of documented fields.
+func buildDocFieldMaps(docFieldList []DocumentedField) docFieldMaps {
+	exact := make(map[string]DocumentedField, len(docFieldList))
+	normalized := make(map[string]DocumentedField, len(docFieldList))
+	for _, f := range docFieldList {
+		exact[f.Name] = f
+		normalized[normalizeFieldName(f.Name)] = f
+	}
+	return docFieldMaps{exact: exact, normalized: normalized}
+}
+
 // CompareWithDocumentation compares cassette-extracted schema against documented fields.
 func CompareWithDocumentation(cassetteSchema *CassetteSchema, docFields map[string][]DocumentedField) []ComparisonResult {
 	var results []ComparisonResult
@@ -64,85 +81,10 @@ func CompareWithDocumentation(cassetteSchema *CassetteSchema, docFields map[stri
 			Endpoint: endpointKey,
 		}
 
-		// Get documented fields for this endpoint's resource
-		// Build map with normalized names for comparison
-		docFieldList := docFields[result.Resource]
-		docFieldMap := make(map[string]DocumentedField)
-		normalizedDocMap := make(map[string]DocumentedField) // snake_case normalized
-		for _, f := range docFieldList {
-			docFieldMap[f.Name] = f
-			normalizedDocMap[normalizeFieldName(f.Name)] = f
-		}
+		maps := buildDocFieldMaps(docFields[result.Resource])
 
-		// Compare response fields (most important for schema discovery)
-		for fieldName, cassetteField := range endpoint.ResponseFields {
-			discovery := FieldDiscovery{
-				Endpoint:  endpointKey,
-				FieldName: fieldName,
-				Source:    cassetteField.Source,
-				Type:      cassetteField.Type,
-			}
-
-			// Try exact match first, then normalized (snake_case) match
-			docField, exists := docFieldMap[fieldName]
-			if !exists {
-				normalizedName := normalizeFieldName(fieldName)
-				docField, exists = normalizedDocMap[normalizedName]
-			}
-
-			if exists {
-				// Field is documented
-				docNormType := normalizeTypeForComparison(docField.Type)
-				cassetteNormType := normalizeTypeForComparison(cassetteField.Type)
-
-				if docNormType != cassetteNormType && docNormType != "unknown" && cassetteNormType != "unknown" {
-					discovery.DocStatus = DocStatusDiffers
-					discovery.DocType = docField.Type
-					discovery.Suggestion = fmt.Sprintf("API returns %s but docs say %s", cassetteField.Type, docField.Type)
-					result.Summary.TypeMismatches++
-				} else {
-					discovery.DocStatus = DocStatusDocumented
-					result.Summary.DocumentedFields++
-					continue // Skip adding documented fields to discoveries
-				}
-			} else {
-				// Field is undocumented
-				discovery.DocStatus = DocStatusUndocumented
-				discovery.Suggestion = fmt.Sprintf("Add '%s' (%s) to API documentation", fieldName, cassetteField.Type)
-				result.Summary.UndocumentedFields++
-			}
-
-			result.Discoveries = append(result.Discoveries, discovery)
-		}
-
-		// Check for deprecated fields (in docs but not in API response)
-		// Build normalized response field map for comparison
-		normalizedRespMap := make(map[string]bool)
-		for respFieldName := range endpoint.ResponseFields {
-			normalizedRespMap[normalizeFieldName(respFieldName)] = true
-		}
-
-		for fieldName := range docFieldMap {
-			normalizedDocName := normalizeFieldName(fieldName)
-			// Check both exact match and normalized match
-			_, exactExists := endpoint.ResponseFields[fieldName]
-			_, normalizedExists := normalizedRespMap[normalizedDocName]
-
-			if !exactExists && !normalizedExists {
-				// Only flag if we saw the endpoint (had a successful response)
-				if len(endpoint.ResponseFields) > 0 {
-					discovery := FieldDiscovery{
-						Endpoint:   endpointKey,
-						FieldName:  fieldName,
-						DocStatus:  DocStatusDeprecated,
-						DocType:    docFieldMap[fieldName].Type,
-						Suggestion: fmt.Sprintf("Field '%s' documented but not returned by API", fieldName),
-					}
-					result.Discoveries = append(result.Discoveries, discovery)
-					result.Summary.DeprecatedFields++
-				}
-			}
-		}
+		result = compareResponseFields(result, endpoint.ResponseFields, maps)
+		result = detectDeprecatedFields(result, endpoint.ResponseFields, maps.exact)
 
 		if len(result.Discoveries) > 0 || result.Summary.DocumentedFields > 0 {
 			results = append(results, result)
@@ -150,6 +92,92 @@ func CompareWithDocumentation(cassetteSchema *CassetteSchema, docFields map[stri
 	}
 
 	return results
+}
+
+// compareResponseFields checks each cassette response field against documentation.
+func compareResponseFields(result ComparisonResult, responseFields map[string]APIFieldSchema, maps docFieldMaps) ComparisonResult {
+	for fieldName, cassetteField := range responseFields {
+		discovery := FieldDiscovery{
+			Endpoint:  result.Endpoint,
+			FieldName: fieldName,
+			Source:    cassetteField.Source,
+			Type:      cassetteField.Type,
+		}
+
+		docField, exists := lookupDocField(fieldName, maps)
+		if exists {
+			discovery, result = classifyDocumentedField(discovery, result, docField, cassetteField)
+			if discovery.DocStatus == DocStatusDocumented {
+				continue
+			}
+		} else {
+			discovery.DocStatus = DocStatusUndocumented
+			discovery.Suggestion = fmt.Sprintf("Add '%s' (%s) to API documentation", fieldName, cassetteField.Type)
+			result.Summary.UndocumentedFields++
+		}
+
+		result.Discoveries = append(result.Discoveries, discovery)
+	}
+	return result
+}
+
+// lookupDocField tries exact then normalized lookup; returns the field and whether it was found.
+func lookupDocField(fieldName string, maps docFieldMaps) (DocumentedField, bool) {
+	if f, ok := maps.exact[fieldName]; ok {
+		return f, true
+	}
+	if f, ok := maps.normalized[normalizeFieldName(fieldName)]; ok {
+		return f, true
+	}
+	return DocumentedField{}, false
+}
+
+// classifyDocumentedField compares types and updates discovery/stats for a field that exists in docs.
+func classifyDocumentedField(discovery FieldDiscovery, result ComparisonResult, docField DocumentedField, cassetteField APIFieldSchema) (FieldDiscovery, ComparisonResult) {
+	docNormType := normalizeTypeForComparison(docField.Type)
+	cassetteNormType := normalizeTypeForComparison(cassetteField.Type)
+
+	if docNormType != cassetteNormType && docNormType != "unknown" && cassetteNormType != "unknown" {
+		discovery.DocStatus = DocStatusDiffers
+		discovery.DocType = docField.Type
+		discovery.Suggestion = fmt.Sprintf("API returns %s but docs say %s", cassetteField.Type, docField.Type)
+		result.Summary.TypeMismatches++
+	} else {
+		discovery.DocStatus = DocStatusDocumented
+		result.Summary.DocumentedFields++
+	}
+	return discovery, result
+}
+
+// detectDeprecatedFields checks for documented fields absent from the API response.
+func detectDeprecatedFields(result ComparisonResult, responseFields map[string]APIFieldSchema, docFieldMap map[string]DocumentedField) ComparisonResult {
+	if len(responseFields) == 0 {
+		return result
+	}
+
+	// Build normalized response-field set once.
+	normalizedRespMap := make(map[string]bool, len(responseFields))
+	for respFieldName := range responseFields {
+		normalizedRespMap[normalizeFieldName(respFieldName)] = true
+	}
+
+	for fieldName, docField := range docFieldMap {
+		_, exactExists := responseFields[fieldName]
+		_, normalizedExists := normalizedRespMap[normalizeFieldName(fieldName)]
+		if exactExists || normalizedExists {
+			continue
+		}
+		discovery := FieldDiscovery{
+			Endpoint:   result.Endpoint,
+			FieldName:  fieldName,
+			DocStatus:  DocStatusDeprecated,
+			DocType:    docField.Type,
+			Suggestion: fmt.Sprintf("Field '%s' documented but not returned by API", fieldName),
+		}
+		result.Discoveries = append(result.Discoveries, discovery)
+		result.Summary.DeprecatedFields++
+	}
+	return result
 }
 
 // normalizeFieldName converts camelCase to snake_case for comparison.

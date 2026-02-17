@@ -14,7 +14,16 @@ func FormatCoverageReportMarkdown(report *CoverageReport) string {
 	md.WriteString(fmt.Sprintf("**Generated:** %s\n\n", report.Timestamp.Format("2006-01-02 15:04:05 UTC")))
 	md.WriteString(fmt.Sprintf("**Overall Coverage:** %.1f%%\n\n", report.CoveragePercent))
 
-	// Summary table
+	md.WriteString(formatCoverageSummaryTable(report))
+	md.WriteString(formatCoverageGapsSection(report))
+	md.WriteString(formatCoverageActionItems(report))
+
+	return md.String()
+}
+
+// formatCoverageSummaryTable renders the per-resource summary table.
+func formatCoverageSummaryTable(report *CoverageReport) string {
+	var md strings.Builder
 	md.WriteString("## Summary\n\n")
 	md.WriteString("| Resource | API Fields | Implemented | Missing | Stale | Coverage |\n")
 	md.WriteString("|----------|-----------|-------------|---------|-------|----------|\n")
@@ -23,63 +32,84 @@ func FormatCoverageReportMarkdown(report *CoverageReport) string {
 		md.WriteString(fmt.Sprintf("| %s | %d | %d | %d | %d | %.1f%% |\n",
 			rc.Resource, rc.APIFields, rc.ImplementedFields, rc.MissingFields, rc.StaleFields, rc.CoveragePercent))
 	}
-
 	md.WriteString("\n")
+	return md.String()
+}
 
-	// Gaps by resource
-	if len(report.Gaps) > 0 {
-		md.WriteString("## Coverage Gaps\n\n")
-
-		// Group gaps by resource
-		gapsByResource := make(map[string][]CoverageGap)
-		for _, gap := range report.Gaps {
-			gapsByResource[gap.Resource] = append(gapsByResource[gap.Resource], gap)
-		}
-
-		for resource, gaps := range gapsByResource {
-			md.WriteString(fmt.Sprintf("### %s\n\n", resource))
-
-			// Group by type
-			missing := filterGapsByType(gaps, GapMissing)
-			typeMismatch := filterGapsByType(gaps, GapTypeMismatch)
-			stale := filterGapsByType(gaps, GapStale)
-
-			if len(missing) > 0 {
-				md.WriteString("#### Missing Fields (API has, provider doesn't)\n\n")
-				for _, gap := range missing {
-					md.WriteString(fmt.Sprintf("- **%s** (`%s`)\n", gap.APIField, gap.APIType))
-					if gap.Suggestion != "" {
-						md.WriteString(fmt.Sprintf("  - %s\n", gap.Suggestion))
-					}
-					if gap.FilePath != "" {
-						md.WriteString(fmt.Sprintf("  - File: `%s`\n", gap.FilePath))
-					}
-				}
-				md.WriteString("\n")
-			}
-
-			if len(typeMismatch) > 0 {
-				md.WriteString("#### Type Mismatches\n\n")
-				for _, gap := range typeMismatch {
-					md.WriteString(fmt.Sprintf("- **%s**: API=`%s`, TF=`%s`\n", gap.TFField, gap.APIType, gap.TFType))
-				}
-				md.WriteString("\n")
-			}
-
-			if len(stale) > 0 {
-				md.WriteString("#### Stale Fields (provider has, API doesn't document)\n\n")
-				for _, gap := range stale {
-					md.WriteString(fmt.Sprintf("- **%s**\n", gap.TFField))
-				}
-				md.WriteString("\n")
-			}
-		}
-	} else {
-		md.WriteString("## Coverage Gaps\n\n")
-		md.WriteString("✅ No coverage gaps detected!\n\n")
+// formatCoverageGapsSection renders the full gaps section.
+func formatCoverageGapsSection(report *CoverageReport) string {
+	if len(report.Gaps) == 0 {
+		return "## Coverage Gaps\n\n✅ No coverage gaps detected!\n\n"
 	}
 
-	// Action items
+	var md strings.Builder
+	md.WriteString("## Coverage Gaps\n\n")
+
+	gapsByResource := make(map[string][]CoverageGap)
+	for _, gap := range report.Gaps {
+		gapsByResource[gap.Resource] = append(gapsByResource[gap.Resource], gap)
+	}
+
+	for resource, gaps := range gapsByResource {
+		md.WriteString(fmt.Sprintf("### %s\n\n", resource))
+		md.WriteString(formatMissingGaps(filterGapsByType(gaps, GapMissing)))
+		md.WriteString(formatTypeMismatchGaps(filterGapsByType(gaps, GapTypeMismatch)))
+		md.WriteString(formatStaleGaps(filterGapsByType(gaps, GapStale)))
+	}
+	return md.String()
+}
+
+// formatMissingGaps renders the "missing fields" subsection.
+func formatMissingGaps(missing []CoverageGap) string {
+	if len(missing) == 0 {
+		return ""
+	}
+	var md strings.Builder
+	md.WriteString("#### Missing Fields (API has, provider doesn't)\n\n")
+	for _, gap := range missing {
+		md.WriteString(fmt.Sprintf("- **%s** (`%s`)\n", gap.APIField, gap.APIType))
+		if gap.Suggestion != "" {
+			md.WriteString(fmt.Sprintf("  - %s\n", gap.Suggestion))
+		}
+		if gap.FilePath != "" {
+			md.WriteString(fmt.Sprintf("  - File: `%s`\n", gap.FilePath))
+		}
+	}
+	md.WriteString("\n")
+	return md.String()
+}
+
+// formatTypeMismatchGaps renders the "type mismatches" subsection.
+func formatTypeMismatchGaps(mismatches []CoverageGap) string {
+	if len(mismatches) == 0 {
+		return ""
+	}
+	var md strings.Builder
+	md.WriteString("#### Type Mismatches\n\n")
+	for _, gap := range mismatches {
+		md.WriteString(fmt.Sprintf("- **%s**: API=`%s`, TF=`%s`\n", gap.TFField, gap.APIType, gap.TFType))
+	}
+	md.WriteString("\n")
+	return md.String()
+}
+
+// formatStaleGaps renders the "stale fields" subsection.
+func formatStaleGaps(stale []CoverageGap) string {
+	if len(stale) == 0 {
+		return ""
+	}
+	var md strings.Builder
+	md.WriteString("#### Stale Fields (provider has, API doesn't document)\n\n")
+	for _, gap := range stale {
+		md.WriteString(fmt.Sprintf("- **%s**\n", gap.TFField))
+	}
+	md.WriteString("\n")
+	return md.String()
+}
+
+// formatCoverageActionItems renders the action items checklist.
+func formatCoverageActionItems(report *CoverageReport) string {
+	var md strings.Builder
 	md.WriteString("## Action Items\n\n")
 	if report.MissingFields > 0 {
 		md.WriteString(fmt.Sprintf("- [ ] Implement %d missing fields\n", report.MissingFields))
@@ -90,7 +120,6 @@ func FormatCoverageReportMarkdown(report *CoverageReport) string {
 	if report.MissingFields == 0 && report.StaleFields == 0 {
 		md.WriteString("- ✅ No action items - full coverage!\n")
 	}
-
 	return md.String()
 }
 

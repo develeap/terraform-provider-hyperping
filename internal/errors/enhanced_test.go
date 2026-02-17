@@ -122,147 +122,95 @@ func TestEnhancedError_Error(t *testing.T) {
 	}
 }
 
-func TestEnhanceError(t *testing.T) {
+// extractEnhanced is a test helper that unwraps an EnhancedError from an error.
+func extractEnhanced(t *testing.T, err error) *EnhancedError {
+	t.Helper()
+	var enhanced *EnhancedError
+	if !errors.As(err, &enhanced) {
+		t.Fatal("Expected EnhancedError")
+	}
+	return enhanced
+}
+
+// TestEnhanceError_nilInput verifies that a nil error returns nil.
+func TestEnhanceError_nilInput(t *testing.T) {
+	result := EnhanceError(nil, CategoryAuth)
+	if result != nil {
+		t.Errorf("Expected nil error, got: %v", result)
+	}
+}
+
+// TestEnhanceError_authDefaults verifies auth category defaults are applied.
+func TestEnhanceError_authDefaults(t *testing.T) {
+	result := EnhanceError(errors.New("unauthorized"), CategoryAuth)
+	enhanced := extractEnhanced(t, result)
+	if enhanced.Title != "Authentication Failed" {
+		t.Errorf("Expected auth title, got: %s", enhanced.Title)
+	}
+	if len(enhanced.Suggestions) == 0 {
+		t.Error("Expected auth suggestions")
+	}
+	if len(enhanced.DocLinks) == 0 {
+		t.Error("Expected auth doc links")
+	}
+}
+
+// TestEnhanceError_rateLimitDefaults verifies rate limit category defaults.
+func TestEnhanceError_rateLimitDefaults(t *testing.T) {
+	result := EnhanceError(errors.New("rate limited"), CategoryRateLimit)
+	enhanced := extractEnhanced(t, result)
+	if enhanced.Title != "Rate Limit Exceeded" {
+		t.Errorf("Expected rate limit title, got: %s", enhanced.Title)
+	}
+	if !enhanced.Retryable {
+		t.Error("Expected rate limit to be retryable")
+	}
+}
+
+// TestEnhanceError_categoryDefaults verifies that each remaining category has the correct title.
+func TestEnhanceError_categoryDefaults(t *testing.T) {
 	tests := []struct {
-		name     string
-		err      error
-		category ErrorCategory
-		opts     []EnhancementOption
-		validate func(*testing.T, error)
+		name          string
+		category      ErrorCategory
+		wantTitle     string
+		wantRetryable bool
 	}{
-		{
-			name:     "nil error returns nil",
-			err:      nil,
-			category: CategoryAuth,
-			validate: func(t *testing.T, err error) {
-				if err != nil {
-					t.Errorf("Expected nil error, got: %v", err)
-				}
-			},
-		},
-		{
-			name:     "auth error applies defaults",
-			err:      errors.New("unauthorized"),
-			category: CategoryAuth,
-			validate: func(t *testing.T, err error) {
-				var enhanced *EnhancedError
-				if !errors.As(err, &enhanced) {
-					t.Fatal("Expected EnhancedError")
-				}
-				if enhanced.Title != "Authentication Failed" {
-					t.Errorf("Expected auth title, got: %s", enhanced.Title)
-				}
-				if len(enhanced.Suggestions) == 0 {
-					t.Error("Expected auth suggestions")
-				}
-				if len(enhanced.DocLinks) == 0 {
-					t.Error("Expected auth doc links")
-				}
-			},
-		},
-		{
-			name:     "rate limit error applies defaults",
-			err:      errors.New("rate limited"),
-			category: CategoryRateLimit,
-			validate: func(t *testing.T, err error) {
-				var enhanced *EnhancedError
-				if !errors.As(err, &enhanced) {
-					t.Fatal("Expected EnhancedError")
-				}
-				if enhanced.Title != "Rate Limit Exceeded" {
-					t.Errorf("Expected rate limit title, got: %s", enhanced.Title)
-				}
-				if !enhanced.Retryable {
-					t.Error("Expected rate limit to be retryable")
-				}
-			},
-		},
-		{
-			name:     "validation error applies defaults",
-			err:      errors.New("invalid field"),
-			category: CategoryValidation,
-			validate: func(t *testing.T, err error) {
-				var enhanced *EnhancedError
-				if !errors.As(err, &enhanced) {
-					t.Fatal("Expected EnhancedError")
-				}
-				if enhanced.Title != "Validation Error" {
-					t.Errorf("Expected validation title, got: %s", enhanced.Title)
-				}
-			},
-		},
-		{
-			name:     "not found error applies defaults",
-			err:      errors.New("not found"),
-			category: CategoryNotFound,
-			validate: func(t *testing.T, err error) {
-				var enhanced *EnhancedError
-				if !errors.As(err, &enhanced) {
-					t.Fatal("Expected EnhancedError")
-				}
-				if enhanced.Title != "Resource Not Found" {
-					t.Errorf("Expected not found title, got: %s", enhanced.Title)
-				}
-			},
-		},
-		{
-			name:     "server error applies defaults",
-			err:      errors.New("server error"),
-			category: CategoryServer,
-			validate: func(t *testing.T, err error) {
-				var enhanced *EnhancedError
-				if !errors.As(err, &enhanced) {
-					t.Fatal("Expected EnhancedError")
-				}
-				if !enhanced.Retryable {
-					t.Error("Expected server error to be retryable")
-				}
-			},
-		},
-		{
-			name:     "network error applies defaults",
-			err:      errors.New("network error"),
-			category: CategoryNetwork,
-			validate: func(t *testing.T, err error) {
-				var enhanced *EnhancedError
-				if !errors.As(err, &enhanced) {
-					t.Fatal("Expected EnhancedError")
-				}
-				if enhanced.Title != "Network Error" {
-					t.Errorf("Expected network title, got: %s", enhanced.Title)
-				}
-			},
-		},
-		{
-			name:     "custom options override defaults",
-			err:      errors.New("test"),
-			category: CategoryAuth,
-			opts: []EnhancementOption{
-				WithTitle("Custom Title"),
-				WithDescription("Custom description"),
-				WithOperation("create"),
-				WithResource("hyperping_monitor.test"),
-			},
-			validate: func(t *testing.T, err error) {
-				var enhanced *EnhancedError
-				if !errors.As(err, &enhanced) {
-					t.Fatal("Expected EnhancedError")
-				}
-				if enhanced.Title != "Custom Title" {
-					t.Errorf("Expected custom title, got: %s", enhanced.Title)
-				}
-				if enhanced.Operation != "create" {
-					t.Errorf("Expected create operation, got: %s", enhanced.Operation)
-				}
-			},
-		},
+		{"validation", CategoryValidation, "Validation Error", false},
+		{"not found", CategoryNotFound, "Resource Not Found", false},
+		{"server", CategoryServer, "", true},
+		{"network", CategoryNetwork, "Network Error", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			enhanced := EnhanceError(tt.err, tt.category, tt.opts...)
-			tt.validate(t, enhanced)
+			result := EnhanceError(errors.New("test error"), tt.category)
+			enhanced := extractEnhanced(t, result)
+			if tt.wantTitle != "" && enhanced.Title != tt.wantTitle {
+				t.Errorf("expected title %q, got: %s", tt.wantTitle, enhanced.Title)
+			}
+			if tt.wantRetryable && !enhanced.Retryable {
+				t.Errorf("expected %s error to be retryable", tt.name)
+			}
 		})
+	}
+}
+
+// TestEnhanceError_customOptions verifies that options override category defaults.
+func TestEnhanceError_customOptions(t *testing.T) {
+	result := EnhanceError(
+		errors.New("test"),
+		CategoryAuth,
+		WithTitle("Custom Title"),
+		WithDescription("Custom description"),
+		WithOperation("create"),
+		WithResource("hyperping_monitor.test"),
+	)
+	enhanced := extractEnhanced(t, result)
+	if enhanced.Title != "Custom Title" {
+		t.Errorf("Expected custom title, got: %s", enhanced.Title)
+	}
+	if enhanced.Operation != "create" {
+		t.Errorf("Expected create operation, got: %s", enhanced.Operation)
 	}
 }
 

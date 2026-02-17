@@ -77,340 +77,323 @@ func main() {
 	os.Exit(run())
 }
 
-func run() int {
-	flag.Parse()
+// migrationResult holds the generated content from a migration run.
+type migrationResult struct {
+	tfConfig              string
+	importScriptContent   string
+	manualSteps           string
+	migrationReport       *report.Report
+	monitorIssues         []converter.ConversionIssue
+	healthcheckIssues     []converter.ConversionIssue
+	convertedMonitors     []converter.ConvertedMonitor
+	convertedHealthchecks []converter.ConvertedHealthcheck
+}
 
-	// Create logger
-	logger, err := recovery.NewLogger(*debug || *verbose)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Failed to create logger: %v\n", err)
-		return 1
-	}
-	defer logger.Close()
-
-	if *debug && logger.GetLogPath() != "" {
-		logger.Info("Debug logging enabled, log file: %s", logger.GetLogPath())
-	}
-
-	// Check if interactive mode should be used
-	if shouldUseInteractive() {
-		return runInteractive(logger)
-	}
-
-	// Handle list checkpoints
-	if *listCheckpointsFlag {
-		return listCheckpoints(toolName)
-	}
-
-	// Get credentials from flags or environment
-	bsToken := *betterstackToken
+// validateCredentials checks that required API credentials are present and returns
+// the resolved bsToken and hpKey values (from flags or env vars).
+func validateCredentials() (bsToken, hpKey string, code int) {
+	bsToken = *betterstackToken
 	if bsToken == "" {
 		bsToken = os.Getenv("BETTERSTACK_API_TOKEN")
 	}
-	hpKey := *hyperpingAPIKey
+	hpKey = *hyperpingAPIKey
 	if hpKey == "" {
 		hpKey = os.Getenv("HYPERPING_API_KEY")
 	}
+	return bsToken, hpKey, 0
+}
 
-	// Handle rollback
-	if *rollback {
-		if hpKey == "" {
-			fmt.Fprintln(os.Stderr, "Error: Hyperping API key is required for rollback")
-			fmt.Fprintln(os.Stderr, "Set --hyperping-api-key flag or HYPERPING_API_KEY environment variable")
-			return 1
-		}
-
-		migrationID := *rollbackID
-		if migrationID == "" {
-			// Find latest checkpoint
-			//nolint:govet
-			mgr, err := checkpoint.NewManager()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to create checkpoint manager: %v\n", err)
-				return 1
-			}
-			//nolint:govet
-			latest, err := mgr.FindLatest(toolName)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				fmt.Fprintln(os.Stderr, "Use --rollback-id to specify a checkpoint or --list-checkpoints to see available checkpoints")
-				return 1
-			}
-			migrationID = latest.MigrationID
-		}
-
-		return performRollback(migrationID, hpKey, *rollbackForce, logger)
+// handleRollbackMode performs rollback when the --rollback flag is set.
+// Returns (exitCode, handled). If handled is false, rollback was not requested.
+func handleRollbackMode(hpKey string, logger *recovery.Logger) (int, bool) {
+	if !*rollback {
+		return 0, false
 	}
 
+	if hpKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: Hyperping API key is required for rollback")
+		fmt.Fprintln(os.Stderr, "Set --hyperping-api-key flag or HYPERPING_API_KEY environment variable")
+		return 1, true
+	}
+
+	migrationID := *rollbackID
+	if migrationID == "" {
+		mgr, err := checkpoint.NewManager()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to create checkpoint manager: %v\n", err)
+			return 1, true
+		}
+		latest, err := mgr.FindLatest(toolName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintln(os.Stderr, "Use --rollback-id to specify a checkpoint or --list-checkpoints to see available checkpoints")
+			return 1, true
+		}
+		migrationID = latest.MigrationID
+	}
+
+	return performRollback(migrationID, hpKey, *rollbackForce, logger), true
+}
+
+// validateSourceCredentials checks that source/dest credentials exist before a full migration.
+func validateSourceCredentials(bsToken, hpKey string) int {
 	if bsToken == "" {
 		fmt.Fprintln(os.Stderr, "Error: Better Stack API token is required")
 		fmt.Fprintln(os.Stderr, "Set --betterstack-token flag or BETTERSTACK_API_TOKEN environment variable")
 		return 1
 	}
-
 	if hpKey == "" && !*dryRun {
 		fmt.Fprintln(os.Stderr, "Error: Hyperping API key is required")
 		fmt.Fprintln(os.Stderr, "Set --hyperping-api-key flag or HYPERPING_API_KEY environment variable")
 		return 1
 	}
+	return 0
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
+// runDryValidation validates API connectivity in dry-run mode.
+func runDryValidation(ctx context.Context, bsToken string, logger *recovery.Logger) int {
+	logger.Info("Dry run mode: validating API connectivity...")
+	validator := recovery.NewAPIValidator(logger)
 
-	// Enhanced dry-run: validate API connectivity
-	if *dryRun {
-		logger.Info("Dry run mode: validating API connectivity...")
-		validator := recovery.NewAPIValidator(logger)
+	bsValidation := validator.ValidateSourceAPI(ctx, "Better Stack", func(ctx context.Context) error {
+		bsClient := betterstack.NewClient(bsToken)
+		_, err := bsClient.FetchMonitors(ctx)
+		return err
+	})
 
-		// Validate Better Stack API
-		//nolint:govet
-		bsValidation := validator.ValidateSourceAPI(ctx, "Better Stack", func(ctx context.Context) error {
-			bsClient := betterstack.NewClient(bsToken)
-			_, err := bsClient.FetchMonitors(ctx)
-			return err
-		})
-
-		if !bsValidation.Valid {
-			fmt.Fprintf(os.Stderr, "Error: %s\n", bsValidation.ErrorMessage)
-			return 1
-		}
-
-		fmt.Fprintln(os.Stderr, "API validation successful")
+	if !bsValidation.Valid {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", bsValidation.ErrorMessage)
+		return 1
 	}
 
-	// Initialize or resume migration state
-	var state *migrationState
-	migrationID := *resumeID
+	fmt.Fprintln(os.Stderr, "API validation successful")
+	return 0
+}
 
-	if *resume || migrationID != "" {
-		// Resume from checkpoint
-		if migrationID == "" {
-			//nolint:govet
+// resolveOrCreateState initialises a migration state, resuming from a checkpoint if requested.
+func resolveOrCreateState(ctx context.Context, totalResources int, logger *recovery.Logger) (*migrationState, string, error) {
+	migID := *resumeID
+
+	if *resume || migID != "" {
+		if migID == "" {
 			mgr, err := checkpoint.NewManager()
 			if err != nil {
-				logger.Error("Failed to create checkpoint manager: %v", err)
-				return 1
+				return nil, "", fmt.Errorf("failed to create checkpoint manager: %w", err)
 			}
-			//nolint:govet
 			latest, err := mgr.FindLatest(toolName)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: No checkpoint found to resume from\n")
-				fmt.Fprintln(os.Stderr, "Use --list-checkpoints to see available checkpoints")
-				return 1
+				return nil, "", fmt.Errorf("no checkpoint found to resume from")
 			}
-			migrationID = latest.MigrationID
+			migID = latest.MigrationID
 		}
 
-		//nolint:govet
-		state, err = resumeFromCheckpoint(migrationID, logger)
+		state, err := resumeFromCheckpoint(migID, logger)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Failed to resume from checkpoint: %v\n", err)
-			return 1
+			return nil, "", fmt.Errorf("failed to resume from checkpoint: %w", err)
 		}
-
-		logger.Info("Resuming migration from checkpoint: %s", migrationID)
+		logger.Info("Resuming migration from checkpoint: %s", migID)
+		return state, migID, nil
 	}
 
-	logger.Info("Starting Better Stack to Hyperping migration...")
+	_ = ctx
+	migID = checkpoint.GenerateMigrationID(toolName)
+	state, err := newMigrationState(migID, totalResources, logger)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create migration state: %w", err)
+	}
+	logger.Info("Created new migration: %s", migID)
+	return state, migID, nil
+}
 
-	// Create Better Stack client
+// fetchBetterStackResources fetches monitors and heartbeats from Better Stack.
+func fetchBetterStackResources(ctx context.Context, bsToken string, logger *recovery.Logger) ([]betterstack.Monitor, []betterstack.Heartbeat, error) {
 	bsClient := betterstack.NewClient(bsToken)
 
-	// Note: Hyperping client not needed - tool generates Terraform files
-	// Users will apply the Terraform config to create resources in Hyperping
-
-	// Fetch Better Stack resources
 	logger.Info("Fetching Better Stack monitors...")
 	monitors, err := bsClient.FetchMonitors(ctx)
 	if err != nil {
-		logger.Error("Failed to fetch monitors: %v", err)
-		fmt.Fprintf(os.Stderr, "Error fetching Better Stack monitors: %v\n", err)
-		return 1
+		return nil, nil, fmt.Errorf("error fetching Better Stack monitors: %w", err)
 	}
 	logger.Info("Found %d monitors", len(monitors))
 
 	logger.Info("Fetching Better Stack heartbeats...")
 	heartbeats, err := bsClient.FetchHeartbeats(ctx)
 	if err != nil {
-		logger.Error("Failed to fetch heartbeats: %v", err)
-		fmt.Fprintf(os.Stderr, "Error fetching Better Stack heartbeats: %v\n", err)
-		return 1
+		return nil, nil, fmt.Errorf("error fetching Better Stack heartbeats: %w", err)
 	}
 	logger.Info("Found %d heartbeats", len(heartbeats))
 
-	// Initialize state if not resuming
-	totalResources := len(monitors) + len(heartbeats)
-	if state == nil {
-		migrationID = checkpoint.GenerateMigrationID(toolName)
-		state, err = newMigrationState(migrationID, totalResources, logger)
-		if err != nil {
-			logger.Error("Failed to create migration state: %v", err)
-			return 1
-		}
-		logger.Info("Created new migration: %s", migrationID)
-	}
+	return monitors, heartbeats, nil
+}
 
-	// Convert resources with error handling
-	logger.Info("Converting monitors to Hyperping format...")
+// convertResources converts all Better Stack resources to Hyperping format.
+func convertResources(
+	monitors []betterstack.Monitor,
+	heartbeats []betterstack.Heartbeat,
+	state *migrationState,
+	logger *recovery.Logger,
+) ([]converter.ConvertedMonitor, []converter.ConvertedHealthcheck, []converter.ConversionIssue, []converter.ConversionIssue) {
 	conv := converter.New()
 
+	logger.Info("Converting monitors to Hyperping format...")
+	convertedMonitors, monitorIssues := convertMonitorList(monitors, conv, state, logger)
+
+	logger.Info("Converting heartbeats to Hyperping format...")
+	convertedHealthchecks, healthcheckIssues := convertHeartbeatList(heartbeats, conv, state, logger)
+
+	return convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues
+}
+
+// convertMonitorList converts a slice of monitors, updating state as it goes.
+func convertMonitorList(
+	monitors []betterstack.Monitor,
+	conv *converter.Converter,
+	state *migrationState,
+	logger *recovery.Logger,
+) ([]converter.ConvertedMonitor, []converter.ConversionIssue) {
 	var convertedMonitors []converter.ConvertedMonitor
 	var monitorIssues []converter.ConversionIssue
 
 	for _, monitor := range monitors {
 		monitorID := fmt.Sprintf("monitor-%s", monitor.ID)
-
-		// Skip if already processed
 		if state.isProcessed(monitorID) {
 			logger.Debug("Skipping already processed monitor: %s", monitorID)
 			continue
 		}
 
-		// Convert monitor
 		converted, issues := conv.ConvertMonitors([]betterstack.Monitor{monitor})
-
 		if len(converted) > 0 {
 			convertedMonitors = append(convertedMonitors, converted...)
 			state.markResourceProcessed(monitorID)
 		} else {
-			// Mark as failed
 			errorMsg := "conversion failed"
 			if len(issues) > 0 {
 				errorMsg = issues[0].Message
 			}
 			state.markResourceFailed(monitorID, "monitor", monitor.Attributes.URL, errorMsg)
 		}
-
 		monitorIssues = append(monitorIssues, issues...)
 	}
 
-	logger.Info("Converting heartbeats to Hyperping format...")
+	return convertedMonitors, monitorIssues
+}
+
+// convertHeartbeatList converts a slice of heartbeats, updating state as it goes.
+func convertHeartbeatList(
+	heartbeats []betterstack.Heartbeat,
+	conv *converter.Converter,
+	state *migrationState,
+	logger *recovery.Logger,
+) ([]converter.ConvertedHealthcheck, []converter.ConversionIssue) {
 	var convertedHealthchecks []converter.ConvertedHealthcheck
 	var healthcheckIssues []converter.ConversionIssue
 
 	for _, heartbeat := range heartbeats {
 		heartbeatID := fmt.Sprintf("heartbeat-%s", heartbeat.ID)
-
-		// Skip if already processed
 		if state.isProcessed(heartbeatID) {
 			logger.Debug("Skipping already processed heartbeat: %s", heartbeatID)
 			continue
 		}
 
-		// Convert heartbeat
 		converted, issues := conv.ConvertHeartbeats([]betterstack.Heartbeat{heartbeat})
-
 		if len(converted) > 0 {
 			convertedHealthchecks = append(convertedHealthchecks, converted...)
 			state.markResourceProcessed(heartbeatID)
 		} else {
-			// Mark as failed
 			errorMsg := "conversion failed"
 			if len(issues) > 0 {
 				errorMsg = issues[0].Message
 			}
 			state.markResourceFailed(heartbeatID, "heartbeat", heartbeat.Attributes.Name, errorMsg)
 		}
-
 		healthcheckIssues = append(healthcheckIssues, issues...)
 	}
 
-	// Save checkpoint after conversion
-	state.saveCheckpoint()
+	return convertedHealthchecks, healthcheckIssues
+}
 
-	// Generate Terraform configuration
+// buildMigrationResult generates all output content from converted resources.
+func buildMigrationResult(
+	monitors []betterstack.Monitor,
+	heartbeats []betterstack.Heartbeat,
+	convertedMonitors []converter.ConvertedMonitor,
+	convertedHealthchecks []converter.ConvertedHealthcheck,
+	monitorIssues []converter.ConversionIssue,
+	healthcheckIssues []converter.ConversionIssue,
+) *migrationResult {
 	gen := generator.New()
-	tfConfig := gen.GenerateTerraform(convertedMonitors, convertedHealthchecks)
+	return &migrationResult{
+		tfConfig:              gen.GenerateTerraform(convertedMonitors, convertedHealthchecks),
+		importScriptContent:   gen.GenerateImportScript(convertedMonitors, convertedHealthchecks),
+		manualSteps:           gen.GenerateManualSteps(monitorIssues, healthcheckIssues),
+		migrationReport:       report.Generate(monitors, heartbeats, convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues),
+		monitorIssues:         monitorIssues,
+		healthcheckIssues:     healthcheckIssues,
+		convertedMonitors:     convertedMonitors,
+		convertedHealthchecks: convertedHealthchecks,
+	}
+}
 
-	// Generate import script
-	importScriptContent := gen.GenerateImportScript(convertedMonitors, convertedHealthchecks)
-
-	// Generate manual steps
-	manualSteps := gen.GenerateManualSteps(monitorIssues, healthcheckIssues)
-
-	// Generate migration report
-	migrationReport := report.Generate(
+// runDryRunOutput prints dry-run preview and returns the exit code.
+func runDryRunOutput(
+	monitors []betterstack.Monitor,
+	heartbeats []betterstack.Heartbeat,
+	result *migrationResult,
+	state *migrationState,
+) int {
+	dryRunReport := buildDryRunReport(
 		monitors,
 		heartbeats,
-		convertedMonitors,
-		convertedHealthchecks,
-		monitorIssues,
-		healthcheckIssues,
+		result.convertedMonitors,
+		result.convertedHealthchecks,
+		result.monitorIssues,
+		result.healthcheckIssues,
+		result.tfConfig,
+		result.importScriptContent,
+		result.manualSteps,
 	)
 
-	// Dry run mode - enhanced preview
-	if *dryRun {
-		dryRunReport := buildDryRunReport(
-			monitors,
-			heartbeats,
-			convertedMonitors,
-			convertedHealthchecks,
-			monitorIssues,
-			healthcheckIssues,
-			tfConfig,
-			importScriptContent,
-			manualSteps,
-		)
+	printEnhancedDryRun(dryRunReport, *verbose, *formatJSON)
 
-		printEnhancedDryRun(dryRunReport, *verbose, *formatJSON)
+	if failureReport := state.getFailureReport(); failureReport != "" {
+		fmt.Fprintln(os.Stderr, "\n"+failureReport)
+	}
 
-		// Print failure report if any
-		if failureReport := state.getFailureReport(); failureReport != "" {
-			fmt.Fprintln(os.Stderr, "\n"+failureReport)
+	return 0
+}
+
+// writeOutputFiles writes all generated files to disk.
+func writeOutputFiles(result *migrationResult, logger *recovery.Logger) (int, error) {
+	type fileWrite struct {
+		path    string
+		content []byte
+		logMsg  string
+	}
+
+	writes := []fileWrite{
+		{*outputFile, []byte(result.tfConfig), *outputFile},
+		{*importScript, []byte(result.importScriptContent), *importScript},
+		{*reportFile, []byte(result.migrationReport.JSON()), *reportFile},
+		{*manualStepsFile, []byte(result.manualSteps), *manualStepsFile},
+	}
+
+	for _, w := range writes {
+		logger.Debug("Writing %s", w.path)
+		if err := os.WriteFile(w.path, w.content, 0o600); err != nil {
+			logger.Error("Failed to write %s: %v", w.path, err)
+			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", w.path, err)
+			return 1, err
 		}
-
-		return 0
+		logger.Info("Generated %s", w.logMsg)
 	}
+	return 0, nil
+}
 
-	// Write Terraform configuration
-	logger.Debug("Writing Terraform configuration to %s", *outputFile)
-	if err := os.WriteFile(*outputFile, []byte(tfConfig), 0o600); err != nil {
-		logger.Error("Failed to write Terraform config: %v", err)
-		fmt.Fprintf(os.Stderr, "Error writing Terraform config: %v\n", err)
-		state.finalize(false)
-		return 1
-	}
-	logger.Info("Generated %s", *outputFile)
-
-	// Write import script
-	logger.Debug("Writing import script to %s", *importScript)
-	if err := os.WriteFile(*importScript, []byte(importScriptContent), 0o600); err != nil {
-		logger.Error("Failed to write import script: %v", err)
-		fmt.Fprintf(os.Stderr, "Error writing import script: %v\n", err)
-		state.finalize(false)
-		return 1
-	}
-	logger.Info("Generated %s", *importScript)
-
-	// Write migration report
-	logger.Debug("Writing migration report to %s", *reportFile)
-	if err := os.WriteFile(*reportFile, []byte(migrationReport.JSON()), 0o600); err != nil {
-		logger.Error("Failed to write migration report: %v", err)
-		fmt.Fprintf(os.Stderr, "Error writing migration report: %v\n", err)
-		state.finalize(false)
-		return 1
-	}
-	logger.Info("Generated %s", *reportFile)
-
-	// Write manual steps
-	logger.Debug("Writing manual steps to %s", *manualStepsFile)
-	if err := os.WriteFile(*manualStepsFile, []byte(manualSteps), 0o600); err != nil {
-		logger.Error("Failed to write manual steps: %v", err)
-		fmt.Fprintf(os.Stderr, "Error writing manual steps: %v\n", err)
-		state.finalize(false)
-		return 1
-	}
-	logger.Info("Generated %s", *manualStepsFile)
-
-	// Finalize checkpoint
-	hasFailures := state.checkpoint.Failed > 0
-	state.finalize(!hasFailures)
-
-	// Print summary
+// printSuccessSummary prints the post-migration summary to stderr.
+func printSuccessSummary(result *migrationResult, state *migrationState, migrationID string) {
 	fmt.Fprintln(os.Stderr, "\n=== Migration Complete ===")
-	migrationReport.PrintSummary(os.Stderr)
+	result.migrationReport.PrintSummary(os.Stderr)
 
-	// Print failure report if any
 	if failureReport := state.getFailureReport(); failureReport != "" {
 		fmt.Fprintln(os.Stderr, failureReport)
 		fmt.Fprintf(os.Stderr, "\nSome resources failed to convert. See details above.\n")
@@ -429,25 +412,129 @@ func run() int {
 	fmt.Fprintf(os.Stderr, "  3. Run: terraform init\n")
 	fmt.Fprintf(os.Stderr, "  4. Run: terraform plan\n")
 	fmt.Fprintf(os.Stderr, "  5. Run: terraform apply\n")
+}
 
-	// Validate Terraform if requested
-	if *validateTF {
-		logger.Info("Validating Terraform configuration...")
-		if err := gen.ValidateTerraform(*outputFile); err != nil {
-			logger.Error("Terraform validation failed: %v", err)
-			fmt.Fprintf(os.Stderr, "Terraform validation failed: %v\n", err)
-			return 1
-		}
-		logger.Info("Terraform validation passed")
-		fmt.Fprintln(os.Stderr, "Terraform validation passed!")
+// runTerraformValidation optionally validates the written Terraform file.
+func runTerraformValidation(logger *recovery.Logger) int {
+	if !*validateTF {
+		return 0
+	}
+	gen := generator.New()
+	logger.Info("Validating Terraform configuration...")
+	if err := gen.ValidateTerraform(*outputFile); err != nil {
+		logger.Error("Terraform validation failed: %v", err)
+		fmt.Fprintf(os.Stderr, "Terraform validation failed: %v\n", err)
+		return 1
+	}
+	logger.Info("Terraform validation passed")
+	fmt.Fprintln(os.Stderr, "Terraform validation passed!")
+	return 0
+}
+
+// logFatalErr logs an error to both the structured logger and stderr, returning exit code 1.
+func logFatalErr(logger *recovery.Logger, err error) int {
+	logger.Error("%v", err)
+	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	return 1
+}
+
+// logDebugPath logs the debug log path when debug mode is active.
+func logDebugPath(logger *recovery.Logger) {
+	if *debug && logger.GetLogPath() != "" {
+		logger.Info("Debug logging enabled, log file: %s", logger.GetLogPath())
+	}
+}
+
+// runConversionAndOutput converts resources and writes output files, returning an exit code.
+func runConversionAndOutput(
+	monitors []betterstack.Monitor,
+	heartbeats []betterstack.Heartbeat,
+	state *migrationState,
+	migrationID string,
+	logger *recovery.Logger,
+) int {
+	logger.Info("Starting Better Stack to Hyperping migration...")
+	convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues := convertResources(monitors, heartbeats, state, logger)
+	state.saveCheckpoint()
+
+	result := buildMigrationResult(monitors, heartbeats, convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues)
+
+	if *dryRun {
+		return runDryRunOutput(monitors, heartbeats, result, state)
 	}
 
-	// Determine exit code based on failures
+	if code, writeErr := writeOutputFiles(result, logger); writeErr != nil {
+		state.finalize(false)
+		return code
+	}
+
+	hasFailures := state.checkpoint.Failed > 0
+	state.finalize(!hasFailures)
+	printSuccessSummary(result, state, migrationID)
+	return finalizeMigration(hasFailures, state, logger)
+}
+
+// finalizeMigration runs optional validation and returns the final exit code.
+func finalizeMigration(hasFailures bool, state *migrationState, logger *recovery.Logger) int {
+	if code := runTerraformValidation(logger); code != 0 {
+		return code
+	}
 	if hasFailures {
 		logger.Warn("Migration completed with %d failures", state.checkpoint.Failed)
 		return 1
 	}
-
 	logger.Info("Migration completed successfully")
 	return 0
+}
+
+func run() int {
+	flag.Parse()
+
+	logger, err := recovery.NewLogger(*debug || *verbose)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Failed to create logger: %v\n", err)
+		return 1
+	}
+	defer logger.Close()
+
+	logDebugPath(logger)
+
+	if shouldUseInteractive() {
+		return runInteractive(logger)
+	}
+
+	if *listCheckpointsFlag {
+		return listCheckpoints(toolName)
+	}
+
+	bsToken, hpKey, _ := validateCredentials()
+
+	if code, handled := handleRollbackMode(hpKey, logger); handled {
+		return code
+	}
+
+	if code := validateSourceCredentials(bsToken, hpKey); code != 0 {
+		return code
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	if *dryRun {
+		if code := runDryValidation(ctx, bsToken, logger); code != 0 {
+			return code
+		}
+	}
+
+	monitors, heartbeats, err := fetchBetterStackResources(ctx, bsToken, logger)
+	if err != nil {
+		return logFatalErr(logger, err)
+	}
+
+	state, migrationID, err := resolveOrCreateState(ctx, len(monitors)+len(heartbeats), logger)
+	if err != nil {
+		return logFatalErr(logger, err)
+	}
+
+	return runConversionAndOutput(monitors, heartbeats, state, migrationID, logger)
 }

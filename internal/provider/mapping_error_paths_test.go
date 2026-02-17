@@ -9,179 +9,171 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
+
+// headerScenario defines a single scenario for header mapping tests.
+type headerScenario struct {
+	name           string
+	input          types.List
+	wantErr        bool
+	wantErrSummary string
+	wantCount      int
+	wantFirstName  string
+}
 
 // TestMapTFListToRequestHeaders_ErrorPaths tests error handling scenarios
 // to increase coverage from 71.4% to 100%
 func TestMapTFListToRequestHeaders_ErrorPaths(t *testing.T) {
-	t.Run("invalid element type - not an object", func(t *testing.T) {
-		var diags diag.Diagnostics
+	tests := buildHeaderScenarios()
 
-		// Create a list with a string element instead of object
-		invalidList, _ := types.ListValue(
-			types.StringType, // Wrong type - should be ObjectType
-			[]attr.Value{types.StringValue("invalid")},
-		)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var diags diag.Diagnostics
+			result := mapTFListToRequestHeaders(tt.input, &diags)
 
-		// This will cause a type assertion failure in the function
-		// Note: We can't easily create this scenario without breaking type safety,
-		// but we can test by creating a list with the wrong element type
-		result := mapTFListToRequestHeaders(invalidList, &diags)
-
-		// Function should handle gracefully
-		if len(result) != 0 {
-			t.Errorf("expected empty result for invalid list, got %d headers", len(result))
-		}
-	})
-
-	t.Run("invalid name field - not a string", func(t *testing.T) {
-		var diags diag.Diagnostics
-
-		// Create header object with non-string name field
-		headerObj, _ := types.ObjectValue(
-			map[string]attr.Type{
-				"name":  types.Int64Type, // Wrong type
-				"value": types.StringType,
-			},
-			map[string]attr.Value{
-				"name":  types.Int64Value(123), // Invalid
-				"value": types.StringValue("test-value"),
-			},
-		)
-
-		headersList, _ := types.ListValue(
-			types.ObjectType{AttrTypes: map[string]attr.Type{
-				"name":  types.Int64Type,
-				"value": types.StringType,
-			}},
-			[]attr.Value{headerObj},
-		)
-
-		result := mapTFListToRequestHeaders(headersList, &diags)
-
-		if !diags.HasError() {
-			t.Error("expected diagnostic error for invalid name field type")
-		}
-		if len(result) != 0 {
-			t.Errorf("expected empty result when name field is invalid, got %d headers", len(result))
-		}
-
-		// Check error message
-		errs := diags.Errors()
-		found := false
-		for _, err := range errs {
-			if err.Summary() == "Invalid header name" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("expected 'Invalid header name' error")
-		}
-	})
-
-	t.Run("invalid value field - not a string", func(t *testing.T) {
-		var diags diag.Diagnostics
-
-		// Create header object with non-string value field
-		headerObj, _ := types.ObjectValue(
-			map[string]attr.Type{
-				"name":  types.StringType,
-				"value": types.BoolType, // Wrong type
-			},
-			map[string]attr.Value{
-				"name":  types.StringValue("X-Test"),
-				"value": types.BoolValue(true), // Invalid
-			},
-		)
-
-		headersList, _ := types.ListValue(
-			types.ObjectType{AttrTypes: map[string]attr.Type{
-				"name":  types.StringType,
-				"value": types.BoolType,
-			}},
-			[]attr.Value{headerObj},
-		)
-
-		result := mapTFListToRequestHeaders(headersList, &diags)
-
-		if !diags.HasError() {
-			t.Error("expected diagnostic error for invalid value field type")
-		}
-		if len(result) != 0 {
-			t.Errorf("expected empty result when value field is invalid, got %d headers", len(result))
-		}
-
-		// Check error message
-		errs := diags.Errors()
-		found := false
-		for _, err := range errs {
-			if err.Summary() == "Invalid header value" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("expected 'Invalid header value' error")
-		}
-	})
-
-	t.Run("valid headers processed correctly", func(t *testing.T) {
-		var diags diag.Diagnostics
-
-		validHeader, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
-			"name":  types.StringValue("X-Valid"),
-			"value": types.StringValue("valid-value"),
+			assertHeaderDiagnostics(t, diags, tt.wantErr, tt.wantErrSummary)
+			assertHeaderCount(t, result, tt.wantCount)
+			assertFirstHeaderName(t, result, tt.wantFirstName)
 		})
+	}
+}
 
-		headersList, _ := types.ListValue(
-			types.ObjectType{AttrTypes: RequestHeaderAttrTypes()},
-			[]attr.Value{validHeader},
-		)
+// buildHeaderScenarios constructs all test scenarios for header mapping.
+func buildHeaderScenarios() []headerScenario {
+	return []headerScenario{
+		{
+			name:           "invalid element type - not an object",
+			input:          buildStringTypeList(),
+			wantErr:        true,
+			wantErrSummary: "Invalid header element",
+			wantCount:      0,
+		},
+		{
+			name:           "invalid name field - not a string",
+			input:          buildInvalidNameFieldList(),
+			wantErr:        true,
+			wantErrSummary: "Invalid header name",
+			wantCount:      0,
+		},
+		{
+			name:           "invalid value field - not a string",
+			input:          buildInvalidValueFieldList(),
+			wantErr:        true,
+			wantErrSummary: "Invalid header value",
+			wantCount:      0,
+		},
+		{
+			name:          "valid headers processed correctly",
+			input:         buildValidHeaderList(),
+			wantErr:       false,
+			wantCount:     1,
+			wantFirstName: "X-Valid",
+		},
+		{
+			name:          "headers with both fields null skipped",
+			input:         buildNullAndValidHeaderList(),
+			wantErr:       false,
+			wantCount:     1,
+			wantFirstName: "X-Valid",
+		},
+	}
+}
 
-		result := mapTFListToRequestHeaders(headersList, &diags)
+func buildStringTypeList() types.List {
+	l, _ := types.ListValue(types.StringType, []attr.Value{types.StringValue("invalid")})
+	return l
+}
 
-		if diags.HasError() {
-			t.Errorf("unexpected error for valid headers: %v", diags.Errors())
-		}
-		if len(result) != 1 {
-			t.Errorf("expected 1 header, got %d", len(result))
-		}
-		if len(result) > 0 && result[0].Name != "X-Valid" {
-			t.Errorf("expected header name 'X-Valid', got '%s'", result[0].Name)
-		}
+func buildInvalidNameFieldList() types.List {
+	attrTypes := map[string]attr.Type{"name": types.Int64Type, "value": types.StringType}
+	obj, _ := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"name":  types.Int64Value(123),
+		"value": types.StringValue("test-value"),
 	})
+	l, _ := types.ListValue(types.ObjectType{AttrTypes: attrTypes}, []attr.Value{obj})
+	return l
+}
 
-	t.Run("headers with both fields null skipped", func(t *testing.T) {
-		var diags diag.Diagnostics
-
-		// Header with both fields null should be skipped (not appended)
-		headerWithNulls, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
-			"name":  types.StringNull(),
-			"value": types.StringNull(),
-		})
-
-		validHeader, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
-			"name":  types.StringValue("X-Valid"),
-			"value": types.StringValue("valid"),
-		})
-
-		headersList, _ := types.ListValue(
-			types.ObjectType{AttrTypes: RequestHeaderAttrTypes()},
-			[]attr.Value{headerWithNulls, validHeader},
-		)
-
-		result := mapTFListToRequestHeaders(headersList, &diags)
-
-		if diags.HasError() {
-			t.Errorf("unexpected error: %v", diags.Errors())
-		}
-		// Only valid header should be in result
-		if len(result) != 1 {
-			t.Errorf("expected 1 header (null fields skipped), got %d", len(result))
-		}
-		if len(result) > 0 && result[0].Name != "X-Valid" {
-			t.Errorf("expected 'X-Valid', got '%s'", result[0].Name)
-		}
+func buildInvalidValueFieldList() types.List {
+	attrTypes := map[string]attr.Type{"name": types.StringType, "value": types.BoolType}
+	obj, _ := types.ObjectValue(attrTypes, map[string]attr.Value{
+		"name":  types.StringValue("X-Test"),
+		"value": types.BoolValue(true),
 	})
+	l, _ := types.ListValue(types.ObjectType{AttrTypes: attrTypes}, []attr.Value{obj})
+	return l
+}
+
+func buildValidHeaderList() types.List {
+	h, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
+		"name":  types.StringValue("X-Valid"),
+		"value": types.StringValue("valid-value"),
+	})
+	l, _ := types.ListValue(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}, []attr.Value{h})
+	return l
+}
+
+func buildNullAndValidHeaderList() types.List {
+	nullHeader, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
+		"name":  types.StringNull(),
+		"value": types.StringNull(),
+	})
+	validHeader, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
+		"name":  types.StringValue("X-Valid"),
+		"value": types.StringValue("valid"),
+	})
+	l, _ := types.ListValue(
+		types.ObjectType{AttrTypes: RequestHeaderAttrTypes()},
+		[]attr.Value{nullHeader, validHeader},
+	)
+	return l
+}
+
+// assertHeaderDiagnostics checks error presence and optional summary match.
+func assertHeaderDiagnostics(t *testing.T, diags diag.Diagnostics, wantErr bool, wantErrSummary string) {
+	t.Helper()
+	if wantErr && !diags.HasError() {
+		t.Error("expected diagnostic error, got none")
+		return
+	}
+	if !wantErr && diags.HasError() {
+		t.Errorf("unexpected diagnostic error: %v", diags.Errors())
+		return
+	}
+	if wantErrSummary == "" {
+		return
+	}
+	assertDiagSummaryFound(t, diags, wantErrSummary)
+}
+
+// assertDiagSummaryFound verifies that at least one error has the expected summary.
+func assertDiagSummaryFound(t *testing.T, diags diag.Diagnostics, wantSummary string) {
+	t.Helper()
+	for _, err := range diags.Errors() {
+		if err.Summary() == wantSummary {
+			return
+		}
+	}
+	t.Errorf("expected error summary %q not found in: %v", wantSummary, diags.Errors())
+}
+
+// assertHeaderCount checks the number of headers in the result.
+func assertHeaderCount(t *testing.T, result []client.RequestHeader, wantCount int) {
+	t.Helper()
+	if len(result) != wantCount {
+		t.Errorf("expected %d headers, got %d", wantCount, len(result))
+	}
+}
+
+// assertFirstHeaderName checks the name of the first header when a name is expected.
+func assertFirstHeaderName(t *testing.T, result []client.RequestHeader, wantName string) {
+	t.Helper()
+	if wantName == "" || len(result) == 0 {
+		return
+	}
+	if result[0].Name != wantName {
+		t.Errorf("expected first header name %q, got %q", wantName, result[0].Name)
+	}
 }

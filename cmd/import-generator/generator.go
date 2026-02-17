@@ -77,124 +77,148 @@ func (g *Generator) Generate(ctx context.Context, format string) (string, error)
 	return sb.String(), nil
 }
 
+// resourceFetchEntry pairs a resource name with its fetch function.
+type resourceFetchEntry struct {
+	name    string
+	fetchFn func(context.Context, *ResourceData, *ProgressReporter) error
+}
+
 func (g *Generator) fetchResources(ctx context.Context) (*ResourceData, error) {
 	data := &ResourceData{}
 
-	// Set up progress reporter
 	progress := NewProgressReporter(g.showProgress)
 	progress.SetTotal(len(g.resources))
 
+	fetchers := g.buildFetcherMap()
+
 	for _, r := range g.resources {
-		switch r {
-		case "monitors":
-			progress.Step("monitors")
-			monitors, err := g.client.ListMonitors(ctx)
-			if err != nil {
-				if g.continueOnError {
-					progress.Error(err)
-				} else {
-					return nil, fmt.Errorf("fetching monitors: %w", err)
-				}
-			} else {
-				// Apply filters if configured
-				if g.filterConfig != nil {
-					monitors = g.filterConfig.FilterMonitors(monitors)
-				}
-				data.Monitors = monitors
-				progress.Report(len(monitors), "monitor(s)")
-			}
-
-		case "healthchecks":
-			progress.Step("healthchecks")
-			healthchecks, err := g.client.ListHealthchecks(ctx)
-			if err != nil {
-				if g.continueOnError {
-					progress.Error(err)
-				} else {
-					return nil, fmt.Errorf("fetching healthchecks: %w", err)
-				}
-			} else {
-				if g.filterConfig != nil {
-					healthchecks = g.filterConfig.FilterHealthchecks(healthchecks)
-				}
-				data.Healthchecks = healthchecks
-				progress.Report(len(healthchecks), "healthcheck(s)")
-			}
-
-		case "statuspages":
-			progress.Step("status pages")
-			resp, err := g.client.ListStatusPages(ctx, nil, nil)
-			if err != nil {
-				if g.continueOnError {
-					progress.Error(err)
-				} else {
-					return nil, fmt.Errorf("fetching status pages: %w", err)
-				}
-			} else {
-				pages := resp.StatusPages
-				if g.filterConfig != nil {
-					pages = g.filterConfig.FilterStatusPages(pages)
-				}
-				data.StatusPages = pages
-				progress.Report(len(pages), "status page(s)")
-			}
-
-		case "incidents":
-			progress.Step("incidents")
-			incidents, err := g.client.ListIncidents(ctx)
-			if err != nil {
-				if g.continueOnError {
-					progress.Error(err)
-				} else {
-					return nil, fmt.Errorf("fetching incidents: %w", err)
-				}
-			} else {
-				if g.filterConfig != nil {
-					incidents = g.filterConfig.FilterIncidents(incidents)
-				}
-				data.Incidents = incidents
-				progress.Report(len(incidents), "incident(s)")
-			}
-
-		case "maintenance":
-			progress.Step("maintenance windows")
-			maintenance, err := g.client.ListMaintenance(ctx)
-			if err != nil {
-				if g.continueOnError {
-					progress.Error(err)
-				} else {
-					return nil, fmt.Errorf("fetching maintenance: %w", err)
-				}
-			} else {
-				if g.filterConfig != nil {
-					maintenance = g.filterConfig.FilterMaintenance(maintenance)
-				}
-				data.Maintenance = maintenance
-				progress.Report(len(maintenance), "maintenance window(s)")
-			}
-
-		case "outages":
-			progress.Step("outages")
-			outages, err := g.client.ListOutages(ctx)
-			if err != nil {
-				if g.continueOnError {
-					progress.Error(err)
-				} else {
-					return nil, fmt.Errorf("fetching outages: %w", err)
-				}
-			} else {
-				if g.filterConfig != nil {
-					outages = g.filterConfig.FilterOutages(outages)
-				}
-				data.Outages = outages
-				progress.Report(len(outages), "outage(s)")
-			}
+		entry, ok := fetchers[r]
+		if !ok {
+			continue
+		}
+		progress.Step(entry.name)
+		if err := entry.fetchFn(ctx, data, progress); err != nil {
+			return nil, err
 		}
 	}
 
 	progress.Complete()
-
 	return data, nil
+}
+
+// buildFetcherMap returns a map from resource key to its fetch entry.
+func (g *Generator) buildFetcherMap() map[string]resourceFetchEntry {
+	return map[string]resourceFetchEntry{
+		"monitors":     {name: "monitors", fetchFn: g.fetchMonitors},
+		"healthchecks": {name: "healthchecks", fetchFn: g.fetchHealthchecks},
+		"statuspages":  {name: "status pages", fetchFn: g.fetchStatusPages},
+		"incidents":    {name: "incidents", fetchFn: g.fetchIncidents},
+		"maintenance":  {name: "maintenance windows", fetchFn: g.fetchMaintenance},
+		"outages":      {name: "outages", fetchFn: g.fetchOutages},
+	}
+}
+
+func (g *Generator) fetchMonitors(ctx context.Context, data *ResourceData, progress *ProgressReporter) error {
+	monitors, err := g.client.ListMonitors(ctx)
+	if err != nil {
+		if g.continueOnError {
+			progress.Error(err)
+			return nil
+		}
+		return fmt.Errorf("fetching monitors: %w", err)
+	}
+	if g.filterConfig != nil {
+		monitors = g.filterConfig.FilterMonitors(monitors)
+	}
+	data.Monitors = monitors
+	progress.Report(len(monitors), "monitor(s)")
+	return nil
+}
+
+func (g *Generator) fetchHealthchecks(ctx context.Context, data *ResourceData, progress *ProgressReporter) error {
+	healthchecks, err := g.client.ListHealthchecks(ctx)
+	if err != nil {
+		if g.continueOnError {
+			progress.Error(err)
+			return nil
+		}
+		return fmt.Errorf("fetching healthchecks: %w", err)
+	}
+	if g.filterConfig != nil {
+		healthchecks = g.filterConfig.FilterHealthchecks(healthchecks)
+	}
+	data.Healthchecks = healthchecks
+	progress.Report(len(healthchecks), "healthcheck(s)")
+	return nil
+}
+
+func (g *Generator) fetchStatusPages(ctx context.Context, data *ResourceData, progress *ProgressReporter) error {
+	resp, err := g.client.ListStatusPages(ctx, nil, nil)
+	if err != nil {
+		if g.continueOnError {
+			progress.Error(err)
+			return nil
+		}
+		return fmt.Errorf("fetching status pages: %w", err)
+	}
+	pages := resp.StatusPages
+	if g.filterConfig != nil {
+		pages = g.filterConfig.FilterStatusPages(pages)
+	}
+	data.StatusPages = pages
+	progress.Report(len(pages), "status page(s)")
+	return nil
+}
+
+func (g *Generator) fetchIncidents(ctx context.Context, data *ResourceData, progress *ProgressReporter) error {
+	incidents, err := g.client.ListIncidents(ctx)
+	if err != nil {
+		if g.continueOnError {
+			progress.Error(err)
+			return nil
+		}
+		return fmt.Errorf("fetching incidents: %w", err)
+	}
+	if g.filterConfig != nil {
+		incidents = g.filterConfig.FilterIncidents(incidents)
+	}
+	data.Incidents = incidents
+	progress.Report(len(incidents), "incident(s)")
+	return nil
+}
+
+func (g *Generator) fetchMaintenance(ctx context.Context, data *ResourceData, progress *ProgressReporter) error {
+	maintenance, err := g.client.ListMaintenance(ctx)
+	if err != nil {
+		if g.continueOnError {
+			progress.Error(err)
+			return nil
+		}
+		return fmt.Errorf("fetching maintenance: %w", err)
+	}
+	if g.filterConfig != nil {
+		maintenance = g.filterConfig.FilterMaintenance(maintenance)
+	}
+	data.Maintenance = maintenance
+	progress.Report(len(maintenance), "maintenance window(s)")
+	return nil
+}
+
+func (g *Generator) fetchOutages(ctx context.Context, data *ResourceData, progress *ProgressReporter) error {
+	outages, err := g.client.ListOutages(ctx)
+	if err != nil {
+		if g.continueOnError {
+			progress.Error(err)
+			return nil
+		}
+		return fmt.Errorf("fetching outages: %w", err)
+	}
+	if g.filterConfig != nil {
+		outages = g.filterConfig.FilterOutages(outages)
+	}
+	data.Outages = outages
+	progress.Report(len(outages), "outage(s)")
+	return nil
 }
 
 func (g *Generator) generateImports(sb *strings.Builder, data *ResourceData) {

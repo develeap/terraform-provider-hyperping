@@ -698,47 +698,59 @@ func (m *mockIncidentServerWithErrors) setReadError(v bool)            { m.readE
 func (m *mockIncidentServerWithErrors) setUpdateError(v bool)          { m.updateError = v }
 func (m *mockIncidentServerWithErrors) setReadAfterCreateError(v bool) { m.readAfterCreateError = v }
 
-func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+func (m *mockIncidentServerWithErrors) writeIncidentInternalError(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusInternalServerError)
+	json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+}
 
-	switch {
-	case r.Method == "POST" && r.URL.Path == client.IncidentsBasePath:
-		if m.createError {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
-			return
-		}
-		m.createCalled = true
-		m.createIncident(w, r)
+func (m *mockIncidentServerWithErrors) isReadBlocked() bool {
+	return m.readError || (m.readAfterCreateError && m.createCalled)
+}
 
-	case r.Method == "POST" && strings.Contains(r.URL.Path, client.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates"):
+func (m *mockIncidentServerWithErrors) handlePostIncident(w http.ResponseWriter, r *http.Request) {
+	isUpdatePath := strings.Contains(r.URL.Path, client.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates")
+	if isUpdatePath {
 		if m.updateError {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+			m.writeIncidentInternalError(w)
 			return
 		}
 		m.addIncidentUpdate(w, r)
+		return
+	}
+	if m.createError {
+		m.writeIncidentInternalError(w)
+		return
+	}
+	m.createCalled = true
+	m.createIncident(w, r)
+}
 
-	case r.Method == "GET" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
-		if m.readError || (m.readAfterCreateError && m.createCalled) {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+
+	isIncidentPath := len(r.URL.Path) > len(client.IncidentsBasePath+"/")
+
+	switch {
+	case r.Method == "POST":
+		m.handlePostIncident(w, r)
+
+	case r.Method == "GET" && isIncidentPath:
+		if m.isReadBlocked() {
+			m.writeIncidentInternalError(w)
 			return
 		}
 		m.getIncident(w, r)
 
-	case r.Method == "PUT" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
+	case r.Method == "PUT" && isIncidentPath:
 		if m.updateError {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+			m.writeIncidentInternalError(w)
 			return
 		}
 		m.updateIncident(w, r)
 
-	case r.Method == "DELETE" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
+	case r.Method == "DELETE" && isIncidentPath:
 		if m.deleteError {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+			m.writeIncidentInternalError(w)
 			return
 		}
 		m.deleteIncident(w, r)

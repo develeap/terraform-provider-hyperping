@@ -10,6 +10,25 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
+// buildOptionalStringField returns an HCL line for a string field only when
+// the value is non-empty and differs from the given skip value.
+// Returns an empty string when the field should be omitted.
+func buildOptionalStringField(name, value, skipValue string) string {
+	if value == "" || value == skipValue {
+		return ""
+	}
+	return fmt.Sprintf("  %s = %q\n", name, value)
+}
+
+// buildOptionalIntField returns an HCL line for an int field only when
+// the value differs from the skip value (typically 0 or a default).
+func buildOptionalIntField(name string, value, skipValue int) string {
+	if value == skipValue {
+		return ""
+	}
+	return fmt.Sprintf("  %s = %d\n", name, value)
+}
+
 func (g *Generator) generateMonitorHCL(sb *strings.Builder, m client.Monitor) {
 	name := g.terraformName(m.Name)
 
@@ -18,13 +37,8 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m client.Monitor) {
 	fmt.Fprintf(sb, "  url      = %q\n", m.URL)
 	fmt.Fprintf(sb, "  protocol = %q\n", m.Protocol)
 
-	if m.HTTPMethod != "" && m.HTTPMethod != "GET" {
-		fmt.Fprintf(sb, "  http_method = %q\n", m.HTTPMethod)
-	}
-
-	if m.CheckFrequency != 60 {
-		fmt.Fprintf(sb, "  check_frequency = %d\n", m.CheckFrequency)
-	}
+	sb.WriteString(buildOptionalStringField("http_method", m.HTTPMethod, "GET"))
+	sb.WriteString(buildOptionalIntField("check_frequency", m.CheckFrequency, 60))
 
 	if len(m.Regions) > 0 {
 		fmt.Fprintf(sb, "  regions = %s\n", formatStringList(m.Regions))
@@ -50,9 +64,7 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m client.Monitor) {
 		sb.WriteString("  paused = true\n")
 	}
 
-	if m.AlertsWait > 0 {
-		fmt.Fprintf(sb, "  alerts_wait = %d\n", m.AlertsWait)
-	}
+	sb.WriteString(buildOptionalIntField("alerts_wait", m.AlertsWait, 0))
 
 	if m.EscalationPolicy != nil && *m.EscalationPolicy != "" {
 		fmt.Fprintf(sb, "  escalation_policy_uuid = %q\n", *m.EscalationPolicy)
@@ -66,9 +78,7 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m client.Monitor) {
 		sb.WriteString("  }\n")
 	}
 
-	if m.RequestBody != "" {
-		fmt.Fprintf(sb, "  request_body = %q\n", m.RequestBody)
-	}
+	sb.WriteString(buildOptionalStringField("request_body", m.RequestBody, ""))
 
 	sb.WriteString("}\n")
 }
@@ -121,17 +131,9 @@ func (g *Generator) generateStatusPageHCL(sb *strings.Builder, sp client.StatusP
 		sb.WriteString("    languages = [\"en\"]\n")
 	}
 
-	if sp.Settings.Theme != "" && sp.Settings.Theme != "system" {
-		fmt.Fprintf(sb, "    theme = %q\n", sp.Settings.Theme)
-	}
-
-	if sp.Settings.Font != "" && sp.Settings.Font != "Inter" {
-		fmt.Fprintf(sb, "    font = %q\n", sp.Settings.Font)
-	}
-
-	if sp.Settings.AccentColor != "" && sp.Settings.AccentColor != "#36b27e" {
-		fmt.Fprintf(sb, "    accent_color = %q\n", sp.Settings.AccentColor)
-	}
+	sb.WriteString(buildOptionalStringField("theme", sp.Settings.Theme, "system"))
+	sb.WriteString(buildOptionalStringField("font", sp.Settings.Font, "Inter"))
+	sb.WriteString(buildOptionalStringField("accent_color", sp.Settings.AccentColor, "#36b27e"))
 
 	sb.WriteString("  }\n")
 
@@ -150,13 +152,8 @@ func (g *Generator) generateIncidentHCL(sb *strings.Builder, i client.Incident) 
 	fmt.Fprintf(sb, "resource \"hyperping_incident\" %q {\n", name)
 	fmt.Fprintf(sb, "  title = %q\n", i.Title.En)
 
-	if i.Text.En != "" {
-		fmt.Fprintf(sb, "  text = %q\n", i.Text.En)
-	}
-
-	if i.Type != "" && i.Type != "incident" {
-		fmt.Fprintf(sb, "  type = %q\n", i.Type)
-	}
+	sb.WriteString(buildOptionalStringField("text", i.Text.En, ""))
+	sb.WriteString(buildOptionalStringField("type", i.Type, "incident"))
 
 	if len(i.StatusPages) > 0 {
 		fmt.Fprintf(sb, "  status_pages = %s\n", formatStringList(i.StatusPages))
@@ -180,9 +177,7 @@ func (g *Generator) generateMaintenanceHCL(sb *strings.Builder, m client.Mainten
 	fmt.Fprintf(sb, "resource \"hyperping_maintenance\" %q {\n", name)
 	fmt.Fprintf(sb, "  title = %q\n", titleText)
 
-	if m.Text.En != "" {
-		fmt.Fprintf(sb, "  text = %q\n", m.Text.En)
-	}
+	sb.WriteString(buildOptionalStringField("text", m.Text.En, ""))
 
 	if m.StartDate != nil {
 		fmt.Fprintf(sb, "  start_date = %q\n", *m.StartDate)

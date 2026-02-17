@@ -56,10 +56,8 @@ func (g *TerraformGenerator) GenerateHCL(checks []pingdom.Check, results []conve
 			g.generateMonitorHCL(&sb, check, result.Monitor)
 		}
 
-		if len(result.Notes) > 0 {
-			for _, note := range result.Notes {
-				sb.WriteString(fmt.Sprintf("  # NOTE: %s\n", note))
-			}
+		for _, note := range result.Notes {
+			sb.WriteString(fmt.Sprintf("  # NOTE: %s\n", note))
 		}
 
 		sb.WriteString("\n")
@@ -76,51 +74,104 @@ func (g *TerraformGenerator) generateMonitorHCL(sb *strings.Builder, _ pingdom.C
 	fmt.Fprintf(sb, "  url      = %q\n", escapeHCL(monitor.URL))
 	fmt.Fprintf(sb, "  protocol = %q\n", monitor.Protocol)
 
-	if monitor.HTTPMethod != "" && monitor.HTTPMethod != "GET" {
-		fmt.Fprintf(sb, "  http_method = %q\n", monitor.HTTPMethod)
-	}
-
-	if monitor.CheckFrequency != 60 {
-		fmt.Fprintf(sb, "  check_frequency = %d\n", monitor.CheckFrequency)
-	}
-
-	if len(monitor.Regions) > 0 {
-		fmt.Fprintf(sb, "  regions = %s\n", formatStringList(monitor.Regions))
-	}
-
-	if monitor.Port != nil && *monitor.Port != 0 {
-		fmt.Fprintf(sb, "  port = %d\n", *monitor.Port)
-	}
-
-	if monitor.FollowRedirects != nil && !*monitor.FollowRedirects {
-		sb.WriteString("  follow_redirects = false\n")
-	}
-
-	if monitor.ExpectedStatusCode != "" && monitor.ExpectedStatusCode != "200" {
-		fmt.Fprintf(sb, "  expected_status_code = %q\n", monitor.ExpectedStatusCode)
-	}
-
-	if monitor.RequiredKeyword != nil && *monitor.RequiredKeyword != "" {
-		fmt.Fprintf(sb, "  required_keyword = %q\n", escapeHCL(*monitor.RequiredKeyword))
-	}
-
-	if len(monitor.RequestHeaders) > 0 {
-		sb.WriteString("  request_headers = {\n")
-		for _, h := range monitor.RequestHeaders {
-			fmt.Fprintf(sb, "    %q = %q\n", escapeHCL(h.Name), escapeHCL(h.Value))
-		}
-		sb.WriteString("  }\n")
-	}
-
-	if monitor.RequestBody != nil && *monitor.RequestBody != "" {
-		fmt.Fprintf(sb, "  request_body = %q\n", escapeHCL(*monitor.RequestBody))
-	}
-
-	if monitor.Paused {
-		sb.WriteString("  paused = true\n")
-	}
+	sb.WriteString(buildOptionalHTTPMethod(monitor))
+	sb.WriteString(buildOptionalCheckFrequency(monitor))
+	sb.WriteString(buildOptionalRegions(monitor))
+	sb.WriteString(buildOptionalPort(monitor))
+	sb.WriteString(buildOptionalFollowRedirects(monitor))
+	sb.WriteString(buildOptionalExpectedStatus(monitor))
+	sb.WriteString(buildOptionalRequiredKeyword(monitor))
+	sb.WriteString(buildOptionalRequestHeaders(monitor))
+	sb.WriteString(buildOptionalRequestBody(monitor))
+	sb.WriteString(buildOptionalPaused(monitor))
 
 	sb.WriteString("}\n")
+}
+
+// buildOptionalHTTPMethod returns the http_method line if non-default.
+func buildOptionalHTTPMethod(monitor *client.CreateMonitorRequest) string {
+	if monitor.HTTPMethod == "" || monitor.HTTPMethod == "GET" {
+		return ""
+	}
+	return fmt.Sprintf("  http_method = %q\n", monitor.HTTPMethod)
+}
+
+// buildOptionalCheckFrequency returns the check_frequency line if non-default.
+func buildOptionalCheckFrequency(monitor *client.CreateMonitorRequest) string {
+	if monitor.CheckFrequency == 60 {
+		return ""
+	}
+	return fmt.Sprintf("  check_frequency = %d\n", monitor.CheckFrequency)
+}
+
+// buildOptionalRegions returns the regions line if non-empty.
+func buildOptionalRegions(monitor *client.CreateMonitorRequest) string {
+	if len(monitor.Regions) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("  regions = %s\n", formatStringList(monitor.Regions))
+}
+
+// buildOptionalPort returns the port line if non-zero.
+func buildOptionalPort(monitor *client.CreateMonitorRequest) string {
+	if monitor.Port == nil || *monitor.Port == 0 {
+		return ""
+	}
+	return fmt.Sprintf("  port = %d\n", *monitor.Port)
+}
+
+// buildOptionalFollowRedirects returns the follow_redirects line if explicitly false.
+func buildOptionalFollowRedirects(monitor *client.CreateMonitorRequest) string {
+	if monitor.FollowRedirects == nil || *monitor.FollowRedirects {
+		return ""
+	}
+	return "  follow_redirects = false\n"
+}
+
+// buildOptionalExpectedStatus returns the expected_status_code line if non-default.
+func buildOptionalExpectedStatus(monitor *client.CreateMonitorRequest) string {
+	if monitor.ExpectedStatusCode == "" || monitor.ExpectedStatusCode == "200" {
+		return ""
+	}
+	return fmt.Sprintf("  expected_status_code = %q\n", monitor.ExpectedStatusCode)
+}
+
+// buildOptionalRequiredKeyword returns the required_keyword line if set.
+func buildOptionalRequiredKeyword(monitor *client.CreateMonitorRequest) string {
+	if monitor.RequiredKeyword == nil || *monitor.RequiredKeyword == "" {
+		return ""
+	}
+	return fmt.Sprintf("  required_keyword = %q\n", escapeHCL(*monitor.RequiredKeyword))
+}
+
+// buildOptionalRequestHeaders returns the request_headers block if non-empty.
+func buildOptionalRequestHeaders(monitor *client.CreateMonitorRequest) string {
+	if len(monitor.RequestHeaders) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString("  request_headers = {\n")
+	for _, h := range monitor.RequestHeaders {
+		fmt.Fprintf(&sb, "    %q = %q\n", escapeHCL(h.Name), escapeHCL(h.Value))
+	}
+	sb.WriteString("  }\n")
+	return sb.String()
+}
+
+// buildOptionalRequestBody returns the request_body line if set.
+func buildOptionalRequestBody(monitor *client.CreateMonitorRequest) string {
+	if monitor.RequestBody == nil || *monitor.RequestBody == "" {
+		return ""
+	}
+	return fmt.Sprintf("  request_body = %q\n", escapeHCL(*monitor.RequestBody))
+}
+
+// buildOptionalPaused returns the paused line if true.
+func buildOptionalPaused(monitor *client.CreateMonitorRequest) string {
+	if !monitor.Paused {
+		return ""
+	}
+	return "  paused = true\n"
 }
 
 // terraformName converts a resource name to a valid Terraform identifier.

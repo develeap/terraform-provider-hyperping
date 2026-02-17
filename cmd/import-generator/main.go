@@ -237,120 +237,153 @@ func runExecution(ctx context.Context, gen *Generator, filterConfig *FilterConfi
 		printBanner()
 	}
 
-	// Check for resume
-	checkpointMgr := NewCheckpointManager(*checkpointFile, !*noCheckpoint)
-	var checkpoint *ImportCheckpoint
-
-	if *resume {
-		if !checkpointMgr.Exists() {
-			fmt.Fprintln(os.Stderr, "Error: No checkpoint found to resume from")
-			return 1
-		}
-
-		var err error
-		checkpoint, err = checkpointMgr.Load()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error loading checkpoint: %v\n", err)
-			return 1
-		}
-
-		if !*quiet {
-			if !PromptForResume(checkpoint) {
-				fmt.Println("Resume cancelled")
-				return 0
-			}
-		}
+	// Resolve checkpoint and optionally resume
+	jobs, code := prepareImportJobs(ctx, gen, filterConfig)
+	if code != 0 {
+		return code
 	}
-
-	// Drift detection
-	if *detectDrift {
-		opts := DriftDetectionOptions{
-			Enabled:      true,
-			AbortOnDrift: *abortOnDrift,
-			Verbose:      *verbose,
-			RefreshFirst: *refreshFirst,
-		}
-
-		if err := RunPreImportDriftCheck(ctx, opts); err != nil {
-			fmt.Fprintf(os.Stderr, "Drift check failed: %v\n", err)
-			return 1
-		}
-	}
-
-	// Fetch resources
-	data, err := gen.fetchResources(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error fetching resources: %v\n", err)
-		return 1
-	}
-
-	// Build import jobs
-	jobs := buildImportJobs(data, gen.prefix, filterConfig)
-
-	if len(jobs) == 0 {
-		fmt.Println("No resources to import")
+	if jobs == nil {
+		// nil jobs means "done early" (zero jobs or cancelled)
 		return 0
 	}
 
-	// Filter jobs for resume
-	if checkpoint != nil {
-		jobs = FilterJobsForResume(jobs, checkpoint)
-		if len(jobs) == 0 {
-			fmt.Println("All resources already imported")
-			return 0
-		}
-	}
-
-	// Print import plan
 	if !*quiet {
 		printImportPlan(jobs, filterConfig)
 	}
 
-	// Dry run mode
 	if *dryRun {
 		fmt.Println("\n[DRY RUN] No imports will be executed")
 		return 0
 	}
 
-	// Execute imports
-	workers := *parallel
-	if *sequential {
-		workers = 0
-	}
-
-	var summary *ImportSummary
-
-	if workers == 0 {
-		// Sequential import
-		importer := NewSequentialImporter()
-		importer.SetProgressCallback(createProgressCallback())
-		summary, err = importer.Import(ctx, jobs)
-	} else {
-		// Parallel import
-		importer := NewParallelImporter(workers, *checkpointFile)
-		importer.SetProgressCallback(createProgressCallback())
-		if !*noCheckpoint {
-			importer.SetCheckpointCallback(checkpointMgr.Save)
-		}
-		summary, err = importer.Import(ctx, jobs)
-
-		// Save import log
-		if saveErr := importer.GetImportLog().Save(*rollbackFile); saveErr != nil {
-			fmt.Printf("Warning: Failed to save import log: %v\n", saveErr)
-		}
-	}
-
+	summary, err := executeImports(ctx, jobs)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Import failed: %v\n", err)
 		return 1
 	}
 
-	// Print summary
+	return finalizeExecution(ctx, summary)
+}
+
+// prepareImportJobs handles checkpoint/resume, drift detection, resource fetch,
+// and job filtering. Returns (nil, 0) when execution should stop with success.
+func prepareImportJobs(ctx context.Context, gen *Generator, filterConfig *FilterConfig) ([]ImportJob, int) {
+	checkpointMgr := NewCheckpointManager(*checkpointFile, !*noCheckpoint)
+
+	if code := runDriftDetection(ctx); code != 0 {
+		return nil, code
+	}
+
+	checkpoint, code := loadCheckpointIfResuming(checkpointMgr)
+	if code != 0 {
+		return nil, code
+	}
+
+	data, err := gen.fetchResources(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error fetching resources: %v\n", err)
+		return nil, 1
+	}
+
+	jobs := buildImportJobs(data, gen.prefix, filterConfig)
+	if len(jobs) == 0 {
+		fmt.Println("No resources to import")
+		return nil, 0
+	}
+
+	if checkpoint != nil {
+		jobs = FilterJobsForResume(jobs, checkpoint)
+		if len(jobs) == 0 {
+			fmt.Println("All resources already imported")
+			return nil, 0
+		}
+	}
+
+	return jobs, 0
+}
+
+// runDriftDetection performs pre-import drift check when enabled.
+func runDriftDetection(ctx context.Context) int {
+	if !*detectDrift {
+		return 0
+	}
+	opts := DriftDetectionOptions{
+		Enabled:      true,
+		AbortOnDrift: *abortOnDrift,
+		Verbose:      *verbose,
+		RefreshFirst: *refreshFirst,
+	}
+	if err := RunPreImportDriftCheck(ctx, opts); err != nil {
+		fmt.Fprintf(os.Stderr, "Drift check failed: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+// loadCheckpointIfResuming loads an existing checkpoint when --resume is set.
+func loadCheckpointIfResuming(mgr *CheckpointManager) (*ImportCheckpoint, int) {
+	if !*resume {
+		return nil, 0
+	}
+	if !mgr.Exists() {
+		fmt.Fprintln(os.Stderr, "Error: No checkpoint found to resume from")
+		return nil, 1
+	}
+	checkpoint, err := mgr.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading checkpoint: %v\n", err)
+		return nil, 1
+	}
+	if !*quiet {
+		if !PromptForResume(checkpoint) {
+			fmt.Println("Resume cancelled")
+			return nil, 0
+		}
+	}
+	return checkpoint, 0
+}
+
+// executeImports runs either sequential or parallel import and returns the summary.
+func executeImports(ctx context.Context, jobs []ImportJob) (*ImportSummary, error) {
+	workers := *parallel
+	if *sequential {
+		workers = 0
+	}
+
+	if workers == 0 {
+		return executeSequential(ctx, jobs)
+	}
+	return executeParallel(ctx, jobs, workers)
+}
+
+// executeSequential runs imports one at a time.
+func executeSequential(ctx context.Context, jobs []ImportJob) (*ImportSummary, error) {
+	importer := NewSequentialImporter()
+	importer.SetProgressCallback(createProgressCallback())
+	return importer.Import(ctx, jobs)
+}
+
+// executeParallel runs imports with the given number of workers.
+func executeParallel(ctx context.Context, jobs []ImportJob, workers int) (*ImportSummary, error) {
+	checkpointMgr := NewCheckpointManager(*checkpointFile, !*noCheckpoint)
+	importer := NewParallelImporter(workers, *checkpointFile)
+	importer.SetProgressCallback(createProgressCallback())
+	if !*noCheckpoint {
+		importer.SetCheckpointCallback(checkpointMgr.Save)
+	}
+	summary, err := importer.Import(ctx, jobs)
+	if saveErr := importer.GetImportLog().Save(*rollbackFile); saveErr != nil {
+		fmt.Printf("Warning: Failed to save import log: %v\n", saveErr)
+	}
+	return summary, err
+}
+
+// finalizeExecution handles post-import checks, cleanup, and next steps output.
+func finalizeExecution(ctx context.Context, summary *ImportSummary) int {
 	if !*quiet {
 		summary.PrintSummary()
 	}
 
-	// Post-import drift check
 	if *postImportCheck {
 		dd := NewDriftDetector(*verbose)
 		if err := dd.PostImportDriftCheck(ctx); err != nil {
@@ -358,13 +391,12 @@ func runExecution(ctx context.Context, gen *Generator, filterConfig *FilterConfi
 		}
 	}
 
-	// Cleanup checkpoint on success
+	checkpointMgr := NewCheckpointManager(*checkpointFile, !*noCheckpoint)
 	if summary.FailureCount == 0 && !*noCheckpoint {
 		//nolint:errcheck
 		checkpointMgr.Delete()
 	}
 
-	// Print next steps
 	if !*quiet {
 		printNextSteps(summary)
 	}
@@ -372,7 +404,6 @@ func runExecution(ctx context.Context, gen *Generator, filterConfig *FilterConfi
 	if summary.FailureCount > 0 {
 		return 1
 	}
-
 	return 0
 }
 

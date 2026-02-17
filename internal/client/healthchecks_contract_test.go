@@ -11,28 +11,83 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
-// TestContract_Healthcheck_ResponseStructure validates healthcheck response structure from VCR cassette.
-func TestContract_Healthcheck_ResponseStructure(t *testing.T) {
+// healthcheckField holds a field name and the value to check for being non-empty or positive.
+type healthcheckField struct {
+	name     string
+	isEmpty  bool   // true if string value is empty
+	strValue string // populated for string assertions
+	intValue int    // populated for positive-int assertions
+	isInt    bool   // if true, check intValue > 0; otherwise check strValue != ""
+}
+
+// assertHealthcheckRequiredFields validates the core required fields of a Healthcheck.
+func assertHealthcheckRequiredFields(t *testing.T, hc *Healthcheck, label string) {
+	t.Helper()
+	fields := []healthcheckField{
+		{name: "UUID", strValue: hc.UUID},
+		{name: "Name", strValue: hc.Name},
+		{name: "PingURL", strValue: hc.PingURL},
+		{name: "PeriodType", strValue: hc.PeriodType},
+		{name: "GracePeriodType", strValue: hc.GracePeriodType},
+	}
+	for _, f := range fields {
+		if f.strValue == "" {
+			t.Errorf("%s: %s is required but empty", label, f.name)
+		}
+	}
+	if hc.Period <= 0 {
+		t.Errorf("%s: Period must be positive, got %d", label, hc.Period)
+	}
+	if hc.GracePeriodValue <= 0 {
+		t.Errorf("%s: GracePeriodValue must be positive, got %d", label, hc.GracePeriodValue)
+	}
+	if hc.GracePeriod <= 0 {
+		t.Errorf("%s: GracePeriod must be positive, got %d", label, hc.GracePeriod)
+	}
+}
+
+// assertValidPeriodType checks that a period type string is one of the allowed enum values.
+func assertValidPeriodType(t *testing.T, label, fieldName, periodType string) {
+	t.Helper()
+	validPeriodTypes := map[string]bool{
+		"seconds": true,
+		"minutes": true,
+		"hours":   true,
+		"days":    true,
+	}
+	if !validPeriodTypes[periodType] {
+		t.Errorf("%s: invalid %s %q, must be one of: seconds, minutes, hours, days", label, fieldName, periodType)
+	}
+}
+
+// newHealthcheckVCRClient sets up a VCR recorder and returns a client and teardown func.
+func newHealthcheckVCRClient(t *testing.T, cassetteName string) (*Client, func()) {
+	t.Helper()
 	r, httpClient := testutil.NewVCRRecorder(t, testutil.VCRConfig{
-		CassetteName: "healthcheck_crud",
+		CassetteName: cassetteName,
 		Mode:         testutil.ModeReplay,
 		CassetteDir:  "testdata/cassettes",
 	})
-	defer func() {
-		if err := r.Stop(); err != nil {
-			t.Errorf("failed to stop recorder: %v", err)
-		}
-	}()
-
 	apiKey := os.Getenv("HYPERPING_API_KEY")
 	if apiKey == "" {
 		apiKey = "test_api_key"
 	}
-
 	client := NewClient(apiKey, WithHTTPClient(httpClient))
+	teardown := func() {
+		if err := r.Stop(); err != nil {
+			t.Errorf("failed to stop recorder: %v", err)
+		}
+	}
+	return client, teardown
+}
+
+// TestContract_Healthcheck_ResponseStructure validates healthcheck response structure from VCR cassette.
+func TestContract_Healthcheck_ResponseStructure(t *testing.T) {
+	client, teardown := newHealthcheckVCRClient(t, "healthcheck_crud")
+	defer teardown()
+
 	ctx := context.Background()
 
-	// Create healthcheck (from cassette)
 	periodValue := 60
 	periodType := "seconds"
 	createReq := CreateHealthcheckRequest{
@@ -48,188 +103,78 @@ func TestContract_Healthcheck_ResponseStructure(t *testing.T) {
 		t.Fatalf("CreateHealthcheck failed: %v", err)
 	}
 
-	// Validate required fields
-	if healthcheck.UUID == "" {
-		t.Error("UUID is required but empty")
-	}
-	if healthcheck.Name == "" {
-		t.Error("Name is required but empty")
-	}
-	if healthcheck.PingURL == "" {
-		t.Error("PingURL is required but empty")
-	}
-	// Note: CreatedAt may not be returned on create, only on subsequent reads
-	t.Logf("CreatedAt: %q", healthcheck.CreatedAt)
+	t.Run("CreateResponse", func(t *testing.T) {
+		assertHealthcheckRequiredFields(t, healthcheck, "create")
+		assertValidPeriodType(t, "create", "PeriodType", healthcheck.PeriodType)
+		assertValidPeriodType(t, "create", "GracePeriodType", healthcheck.GracePeriodType)
 
-	// Validate period structure
-	if healthcheck.PeriodValue != nil {
-		if *healthcheck.PeriodValue <= 0 {
+		if healthcheck.PeriodValue != nil && *healthcheck.PeriodValue <= 0 {
 			t.Errorf("PeriodValue must be positive, got %d", *healthcheck.PeriodValue)
 		}
-	}
-	if healthcheck.PeriodType == "" {
-		t.Error("PeriodType is required but empty")
-	}
-	if healthcheck.Period <= 0 {
-		t.Errorf("Period must be positive, got %d", healthcheck.Period)
-	}
+		t.Logf("CreatedAt: %q", healthcheck.CreatedAt)
+	})
 
-	// Validate period type enum
-	validPeriodTypes := map[string]bool{
-		"seconds": true,
-		"minutes": true,
-		"hours":   true,
-		"days":    true,
-	}
-	if !validPeriodTypes[healthcheck.PeriodType] {
-		t.Errorf("invalid PeriodType %q, must be one of: seconds, minutes, hours, days", healthcheck.PeriodType)
-	}
+	t.Run("ReadResponse", func(t *testing.T) {
+		readHealthcheck, err := client.GetHealthcheck(ctx, healthcheck.UUID)
+		if err != nil {
+			t.Fatalf("GetHealthcheck failed: %v", err)
+		}
+		if readHealthcheck.UUID != healthcheck.UUID {
+			t.Errorf("expected UUID %q, got %q", healthcheck.UUID, readHealthcheck.UUID)
+		}
+		if readHealthcheck.Name != healthcheck.Name {
+			t.Errorf("expected Name %q, got %q", healthcheck.Name, readHealthcheck.Name)
+		}
+		if readHealthcheck.PingURL != healthcheck.PingURL {
+			t.Errorf("expected PingURL %q, got %q", healthcheck.PingURL, readHealthcheck.PingURL)
+		}
+	})
 
-	// Validate grace period structure
-	if healthcheck.GracePeriodValue <= 0 {
-		t.Errorf("GracePeriodValue must be positive, got %d", healthcheck.GracePeriodValue)
-	}
-	if healthcheck.GracePeriodType == "" {
-		t.Error("GracePeriodType is required but empty")
-	}
-	if healthcheck.GracePeriod <= 0 {
-		t.Errorf("GracePeriod must be positive, got %d", healthcheck.GracePeriod)
-	}
+	t.Run("UpdateResponse", func(t *testing.T) {
+		newName := "vcr-test-healthcheck-updated"
+		updateReq := UpdateHealthcheckRequest{Name: &newName}
+		updatedHealthcheck, err := client.UpdateHealthcheck(ctx, healthcheck.UUID, updateReq)
+		if err != nil {
+			t.Fatalf("UpdateHealthcheck failed: %v", err)
+		}
+		t.Logf("Update response UUID: %q (may be empty)", updatedHealthcheck.UUID)
 
-	// Validate grace period type enum
-	if !validPeriodTypes[healthcheck.GracePeriodType] {
-		t.Errorf("invalid GracePeriodType %q, must be one of: seconds, minutes, hours, days", healthcheck.GracePeriodType)
-	}
-
-	// Validate boolean fields have proper types
-	if healthcheck.IsDown != true && healthcheck.IsDown != false {
-		t.Error("IsDown must be a boolean")
-	}
-	if healthcheck.IsPaused != true && healthcheck.IsPaused != false {
-		t.Error("IsPaused must be a boolean")
-	}
-
-	// Read healthcheck (from cassette)
-	readHealthcheck, err := client.GetHealthcheck(ctx, healthcheck.UUID)
-	if err != nil {
-		t.Fatalf("GetHealthcheck failed: %v", err)
-	}
-
-	// Validate read response has same structure
-	if readHealthcheck.UUID != healthcheck.UUID {
-		t.Errorf("expected UUID %q, got %q", healthcheck.UUID, readHealthcheck.UUID)
-	}
-	if readHealthcheck.Name != healthcheck.Name {
-		t.Errorf("expected Name %q, got %q", healthcheck.Name, readHealthcheck.Name)
-	}
-	if readHealthcheck.PingURL != healthcheck.PingURL {
-		t.Errorf("expected PingURL %q, got %q", healthcheck.PingURL, readHealthcheck.PingURL)
-	}
-
-	// Update healthcheck (from cassette)
-	newName := "vcr-test-healthcheck-updated"
-	updateReq := UpdateHealthcheckRequest{
-		Name: &newName,
-	}
-
-	updatedHealthcheck, err := client.UpdateHealthcheck(ctx, healthcheck.UUID, updateReq)
-	if err != nil {
-		t.Fatalf("UpdateHealthcheck failed: %v", err)
-	}
-
-	// Note: Update API returns empty response, need to read back to verify
-	t.Logf("Update response UUID: %q (may be empty)", updatedHealthcheck.UUID)
-
-	// Read back to verify update
-	verifyHealthcheck, err := client.GetHealthcheck(ctx, healthcheck.UUID)
-	if err != nil {
-		t.Fatalf("GetHealthcheck after update failed: %v", err)
-	}
-	if verifyHealthcheck.UUID != healthcheck.UUID {
-		t.Errorf("UUID should not change on update, got %q", verifyHealthcheck.UUID)
-	}
-	if verifyHealthcheck.Name != newName {
-		t.Errorf("expected updated Name %q, got %q", newName, verifyHealthcheck.Name)
-	}
+		verifyHealthcheck, err := client.GetHealthcheck(ctx, healthcheck.UUID)
+		if err != nil {
+			t.Fatalf("GetHealthcheck after update failed: %v", err)
+		}
+		if verifyHealthcheck.UUID != healthcheck.UUID {
+			t.Errorf("UUID should not change on update, got %q", verifyHealthcheck.UUID)
+		}
+		if verifyHealthcheck.Name != newName {
+			t.Errorf("expected updated Name %q, got %q", newName, verifyHealthcheck.Name)
+		}
+	})
 
 	t.Log("All healthcheck response structure validations passed")
 }
 
 // TestContract_Healthcheck_ListStructure validates healthcheck list response structure.
 func TestContract_Healthcheck_ListStructure(t *testing.T) {
-	r, httpClient := testutil.NewVCRRecorder(t, testutil.VCRConfig{
-		CassetteName: "healthcheck_list",
-		Mode:         testutil.ModeReplay,
-		CassetteDir:  "testdata/cassettes",
-	})
-	defer func() {
-		if err := r.Stop(); err != nil {
-			t.Errorf("failed to stop recorder: %v", err)
-		}
-	}()
+	client, teardown := newHealthcheckVCRClient(t, "healthcheck_list")
+	defer teardown()
 
-	apiKey := os.Getenv("HYPERPING_API_KEY")
-	if apiKey == "" {
-		apiKey = "test_api_key"
-	}
-
-	client := NewClient(apiKey, WithHTTPClient(httpClient))
 	ctx := context.Background()
 
 	healthchecks, err := client.ListHealthchecks(ctx)
 	if err != nil {
 		t.Fatalf("ListHealthchecks failed: %v", err)
 	}
-
-	// Validate list is not nil
 	if healthchecks == nil {
 		t.Fatal("expected healthchecks list to not be nil")
 	}
 
-	// Validate each healthcheck in list has required fields
 	for i, hc := range healthchecks {
-		if hc.UUID == "" {
-			t.Errorf("healthcheck[%d]: UUID is required but empty", i)
-		}
-		if hc.Name == "" {
-			t.Errorf("healthcheck[%d]: Name is required but empty", i)
-		}
-		if hc.PingURL == "" {
-			t.Errorf("healthcheck[%d]: PingURL is required but empty", i)
-		}
-
-		// Validate period structure
-		if hc.PeriodType == "" {
-			t.Errorf("healthcheck[%d]: PeriodType is required but empty", i)
-		}
-		if hc.Period <= 0 {
-			t.Errorf("healthcheck[%d]: Period must be positive, got %d", i, hc.Period)
-		}
-
-		// Validate grace period structure
-		if hc.GracePeriodValue <= 0 {
-			t.Errorf("healthcheck[%d]: GracePeriodValue must be positive, got %d", i, hc.GracePeriodValue)
-		}
-		if hc.GracePeriodType == "" {
-			t.Errorf("healthcheck[%d]: GracePeriodType is required but empty", i)
-		}
-		if hc.GracePeriod <= 0 {
-			t.Errorf("healthcheck[%d]: GracePeriod must be positive, got %d", i, hc.GracePeriod)
-		}
-
-		// Validate enum values
-		validPeriodTypes := map[string]bool{
-			"seconds": true,
-			"minutes": true,
-			"hours":   true,
-			"days":    true,
-		}
-		if !validPeriodTypes[hc.PeriodType] {
-			t.Errorf("healthcheck[%d]: invalid PeriodType %q", i, hc.PeriodType)
-		}
-		if !validPeriodTypes[hc.GracePeriodType] {
-			t.Errorf("healthcheck[%d]: invalid GracePeriodType %q", i, hc.GracePeriodType)
-		}
+		label := "healthcheck[" + string(rune('0'+i)) + "]"
+		hcCopy := hc
+		assertHealthcheckRequiredFields(t, &hcCopy, label)
+		assertValidPeriodType(t, label, "PeriodType", hc.PeriodType)
+		assertValidPeriodType(t, label, "GracePeriodType", hc.GracePeriodType)
 	}
 
 	t.Logf("Validated %d healthchecks in list response", len(healthchecks))

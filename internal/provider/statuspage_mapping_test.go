@@ -96,54 +96,67 @@ func TestExtractSubscribeSettings(t *testing.T) {
 	})
 }
 
-// TestExtractAuthSettings verifies authentication settings extraction from a Terraform Object.
-func TestExtractAuthSettings(t *testing.T) {
-	t.Run("all 4 fields populated including allowed_domains list", func(t *testing.T) {
-		domainsList, listDiags := types.ListValue(types.StringType, []attr.Value{
-			types.StringValue("example.com"),
-			types.StringValue("test.org"),
-		})
-		if listDiags.HasError() {
-			t.Fatalf("failed to build domains list: %v", listDiags.Errors())
-		}
+// buildAuthObj is a helper that constructs an AuthenticationSettings object for tests.
+func buildAuthObj(t *testing.T, attrs map[string]attr.Value) types.Object {
+	t.Helper()
+	obj, diags := types.ObjectValue(AuthenticationSettingsAttrTypes(), attrs)
+	if diags.HasError() {
+		t.Fatalf("failed to build auth test object: %v", diags.Errors())
+	}
+	return obj
+}
 
-		obj, diags := types.ObjectValue(AuthenticationSettingsAttrTypes(), map[string]attr.Value{
-			"password_protection": types.BoolValue(true),
-			"google_sso":          types.BoolValue(false),
-			"saml_sso":            types.BoolValue(true),
-			"allowed_domains":     domainsList,
-		})
-		if diags.HasError() {
-			t.Fatalf("failed to build test object: %v", diags.Errors())
-		}
+// TestExtractAuthSettings_allFields verifies all four fields are correctly extracted.
+func TestExtractAuthSettings_allFields(t *testing.T) {
+	domainsList, listDiags := types.ListValue(types.StringType, []attr.Value{
+		types.StringValue("example.com"),
+		types.StringValue("test.org"),
+	})
+	if listDiags.HasError() {
+		t.Fatalf("failed to build domains list: %v", listDiags.Errors())
+	}
 
-		var d diag.Diagnostics
-		result := extractAuthSettings(obj, &d)
-
-		if d.HasError() {
-			t.Fatalf("unexpected error: %v", d.Errors())
-		}
-		if result == nil {
-			t.Fatal("expected non-nil auth settings")
-		}
-		checkBoolPtr(t, "password_protection", result.PasswordProtection, true)
-		checkBoolPtr(t, "google_sso", result.GoogleSSO, false)
-		checkBoolPtr(t, "saml_sso", result.SAMLSSO, true)
-		if len(result.AllowedDomains) != 2 {
-			t.Errorf("expected 2 allowed domains, got %d", len(result.AllowedDomains))
-		}
-		if result.AllowedDomains[0] != "example.com" {
-			t.Errorf("expected first domain to be 'example.com', got %q", result.AllowedDomains[0])
-		}
-		if result.AllowedDomains[1] != "test.org" {
-			t.Errorf("expected second domain to be 'test.org', got %q", result.AllowedDomains[1])
-		}
+	obj := buildAuthObj(t, map[string]attr.Value{
+		"password_protection": types.BoolValue(true),
+		"google_sso":          types.BoolValue(false),
+		"saml_sso":            types.BoolValue(true),
+		"allowed_domains":     domainsList,
 	})
 
-	t.Run("nil handling — returns nil when object is null", func(t *testing.T) {
+	var d diag.Diagnostics
+	result := extractAuthSettings(obj, &d)
+
+	if d.HasError() {
+		t.Fatalf("unexpected error: %v", d.Errors())
+	}
+	if result == nil {
+		t.Fatal("expected non-nil auth settings")
+	}
+	checkBoolPtr(t, "password_protection", result.PasswordProtection, true)
+	checkBoolPtr(t, "google_sso", result.GoogleSSO, false)
+	checkBoolPtr(t, "saml_sso", result.SAMLSSO, true)
+	assertAuthDomains(t, result.AllowedDomains, []string{"example.com", "test.org"})
+}
+
+// assertAuthDomains checks the allowed domains slice matches expected values.
+func assertAuthDomains(t *testing.T, got []string, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Errorf("expected %d allowed domains, got %d", len(want), len(got))
+		return
+	}
+	for i, expected := range want {
+		if got[i] != expected {
+			t.Errorf("domain[%d]: expected %q, got %q", i, expected, got[i])
+		}
+	}
+}
+
+// TestExtractAuthSettings_nullHandling verifies null and unknown objects return nil.
+func TestExtractAuthSettings_nullHandling(t *testing.T) {
+	t.Run("returns nil when object is null", func(t *testing.T) {
 		var d diag.Diagnostics
 		result := extractAuthSettings(types.ObjectNull(AuthenticationSettingsAttrTypes()), &d)
-
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
@@ -152,10 +165,9 @@ func TestExtractAuthSettings(t *testing.T) {
 		}
 	})
 
-	t.Run("nil handling — returns nil when object is unknown", func(t *testing.T) {
+	t.Run("returns nil when object is unknown", func(t *testing.T) {
 		var d diag.Diagnostics
 		result := extractAuthSettings(types.ObjectUnknown(AuthenticationSettingsAttrTypes()), &d)
-
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
@@ -163,53 +175,50 @@ func TestExtractAuthSettings(t *testing.T) {
 			t.Errorf("expected nil for unknown object, got %+v", result)
 		}
 	})
+}
 
-	t.Run("null bool fields are skipped", func(t *testing.T) {
-		domainsList, listDiags := types.ListValue(types.StringType, []attr.Value{})
-		if listDiags.HasError() {
-			t.Fatalf("failed to build domains list: %v", listDiags.Errors())
-		}
+// TestExtractAuthSettings_nullBoolFields verifies null bool fields are skipped.
+func TestExtractAuthSettings_nullBoolFields(t *testing.T) {
+	domainsList, listDiags := types.ListValue(types.StringType, []attr.Value{})
+	if listDiags.HasError() {
+		t.Fatalf("failed to build domains list: %v", listDiags.Errors())
+	}
 
-		obj, diags := types.ObjectValue(AuthenticationSettingsAttrTypes(), map[string]attr.Value{
-			"password_protection": types.BoolNull(),
-			"google_sso":          types.BoolValue(true),
-			"saml_sso":            types.BoolNull(),
-			"allowed_domains":     domainsList,
-		})
-		if diags.HasError() {
-			t.Fatalf("failed to build test object: %v", diags.Errors())
-		}
-
-		var d diag.Diagnostics
-		result := extractAuthSettings(obj, &d)
-
-		if d.HasError() {
-			t.Fatalf("unexpected error: %v", d.Errors())
-		}
-		if result == nil {
-			t.Fatal("expected non-nil auth settings")
-		}
-		if result.PasswordProtection != nil {
-			t.Errorf("expected password_protection to be nil when null, got %v", *result.PasswordProtection)
-		}
-		checkBoolPtr(t, "google_sso", result.GoogleSSO, true)
-		if result.SAMLSSO != nil {
-			t.Errorf("expected saml_sso to be nil when null, got %v", *result.SAMLSSO)
-		}
+	obj := buildAuthObj(t, map[string]attr.Value{
+		"password_protection": types.BoolNull(),
+		"google_sso":          types.BoolValue(true),
+		"saml_sso":            types.BoolNull(),
+		"allowed_domains":     domainsList,
 	})
 
+	var d diag.Diagnostics
+	result := extractAuthSettings(obj, &d)
+
+	if d.HasError() {
+		t.Fatalf("unexpected error: %v", d.Errors())
+	}
+	if result == nil {
+		t.Fatal("expected non-nil auth settings")
+	}
+	if result.PasswordProtection != nil {
+		t.Errorf("expected password_protection to be nil when null, got %v", *result.PasswordProtection)
+	}
+	checkBoolPtr(t, "google_sso", result.GoogleSSO, true)
+	if result.SAMLSSO != nil {
+		t.Errorf("expected saml_sso to be nil when null, got %v", *result.SAMLSSO)
+	}
+}
+
+// TestExtractAuthSettings_domainsList verifies empty and null domain list handling.
+func TestExtractAuthSettings_domainsList(t *testing.T) {
 	t.Run("empty allowed_domains list produces empty slice", func(t *testing.T) {
 		emptyList, _ := types.ListValue(types.StringType, []attr.Value{})
-
-		obj, diags := types.ObjectValue(AuthenticationSettingsAttrTypes(), map[string]attr.Value{
+		obj := buildAuthObj(t, map[string]attr.Value{
 			"password_protection": types.BoolValue(false),
 			"google_sso":          types.BoolValue(false),
 			"saml_sso":            types.BoolValue(false),
 			"allowed_domains":     emptyList,
 		})
-		if diags.HasError() {
-			t.Fatalf("failed to build test object: %v", diags.Errors())
-		}
 
 		var d diag.Diagnostics
 		result := extractAuthSettings(obj, &d)
@@ -226,15 +235,12 @@ func TestExtractAuthSettings(t *testing.T) {
 	})
 
 	t.Run("null allowed_domains list produces nil slice", func(t *testing.T) {
-		obj, diags := types.ObjectValue(AuthenticationSettingsAttrTypes(), map[string]attr.Value{
+		obj := buildAuthObj(t, map[string]attr.Value{
 			"password_protection": types.BoolValue(false),
 			"google_sso":          types.BoolValue(false),
 			"saml_sso":            types.BoolValue(false),
 			"allowed_domains":     types.ListNull(types.StringType),
 		})
-		if diags.HasError() {
-			t.Fatalf("failed to build test object: %v", diags.Errors())
-		}
 
 		var d diag.Diagnostics
 		result := extractAuthSettings(obj, &d)

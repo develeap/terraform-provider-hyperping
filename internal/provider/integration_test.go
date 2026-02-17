@@ -60,7 +60,6 @@ func (m *mockIntegrationServer) handleRequest(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
-	// Check for error injection
 	if m.shouldInjectError(r) {
 		w.WriteHeader(m.errorStatusCode)
 		if err := json.NewEncoder(w).Encode(map[string]string{"error": m.errorMessage}); err != nil {
@@ -69,50 +68,71 @@ func (m *mockIntegrationServer) handleRequest(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Route to appropriate handler
-	switch {
-	// Monitor endpoints
-	case r.Method == "GET" && r.URL.Path == client.MonitorsBasePath:
-		m.listMonitors(w)
-	case r.Method == "POST" && r.URL.Path == client.MonitorsBasePath:
-		m.createMonitor(w, r)
-	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, client.MonitorsBasePath+"/"):
-		m.getMonitor(w, r)
-	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, client.MonitorsBasePath+"/"):
-		m.updateMonitor(w, r)
-	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, client.MonitorsBasePath+"/"):
-		m.deleteMonitor(w, r)
-
-	// Incident endpoints
-	case r.Method == "GET" && r.URL.Path == client.IncidentsBasePath:
-		m.listIncidents(w)
-	case r.Method == "POST" && r.URL.Path == client.IncidentsBasePath:
-		m.createIncident(w, r)
-	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, client.IncidentsBasePath+"/"):
-		m.getIncident(w, r)
-	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, client.IncidentsBasePath+"/"):
-		m.updateIncident(w, r)
-	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, client.IncidentsBasePath+"/"):
-		m.deleteIncident(w, r)
-
-	// Maintenance endpoints
-	case r.Method == "GET" && r.URL.Path == client.MaintenanceBasePath:
-		m.listMaintenance(w)
-	case r.Method == "POST" && r.URL.Path == client.MaintenanceBasePath:
-		m.createMaintenance(w, r)
-	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, client.MaintenanceBasePath+"/"):
-		m.getMaintenance(w, r)
-	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, client.MaintenanceBasePath+"/"):
-		m.updateMaintenance(w, r)
-	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, client.MaintenanceBasePath+"/"):
-		m.deleteMaintenance(w, r)
-
-	default:
-		w.WriteHeader(http.StatusNotFound)
-		if err := json.NewEncoder(w).Encode(map[string]string{"error": "Not found"}); err != nil {
-			m.t.Errorf("failed to encode error response: %v", err)
-		}
+	if m.routeMonitorRequest(w, r) || m.routeIncidentRequest(w, r) || m.routeMaintenanceRequest(w, r) {
+		return
 	}
+
+	w.WriteHeader(http.StatusNotFound)
+	if err := json.NewEncoder(w).Encode(map[string]string{"error": "Not found"}); err != nil {
+		m.t.Errorf("failed to encode error response: %v", err)
+	}
+}
+
+func (m *mockIntegrationServer) routeMonitorRequest(w http.ResponseWriter, r *http.Request) bool {
+	base := client.MonitorsBasePath
+	switch {
+	case r.Method == "GET" && r.URL.Path == base:
+		m.listMonitors(w)
+	case r.Method == "POST" && r.URL.Path == base:
+		m.createMonitor(w, r)
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.getMonitor(w, r)
+	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.updateMonitor(w, r)
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.deleteMonitor(w, r)
+	default:
+		return false
+	}
+	return true
+}
+
+func (m *mockIntegrationServer) routeIncidentRequest(w http.ResponseWriter, r *http.Request) bool {
+	base := client.IncidentsBasePath
+	switch {
+	case r.Method == "GET" && r.URL.Path == base:
+		m.listIncidents(w)
+	case r.Method == "POST" && r.URL.Path == base:
+		m.createIncident(w, r)
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.getIncident(w, r)
+	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.updateIncident(w, r)
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.deleteIncident(w, r)
+	default:
+		return false
+	}
+	return true
+}
+
+func (m *mockIntegrationServer) routeMaintenanceRequest(w http.ResponseWriter, r *http.Request) bool {
+	base := client.MaintenanceBasePath
+	switch {
+	case r.Method == "GET" && r.URL.Path == base:
+		m.listMaintenance(w)
+	case r.Method == "POST" && r.URL.Path == base:
+		m.createMaintenance(w, r)
+	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.getMaintenance(w, r)
+	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.updateMaintenance(w, r)
+	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, base+"/"):
+		m.deleteMaintenance(w, r)
+	default:
+		return false
+	}
+	return true
 }
 
 func (m *mockIntegrationServer) shouldInjectError(r *http.Request) bool {

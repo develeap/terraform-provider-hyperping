@@ -279,61 +279,64 @@ func (m *mockHyperpingServerWithErrors) setUpdateError(v bool) { m.updateError =
 func (m *mockHyperpingServerWithErrors) setDeleteError(v bool) { m.deleteError = v }
 func (m *mockHyperpingServerWithErrors) setPauseError(v bool)  { m.pauseError = v }
 
+func (m *mockHyperpingServerWithErrors) writeInternalError(w http.ResponseWriter, msg string) {
+	w.WriteHeader(http.StatusInternalServerError)
+	if err := json.NewEncoder(w).Encode(map[string]string{"error": msg}); err != nil {
+		m.t.Errorf("failed to encode error response: %v", err)
+	}
+}
+
+// handlePauseError checks whether the request is a pause operation and,
+// if pauseError is set, writes an error response. Returns true if an error was written.
+func (m *mockHyperpingServerWithErrors) handlePauseError(w http.ResponseWriter, r *http.Request) bool {
+	if !m.pauseError {
+		return false
+	}
+	var req map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		m.t.Errorf("failed to decode request body: %v", err)
+		return true
+	}
+	if paused, ok := req["paused"].(bool); ok && paused {
+		m.writeInternalError(w, "Failed to pause")
+		return true
+	}
+	return false
+}
+
 func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+
+	isMonitorPath := len(r.URL.Path) > len(client.MonitorsBasePath+"/")
 
 	switch {
 	case r.Method == "POST" && r.URL.Path == client.MonitorsBasePath:
 		if m.createError {
-			w.WriteHeader(http.StatusInternalServerError)
-			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}); err != nil {
-				m.t.Errorf("failed to encode error response: %v", err)
-			}
+			m.writeInternalError(w, "Internal server error")
 			return
 		}
 		m.createMonitor(w, r)
 
-	case r.Method == "GET" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
+	case r.Method == "GET" && isMonitorPath:
 		if m.readError {
-			w.WriteHeader(http.StatusInternalServerError)
-			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}); err != nil {
-				m.t.Errorf("failed to encode error response: %v", err)
-			}
+			m.writeInternalError(w, "Internal server error")
 			return
 		}
 		m.getMonitor(w, r)
 
-	case r.Method == "PUT" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
+	case r.Method == "PUT" && isMonitorPath:
 		if m.updateError {
-			w.WriteHeader(http.StatusInternalServerError)
-			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}); err != nil {
-				m.t.Errorf("failed to encode error response: %v", err)
-			}
+			m.writeInternalError(w, "Internal server error")
 			return
 		}
-		// Check if this is a pause operation
-		if m.pauseError {
-			var req map[string]interface{}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				m.t.Errorf("failed to decode request body: %v", err)
-				return
-			}
-			if paused, ok := req["paused"].(bool); ok && paused {
-				w.WriteHeader(http.StatusInternalServerError)
-				if err := json.NewEncoder(w).Encode(map[string]string{"error": "Failed to pause"}); err != nil {
-					m.t.Errorf("failed to encode error response: %v", err)
-				}
-				return
-			}
+		if m.handlePauseError(w, r) {
+			return
 		}
 		m.updateMonitor(w, r)
 
-	case r.Method == "DELETE" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
+	case r.Method == "DELETE" && isMonitorPath:
 		if m.deleteError {
-			w.WriteHeader(http.StatusInternalServerError)
-			if err := json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"}); err != nil {
-				m.t.Errorf("failed to encode error response: %v", err)
-			}
+			m.writeInternalError(w, "Internal server error")
 			return
 		}
 		m.deleteMonitor(w, r)
@@ -452,6 +455,90 @@ func (m *mockHyperpingServer) getMonitor(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// applyStringField sets monitor[key] = value if value is a string.
+func applyStringField(monitor map[string]interface{}, key string, value interface{}) {
+	if v, ok := value.(string); ok {
+		monitor[key] = v
+	}
+}
+
+// applyIntField sets monitor[key] = int(value) if value is a float64 (JSON number).
+func applyIntField(monitor map[string]interface{}, key string, value interface{}) {
+	if v, ok := value.(float64); ok {
+		monitor[key] = int(v)
+	}
+}
+
+// applyBoolField sets monitor[key] = value if value is a bool.
+func applyBoolField(monitor map[string]interface{}, key string, value interface{}) {
+	if v, ok := value.(bool); ok {
+		monitor[key] = v
+	}
+}
+
+// applyRegionsField converts a JSON []interface{} of strings into []string and stores it.
+func applyRegionsField(monitor map[string]interface{}, key string, value interface{}) {
+	if value == nil {
+		delete(monitor, key)
+		return
+	}
+	v, ok := value.([]interface{})
+	if !ok {
+		return
+	}
+	regions := make([]string, len(v))
+	for i, region := range v {
+		if str, ok := region.(string); ok {
+			regions[i] = str
+		}
+	}
+	monitor[key] = regions
+}
+
+// applyHeadersField stores request_headers as an empty or populated []interface{}.
+func applyHeadersField(monitor map[string]interface{}, key string, value interface{}) {
+	if value == nil {
+		monitor[key] = []interface{}{}
+		return
+	}
+	if v, ok := value.([]interface{}); ok {
+		monitor[key] = v
+	}
+}
+
+// stringFields are monitor fields that map directly from JSON strings.
+var monitorStringFields = map[string]bool{
+	"name": true, "url": true, "protocol": true, "http_method": true,
+	"request_body": true, "expected_status_code": true,
+	"escalation_policy": true, "required_keyword": true,
+}
+
+// intFields are monitor fields that map from JSON numbers.
+var monitorIntFields = map[string]bool{
+	"check_frequency": true, "port": true, "alerts_wait": true,
+}
+
+// boolFields are monitor fields that map from JSON booleans.
+var monitorBoolFields = map[string]bool{
+	"follow_redirects": true, "paused": true,
+}
+
+// applyMonitorField applies a single field from the request map to the monitor map.
+func applyMonitorField(monitor map[string]interface{}, key string, value interface{}) {
+	switch {
+	case monitorStringFields[key]:
+		applyStringField(monitor, key, value)
+	case monitorIntFields[key]:
+		applyIntField(monitor, key, value)
+	case monitorBoolFields[key]:
+		applyBoolField(monitor, key, value)
+	case key == "regions":
+		applyRegionsField(monitor, key, value)
+	case key == "request_headers":
+		applyHeadersField(monitor, key, value)
+	}
+}
+
 func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
 
@@ -473,44 +560,8 @@ func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Update fields if present
 	for key, value := range req {
-		switch key {
-		case "name", "url", "protocol", "http_method", "request_body", "expected_status_code", "escalation_policy", "required_keyword":
-			if v, ok := value.(string); ok {
-				monitor[key] = v
-			}
-		case "check_frequency", "port", "alerts_wait":
-			if v, ok := value.(float64); ok {
-				monitor[key] = int(v)
-			}
-		case "follow_redirects", "paused":
-			if v, ok := value.(bool); ok {
-				monitor[key] = v
-			}
-		case "regions":
-			if v, ok := value.([]interface{}); ok {
-				regions := make([]string, len(v))
-				for i, region := range v {
-					if str, ok := region.(string); ok {
-						regions[i] = str
-					}
-				}
-				monitor[key] = regions
-			} else if value == nil {
-				delete(monitor, key)
-			}
-		case "request_headers":
-			if v, ok := value.([]interface{}); ok {
-				if len(v) == 0 {
-					monitor[key] = []interface{}{}
-				} else {
-					monitor[key] = v
-				}
-			} else if value == nil {
-				monitor[key] = []interface{}{}
-			}
-		}
+		applyMonitorField(monitor, key, value)
 	}
 
 	m.monitors[id] = monitor
