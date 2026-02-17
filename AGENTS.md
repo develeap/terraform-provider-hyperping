@@ -184,9 +184,9 @@ TF_ACC=1 go test ./cmd/migrate-betterstack -tags=integration
 - Critical paths: 80%+ (authentication, CRUD operations)
 - Error handling: High coverage (87.7% in `internal/errors/`)
 
-### Test Patterns & Organization (v1.2.1+)
+### Test Patterns & Organization (v1.2.2+)
 
-**As of v1.2.1, comprehensive QA initiative added 42 new acceptance tests. See `docs/QA_TESTING_REPORT.md` for details.**
+**As of v1.2.2, comprehensive QA initiative added 73 new acceptance tests (protocols, edge cases, state drift, integration workflows).**
 
 **Protocol-Specific Tests:**
 - Location: `internal/provider/monitor_resource_protocols_test.go`
@@ -211,7 +211,7 @@ TF_ACC=1 go test ./cmd/migrate-betterstack -tags=integration
 
 **Integration Tests:**
 - Location: `internal/provider/integration_test.go`
-- Tests: 7 (2 passing, 5 need minor schema fixes)
+- Tests: 7 (all passing)
 - Coverage: Cross-resource relationships, bulk operations, error recovery
 - Purpose: Validate resource interactions and workflows
 - Run: `TF_ACC=1 go test -run="TestAccIntegration" ./internal/provider/ -v`
@@ -236,23 +236,27 @@ Three CLI tools migrate monitoring from competitors to Hyperping:
 - Enhanced error messages
 
 **Tool-Specific:**
-- `migrate-betterstack`: Heartbeat → cron conversion, 28 unit tests
-- `migrate-uptimerobot`: 5 monitor types, contact alerts, 10 unit tests
-- `migrate-pingdom`: Tag-based naming, 6 check types, 13 unit tests
+- `migrate-betterstack`: Heartbeat → cron conversion, monitors + heartbeats
+- `migrate-uptimerobot`: 5 monitor types, contact alerts
+- `migrate-pingdom`: Tag-based naming, 6 check types
 
 **Usage Pattern:**
 ```bash
-# Interactive mode (recommended)
+# Interactive mode (recommended - auto-detected when no flags provided)
 migrate-betterstack
 
-# Dry-run (preview changes)
+# Dry-run (preview changes without writing files)
 migrate-betterstack --dry-run
 
-# Advanced (filtering, parallel, resume)
+# Non-interactive with credentials
 migrate-betterstack \
-  --filter-name="PROD-.*" \
-  --parallel=10 \
-  --resume
+  --betterstack-token=$BETTERSTACK_TOKEN \
+  --hyperping-api-key=$HYPERPING_KEY \
+  --output=resources.tf \
+  --import-script=import.sh
+
+# Resume from checkpoint after failure
+migrate-betterstack --resume
 ```
 
 ## Security Guidelines
@@ -365,7 +369,7 @@ Integration tests for migration tools skip when source platform API keys are mis
 HTTP monitors have fields (http_method, expected_status_code) that don't apply to ICMP/Port. Use save-restore pattern to prevent drift for non-HTTP protocols.
 
 ### VCR Test Fixtures
-- Located in `internal/client/fixtures/`
+- Located in `internal/client/testdata/cassettes/`
 - Record real API responses for repeatable tests
 - Update fixtures when API changes
 - Run tests with real API occasionally to verify contracts
@@ -418,6 +422,8 @@ HTTP monitors have fields (http_method, expected_status_code) that don't apply t
 - **v1.1.0** (2026-02-13): Automated migration tools (Better Stack, UptimeRobot, Pingdom)
 - **v1.2.0** (2026-02-14): User experience polish (interactive mode, dry-run, parallel imports, enhanced errors)
 - **v1.2.1** (2026-02-15): Bug fix for `required_keyword` state drift
+- **v1.2.2** (2026-02-16): Production hardening — 73 new acceptance tests, QA initiative, gosec clean
+- **v1.2.3** (2026-02-17): Code quality — cyclomatic complexity reduced to CC≤15 across entire codebase (gocyclo 100%)
 
 ## Getting Help
 

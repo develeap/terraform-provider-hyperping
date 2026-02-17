@@ -104,15 +104,15 @@ Automated CLI tools for migrating from other monitoring platforms:
 ```bash
 # Migrate from Better Stack
 go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-betterstack@latest
-migrate-betterstack migrate --source-api-key $BETTERSTACK_TOKEN --dest-api-key $HYPERPING_KEY
+migrate-betterstack --betterstack-token $BETTERSTACK_TOKEN --hyperping-api-key $HYPERPING_KEY
 
 # Migrate from UptimeRobot
 go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot@latest
-migrate-uptimerobot migrate --source-api-key $UPTIMEROBOT_KEY --dest-api-key $HYPERPING_KEY
+migrate-uptimerobot --uptimerobot-api-key $UPTIMEROBOT_KEY --hyperping-api-key $HYPERPING_KEY
 
 # Migrate from Pingdom
 go install github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom@latest
-migrate-pingdom migrate --source-api-key $PINGDOM_KEY --dest-api-key $HYPERPING_KEY
+migrate-pingdom --pingdom-api-key $PINGDOM_KEY --hyperping-api-key $HYPERPING_KEY
 ```
 
 **Features:**
