@@ -398,6 +398,152 @@ func TestEnhancementOptions(t *testing.T) {
 	}
 }
 
+func TestFormatContext(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      *EnhancedError
+		contains []string
+		absent   []string
+	}{
+		{
+			name:   "no context fields",
+			err:    &EnhancedError{Title: "Test"},
+			absent: []string{"Resource:", "Operation:", "Field:"},
+		},
+		{
+			name:     "resource only",
+			err:      &EnhancedError{Resource: "hyperping_monitor.prod"},
+			contains: []string{"Resource:  hyperping_monitor.prod"},
+			absent:   []string{"Operation:", "Field:"},
+		},
+		{
+			name:     "operation only",
+			err:      &EnhancedError{Operation: "create"},
+			contains: []string{"Operation: create"},
+			absent:   []string{"Resource:", "Field:"},
+		},
+		{
+			name:     "field only",
+			err:      &EnhancedError{Field: "frequency"},
+			contains: []string{"Field:     frequency"},
+			absent:   []string{"Resource:", "Operation:"},
+		},
+		{
+			name: "all context fields",
+			err: &EnhancedError{
+				Resource:  "hyperping_monitor.prod",
+				Operation: "update",
+				Field:     "url",
+			},
+			contains: []string{
+				"Resource:  hyperping_monitor.prod",
+				"Operation: update",
+				"Field:     url",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			tt.err.formatContext(&b)
+			output := b.String()
+
+			for _, want := range tt.contains {
+				if !strings.Contains(output, want) {
+					t.Errorf("formatContext output missing %q; got: %q", want, output)
+				}
+			}
+			for _, notWant := range tt.absent {
+				if strings.Contains(output, notWant) {
+					t.Errorf("formatContext output unexpectedly contains %q; got: %q", notWant, output)
+				}
+			}
+		})
+	}
+}
+
+func TestFormatSuggestions(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      *EnhancedError
+		contains []string
+		absent   []string
+	}{
+		{
+			name:   "no suggestions sections",
+			err:    &EnhancedError{Title: "Test"},
+			absent: []string{"Suggestions:", "Try:", "Examples:", "Documentation:", "Auto-retry"},
+		},
+		{
+			name:     "suggestions only",
+			err:      &EnhancedError{Suggestions: []string{"Fix A", "Fix B"}},
+			contains: []string{"💡 Suggestions:", "  • Fix A", "  • Fix B"},
+			absent:   []string{"Try:", "Examples:", "Documentation:"},
+		},
+		{
+			name:     "commands only",
+			err:      &EnhancedError{Commands: []string{"terraform plan"}},
+			contains: []string{"🔧 Try:", "  $ terraform plan"},
+			absent:   []string{"Suggestions:", "Examples:"},
+		},
+		{
+			name:     "examples only",
+			err:      &EnhancedError{Examples: []string{"frequency = 60"}},
+			contains: []string{"📝 Examples:", "  frequency = 60"},
+			absent:   []string{"Suggestions:", "Documentation:"},
+		},
+		{
+			name:     "doc links only",
+			err:      &EnhancedError{DocLinks: []string{"https://docs.example.com"}},
+			contains: []string{"📚 Documentation:", "  https://docs.example.com"},
+			absent:   []string{"Suggestions:", "Try:", "Examples:"},
+		},
+		{
+			name:     "retry after only",
+			err:      &EnhancedError{RetryAfter: ptrDuration(30 * time.Second)},
+			contains: []string{"⏰ Auto-retry after: 30s"},
+			absent:   []string{"Suggestions:", "Try:", "Examples:", "Documentation:"},
+		},
+		{
+			name: "all sections present",
+			err: &EnhancedError{
+				Suggestions: []string{"Suggestion one"},
+				Commands:    []string{"cmd --help"},
+				Examples:    []string{"example = true"},
+				DocLinks:    []string{"https://example.com"},
+				RetryAfter:  ptrDuration(60 * time.Second),
+			},
+			contains: []string{
+				"💡 Suggestions:", "  • Suggestion one",
+				"🔧 Try:", "  $ cmd --help",
+				"📝 Examples:", "  example = true",
+				"📚 Documentation:", "  https://example.com",
+				"⏰ Auto-retry after: 1m0s",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var b strings.Builder
+			tt.err.formatSuggestions(&b)
+			output := b.String()
+
+			for _, want := range tt.contains {
+				if !strings.Contains(output, want) {
+					t.Errorf("formatSuggestions output missing %q; got: %q", want, output)
+				}
+			}
+			for _, notWant := range tt.absent {
+				if strings.Contains(output, notWant) {
+					t.Errorf("formatSuggestions output unexpectedly contains %q; got: %q", notWant, output)
+				}
+			}
+		})
+	}
+}
+
 func ptrDuration(d time.Duration) *time.Duration {
 	return &d
 }

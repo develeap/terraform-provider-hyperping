@@ -315,48 +315,184 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body, resul
 	return c.doRequestWithRetry(ctx, method, path, body, result)
 }
 
+// buildHTTPRequest constructs an HTTP request with all required headers set.
+// Authorization is injected by authTransport; this sets content-type, accept, and user-agent.
+func (c *Client) buildHTTPRequest(ctx context.Context, method, path string, jsonBody []byte) (*http.Request, error) {
+	var bodyReader io.Reader
+	if jsonBody != nil {
+		bodyReader = bytes.NewReader(jsonBody)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Authorization header is injected by authTransport (VULN-009).
+	req.Header.Set(HeaderContentType, ContentTypeJSON)
+	req.Header.Set(HeaderAccept, ContentTypeJSON)
+	req.Header.Set("User-Agent", c.userAgent)
+
+	return req, nil
+}
+
+// readResponseBody reads and validates the response body with a size cap to
+// prevent OOM from malicious servers (VULN-014). It always closes resp.Body.
+func readResponseBody(resp *http.Response) ([]byte, error) {
+	// Read maxResponseBodyBytes+1 to detect truncation.
+	limitedReader := io.LimitReader(resp.Body, int64(maxResponseBodyBytes)+1)
+	body, err := io.ReadAll(limitedReader)
+	if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+		// Only surface close error when read succeeded.
+		return nil, fmt.Errorf("failed to close response body: %w", closeErr)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	if len(body) > maxResponseBodyBytes {
+		return nil, fmt.Errorf("response body exceeds maximum size of %d bytes", maxResponseBodyBytes)
+	}
+	return body, nil
+}
+
+// shouldRetryOnError records metrics and sleeps before deciding whether to
+// retry after a transport-level error (non-HTTP failure). Returns true when
+// a retry should be attempted.
+func (c *Client) shouldRetryOnError(ctx context.Context, method, path string, attempt int) bool {
+	if attempt >= c.maxRetries {
+		return false
+	}
+	if c.metrics != nil {
+		c.metrics.RecordRetry(ctx, method, path, attempt+1)
+	}
+	c.sleep(ctx, c.calculateBackoff(attempt, 0))
+	return true
+}
+
+// attemptResult holds the outcome of a single HTTP attempt for use in the retry loop.
+type attemptResult struct {
+	// retry indicates this attempt should be retried.
+	retry bool
+	// err is the terminal error to return (nil on success).
+	err error
+	// lastErr is the transient error stored for retry reporting.
+	lastErr error
+}
+
+// processHTTPResponse handles a successful HTTP transport response:
+// reads the body, records metrics/logs, decodes success responses, and
+// decides whether to retry on server errors. It never retries transport errors.
+func (c *Client) processHTTPResponse(
+	ctx context.Context,
+	method, path string,
+	resp *http.Response,
+	duration time.Duration,
+	attempt int,
+	result interface{},
+) attemptResult {
+	respBody, err := readResponseBody(resp)
+	if err != nil {
+		return attemptResult{err: err}
+	}
+
+	c.logDebug(ctx, "received API response", map[string]interface{}{
+		"method":      method,
+		"path":        path,
+		"status_code": resp.StatusCode,
+		"attempt":     attempt + 1,
+		"duration_ms": duration.Milliseconds(),
+	})
+
+	if c.metrics != nil {
+		c.metrics.RecordAPICall(ctx, method, path, resp.StatusCode, duration.Milliseconds())
+	}
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return attemptResult{err: decodeResult(respBody, result)}
+	}
+
+	return c.handleErrorResponse(ctx, method, path, resp, respBody, attempt)
+}
+
+// decodeResult unmarshals the response body into result when both are non-empty.
+func decodeResult(body []byte, result interface{}) error {
+	if result == nil || len(body) == 0 {
+		return nil
+	}
+	if err := json.Unmarshal(body, result); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	return nil
+}
+
+// handleErrorResponse decides whether to retry an HTTP-level error response.
+func (c *Client) handleErrorResponse(
+	ctx context.Context,
+	method, path string,
+	resp *http.Response,
+	body []byte,
+	attempt int,
+) attemptResult {
+	apiErr := c.parseErrorResponse(resp.StatusCode, resp.Header, body)
+
+	if !retryableStatusCodes[resp.StatusCode] || attempt >= c.maxRetries {
+		return attemptResult{err: apiErr}
+	}
+
+	c.logDebug(ctx, "retrying request", map[string]interface{}{
+		"method":      method,
+		"path":        path,
+		"status_code": resp.StatusCode,
+		"attempt":     attempt + 1,
+		"max_retries": c.maxRetries,
+	})
+	if c.metrics != nil {
+		c.metrics.RecordRetry(ctx, method, path, attempt+1)
+	}
+	c.sleep(ctx, c.calculateBackoff(attempt, apiErr.RetryAfter))
+	return attemptResult{retry: true, lastErr: apiErr}
+}
+
+// marshalBody marshals the request body to JSON, returning nil for nil input.
+func marshalBody(body interface{}) ([]byte, error) {
+	if body == nil {
+		return nil, nil
+	}
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+	return jsonBody, nil
+}
+
 // doRequestWithRetry performs an HTTP request with retry logic (internal implementation).
 func (c *Client) doRequestWithRetry(ctx context.Context, method, path string, body, result interface{}) error {
-	// Pre-marshal body once for retries
-	var jsonBody []byte
-	if body != nil {
-		var err error
-		jsonBody, err = json.Marshal(body)
-		if err != nil {
-			return fmt.Errorf("failed to marshal request body: %w", err)
-		}
+	jsonBody, err := marshalBody(body)
+	if err != nil {
+		return err
 	}
 
 	var lastErr error
 	for attempt := 0; attempt <= c.maxRetries; attempt++ {
-		// Create body reader for this attempt
-		var bodyReader io.Reader
-		if jsonBody != nil {
-			bodyReader = bytes.NewReader(jsonBody)
-		}
-
-		req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
+		req, err := c.buildHTTPRequest(ctx, method, path, jsonBody)
 		if err != nil {
-			return fmt.Errorf("failed to create request: %w", err)
+			return err
 		}
 
-		// Authorization header is injected by authTransport (VULN-009).
-		req.Header.Set(HeaderContentType, ContentTypeJSON)
-		req.Header.Set(HeaderAccept, ContentTypeJSON)
-		req.Header.Set("User-Agent", c.userAgent)
-
-		// Log request
 		c.logDebug(ctx, "sending API request", map[string]interface{}{
 			"method":  method,
 			"path":    path,
 			"attempt": attempt + 1,
 		})
 
-		// Track request duration for performance monitoring
 		startTime := time.Now()
 		resp, err := c.httpClient.Do(req)
 		duration := time.Since(startTime)
+
 		if err != nil {
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
 			c.logDebug(ctx, "request failed", map[string]interface{}{
 				"method":      method,
 				"path":        path,
@@ -365,77 +501,18 @@ func (c *Client) doRequestWithRetry(ctx context.Context, method, path string, bo
 				"duration_ms": duration.Milliseconds(),
 			})
 			lastErr = fmt.Errorf("request failed: %w", err)
-			if attempt < c.maxRetries {
-				if c.metrics != nil {
-					c.metrics.RecordRetry(ctx, method, path, attempt+1)
-				}
-				c.sleep(ctx, c.calculateBackoff(attempt, 0))
+			if c.shouldRetryOnError(ctx, method, path, attempt) {
 				continue
 			}
 			return lastErr
 		}
 
-		// Read response body with size limit to prevent OOM from malicious servers (VULN-014).
-		// Read maxResponseBodyBytes+1 to detect truncation.
-		limitedReader := io.LimitReader(resp.Body, int64(maxResponseBodyBytes)+1)
-		respBody, err := io.ReadAll(limitedReader)
-		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
-			// Only return close error if read succeeded
-			return fmt.Errorf("failed to close response body: %w", closeErr)
-		}
-		if err != nil {
-			return fmt.Errorf("failed to read response body: %w", err)
-		}
-		if len(respBody) > maxResponseBodyBytes {
-			return fmt.Errorf("response body exceeds maximum size of %d bytes", maxResponseBodyBytes)
-		}
-
-		// Log response
-		c.logDebug(ctx, "received API response", map[string]interface{}{
-			"method":      method,
-			"path":        path,
-			"status_code": resp.StatusCode,
-			"attempt":     attempt + 1,
-			"duration_ms": duration.Milliseconds(),
-		})
-
-		// Record metrics
-		if c.metrics != nil {
-			c.metrics.RecordAPICall(ctx, method, path, resp.StatusCode, duration.Milliseconds())
-		}
-
-		// Check for success
-		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			if result != nil && len(respBody) > 0 {
-				if err := json.Unmarshal(respBody, result); err != nil {
-					return fmt.Errorf("failed to unmarshal response: %w", err)
-				}
-			}
-			return nil
-		}
-
-		// Handle errors
-		apiErr := c.parseErrorResponse(resp.StatusCode, resp.Header, respBody)
-
-		// Check if retryable
-		if retryableStatusCodes[resp.StatusCode] && attempt < c.maxRetries {
-			c.logDebug(ctx, "retrying request", map[string]interface{}{
-				"method":      method,
-				"path":        path,
-				"status_code": resp.StatusCode,
-				"attempt":     attempt + 1,
-				"max_retries": c.maxRetries,
-			})
-			if c.metrics != nil {
-				c.metrics.RecordRetry(ctx, method, path, attempt+1)
-			}
-			lastErr = apiErr
-			waitTime := c.calculateBackoff(attempt, apiErr.RetryAfter)
-			c.sleep(ctx, waitTime)
+		ar := c.processHTTPResponse(ctx, method, path, resp, duration, attempt, result)
+		if ar.retry {
+			lastErr = ar.lastErr
 			continue
 		}
-
-		return apiErr
+		return ar.err
 	}
 
 	return lastErr

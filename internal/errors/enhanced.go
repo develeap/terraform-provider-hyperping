@@ -46,76 +46,76 @@ func (e *EnhancedError) Error() string {
 func (e *EnhancedError) Format() string {
 	var b strings.Builder
 
-	// Title with icon
 	b.WriteString("\n")
 	b.WriteString(formatTitle(e.Title))
 	b.WriteString("\n\n")
 
-	// Description
 	if e.Description != "" {
 		b.WriteString(e.Description)
 		b.WriteString("\n\n")
 	}
 
-	// Context
+	e.formatContext(&b)
+	e.formatSuggestions(&b)
+
+	return strings.TrimRight(b.String(), "\n")
+}
+
+// formatContext writes the context fields (Resource, Operation, Field) to b.
+func (e *EnhancedError) formatContext(b *strings.Builder) {
 	if e.Resource != "" {
-		b.WriteString(fmt.Sprintf("Resource:  %s\n", e.Resource))
+		fmt.Fprintf(b, "Resource:  %s\n", e.Resource)
 	}
 	if e.Operation != "" {
-		b.WriteString(fmt.Sprintf("Operation: %s\n", e.Operation))
+		fmt.Fprintf(b, "Operation: %s\n", e.Operation)
 	}
 	if e.Field != "" {
-		b.WriteString(fmt.Sprintf("Field:     %s\n", e.Field))
+		fmt.Fprintf(b, "Field:     %s\n", e.Field)
 	}
-
-	// Add blank line after context
 	if e.Resource != "" || e.Operation != "" || e.Field != "" {
 		b.WriteString("\n")
 	}
+}
 
-	// Suggestions
+// formatSuggestions writes the suggestions, commands, examples, doc links,
+// and retry information sections to b.
+func (e *EnhancedError) formatSuggestions(b *strings.Builder) {
 	if len(e.Suggestions) > 0 {
 		b.WriteString("💡 Suggestions:\n")
 		for _, s := range e.Suggestions {
-			b.WriteString(fmt.Sprintf("  • %s\n", s))
+			fmt.Fprintf(b, "  • %s\n", s)
 		}
 		b.WriteString("\n")
 	}
 
-	// Commands to try
 	if len(e.Commands) > 0 {
 		b.WriteString("🔧 Try:\n")
 		for _, c := range e.Commands {
-			b.WriteString(fmt.Sprintf("  $ %s\n", c))
+			fmt.Fprintf(b, "  $ %s\n", c)
 		}
 		b.WriteString("\n")
 	}
 
-	// Examples
 	if len(e.Examples) > 0 {
 		b.WriteString("📝 Examples:\n")
 		for _, ex := range e.Examples {
-			b.WriteString(fmt.Sprintf("  %s\n", ex))
+			fmt.Fprintf(b, "  %s\n", ex)
 		}
 		b.WriteString("\n")
 	}
 
-	// Documentation links
 	if len(e.DocLinks) > 0 {
 		b.WriteString("📚 Documentation:\n")
 		for _, link := range e.DocLinks {
-			b.WriteString(fmt.Sprintf("  %s\n", link))
+			fmt.Fprintf(b, "  %s\n", link)
 		}
 		b.WriteString("\n")
 	}
 
-	// Retry information
 	if e.RetryAfter != nil {
-		b.WriteString(fmt.Sprintf("⏰ Auto-retry after: %v\n", *e.RetryAfter))
+		fmt.Fprintf(b, "⏰ Auto-retry after: %v\n", *e.RetryAfter)
 		b.WriteString("\n")
 	}
-
-	return strings.TrimRight(b.String(), "\n")
 }
 
 // Unwrap returns the underlying error for error chain unwrapping.

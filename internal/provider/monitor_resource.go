@@ -609,23 +609,10 @@ func (r *MonitorResource) applySimpleFieldChanges(plan *MonitorResourceModel, st
 	}
 }
 
-// applyComplexFieldChanges detects and applies changes for complex fields.
-// Handles: regions, request_headers, request_body, port, alerts_wait, escalation_policy, required_keyword.
-func (r *MonitorResource) applyComplexFieldChanges(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *client.UpdateMonitorRequest, diags *diag.Diagnostics) {
-	// Handle regions (skip if unknown)
-	if !plan.Regions.IsUnknown() && !plan.Regions.Equal(state.Regions) {
-		if plan.Regions.IsNull() {
-			emptyRegions := []string{}
-			updateReq.Regions = &emptyRegions
-		} else {
-			var regions []string
-			diags.Append(plan.Regions.ElementsAs(ctx, &regions, false)...)
-			if !diags.HasError() {
-				updateReq.Regions = &regions
-			}
-		}
-	}
-
+// applyHTTPFieldChanges handles HTTP-specific field changes for monitor updates.
+// Handles: request_headers, request_body, expected_status_code (via UpdateMonitorRequest).
+// Note: http_method, follow_redirects are handled in applySimpleFieldChanges.
+func applyHTTPFieldChanges(plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *client.UpdateMonitorRequest, diags *diag.Diagnostics) {
 	// Handle request headers (skip if unknown)
 	if !plan.RequestHeaders.IsUnknown() && !plan.RequestHeaders.Equal(state.RequestHeaders) {
 		if plan.RequestHeaders.IsNull() {
@@ -648,10 +635,23 @@ func (r *MonitorResource) applyComplexFieldChanges(ctx context.Context, plan *Mo
 			updateReq.RequestBody = tfStringToPtr(plan.RequestBody)
 		}
 	}
+}
 
-	// Handle port
-	if !plan.Port.Equal(state.Port) {
-		updateReq.Port = tfIntToPtr(plan.Port)
+// applyMonitoringFieldChanges handles monitoring-behavior field changes for monitor updates.
+// Handles: regions, alerts_wait, escalation_policy, required_keyword.
+func applyMonitoringFieldChanges(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *client.UpdateMonitorRequest, diags *diag.Diagnostics) {
+	// Handle regions (skip if unknown)
+	if !plan.Regions.IsUnknown() && !plan.Regions.Equal(state.Regions) {
+		if plan.Regions.IsNull() {
+			emptyRegions := []string{}
+			updateReq.Regions = &emptyRegions
+		} else {
+			var regions []string
+			diags.Append(plan.Regions.ElementsAs(ctx, &regions, false)...)
+			if !diags.HasError() {
+				updateReq.Regions = &regions
+			}
+		}
 	}
 
 	// Handle alerts_wait
@@ -683,4 +683,16 @@ func (r *MonitorResource) applyComplexFieldChanges(ctx context.Context, plan *Mo
 			updateReq.RequiredKeyword = tfStringToPtr(plan.RequiredKeyword)
 		}
 	}
+
+	// Handle port
+	if !plan.Port.Equal(state.Port) {
+		updateReq.Port = tfIntToPtr(plan.Port)
+	}
+}
+
+// applyComplexFieldChanges detects and applies changes for complex fields.
+// Dispatches to applyHTTPFieldChanges and applyMonitoringFieldChanges.
+func (r *MonitorResource) applyComplexFieldChanges(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *client.UpdateMonitorRequest, diags *diag.Diagnostics) {
+	applyHTTPFieldChanges(plan, state, updateReq, diags)
+	applyMonitoringFieldChanges(ctx, plan, state, updateReq, diags)
 }

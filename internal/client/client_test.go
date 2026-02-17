@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -984,239 +985,228 @@ func TestClient_doRequest_RetryExhaustedWithLastError(t *testing.T) {
 }
 
 func TestClient_CircuitBreakerStates(t *testing.T) {
-	t.Run("circuit opens after repeated failures", func(t *testing.T) {
-		metrics := &mockMetrics{}
-		requestCount := 0
+	t.Run("circuit opens after repeated failures", testCircuitBreakerOpens)
+	t.Run("circuit breaker prevents requests when open", testCircuitBreakerPreventsRequests)
+	t.Run("successful requests with closed circuit", testCircuitBreakerClosedOnSuccess)
+	t.Run("partial failures don't open circuit", testCircuitBreakerPartialFailures)
+	t.Run("mixed success and failure patterns", testCircuitBreakerMixedPatterns)
+}
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			requestCount++
-			// Return 500 errors to trigger circuit breaker
+// testCircuitBreakerOpens verifies that enough consecutive failures transition the
+// circuit breaker from closed to open state.
+func testCircuitBreakerOpens(t *testing.T) {
+	metrics := &mockMetrics{}
+	requestCount := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"server error"}`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key",
+		WithBaseURL(server.URL),
+		WithMetrics(metrics),
+		WithMaxRetries(0),
+	)
+
+	// Circuit breaker needs: minimum 3 requests, 60% failure rate
+	for i := 0; i < 5; i++ {
+		_ = c.doRequest(context.Background(), "GET", "/test", nil, nil)
+	}
+
+	if len(metrics.circuitBreakerStates) == 0 {
+		t.Error("expected circuit breaker state changes to be recorded")
+	}
+
+	hasOpenState := false
+	for _, state := range metrics.circuitBreakerStates {
+		if state == "open" {
+			hasOpenState = true
+			break
+		}
+	}
+	if !hasOpenState {
+		t.Errorf("expected circuit breaker to open, recorded states: %v", metrics.circuitBreakerStates)
+	}
+
+	if len(metrics.apiCalls) == 0 {
+		t.Error("expected API calls to be recorded")
+	}
+}
+
+// testCircuitBreakerPreventsRequests verifies that an open circuit breaker rejects
+// requests without forwarding them to the server.
+func testCircuitBreakerPreventsRequests(t *testing.T) {
+	requestCount := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"server error"}`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key",
+		WithBaseURL(server.URL),
+		WithMaxRetries(0),
+	)
+
+	for i := 0; i < 5; i++ {
+		_ = c.doRequest(context.Background(), "GET", "/test", nil, nil)
+	}
+
+	initialCount := requestCount
+
+	for i := 0; i < 3; i++ {
+		err := c.doRequest(context.Background(), "GET", "/test", nil, nil)
+		if err == nil {
+			t.Error("expected error when circuit is open")
+		}
+		if err != nil && IsServerError(err) {
+			t.Logf("Got server error (circuit might not be fully open yet): %v", err)
+		}
+	}
+
+	if requestCount > initialCount+3 {
+		t.Logf("Warning: Circuit breaker may not have blocked all requests. Initial: %d, Final: %d", initialCount, requestCount)
+	}
+}
+
+// testCircuitBreakerClosedOnSuccess verifies that all-success traffic keeps the
+// circuit breaker in closed state.
+func testCircuitBreakerClosedOnSuccess(t *testing.T) {
+	metrics := &mockMetrics{}
+	requestCount := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key",
+		WithBaseURL(server.URL),
+		WithMetrics(metrics),
+		WithMaxRetries(0),
+	)
+
+	for i := 0; i < 5; i++ {
+		err := c.doRequest(context.Background(), "GET", "/test", nil, nil)
+		if err != nil {
+			t.Errorf("expected no error with successful requests, got: %v", err)
+		}
+	}
+
+	for _, state := range metrics.circuitBreakerStates {
+		if state == "open" {
+			t.Error("circuit breaker should not open with successful requests")
+		}
+	}
+
+	if requestCount != 5 {
+		t.Errorf("expected 5 requests to reach server, got %d", requestCount)
+	}
+
+	if len(metrics.apiCalls) != 5 {
+		t.Errorf("expected 5 API calls recorded, got %d", len(metrics.apiCalls))
+	}
+	for i, call := range metrics.apiCalls {
+		if call.statusCode != 200 {
+			t.Errorf("call %d: expected status 200, got %d", i, call.statusCode)
+		}
+	}
+}
+
+// testCircuitBreakerPartialFailures verifies that a sub-threshold failure rate
+// (40%) does not open the circuit breaker.
+func testCircuitBreakerPartialFailures(t *testing.T) {
+	metrics := &mockMetrics{}
+	requestCount := 0
+	failureThreshold := 2 // Less than 60% of 5 requests
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		if requestCount <= failureThreshold {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(`{"error":"server error"}`))
-		}))
-		defer server.Close()
-
-		c := NewClient("test_key",
-			WithBaseURL(server.URL),
-			WithMetrics(metrics),
-			WithMaxRetries(0), // No retries to control request count
-		)
-
-		// Make multiple failing requests to trigger circuit breaker
-		// Circuit breaker needs: minimum 3 requests, 60% failure rate
-		// So we need at least 3 failures to open the circuit
-		for i := 0; i < 5; i++ {
-			_ = c.doRequest(context.Background(), "GET", "/test", nil, nil)
-		}
-
-		// Verify circuit breaker state changes were recorded
-		// Should have at least one state change (closed -> open)
-		if len(metrics.circuitBreakerStates) == 0 {
-			t.Error("expected circuit breaker state changes to be recorded")
-		}
-
-		// Check that we have an "open" state recorded
-		hasOpenState := false
-		for _, state := range metrics.circuitBreakerStates {
-			if state == "open" {
-				hasOpenState = true
-				break
-			}
-		}
-		if !hasOpenState {
-			t.Errorf("expected circuit breaker to open, recorded states: %v", metrics.circuitBreakerStates)
-		}
-
-		// Verify API calls were recorded
-		if len(metrics.apiCalls) == 0 {
-			t.Error("expected API calls to be recorded")
-		}
-	})
-
-	t.Run("circuit breaker prevents requests when open", func(t *testing.T) {
-		requestCount := 0
-
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			requestCount++
-			// Always fail to keep circuit open
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(`{"error":"server error"}`))
-		}))
-		defer server.Close()
-
-		c := NewClient("test_key",
-			WithBaseURL(server.URL),
-			WithMaxRetries(0),
-		)
-
-		// Trigger circuit breaker to open
-		for i := 0; i < 5; i++ {
-			_ = c.doRequest(context.Background(), "GET", "/test", nil, nil)
-		}
-
-		initialCount := requestCount
-
-		// Try making more requests - circuit should be open
-		// Circuit breaker will reject requests immediately without hitting the server
-		for i := 0; i < 3; i++ {
-			err := c.doRequest(context.Background(), "GET", "/test", nil, nil)
-			if err == nil {
-				t.Error("expected error when circuit is open")
-			}
-			// Error should be circuit breaker error, not a server error
-			if err != nil && IsServerError(err) {
-				t.Logf("Got server error (circuit might not be fully open yet): %v", err)
-			}
-		}
-
-		// Some requests should have been blocked by circuit breaker
-		// (requestCount should not have increased by 3)
-		if requestCount > initialCount+3 {
-			t.Logf("Warning: Circuit breaker may not have blocked all requests. Initial: %d, Final: %d", initialCount, requestCount)
-		}
-	})
-
-	t.Run("successful requests with closed circuit", func(t *testing.T) {
-		metrics := &mockMetrics{}
-		requestCount := 0
-
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			requestCount++
-			// Always succeed
+		} else {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"status":"ok"}`))
-		}))
-		defer server.Close()
-
-		c := NewClient("test_key",
-			WithBaseURL(server.URL),
-			WithMetrics(metrics),
-			WithMaxRetries(0),
-		)
-
-		// Make successful requests
-		for i := 0; i < 5; i++ {
-			err := c.doRequest(context.Background(), "GET", "/test", nil, nil)
-			if err != nil {
-				t.Errorf("expected no error with successful requests, got: %v", err)
-			}
 		}
+	}))
+	defer server.Close()
 
-		// Circuit should remain closed
-		for _, state := range metrics.circuitBreakerStates {
-			if state == "open" {
-				t.Error("circuit breaker should not open with successful requests")
-			}
+	c := NewClient("test_key",
+		WithBaseURL(server.URL),
+		WithMetrics(metrics),
+		WithMaxRetries(0),
+	)
+
+	successCount := 0
+	for i := 0; i < 5; i++ {
+		err := c.doRequest(context.Background(), "GET", "/test", nil, nil)
+		if err == nil {
+			successCount++
 		}
+	}
 
-		// All requests should have reached the server
-		if requestCount != 5 {
-			t.Errorf("expected 5 requests to reach server, got %d", requestCount)
+	if successCount != 3 {
+		t.Errorf("expected 3 successful requests, got %d", successCount)
+	}
+
+	for _, state := range metrics.circuitBreakerStates {
+		if state == "open" {
+			t.Error("circuit breaker should not open with <60% failure rate")
 		}
+	}
+}
 
-		// All API calls should be recorded as successful
-		if len(metrics.apiCalls) != 5 {
-			t.Errorf("expected 5 API calls recorded, got %d", len(metrics.apiCalls))
+// testCircuitBreakerMixedPatterns verifies that a 33% failure rate (success, success,
+// fail pattern) does not open the circuit breaker.
+func testCircuitBreakerMixedPatterns(t *testing.T) {
+	metrics := &mockMetrics{}
+	requestCount := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		// Pattern: success, success, fail = 33% failure rate
+		if requestCount%3 == 0 {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"server error"}`))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
 		}
-		for i, call := range metrics.apiCalls {
-			if call.statusCode != 200 {
-				t.Errorf("call %d: expected status 200, got %d", i, call.statusCode)
-			}
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key",
+		WithBaseURL(server.URL),
+		WithMetrics(metrics),
+		WithMaxRetries(0),
+	)
+
+	// 9 requests: 3 failures + 6 successes = 33% failure rate
+	for i := 0; i < 9; i++ {
+		_ = c.doRequest(context.Background(), "GET", "/test", nil, nil)
+	}
+
+	for _, state := range metrics.circuitBreakerStates {
+		if state == "open" {
+			t.Error("circuit breaker should not open with 33% failure rate")
 		}
-	})
+	}
 
-	t.Run("partial failures don't open circuit", func(t *testing.T) {
-		metrics := &mockMetrics{}
-		requestCount := 0
-		failureThreshold := 2 // Less than 60% of 5 requests
+	if requestCount != 9 {
+		t.Errorf("expected 9 requests, got %d", requestCount)
+	}
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			requestCount++
-			// Fail first 2 requests, succeed the rest (40% failure rate)
-			if requestCount <= failureThreshold {
-				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte(`{"error":"server error"}`))
-			} else {
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{"status":"ok"}`))
-			}
-		}))
-		defer server.Close()
-
-		c := NewClient("test_key",
-			WithBaseURL(server.URL),
-			WithMetrics(metrics),
-			WithMaxRetries(0),
-		)
-
-		// Make requests with <60% failure rate
-		successCount := 0
-		for i := 0; i < 5; i++ {
-			err := c.doRequest(context.Background(), "GET", "/test", nil, nil)
-			if err == nil {
-				successCount++
-			}
-		}
-
-		// Should have 3 successful requests
-		if successCount != 3 {
-			t.Errorf("expected 3 successful requests, got %d", successCount)
-		}
-
-		// Circuit should NOT open (failure rate < 60%)
-		for _, state := range metrics.circuitBreakerStates {
-			if state == "open" {
-				t.Error("circuit breaker should not open with <60% failure rate")
-			}
-		}
-	})
-
-	t.Run("mixed success and failure patterns", func(t *testing.T) {
-		metrics := &mockMetrics{}
-		requestCount := 0
-
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			requestCount++
-			// Pattern: success, success, fail (2 success, 1 fail per 3 requests = 33% failure)
-			// This keeps us under the 60% threshold
-			if requestCount%3 == 0 {
-				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte(`{"error":"server error"}`))
-			} else {
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{"status":"ok"}`))
-			}
-		}))
-		defer server.Close()
-
-		c := NewClient("test_key",
-			WithBaseURL(server.URL),
-			WithMetrics(metrics),
-			WithMaxRetries(0),
-		)
-
-		// Make 9 requests (3 failures, 6 successes = 33% failure rate)
-		for i := 0; i < 9; i++ {
-			_ = c.doRequest(context.Background(), "GET", "/test", nil, nil)
-		}
-
-		// Circuit should NOT open (33% failure rate < 60% threshold)
-		for _, state := range metrics.circuitBreakerStates {
-			if state == "open" {
-				t.Error("circuit breaker should not open with 33% failure rate")
-			}
-		}
-
-		// All requests should have been attempted
-		if requestCount != 9 {
-			t.Errorf("expected 9 requests, got %d", requestCount)
-		}
-
-		// Verify API calls were recorded
-		if len(metrics.apiCalls) != 9 {
-			t.Errorf("expected 9 API calls recorded, got %d", len(metrics.apiCalls))
-		}
-	})
+	if len(metrics.apiCalls) != 9 {
+		t.Errorf("expected 9 API calls recorded, got %d", len(metrics.apiCalls))
+	}
 }
 
 func TestValidateResourceID(t *testing.T) {
@@ -1305,6 +1295,255 @@ func TestAuthTransport(t *testing.T) {
 		// Original request should not have Authorization header
 		if req.Header.Get(HeaderAuthorization) != "" {
 			t.Error("original request was mutated — authTransport must clone")
+		}
+	})
+}
+
+// =============================================================================
+// Tests for extracted helper functions (refactored from doRequestWithRetry)
+// =============================================================================
+
+func TestBuildHTTPRequest(t *testing.T) {
+	c := NewClient("test_api_key", WithBaseURL("https://api.example.com"))
+
+	t.Run("GET request with no body sets headers correctly", func(t *testing.T) {
+		testBuildHTTPRequestGETHeaders(t, c)
+	})
+
+	t.Run("POST request encodes body correctly", func(t *testing.T) {
+		jsonBody := []byte(`{"name":"test"}`)
+		req, err := c.buildHTTPRequest(context.Background(), "POST", "/v1/monitors", jsonBody)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if req.Method != "POST" {
+			t.Errorf("expected method POST, got %q", req.Method)
+		}
+		if req.Body == nil {
+			t.Fatal("expected non-nil body")
+		}
+		bodyBytes, _ := io.ReadAll(req.Body)
+		if string(bodyBytes) != string(jsonBody) {
+			t.Errorf("expected body %q, got %q", jsonBody, bodyBytes)
+		}
+	})
+
+	t.Run("User-Agent contains provider name", func(t *testing.T) {
+		req, err := c.buildHTTPRequest(context.Background(), "GET", "/v1/monitors", nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		ua := req.Header.Get("User-Agent")
+		if !strings.Contains(ua, "terraform-provider-hyperping") {
+			t.Errorf("User-Agent %q does not contain 'terraform-provider-hyperping'", ua)
+		}
+	})
+
+	t.Run("uses correct path", func(t *testing.T) {
+		req, err := c.buildHTTPRequest(context.Background(), "DELETE", "/v1/monitors/mon_123", nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if req.URL.Path != "/v1/monitors/mon_123" {
+			t.Errorf("expected path /v1/monitors/mon_123, got %q", req.URL.Path)
+		}
+	})
+}
+
+// testBuildHTTPRequestGETHeaders verifies that a GET request built by buildHTTPRequest
+// carries the correct method, URL, headers, and an absent body.
+func testBuildHTTPRequestGETHeaders(t *testing.T, c *Client) {
+	t.Helper()
+	req, err := c.buildHTTPRequest(context.Background(), "GET", "/v1/monitors", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if req.Method != "GET" {
+		t.Errorf("expected method GET, got %q", req.Method)
+	}
+	if req.URL.String() != "https://api.example.com/v1/monitors" {
+		t.Errorf("unexpected URL: %q", req.URL.String())
+	}
+	if req.Header.Get(HeaderContentType) != ContentTypeJSON {
+		t.Errorf("expected Content-Type %q, got %q", ContentTypeJSON, req.Header.Get(HeaderContentType))
+	}
+	if req.Header.Get(HeaderAccept) != ContentTypeJSON {
+		t.Errorf("expected Accept %q, got %q", ContentTypeJSON, req.Header.Get(HeaderAccept))
+	}
+	if req.Header.Get("User-Agent") == "" {
+		t.Error("expected non-empty User-Agent header")
+	}
+	if req.Body != nil {
+		t.Error("expected nil body for nil jsonBody")
+	}
+}
+
+func TestReadResponseBody(t *testing.T) {
+	t.Run("reads normal body successfully", func(t *testing.T) {
+		body := `{"status":"ok"}`
+		resp := &http.Response{
+			Body: io.NopCloser(strings.NewReader(body)),
+		}
+		data, err := readResponseBody(resp)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(data) != body {
+			t.Errorf("expected body %q, got %q", body, data)
+		}
+	})
+
+	t.Run("rejects body exceeding maxResponseBodyBytes", func(t *testing.T) {
+		// Create a body just over the limit.
+		oversized := strings.Repeat("x", maxResponseBodyBytes+1)
+		resp := &http.Response{
+			Body: io.NopCloser(strings.NewReader(oversized)),
+		}
+		_, err := readResponseBody(resp)
+		if err == nil {
+			t.Fatal("expected error for oversized body, got nil")
+		}
+		if !strings.Contains(err.Error(), "exceeds maximum size") {
+			t.Errorf("expected 'exceeds maximum size' in error, got %q", err.Error())
+		}
+	})
+
+	t.Run("closes body even on successful read", func(t *testing.T) {
+		closed := false
+		body := "hello"
+		rc := &closeTrackingReader{
+			Reader: strings.NewReader(body),
+			onClose: func() {
+				closed = true
+			},
+		}
+		resp := &http.Response{Body: rc}
+		data, err := readResponseBody(resp)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(data) != body {
+			t.Errorf("expected %q, got %q", body, data)
+		}
+		if !closed {
+			t.Error("expected body to be closed after read")
+		}
+	})
+
+	t.Run("empty body returns empty slice without error", func(t *testing.T) {
+		resp := &http.Response{
+			Body: io.NopCloser(strings.NewReader("")),
+		}
+		data, err := readResponseBody(resp)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(data) != 0 {
+			t.Errorf("expected empty slice, got %d bytes", len(data))
+		}
+	})
+}
+
+// closeTrackingReader wraps a Reader to record whether Close was called.
+type closeTrackingReader struct {
+	io.Reader
+	onClose func()
+}
+
+func (c *closeTrackingReader) Close() error {
+	c.onClose()
+	return nil
+}
+
+func TestShouldRetryOnError(t *testing.T) {
+	t.Run("returns false when attempt equals maxRetries", func(t *testing.T) {
+		c := NewClient("key", WithMaxRetries(3))
+		result := c.shouldRetryOnError(context.Background(), "GET", "/v1/monitors", 3)
+		if result {
+			t.Error("expected false when attempt == maxRetries")
+		}
+	})
+
+	t.Run("returns false when attempt exceeds maxRetries", func(t *testing.T) {
+		c := NewClient("key", WithMaxRetries(3))
+		result := c.shouldRetryOnError(context.Background(), "GET", "/v1/monitors", 5)
+		if result {
+			t.Error("expected false when attempt > maxRetries")
+		}
+	})
+
+	t.Run("returns true and records metric when attempt is below maxRetries", func(t *testing.T) {
+		m := &mockMetrics{}
+		c := NewClient("key", WithMaxRetries(3), WithMetrics(m), WithRetryWait(1*time.Millisecond, 10*time.Millisecond))
+		result := c.shouldRetryOnError(context.Background(), "GET", "/v1/monitors", 0)
+		if !result {
+			t.Error("expected true when attempt < maxRetries")
+		}
+		if len(m.retries) == 0 {
+			t.Error("expected retry metric to be recorded")
+		}
+	})
+
+	t.Run("returns true without metrics when no metrics configured", func(t *testing.T) {
+		c := NewClient("key", WithMaxRetries(3), WithRetryWait(1*time.Millisecond, 10*time.Millisecond))
+		result := c.shouldRetryOnError(context.Background(), "GET", "/v1/monitors", 1)
+		if !result {
+			t.Error("expected true when attempt < maxRetries and no metrics")
+		}
+	})
+
+	t.Run("respects context cancellation during sleep", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // pre-cancel
+
+		c := NewClient("key", WithMaxRetries(3), WithRetryWait(10*time.Second, 30*time.Second))
+		start := time.Now()
+		result := c.shouldRetryOnError(ctx, "GET", "/path", 0)
+		elapsed := time.Since(start)
+
+		if !result {
+			t.Error("expected true (retry decision is independent of context)")
+		}
+		if elapsed > 2*time.Second {
+			t.Errorf("expected fast return on cancelled context, took %v", elapsed)
+		}
+	})
+}
+
+func TestMarshalBody(t *testing.T) {
+	t.Run("nil body returns nil without error", func(t *testing.T) {
+		data, err := marshalBody(nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if data != nil {
+			t.Errorf("expected nil, got %v", data)
+		}
+	})
+
+	t.Run("marshals struct correctly", func(t *testing.T) {
+		type payload struct {
+			Name string `json:"name"`
+		}
+		data, err := marshalBody(payload{Name: "test"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(data) != `{"name":"test"}` {
+			t.Errorf("unexpected JSON: %q", data)
+		}
+	})
+
+	t.Run("returns error for unmarshalable value", func(t *testing.T) {
+		// Channels cannot be JSON-marshaled.
+		_, err := marshalBody(make(chan int))
+		if err == nil {
+			t.Fatal("expected error for channel value")
+		}
+		if !strings.Contains(err.Error(), "failed to marshal request body") {
+			t.Errorf("unexpected error message: %q", err.Error())
 		}
 	})
 }

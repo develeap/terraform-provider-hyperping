@@ -202,28 +202,50 @@ func newMockStatusPageServer(t *testing.T) *mockStatusPageServer {
 	return m
 }
 
+// isSubscriberPath reports whether the URL path refers to a subscribers resource.
+func isSubscriberPath(path string) bool {
+	return strings.Contains(path, "/subscribers")
+}
+
+// isSubscriberDeletePath reports whether the URL path refers to a specific subscriber.
+func isSubscriberDeletePath(path string) bool {
+	return strings.Contains(path, "/subscribers/")
+}
+
 func (m *mockStatusPageServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 	basePath := client.StatuspagesBasePath
 	basePathWithID := basePath + "/sp_"
+	isSubscriber := isSubscriberPath(r.URL.Path)
 
 	switch {
 	case r.Method == "GET" && r.URL.Path == basePath:
 		m.listStatusPages(w, r)
 	case r.Method == "POST" && r.URL.Path == basePath:
 		m.createStatusPage(w, r)
-	case r.Method == "GET" && strings.Contains(r.URL.Path, "/subscribers"):
-		m.listSubscribers(w, r)
-	case r.Method == "POST" && strings.Contains(r.URL.Path, "/subscribers"):
-		m.addSubscriber(w, r)
-	case r.Method == "DELETE" && strings.Contains(r.URL.Path, "/subscribers/"):
-		m.deleteSubscriber(w, r)
+	case isSubscriber:
+		m.handleSubscriberRequest(w, r)
 	case r.Method == "GET" && strings.HasPrefix(r.URL.Path, basePathWithID):
 		m.getStatusPage(w, r)
 	case r.Method == "PUT" && strings.HasPrefix(r.URL.Path, basePathWithID):
 		m.updateStatusPage(w, r)
 	case r.Method == "DELETE" && strings.HasPrefix(r.URL.Path, basePathWithID):
 		m.deleteStatusPage(w, r)
+	default:
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Not found"})
+	}
+}
+
+// handleSubscriberRequest dispatches subscriber-related requests (list, add, delete).
+func (m *mockStatusPageServer) handleSubscriberRequest(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case r.Method == "GET":
+		m.listSubscribers(w, r)
+	case r.Method == "POST":
+		m.addSubscriber(w, r)
+	case r.Method == "DELETE" && isSubscriberDeletePath(r.URL.Path):
+		m.deleteSubscriber(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Not found"})
@@ -247,30 +269,153 @@ func (m *mockStatusPageServer) listStatusPages(w http.ResponseWriter, _ *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
-func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.Request) {
-	var req map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
-		return
+// buildMockService converts a service map from the request into the mock response format.
+func buildMockService(svcMap map[string]interface{}) map[string]interface{} {
+	service := map[string]interface{}{
+		"id":                  "svc_001",
+		"uuid":                getOrDefault(svcMap, "monitor_uuid", "mon_default"),
+		"is_group":            getOrDefaultBool(svcMap, "is_group", false),
+		"show_uptime":         getOrDefaultBool(svcMap, "show_uptime", true),
+		"show_response_times": getOrDefaultBool(svcMap, "show_response_times", true),
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.counter++
-	uuid := fmt.Sprintf("sp_%03d", m.counter)
-
-	subdomain := "default-status"
-	if s, ok := req["subdomain"].(string); ok && s != "" {
-		subdomain = s
+	if svcName, ok := svcMap["name"].(map[string]interface{}); ok {
+		nameStrMap := make(map[string]string)
+		for k, v := range svcName {
+			if vStr, ok := v.(string); ok {
+				nameStrMap[k] = vStr
+			}
+		}
+		service["name"] = nameStrMap
+	} else if nameShown, ok := svcMap["name_shown"].(string); ok {
+		service["name"] = map[string]string{"en": nameShown}
 	}
 
-	settingsName := "Status Page"
-	if topName, ok := req["name"].(string); ok && topName != "" {
-		settingsName = topName
+	return service
+}
+
+// buildMockSections converts a sections slice from the request into the mock response format.
+func buildMockSections(sectionsReq []interface{}) []map[string]interface{} {
+	sections := []map[string]interface{}{}
+	for _, secInterface := range sectionsReq {
+		secMap, ok := secInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		section := map[string]interface{}{
+			"is_split": false,
+			"services": nil,
+		}
+
+		if name, ok := secMap["name"].(string); ok {
+			section["name"] = map[string]string{"en": name}
+		}
+		if nameMap, ok := secMap["name"].(map[string]interface{}); ok {
+			nameStrMap := make(map[string]string)
+			for k, v := range nameMap {
+				if vStr, ok := v.(string); ok {
+					nameStrMap[k] = vStr
+				}
+			}
+			section["name"] = nameStrMap
+		}
+		if isSplit, ok := secMap["is_split"].(bool); ok {
+			section["is_split"] = isSplit
+		}
+
+		if servicesReq, ok := secMap["services"].([]interface{}); ok {
+			services := []map[string]interface{}{}
+			for _, svcInterface := range servicesReq {
+				if svcMap, ok := svcInterface.(map[string]interface{}); ok {
+					services = append(services, buildMockService(svcMap))
+				}
+			}
+			section["services"] = services
+		}
+
+		sections = append(sections, section)
+	}
+	return sections
+}
+
+// buildDescriptionMap builds the multi-language description map from a request value.
+func buildDescriptionMap(description interface{}) map[string]string {
+	descMap := map[string]string{"en": "", "fr": "", "de": "", "ru": "", "nl": ""}
+	if reqDesc, ok := description.(map[string]interface{}); ok {
+		for lang, val := range reqDesc {
+			if valStr, ok := val.(string); ok {
+				descMap[lang] = valStr
+			}
+		}
+	}
+	return descMap
+}
+
+// applyAuthFields merges an authentication sub-map into settings,
+// ensuring the allowed_domains field is always present.
+func applyAuthFields(authMap map[string]interface{}, settings map[string]interface{}) {
+	if _, hasAllowedDomains := authMap["allowed_domains"]; !hasAllowedDomains {
+		authMap["allowed_domains"] = []string{}
+	}
+	settings["authentication"] = authMap
+}
+
+// applySettingsFields applies all scalar and structured settings fields from a
+// request map onto the target settings map.
+func applySettingsFields(req map[string]interface{}, settings map[string]interface{}) {
+	stringFields := []string{
+		"theme", "font", "accent_color", "default_language",
+		"website", "logo", "logo_height", "favicon", "google_analytics",
+	}
+	for _, field := range stringFields {
+		if val, ok := req[field].(string); ok {
+			settings[field] = val
+		}
 	}
 
+	boolFields := []string{
+		"auto_refresh", "banner_header", "hide_powered_by", "hide_from_search_engines",
+	}
+	for _, field := range boolFields {
+		if val, ok := req[field].(bool); ok {
+			settings[field] = val
+		}
+	}
+
+	if languages, ok := req["languages"]; ok {
+		if langArr, ok := languages.([]interface{}); ok {
+			langStrings := make([]string, len(langArr))
+			for i, lang := range langArr {
+				if langStr, ok := lang.(string); ok {
+					langStrings[i] = langStr
+				}
+			}
+			settings["languages"] = langStrings
+		} else {
+			settings["languages"] = languages
+		}
+	}
+
+	if description, ok := req["description"]; ok {
+		settings["description"] = buildDescriptionMap(description)
+	}
+
+	if subscribe, ok := req["subscribe"]; ok {
+		settings["subscribe"] = subscribe
+	}
+
+	if authentication, ok := req["authentication"]; ok {
+		if authMap, ok := authentication.(map[string]interface{}); ok {
+			applyAuthFields(authMap, settings)
+		} else {
+			settings["authentication"] = authentication
+		}
+	}
+}
+
+// buildMockCreateSettings builds the initial settings map for a newly created status page.
+func buildMockCreateSettings(req map[string]interface{}, settingsName string) map[string]interface{} {
 	settings := map[string]interface{}{
 		"name":                     settingsName,
 		"website":                  "",
@@ -303,33 +448,14 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 		settings["languages"] = []string{}
 	}
 
-	description := map[string]string{
-		"en": "",
-		"fr": "",
-		"de": "",
-		"ru": "",
-		"nl": "",
-	}
-	if reqDesc, ok := req["description"].(map[string]interface{}); ok {
-		for lang, val := range reqDesc {
-			if valStr, ok := val.(string); ok {
-				description[lang] = valStr
-			}
+	settings["description"] = buildDescriptionMap(req["description"])
+
+	for _, optKey := range []string{"logo", "logo_height", "favicon", "google_analytics"} {
+		if val, ok := req[optKey].(string); ok {
+			settings[optKey] = val
 		}
 	}
-	settings["description"] = description
-	if logo, ok := req["logo"].(string); ok {
-		settings["logo"] = logo
-	}
-	if logoHeight, ok := req["logo_height"].(string); ok {
-		settings["logo_height"] = logoHeight
-	}
-	if favicon, ok := req["favicon"].(string); ok {
-		settings["favicon"] = favicon
-	}
-	if ga, ok := req["google_analytics"].(string); ok {
-		settings["google_analytics"] = ga
-	}
+
 	if subscribe, ok := req["subscribe"].(map[string]interface{}); ok {
 		settings["subscribe"] = subscribe
 	} else {
@@ -341,6 +467,7 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 			"sms":     false,
 		}
 	}
+
 	if auth, ok := req["authentication"].(map[string]interface{}); ok {
 		settings["authentication"] = auth
 	} else {
@@ -351,6 +478,35 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 			"allowed_domains":     []string{},
 		}
 	}
+
+	return settings
+}
+
+func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.Request) {
+	var req map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+		return
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.counter++
+	uuid := fmt.Sprintf("sp_%03d", m.counter)
+
+	subdomain := "default-status"
+	if s, ok := req["subdomain"].(string); ok && s != "" {
+		subdomain = s
+	}
+
+	settingsName := "Status Page"
+	if topName, ok := req["name"].(string); ok && topName != "" {
+		settingsName = topName
+	}
+
+	settings := buildMockCreateSettings(req, settingsName)
 
 	page := map[string]interface{}{
 		"uuid":               uuid,
@@ -367,67 +523,7 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 	}
 
 	if sectionsReq, ok := req["sections"].([]interface{}); ok {
-		sections := []map[string]interface{}{}
-		for _, secInterface := range sectionsReq {
-			if secMap, ok := secInterface.(map[string]interface{}); ok {
-				section := map[string]interface{}{
-					"is_split": false,
-					"services": nil,
-				}
-
-				if name, ok := secMap["name"].(string); ok {
-					section["name"] = map[string]string{"en": name}
-				}
-				if nameMap, ok := secMap["name"].(map[string]interface{}); ok {
-					nameStrMap := make(map[string]string)
-					for k, v := range nameMap {
-						if vStr, ok := v.(string); ok {
-							nameStrMap[k] = vStr
-						}
-					}
-					section["name"] = nameStrMap
-				}
-
-				if isSplit, ok := secMap["is_split"].(bool); ok {
-					section["is_split"] = isSplit
-				}
-
-				if servicesReq, ok := secMap["services"].([]interface{}); ok {
-					services := []map[string]interface{}{}
-					for _, svcInterface := range servicesReq {
-						if svcMap, ok := svcInterface.(map[string]interface{}); ok {
-							service := map[string]interface{}{
-								"id":                  "svc_001",
-								"uuid":                getOrDefault(svcMap, "monitor_uuid", "mon_default"),
-								"is_group":            getOrDefaultBool(svcMap, "is_group", false),
-								"show_uptime":         getOrDefaultBool(svcMap, "show_uptime", true),
-								"show_response_times": getOrDefaultBool(svcMap, "show_response_times", true),
-							}
-
-							// Handle both name (map) and name_shown (string)
-							if svcName, ok := svcMap["name"].(map[string]interface{}); ok {
-								nameStrMap := make(map[string]string)
-								for k, v := range svcName {
-									if vStr, ok := v.(string); ok {
-										nameStrMap[k] = vStr
-									}
-								}
-								service["name"] = nameStrMap
-							} else if nameShown, ok := svcMap["name_shown"].(string); ok {
-								// API sends name_shown as string, convert to map
-								service["name"] = map[string]string{"en": nameShown}
-							}
-
-							services = append(services, service)
-						}
-					}
-					section["services"] = services
-				}
-
-				sections = append(sections, section)
-			}
-		}
-		page["sections"] = sections
+		page["sections"] = buildMockSections(sectionsReq)
 	}
 
 	m.statusPages[uuid] = page
@@ -496,65 +592,7 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 		page["hostname"] = hostname
 	}
 	if sectionsReq, ok := req["sections"].([]interface{}); ok {
-		sections := []map[string]interface{}{}
-		for _, secInterface := range sectionsReq {
-			if secMap, ok := secInterface.(map[string]interface{}); ok {
-				section := map[string]interface{}{
-					"is_split": false,
-					"services": nil,
-				}
-				if name, ok := secMap["name"].(string); ok {
-					section["name"] = map[string]string{"en": name}
-				}
-				if nameMap, ok := secMap["name"].(map[string]interface{}); ok {
-					nameStrMap := make(map[string]string)
-					for k, v := range nameMap {
-						if vStr, ok := v.(string); ok {
-							nameStrMap[k] = vStr
-						}
-					}
-					section["name"] = nameStrMap
-				}
-				if isSplit, ok := secMap["is_split"].(bool); ok {
-					section["is_split"] = isSplit
-				}
-
-				if servicesReq, ok := secMap["services"].([]interface{}); ok {
-					services := []map[string]interface{}{}
-					for _, svcInterface := range servicesReq {
-						if svcMap, ok := svcInterface.(map[string]interface{}); ok {
-							service := map[string]interface{}{
-								"id":                  "svc_001",
-								"uuid":                getOrDefault(svcMap, "monitor_uuid", "mon_default"),
-								"is_group":            getOrDefaultBool(svcMap, "is_group", false),
-								"show_uptime":         getOrDefaultBool(svcMap, "show_uptime", true),
-								"show_response_times": getOrDefaultBool(svcMap, "show_response_times", true),
-							}
-
-							// Handle both name (map) and name_shown (string)
-							if svcName, ok := svcMap["name"].(map[string]interface{}); ok {
-								nameStrMap := make(map[string]string)
-								for k, v := range svcName {
-									if vStr, ok := v.(string); ok {
-										nameStrMap[k] = vStr
-									}
-								}
-								service["name"] = nameStrMap
-							} else if nameShown, ok := svcMap["name_shown"].(string); ok {
-								// API sends name_shown as string, convert to map
-								service["name"] = map[string]string{"en": nameShown}
-							}
-
-							services = append(services, service)
-						}
-					}
-					section["services"] = services
-				}
-
-				sections = append(sections, section)
-			}
-		}
-		page["sections"] = sections
+		page["sections"] = buildMockSections(sectionsReq)
 	}
 
 	settings, _ := page["settings"].(map[string]interface{})
@@ -562,88 +600,7 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 		settings = make(map[string]interface{})
 	}
 
-	if theme, ok := req["theme"].(string); ok {
-		settings["theme"] = theme
-	}
-	if font, ok := req["font"].(string); ok {
-		settings["font"] = font
-	}
-	if accentColor, ok := req["accent_color"].(string); ok {
-		settings["accent_color"] = accentColor
-	}
-	if defaultLang, ok := req["default_language"].(string); ok {
-		settings["default_language"] = defaultLang
-	}
-	if website, ok := req["website"].(string); ok {
-		settings["website"] = website
-	}
-	if logo, ok := req["logo"].(string); ok {
-		settings["logo"] = logo
-	}
-	if logoHeight, ok := req["logo_height"].(string); ok {
-		settings["logo_height"] = logoHeight
-	}
-	if favicon, ok := req["favicon"].(string); ok {
-		settings["favicon"] = favicon
-	}
-	if ga, ok := req["google_analytics"].(string); ok {
-		settings["google_analytics"] = ga
-	}
-	if autoRefresh, ok := req["auto_refresh"].(bool); ok {
-		settings["auto_refresh"] = autoRefresh
-	}
-	if bannerHeader, ok := req["banner_header"].(bool); ok {
-		settings["banner_header"] = bannerHeader
-	}
-	if hidePoweredBy, ok := req["hide_powered_by"].(bool); ok {
-		settings["hide_powered_by"] = hidePoweredBy
-	}
-	if hideFromSearch, ok := req["hide_from_search_engines"].(bool); ok {
-		settings["hide_from_search_engines"] = hideFromSearch
-	}
-	if languages, ok := req["languages"]; ok {
-		if langArr, ok := languages.([]interface{}); ok {
-			langStrings := make([]string, len(langArr))
-			for i, lang := range langArr {
-				if langStr, ok := lang.(string); ok {
-					langStrings[i] = langStr
-				}
-			}
-			settings["languages"] = langStrings
-		} else {
-			settings["languages"] = languages
-		}
-	}
-	if description, ok := req["description"]; ok {
-		descMap := map[string]string{
-			"en": "",
-			"fr": "",
-			"de": "",
-			"ru": "",
-			"nl": "",
-		}
-		if reqDesc, ok := description.(map[string]interface{}); ok {
-			for lang, val := range reqDesc {
-				if valStr, ok := val.(string); ok {
-					descMap[lang] = valStr
-				}
-			}
-		}
-		settings["description"] = descMap
-	}
-	if subscribe, ok := req["subscribe"]; ok {
-		settings["subscribe"] = subscribe
-	}
-	if authentication, ok := req["authentication"]; ok {
-		if authMap, ok := authentication.(map[string]interface{}); ok {
-			if _, hasAllowedDomains := authMap["allowed_domains"]; !hasAllowedDomains {
-				authMap["allowed_domains"] = []string{}
-			}
-			settings["authentication"] = authMap
-		} else {
-			settings["authentication"] = authentication
-		}
-	}
+	applySettingsFields(req, settings)
 
 	page["settings"] = settings
 	m.statusPages[uuid] = page

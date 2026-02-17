@@ -787,55 +787,63 @@ func populateSettingsFields(settings types.Object, target *statusPageSettingsTar
 	}
 
 	attrs := settings.Attributes()
+	populateStringSettings(attrs, target)
+	populateBoolSettings(attrs, target)
+	populateCollectionSettings(attrs, target, diags)
 
-	if websiteAttr, ok := attrs["website"].(types.String); ok && !websiteAttr.IsNull() {
-		*target.Website = extractOptionalStringPtr(websiteAttr)
+	subscribe, auth := mapTFToSettings(settings, diags)
+	*target.Subscribe = subscribe
+	*target.Authentication = auth
+}
+
+// populateStringSettings populates all string settings fields from the attrs map into target.
+// Handles: website, theme, font, accent_color, logo, logo_height, favicon, google_analytics, default_language.
+func populateStringSettings(attrs map[string]attr.Value, target *statusPageSettingsTarget) {
+	stringFields := []struct {
+		key  string
+		dest **string
+	}{
+		{"website", target.Website},
+		{"theme", target.Theme},
+		{"font", target.Font},
+		{"accent_color", target.AccentColor},
+		{"logo", target.Logo},
+		{"logo_height", target.LogoHeight},
+		{"favicon", target.Favicon},
+		{"google_analytics", target.GoogleAnalytics},
+		{"default_language", target.DefaultLanguage},
 	}
 
-	if themeAttr, ok := attrs["theme"].(types.String); ok && !themeAttr.IsNull() {
-		*target.Theme = extractOptionalStringPtr(themeAttr)
+	for _, f := range stringFields {
+		if v, ok := attrs[f.key].(types.String); ok && !v.IsNull() {
+			*f.dest = extractOptionalStringPtr(v)
+		}
+	}
+}
+
+// populateBoolSettings populates all bool settings fields from the attrs map into target.
+// Handles: auto_refresh, banner_header, hide_powered_by, hide_from_search_engines.
+func populateBoolSettings(attrs map[string]attr.Value, target *statusPageSettingsTarget) {
+	boolFields := []struct {
+		key  string
+		dest **bool
+	}{
+		{"auto_refresh", target.AutoRefresh},
+		{"banner_header", target.BannerHeader},
+		{"hide_powered_by", target.HidePoweredBy},
+		{"hide_from_search_engines", target.HideFromSearchEngines},
 	}
 
-	if fontAttr, ok := attrs["font"].(types.String); ok && !fontAttr.IsNull() {
-		*target.Font = extractOptionalStringPtr(fontAttr)
+	for _, f := range boolFields {
+		if v, ok := attrs[f.key].(types.Bool); ok && !v.IsNull() {
+			*f.dest = extractOptionalBoolPtr(v)
+		}
 	}
+}
 
-	if accentAttr, ok := attrs["accent_color"].(types.String); ok && !accentAttr.IsNull() {
-		*target.AccentColor = extractOptionalStringPtr(accentAttr)
-	}
-
-	if logoAttr, ok := attrs["logo"].(types.String); ok && !logoAttr.IsNull() {
-		*target.Logo = extractOptionalStringPtr(logoAttr)
-	}
-
-	if logoHeightAttr, ok := attrs["logo_height"].(types.String); ok && !logoHeightAttr.IsNull() {
-		*target.LogoHeight = extractOptionalStringPtr(logoHeightAttr)
-	}
-
-	if faviconAttr, ok := attrs["favicon"].(types.String); ok && !faviconAttr.IsNull() {
-		*target.Favicon = extractOptionalStringPtr(faviconAttr)
-	}
-
-	if gaAttr, ok := attrs["google_analytics"].(types.String); ok && !gaAttr.IsNull() {
-		*target.GoogleAnalytics = extractOptionalStringPtr(gaAttr)
-	}
-
-	if autoRefreshAttr, ok := attrs["auto_refresh"].(types.Bool); ok && !autoRefreshAttr.IsNull() {
-		*target.AutoRefresh = extractOptionalBoolPtr(autoRefreshAttr)
-	}
-
-	if bannerAttr, ok := attrs["banner_header"].(types.Bool); ok && !bannerAttr.IsNull() {
-		*target.BannerHeader = extractOptionalBoolPtr(bannerAttr)
-	}
-
-	if hidePoweredByAttr, ok := attrs["hide_powered_by"].(types.Bool); ok && !hidePoweredByAttr.IsNull() {
-		*target.HidePoweredBy = extractOptionalBoolPtr(hidePoweredByAttr)
-	}
-
-	if hideSearchAttr, ok := attrs["hide_from_search_engines"].(types.Bool); ok && !hideSearchAttr.IsNull() {
-		*target.HideFromSearchEngines = extractOptionalBoolPtr(hideSearchAttr)
-	}
-
+// populateCollectionSettings populates the description map and languages list into target.
+// Handles: description (map[string]string), languages ([]string).
+func populateCollectionSettings(attrs map[string]attr.Value, target *statusPageSettingsTarget, diags *diag.Diagnostics) {
 	if descAttr, ok := attrs["description"].(types.Map); ok && !descAttr.IsNull() {
 		desc := mapTFToStringMap(descAttr, diags)
 		if len(desc) > 0 {
@@ -849,12 +857,4 @@ func populateSettingsFields(settings types.Object, target *statusPageSettingsTar
 			*target.Languages = langs
 		}
 	}
-
-	if defaultLangAttr, ok := attrs["default_language"].(types.String); ok && !defaultLangAttr.IsNull() {
-		*target.DefaultLanguage = extractOptionalStringPtr(defaultLangAttr)
-	}
-
-	subscribe, auth := mapTFToSettings(settings, diags)
-	*target.Subscribe = subscribe
-	*target.Authentication = auth
 }

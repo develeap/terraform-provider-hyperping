@@ -187,60 +187,84 @@ func mapTFToSettings(obj types.Object, diags *diag.Diagnostics) (*client.CreateS
 
 	attrs := obj.Attributes()
 
-	// Extract subscribe settings
-	var subscribe *client.CreateStatusPageSubscribeSettings
-	if subscribeObj, ok := attrs["subscribe"].(types.Object); ok && !subscribeObj.IsNull() {
-		subAttrs := subscribeObj.Attributes()
-		subscribe = &client.CreateStatusPageSubscribeSettings{}
-
-		if enabled, ok := subAttrs["enabled"].(types.Bool); ok && !enabled.IsNull() {
-			val := enabled.ValueBool()
-			subscribe.Enabled = &val
-		}
-		if email, ok := subAttrs["email"].(types.Bool); ok && !email.IsNull() {
-			val := email.ValueBool()
-			subscribe.Email = &val
-		}
-		if slack, ok := subAttrs["slack"].(types.Bool); ok && !slack.IsNull() {
-			val := slack.ValueBool()
-			subscribe.Slack = &val
-		}
-		if teams, ok := subAttrs["teams"].(types.Bool); ok && !teams.IsNull() {
-			val := teams.ValueBool()
-			subscribe.Teams = &val
-		}
-		if sms, ok := subAttrs["sms"].(types.Bool); ok && !sms.IsNull() {
-			val := sms.ValueBool()
-			subscribe.SMS = &val
-		}
+	subscribeObj, ok1 := attrs["subscribe"].(types.Object)
+	if !ok1 {
+		subscribeObj = types.ObjectNull(SubscribeSettingsAttrTypes())
+	}
+	authObj, ok2 := attrs["authentication"].(types.Object)
+	if !ok2 {
+		authObj = types.ObjectNull(AuthenticationSettingsAttrTypes())
 	}
 
-	// Extract authentication settings
-	var authentication *client.CreateStatusPageAuthenticationSettings
-	if authObj, ok := attrs["authentication"].(types.Object); ok && !authObj.IsNull() {
-		authAttrs := authObj.Attributes()
-		authentication = &client.CreateStatusPageAuthenticationSettings{}
+	return extractSubscribeSettings(subscribeObj, diags), extractAuthSettings(authObj, diags)
+}
 
-		if passwordProtection, ok := authAttrs["password_protection"].(types.Bool); ok && !passwordProtection.IsNull() {
-			val := passwordProtection.ValueBool()
-			authentication.PasswordProtection = &val
-		}
-		if googleSSO, ok := authAttrs["google_sso"].(types.Bool); ok && !googleSSO.IsNull() {
-			val := googleSSO.ValueBool()
-			authentication.GoogleSSO = &val
-		}
-		if samlSSO, ok := authAttrs["saml_sso"].(types.Bool); ok && !samlSSO.IsNull() {
-			val := samlSSO.ValueBool()
-			authentication.SAMLSSO = &val
-		}
-		if allowedDomains, ok := authAttrs["allowed_domains"].(types.List); ok && !isNullOrUnknown(allowedDomains) {
-			var domains []string
-			diags.Append(allowedDomains.ElementsAs(context.TODO(), &domains, false)...)
-			authentication.AllowedDomains = domains
-		}
+// extractSubscribeSettings converts a subscribe settings Terraform Object to the API struct.
+// Returns nil when the object is null or unknown.
+// Handles: enabled, email, slack, teams, sms.
+func extractSubscribeSettings(obj types.Object, diags *diag.Diagnostics) *client.CreateStatusPageSubscribeSettings {
+	if obj.IsNull() || obj.IsUnknown() {
+		return nil
 	}
 
-	return subscribe, authentication
+	_ = diags // reserved for future diagnostics
+	attrs := obj.Attributes()
+	subscribe := &client.CreateStatusPageSubscribeSettings{}
+
+	if enabled, ok := attrs["enabled"].(types.Bool); ok && !enabled.IsNull() {
+		val := enabled.ValueBool()
+		subscribe.Enabled = &val
+	}
+	if email, ok := attrs["email"].(types.Bool); ok && !email.IsNull() {
+		val := email.ValueBool()
+		subscribe.Email = &val
+	}
+	if slack, ok := attrs["slack"].(types.Bool); ok && !slack.IsNull() {
+		val := slack.ValueBool()
+		subscribe.Slack = &val
+	}
+	if teams, ok := attrs["teams"].(types.Bool); ok && !teams.IsNull() {
+		val := teams.ValueBool()
+		subscribe.Teams = &val
+	}
+	if sms, ok := attrs["sms"].(types.Bool); ok && !sms.IsNull() {
+		val := sms.ValueBool()
+		subscribe.SMS = &val
+	}
+
+	return subscribe
+}
+
+// extractAuthSettings converts an authentication settings Terraform Object to the API struct.
+// Returns nil when the object is null or unknown.
+// Handles: password_protection, google_sso, saml_sso, allowed_domains.
+func extractAuthSettings(obj types.Object, diags *diag.Diagnostics) *client.CreateStatusPageAuthenticationSettings {
+	if obj.IsNull() || obj.IsUnknown() {
+		return nil
+	}
+
+	attrs := obj.Attributes()
+	authentication := &client.CreateStatusPageAuthenticationSettings{}
+
+	if passwordProtection, ok := attrs["password_protection"].(types.Bool); ok && !passwordProtection.IsNull() {
+		val := passwordProtection.ValueBool()
+		authentication.PasswordProtection = &val
+	}
+	if googleSSO, ok := attrs["google_sso"].(types.Bool); ok && !googleSSO.IsNull() {
+		val := googleSSO.ValueBool()
+		authentication.GoogleSSO = &val
+	}
+	if samlSSO, ok := attrs["saml_sso"].(types.Bool); ok && !samlSSO.IsNull() {
+		val := samlSSO.ValueBool()
+		authentication.SAMLSSO = &val
+	}
+	if allowedDomains, ok := attrs["allowed_domains"].(types.List); ok && !isNullOrUnknown(allowedDomains) {
+		var domains []string
+		diags.Append(allowedDomains.ElementsAs(context.TODO(), &domains, false)...)
+		authentication.AllowedDomains = domains
+	}
+
+	return authentication
 }
 
 // =============================================================================

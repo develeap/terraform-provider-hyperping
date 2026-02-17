@@ -189,6 +189,30 @@ func (r *HealthcheckResource) Configure(_ context.Context, req resource.Configur
 	r.client = c
 }
 
+// validateCronFields validates that cron-specific requirements are met.
+// When cron is set, timezone is required. When only tz is set, cron is required.
+func validateCronFields(hasCron, hasTz bool) error {
+	if hasCron && !hasTz {
+		return fmt.Errorf("tz is required when cron is set")
+	}
+	if hasTz && !hasCron {
+		return fmt.Errorf("cron is required when tz is set")
+	}
+	return nil
+}
+
+// validatePeriodFields validates that period-specific requirements are met.
+// When period_value is set, period_type is required, and vice versa.
+func validatePeriodFields(hasPeriodValue, hasPeriodType bool) error {
+	if hasPeriodValue && !hasPeriodType {
+		return fmt.Errorf("period_type is required when period_value is set")
+	}
+	if hasPeriodType && !hasPeriodValue {
+		return fmt.Errorf("period_value is required when period_type is set")
+	}
+	return nil
+}
+
 // validateCronPeriodExclusivity checks that cron/tz and period_value/period_type are mutually exclusive.
 func validateCronPeriodExclusivity(plan *HealthcheckResourceModel) error {
 	hasCron := !isNullOrUnknown(plan.Cron) && plan.Cron.ValueString() != ""
@@ -200,20 +224,12 @@ func validateCronPeriodExclusivity(plan *HealthcheckResourceModel) error {
 		return fmt.Errorf("specify either (cron + tz) or (period_value + period_type), not both")
 	}
 
-	if hasCron && !hasTz {
-		return fmt.Errorf("tz is required when cron is set")
+	if err := validateCronFields(hasCron, hasTz); err != nil {
+		return err
 	}
 
-	if hasTz && !hasCron {
-		return fmt.Errorf("cron is required when tz is set")
-	}
-
-	if hasPeriodValue && !hasPeriodType {
-		return fmt.Errorf("period_type is required when period_value is set")
-	}
-
-	if hasPeriodType && !hasPeriodValue {
-		return fmt.Errorf("period_value is required when period_type is set")
+	if err := validatePeriodFields(hasPeriodValue, hasPeriodType); err != nil {
+		return err
 	}
 
 	if !hasCron && !hasPeriodValue {
@@ -398,16 +414,11 @@ func (r *HealthcheckResource) Update(ctx context.Context, req resource.UpdateReq
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// applyFieldChanges builds and sends an update request for changed non-pause fields.
-func (r *HealthcheckResource) applyFieldChanges(ctx context.Context, plan, state *HealthcheckResourceModel, resp *resource.UpdateResponse) {
-	updateReq := client.UpdateHealthcheckRequest{}
+// applyHealthcheckTimingFields handles schedule/timing field changes for healthcheck updates.
+// Handles: cron, timezone, period_value, period_type, grace_period_value, grace_period_type.
+func applyHealthcheckTimingFields(plan, state *HealthcheckResourceModel, updateReq *client.UpdateHealthcheckRequest) bool {
 	hasChanges := false
 
-	if !plan.Name.Equal(state.Name) {
-		name := plan.Name.ValueString()
-		updateReq.Name = &name
-		hasChanges = true
-	}
 	if !plan.Cron.Equal(state.Cron) {
 		if plan.Cron.IsNull() {
 			empty := ""
@@ -458,6 +469,20 @@ func (r *HealthcheckResource) applyFieldChanges(ctx context.Context, plan, state
 		updateReq.GracePeriodType = &gpt
 		hasChanges = true
 	}
+
+	return hasChanges
+}
+
+// applyHealthcheckBehaviorFields handles behavior/policy field changes for healthcheck updates.
+// Handles: name, escalation_policy.
+func applyHealthcheckBehaviorFields(plan, state *HealthcheckResourceModel, updateReq *client.UpdateHealthcheckRequest) bool {
+	hasChanges := false
+
+	if !plan.Name.Equal(state.Name) {
+		name := plan.Name.ValueString()
+		updateReq.Name = &name
+		hasChanges = true
+	}
 	if !plan.EscalationPolicy.Equal(state.EscalationPolicy) {
 		if plan.EscalationPolicy.IsNull() {
 			empty := ""
@@ -468,6 +493,16 @@ func (r *HealthcheckResource) applyFieldChanges(ctx context.Context, plan, state
 		}
 		hasChanges = true
 	}
+
+	return hasChanges
+}
+
+// applyFieldChanges builds and sends an update request for changed non-pause fields.
+func (r *HealthcheckResource) applyFieldChanges(ctx context.Context, plan, state *HealthcheckResourceModel, resp *resource.UpdateResponse) {
+	updateReq := client.UpdateHealthcheckRequest{}
+
+	hasChanges := applyHealthcheckTimingFields(plan, state, &updateReq)
+	hasChanges = applyHealthcheckBehaviorFields(plan, state, &updateReq) || hasChanges
 
 	if !hasChanges {
 		return

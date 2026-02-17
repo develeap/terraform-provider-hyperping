@@ -42,48 +42,71 @@ type AddSubscriberRequest struct {
 	Language        *string `json:"language,omitempty"`          // optional, default: en
 }
 
+// validateEmailSubscriber checks that the email field is present for email-type subscribers.
+func validateEmailSubscriber(req AddSubscriberRequest) error {
+	if req.Email == nil || *req.Email == "" {
+		return fmt.Errorf("email is required when type is 'email'")
+	}
+	return nil
+}
+
+// validateSMSSubscriber checks that the phone field is present for sms-type subscribers.
+func validateSMSSubscriber(req AddSubscriberRequest) error {
+	if req.Phone == nil || *req.Phone == "" {
+		return fmt.Errorf("phone is required when type is 'sms'")
+	}
+	return nil
+}
+
+// validateTeamsSubscriber checks that teams_webhook_url is present for teams-type subscribers.
+func validateTeamsSubscriber(req AddSubscriberRequest) error {
+	if req.TeamsWebhookURL == nil || *req.TeamsWebhookURL == "" {
+		return fmt.Errorf("teams_webhook_url is required when type is 'teams'")
+	}
+	return nil
+}
+
+// validateSubscriberType checks that the subscriber type is one of the allowed values.
+func validateSubscriberType(subscriberType string) error {
+	for _, t := range AllowedSubscriberTypes {
+		if subscriberType == t {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid subscriber type %q, must be one of: %v", subscriberType, AllowedSubscriberTypes)
+}
+
+// validateSubscriberLanguage checks that the language code is one of the allowed values.
+func validateSubscriberLanguage(language string) error {
+	for _, lang := range AllowedLanguages {
+		if language == lang {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid language %q, must be one of: %v", language, AllowedLanguages)
+}
+
+// typeValidators maps subscriber type names to their per-type validation functions.
+var typeValidators = map[string]func(AddSubscriberRequest) error{
+	"email": validateEmailSubscriber,
+	"sms":   validateSMSSubscriber,
+	"teams": validateTeamsSubscriber,
+}
+
 // Validate checks that the required fields are present based on the subscriber type.
 func (r AddSubscriberRequest) Validate() error {
-	// Validate type enum
-	validType := false
-	for _, t := range AllowedSubscriberTypes {
-		if r.Type == t {
-			validType = true
-			break
-		}
-	}
-	if !validType {
-		return fmt.Errorf("invalid subscriber type %q, must be one of: %v", r.Type, AllowedSubscriberTypes)
+	if err := validateSubscriberType(r.Type); err != nil {
+		return err
 	}
 
-	// Validate conditional requirements
-	switch r.Type {
-	case "email":
-		if r.Email == nil || *r.Email == "" {
-			return fmt.Errorf("email is required when type is 'email'")
-		}
-	case "sms":
-		if r.Phone == nil || *r.Phone == "" {
-			return fmt.Errorf("phone is required when type is 'sms'")
-		}
-	case "teams":
-		if r.TeamsWebhookURL == nil || *r.TeamsWebhookURL == "" {
-			return fmt.Errorf("teams_webhook_url is required when type is 'teams'")
+	if validator, ok := typeValidators[r.Type]; ok {
+		if err := validator(r); err != nil {
+			return err
 		}
 	}
 
-	// Validate language if provided
 	if r.Language != nil {
-		validLang := false
-		for _, lang := range AllowedLanguages {
-			if *r.Language == lang {
-				validLang = true
-				break
-			}
-		}
-		if !validLang {
-			return fmt.Errorf("invalid language %q, must be one of: %v", *r.Language, AllowedLanguages)
-		}
+		return validateSubscriberLanguage(*r.Language)
 	}
 
 	return nil

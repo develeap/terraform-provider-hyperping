@@ -253,29 +253,11 @@ func (r *MaintenanceResource) Read(ctx context.Context, req resource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update updates the resource and sets the updated Terraform state.
-func (r *MaintenanceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan MaintenanceResourceModel
-	var state MaintenanceResourceModel
-
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Validate dates if they changed
-	if !plan.StartDate.Equal(state.StartDate) || !plan.EndDate.Equal(state.EndDate) {
-		resp.Diagnostics.Append(validateMaintenanceDates(&plan)...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
-
-	// Build update request
+// buildMaintenanceUpdateRequest constructs an UpdateMaintenanceRequest with only changed fields.
+// Compares plan vs state and populates request with differences.
+func buildMaintenanceUpdateRequest(ctx context.Context, plan *MaintenanceResourceModel, state *MaintenanceResourceModel, diags *diag.Diagnostics) client.UpdateMaintenanceRequest {
 	updateReq := client.UpdateMaintenanceRequest{}
 
-	// Only include changed fields
 	if !plan.Name.Equal(state.Name) {
 		name := plan.Name.ValueString()
 		updateReq.Name = &name
@@ -301,14 +283,40 @@ func (r *MaintenanceResource) Update(ctx context.Context, req resource.UpdateReq
 		updateReq.EndDate = &endDate
 	}
 
-	// Handle monitors
 	if !plan.Monitors.Equal(state.Monitors) {
 		var monitors []string
-		resp.Diagnostics.Append(plan.Monitors.ElementsAs(ctx, &monitors, false)...)
+		diags.Append(plan.Monitors.ElementsAs(ctx, &monitors, false)...)
+		if !diags.HasError() {
+			updateReq.Monitors = &monitors
+		}
+	}
+
+	return updateReq
+}
+
+// Update updates the resource and sets the updated Terraform state.
+func (r *MaintenanceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan MaintenanceResourceModel
+	var state MaintenanceResourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Validate dates if they changed
+	if !plan.StartDate.Equal(state.StartDate) || !plan.EndDate.Equal(state.EndDate) {
+		resp.Diagnostics.Append(validateMaintenanceDates(&plan)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		updateReq.Monitors = &monitors
+	}
+
+	// Build update request with only changed fields
+	updateReq := buildMaintenanceUpdateRequest(ctx, &plan, &state, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Call API to update maintenance window
