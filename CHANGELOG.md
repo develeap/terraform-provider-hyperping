@@ -10,6 +10,18 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-02-17
+
+### Changed
+
+- **Code quality**: Reduced cyclomatic complexity across entire codebase to CC≤15
+  - All 37 flagged functions refactored via extract-helper pattern
+  - Migration tool main functions broken into focused phase handlers
+  - Mock server handlers converted to route-dispatch pattern
+  - Test functions converted to table-driven where applicable
+  - `gocyclo -over 15 .` now returns zero results across all 286 files
+  - Repo cleanup: archived stale development-phase docs to `docs/development-archive/`
+
 ## [1.2.2] - 2026-02-17
 
 ### Added
