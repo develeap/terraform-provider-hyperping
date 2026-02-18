@@ -334,6 +334,9 @@ func getDashboardURL(resourceType string) string {
 
 // joinSteps formats troubleshooting steps into a readable string.
 func joinSteps(steps []string) string {
+	if len(steps) == 0 {
+		return ""
+	}
 	return strings.Join(steps, "\n") + "\n"
 }
 
