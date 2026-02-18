@@ -28,7 +28,7 @@ func TestSanitizeMessage(t *testing.T) {
 			input:    "Authentication failed with Bearer abcd1234efgh5678",
 			expected: "Authentication failed with Bearer ***REDACTED***",
 		},
-		{
+		{ //nolint:gosec // G101: test string with placeholder credentials, not real secrets
 			name:     "URL with credentials",
 			input:    "Failed to connect to https://user:password@api.hyperping.io",
 			expected: "Failed to connect to https://***REDACTED***@api.hyperping.io",
@@ -38,7 +38,7 @@ func TestSanitizeMessage(t *testing.T) {
 			input:    "Request failed: Authorization: Bearer sk_secret123",
 			expected: "Request failed: Authorization: ***REDACTED***",
 		},
-		{
+		{ //nolint:gosec // G101: test string with placeholder credentials, not real secrets
 			name:     "combined sensitive data",
 			input:    "API call with sk_key123 and Bearer token456 failed at https://user:pass@example.com",
 			expected: "API call with sk_***REDACTED*** and Bearer ***REDACTED*** failed at https://***REDACTED***@example.com",

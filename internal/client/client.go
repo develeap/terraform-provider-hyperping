@@ -486,7 +486,7 @@ func (c *Client) doRequestWithRetry(ctx context.Context, method, path string, bo
 		})
 
 		startTime := time.Now()
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.httpClient.Do(req) //nolint:gosec // G704: baseURL is validated by isAllowedBaseURL in provider config, not user-tainted
 		duration := time.Since(startTime)
 
 		if err != nil {

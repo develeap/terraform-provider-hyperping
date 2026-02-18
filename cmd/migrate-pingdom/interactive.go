@@ -280,8 +280,8 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to generate JSON report: %v", err))
 		return 1
 	}
-	jsonPath := filepath.Join(w.config.outputDir, "report.json") //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
-	if writeErr := os.WriteFile(jsonPath, []byte(jsonReport), 0o600); writeErr != nil {
+	jsonPath := filepath.Join(w.config.outputDir, "report.json")                        //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
+	if writeErr := os.WriteFile(jsonPath, []byte(jsonReport), 0o600); writeErr != nil { //nolint:gosec // G703: jsonPath derived from operator-controlled CLI flag
 		w.prompter.PrintError(fmt.Sprintf("Failed to write JSON report: %v", writeErr))
 		return 1
 	}
@@ -289,8 +289,8 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 	progressBar.Add(1)
 
 	textReport := reporter.GenerateTextReport(migrationReport)
-	textPath := filepath.Join(w.config.outputDir, "report.txt") //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
-	if writeErr := os.WriteFile(textPath, []byte(textReport), 0o600); writeErr != nil {
+	textPath := filepath.Join(w.config.outputDir, "report.txt")                         //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
+	if writeErr := os.WriteFile(textPath, []byte(textReport), 0o600); writeErr != nil { //nolint:gosec // G703: textPath derived from operator-controlled CLI flag
 		w.prompter.PrintError(fmt.Sprintf("Failed to write text report: %v", writeErr))
 		return 1
 	}
@@ -298,8 +298,8 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 	progressBar.Add(1)
 
 	manualSteps := reporter.GenerateManualStepsMarkdown(migrationReport)
-	manualPath := filepath.Join(w.config.outputDir, "manual-steps.md") //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
-	if writeErr := os.WriteFile(manualPath, []byte(manualSteps), 0o600); writeErr != nil {
+	manualPath := filepath.Join(w.config.outputDir, "manual-steps.md")                     //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
+	if writeErr := os.WriteFile(manualPath, []byte(manualSteps), 0o600); writeErr != nil { //nolint:gosec // G703: manualPath derived from operator-controlled CLI flag
 		w.prompter.PrintError(fmt.Sprintf("Failed to write manual steps: %v", writeErr))
 		return 1
 	}
@@ -356,8 +356,8 @@ func (w *interactiveWizardPD) createHyperpingResources(progressBar *interactive.
 func (w *interactiveWizardPD) writeImportScript(createdResources map[int]string) int {
 	importGen := generator.NewImportGenerator(w.config.prefix)
 	importScript := importGen.GenerateImportScript(w.checks, w.results, createdResources)
-	importPath := filepath.Join(w.config.outputDir, "import.sh") //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
-	if writeErr := os.WriteFile(importPath, []byte(importScript), 0o600); writeErr != nil {
+	importPath := filepath.Join(w.config.outputDir, "import.sh")                            //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
+	if writeErr := os.WriteFile(importPath, []byte(importScript), 0o700); writeErr != nil { //nolint:gosec // G306: import.sh must be executable (0700); G703: importPath derived from operator-controlled CLI flag
 		w.prompter.PrintError(fmt.Sprintf("Failed to write import script: %v", writeErr))
 		return 1
 	}

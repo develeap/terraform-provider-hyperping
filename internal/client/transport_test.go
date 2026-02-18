@@ -340,7 +340,7 @@ func TestTLSEnforcedTransport_RoundTrip(t *testing.T) {
 			expectError:   true,
 			errorContains: "connection refused",
 		},
-		{
+		{ //nolint:gosec // G101: test URL with placeholder credentials, not real secrets
 			name:       "allows HTTPS with authentication",
 			requestURL: "https://user:pass@api.example.com/v1/monitors",
 			mockResponse: &http.Response{

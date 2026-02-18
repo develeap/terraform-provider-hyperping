@@ -108,7 +108,7 @@ type CreateStatusPageRequest struct {
 	HidePoweredBy         *bool                                   `json:"hide_powered_by,omitempty"`
 	HideFromSearchEngines *bool                                   `json:"hide_from_search_engines,omitempty"`
 	GoogleAnalytics       *string                                 `json:"google_analytics,omitempty"`
-	Password              *string                                 `json:"password,omitempty"`
+	Password              *string                                 `json:"password,omitempty"` //nolint:gosec // G117: status page access-control field, not a stored credential
 	Subscribe             *CreateStatusPageSubscribeSettings      `json:"subscribe,omitempty"`
 	Authentication        *CreateStatusPageAuthenticationSettings `json:"authentication,omitempty"`
 	Sections              []CreateStatusPageSection               `json:"sections,omitempty"`
@@ -182,7 +182,7 @@ type UpdateStatusPageRequest struct {
 	HidePoweredBy         *bool                                   `json:"hide_powered_by,omitempty"`
 	HideFromSearchEngines *bool                                   `json:"hide_from_search_engines,omitempty"`
 	GoogleAnalytics       *string                                 `json:"google_analytics,omitempty"`
-	Password              *string                                 `json:"password,omitempty"`
+	Password              *string                                 `json:"password,omitempty"` //nolint:gosec // G117: status page access-control field, not a stored credential
 	Subscribe             *CreateStatusPageSubscribeSettings      `json:"subscribe,omitempty"`
 	Authentication        *CreateStatusPageAuthenticationSettings `json:"authentication,omitempty"`
 	Sections              []CreateStatusPageSection               `json:"sections,omitempty"`
