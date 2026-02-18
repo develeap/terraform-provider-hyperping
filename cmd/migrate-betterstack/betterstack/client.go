@@ -115,7 +115,7 @@ func (c *Client) FetchMonitors(ctx context.Context) ([]Monitor, error) {
 		req.Header.Set("Authorization", "Bearer "+c.apiToken)
 		req.Header.Set("Accept", "application/json")
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.httpClient.Do(req) //nolint:gosec // G704: baseURL is operator-configured, not user-tainted input
 		if err != nil {
 			return nil, fmt.Errorf("executing request: %w", err)
 		}
@@ -159,7 +159,7 @@ func (c *Client) FetchHeartbeats(ctx context.Context) ([]Heartbeat, error) {
 		req.Header.Set("Authorization", "Bearer "+c.apiToken)
 		req.Header.Set("Accept", "application/json")
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.httpClient.Do(req) //nolint:gosec // G704: baseURL is operator-configured, not user-tainted input
 		if err != nil {
 			return nil, fmt.Errorf("executing request: %w", err)
 		}

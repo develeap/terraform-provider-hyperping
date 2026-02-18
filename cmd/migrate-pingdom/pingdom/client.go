@@ -115,7 +115,7 @@ func (c *Client) ListChecks(ctx context.Context) ([]Check, error) {
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) //nolint:gosec // G704: baseURL is operator-configured, not user-tainted input
 	if err != nil {
 		return nil, fmt.Errorf("executing request: %w", err)
 	}
@@ -150,7 +150,7 @@ func (c *Client) GetCheck(ctx context.Context, checkID int) (*Check, error) {
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) //nolint:gosec // G704: baseURL is operator-configured, not user-tainted input
 	if err != nil {
 		return nil, fmt.Errorf("executing request: %w", err)
 	}

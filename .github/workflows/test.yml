@@ -247,6 +247,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
       - name: Restore scraper snapshots
         uses: actions/cache@v5
@@ -276,12 +279,18 @@ jobs:
             echo "Sync check will be skipped. Run the scraper workflow first to populate snapshots."
           fi
 
+      - name: Generate provider schema
+        if: steps.check-snapshots.outputs.found == 'true'
+        run: |
+          terraform -chdir=examples/complete providers schema -json > tools/cmd/scraper/schema.json 2>/dev/null || \
+          terraform -chdir=. providers schema -json > tools/cmd/scraper/schema.json
+
       - name: Run sync check
         if: steps.check-snapshots.outputs.found == 'true'
         working-directory: tools/cmd/scraper
         run: |
           ./scraper -sync \
-            -provider-dir=../../../internal \
+            -schema-file=./schema.json \
             -snapshot-dir=./snapshots
 
       - name: Sync check skipped notice

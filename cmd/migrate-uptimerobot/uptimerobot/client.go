@@ -174,7 +174,7 @@ func (c *Client) doRequest(ctx context.Context, endpoint string, payload map[str
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) //nolint:gosec // G704: baseURL is operator-configured, not user-tainted input
 	if err != nil {
 		return nil, fmt.Errorf("executing request: %w", err)
 	}

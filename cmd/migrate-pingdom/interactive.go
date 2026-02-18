@@ -280,7 +280,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to generate JSON report: %v", err))
 		return 1
 	}
-	jsonPath := filepath.Join(w.config.outputDir, "report.json")
+	jsonPath := filepath.Join(w.config.outputDir, "report.json") //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
 	if writeErr := os.WriteFile(jsonPath, []byte(jsonReport), 0o600); writeErr != nil {
 		w.prompter.PrintError(fmt.Sprintf("Failed to write JSON report: %v", writeErr))
 		return 1
@@ -289,7 +289,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 	progressBar.Add(1)
 
 	textReport := reporter.GenerateTextReport(migrationReport)
-	textPath := filepath.Join(w.config.outputDir, "report.txt")
+	textPath := filepath.Join(w.config.outputDir, "report.txt") //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
 	if writeErr := os.WriteFile(textPath, []byte(textReport), 0o600); writeErr != nil {
 		w.prompter.PrintError(fmt.Sprintf("Failed to write text report: %v", writeErr))
 		return 1
@@ -298,7 +298,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 	progressBar.Add(1)
 
 	manualSteps := reporter.GenerateManualStepsMarkdown(migrationReport)
-	manualPath := filepath.Join(w.config.outputDir, "manual-steps.md")
+	manualPath := filepath.Join(w.config.outputDir, "manual-steps.md") //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
 	if writeErr := os.WriteFile(manualPath, []byte(manualSteps), 0o600); writeErr != nil {
 		w.prompter.PrintError(fmt.Sprintf("Failed to write manual steps: %v", writeErr))
 		return 1
@@ -334,7 +334,7 @@ func (w *interactiveWizardPD) createHyperpingResources(progressBar *interactive.
 		if err != nil {
 			errorCount++
 			if *verbose {
-				fmt.Fprintf(os.Stderr, "\nWarning: Failed to create monitor for check %d (%s): %v\n", check.ID, check.Name, err)
+				fmt.Fprintf(os.Stderr, "\nWarning: Failed to create monitor for check %d (%s): %v\n", check.ID, check.Name, err) //nolint:gosec // G705: writing to stderr, not an HTTP response
 			}
 			continue
 		}
@@ -356,7 +356,7 @@ func (w *interactiveWizardPD) createHyperpingResources(progressBar *interactive.
 func (w *interactiveWizardPD) writeImportScript(createdResources map[int]string) int {
 	importGen := generator.NewImportGenerator(w.config.prefix)
 	importScript := importGen.GenerateImportScript(w.checks, w.results, createdResources)
-	importPath := filepath.Join(w.config.outputDir, "import.sh")
+	importPath := filepath.Join(w.config.outputDir, "import.sh") //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
 	if writeErr := os.WriteFile(importPath, []byte(importScript), 0o600); writeErr != nil {
 		w.prompter.PrintError(fmt.Sprintf("Failed to write import script: %v", writeErr))
 		return 1
