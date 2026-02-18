@@ -181,7 +181,7 @@ func TestHasParameterTables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := HasParameterTables(tt.html)
+			result := HasParameterTablesInHTML(tt.html)
 			if result != tt.expected {
 				t.Errorf("HasParameterTables() = %v, want %v", result, tt.expected)
 			}

@@ -183,11 +183,13 @@ jobs:
           GITHUB_REPO: ${{ github.event.repository.name }}
           LOG_LEVEL: ${{ inputs.log_level || 'info' }}
         run: |
-          ./scraper -analyze \
-            -provider-dir=../../../internal \
-            -snapshot-dir=./snapshots \
-            2>&1 | tee analyze.log
-          # Never fail CI - issues are created instead
+          # schema-file is optional; skip coverage analysis if not present.
+          if [ -f schema.json ]; then
+            ./scraper -analyze -schema-file=./schema.json -snapshot-dir=./snapshots \
+              2>&1 | tee analyze.log
+          else
+            echo "schema.json not found — skipping coverage analysis (run terraform providers schema -json > schema.json first)" | tee analyze.log
+          fi
           exit 0
 
       - name: Upload analysis logs

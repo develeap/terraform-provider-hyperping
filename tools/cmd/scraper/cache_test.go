@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,15 @@ import (
 
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 )
+
+// savePageData is a test helper that serialises a PageData value to a JSON file.
+func savePageData(path string, pd *extractor.PageData) error {
+	data, err := json.Marshal(pd)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0600)
+}
 
 func TestUpdateCache(t *testing.T) {
 	cache := Cache{

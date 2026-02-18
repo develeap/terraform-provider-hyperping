@@ -158,7 +158,25 @@ func (m *Metrics) SetTotalDuration(duration time.Duration) {
 func (m *Metrics) GetSnapshot() Metrics {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return *m
+	return Metrics{
+		URLsDiscovered:  m.URLsDiscovered,
+		PagesScraped:    m.PagesScraped,
+		PagesSkipped:    m.PagesSkipped,
+		PagesFailed:     m.PagesFailed,
+		TotalDuration:   m.TotalDuration,
+		AvgPageDuration: m.AvgPageDuration,
+		CacheHits:       m.CacheHits,
+		CacheMisses:     m.CacheMisses,
+		CacheSize:       m.CacheSize,
+		NetworkErrors:   m.NetworkErrors,
+		TimeoutErrors:   m.TimeoutErrors,
+		ParseErrors:     m.ParseErrors,
+		RetryAttempts:   m.RetryAttempts,
+		BrowserRestarts: m.BrowserRestarts,
+		MemoryUsageMB:   m.MemoryUsageMB,
+		StartTime:       m.StartTime,
+		LastScrapedAt:   m.LastScrapedAt,
+	}
 }
 
 // Summary returns a human-readable summary

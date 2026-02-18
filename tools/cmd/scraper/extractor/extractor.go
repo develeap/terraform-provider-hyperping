@@ -39,7 +39,7 @@ func ExtractAPIParameters(pageData *PageData) []APIParameter {
 
 	// If the page has parameter tables but none are request sections,
 	// don't fall back to text extraction (which would extract response fields)
-	if HasParameterTables(pageData.HTML) {
+	if HasParameterTablesInHTML(pageData.HTML) {
 		return []APIParameter{} // Return empty - no request parameters on this page
 	}
 

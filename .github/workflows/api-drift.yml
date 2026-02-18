@@ -1,0 +1,127 @@
+name: API Drift Detection
+
+on:
+  schedule:
+    # Run every Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to commit updated OAS snapshots
+      issues: write     # to open/update drift issues
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/cmd/scraper/go.mod
+          cache-dependency-path: tools/cmd/scraper/go.sum
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '~1.8'
+
+      - name: Install Chrome (for JS-rendered scraping)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y chromium-browser
+          chromium-browser --version
+
+      - name: Restore snapshots cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/cmd/scraper/.scraper_cache.json
+            tools/cmd/scraper/snapshots/
+          key: scraper-snapshots-${{ github.run_id }}
+          restore-keys: |
+            scraper-snapshots-
+
+      - name: Build scraper
+        working-directory: tools/cmd/scraper
+        run: GOTOOLCHAIN=local go build -o scraper .
+
+      - name: Scrape Hyperping API docs
+        working-directory: tools/cmd/scraper
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          ./scraper -snapshot-dir=./snapshots
+          echo "SCRAPE_EXIT=$?" >> "$GITHUB_ENV"
+
+      - name: Generate Terraform provider schema
+        run: |
+          terraform init -backend=false ./examples/complete 2>/dev/null || true
+          terraform -chdir=examples/complete providers schema -json > /tmp/schema.json 2>/dev/null || true
+          if [ -s /tmp/schema.json ]; then
+            echo "SCHEMA_AVAILABLE=true" >> "$GITHUB_ENV"
+          else
+            echo "SCHEMA_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "⚠️ Could not generate provider schema — coverage analysis will be skipped"
+          fi
+
+      - name: Run coverage analysis
+        if: env.SCHEMA_AVAILABLE == 'true'
+        working-directory: tools/cmd/scraper
+        run: |
+          ./scraper -analyze \
+            -schema-file=/tmp/schema.json \
+            -snapshot-dir=./snapshots \
+            2>&1 | tee coverage.log || true
+
+      - name: Sync check (exit 1 if coverage < 80%)
+        if: env.SCHEMA_AVAILABLE == 'true'
+        working-directory: tools/cmd/scraper
+        run: |
+          ./scraper -sync \
+            -schema-file=/tmp/schema.json \
+            -snapshot-dir=./snapshots
+
+      - name: Commit updated OpenAPI snapshots
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tools/cmd/scraper/snapshots/ tools/cmd/scraper/docs_scraped/ || true
+          if git diff --cached --quiet; then
+            echo "No OAS changes to commit."
+          else
+            git commit -m "chore(scraper): update OpenAPI snapshots [skip ci]"
+            git push
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.run_number }}
+          path: tools/cmd/scraper/coverage_report*.md
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Post job summary
+        if: always()
+        run: |
+          echo "## API Drift Detection Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Item | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Date | $(date -u +"%Y-%m-%d %H:%M UTC") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Scraper exit | ${SCRAPE_EXIT:-n/a} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Schema generated | ${SCHEMA_AVAILABLE:-n/a} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          REPORT=$(ls tools/cmd/scraper/coverage_report_*.md 2>/dev/null | sort | tail -1)
+          if [ -n "$REPORT" ]; then
+            echo "### Coverage Report" >> "$GITHUB_STEP_SUMMARY"
+            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          fi
