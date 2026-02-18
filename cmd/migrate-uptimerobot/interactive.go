@@ -496,13 +496,10 @@ func isFlagPassed() bool {
 	if *manualSteps != "manual-steps.md" {
 		return true
 	}
-	if *dryRun {
+	if *dryRun || *validate || *verbose || *resume || *rollback || *rollbackForce || *listCheckpointsFlag {
 		return true
 	}
-	if *validate {
-		return true
-	}
-	if *verbose {
+	if *resumeID != "" || *rollbackID != "" {
 		return true
 	}
 	if os.Getenv("UPTIMEROBOT_API_KEY") != "" {

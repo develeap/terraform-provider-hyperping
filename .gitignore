@@ -7,7 +7,6 @@ terraform.tfstate
 bin/
 dist/
 modules-dev/
-/pkg/
 website/.vagrant
 website/.bundle
 website/build
@@ -38,7 +37,7 @@ website/vendor
 *.winfile eol=crlf
 terraform-provider-hyperping
 import-generator
-.env
+.env*
 
 # Scraper binaries and generated reports
 tools/cmd/scraper/scraper

@@ -180,7 +180,7 @@ func mapSettingsToTFWithFilter(settings client.StatusPageSettings, configuredLan
 
 // mapTFToSettings converts Terraform Object to API settings structures.
 // Returns subscribe and authentication settings for create/update requests.
-func mapTFToSettings(obj types.Object, diags *diag.Diagnostics) (*client.CreateStatusPageSubscribeSettings, *client.CreateStatusPageAuthenticationSettings) {
+func mapTFToSettings(ctx context.Context, obj types.Object, diags *diag.Diagnostics) (*client.CreateStatusPageSubscribeSettings, *client.CreateStatusPageAuthenticationSettings) {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil, nil
 	}
@@ -196,7 +196,7 @@ func mapTFToSettings(obj types.Object, diags *diag.Diagnostics) (*client.CreateS
 		authObj = types.ObjectNull(AuthenticationSettingsAttrTypes())
 	}
 
-	return extractSubscribeSettings(subscribeObj, diags), extractAuthSettings(authObj, diags)
+	return extractSubscribeSettings(subscribeObj, diags), extractAuthSettings(ctx, authObj, diags)
 }
 
 // extractSubscribeSettings converts a subscribe settings Terraform Object to the API struct.
@@ -238,7 +238,7 @@ func extractSubscribeSettings(obj types.Object, diags *diag.Diagnostics) *client
 // extractAuthSettings converts an authentication settings Terraform Object to the API struct.
 // Returns nil when the object is null or unknown.
 // Handles: password_protection, google_sso, saml_sso, allowed_domains.
-func extractAuthSettings(obj types.Object, diags *diag.Diagnostics) *client.CreateStatusPageAuthenticationSettings {
+func extractAuthSettings(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *client.CreateStatusPageAuthenticationSettings {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
@@ -260,7 +260,7 @@ func extractAuthSettings(obj types.Object, diags *diag.Diagnostics) *client.Crea
 	}
 	if allowedDomains, ok := attrs["allowed_domains"].(types.List); ok && !isNullOrUnknown(allowedDomains) {
 		var domains []string
-		diags.Append(allowedDomains.ElementsAs(context.TODO(), &domains, false)...)
+		diags.Append(allowedDomains.ElementsAs(ctx, &domains, false)...)
 		authentication.AllowedDomains = domains
 	}
 

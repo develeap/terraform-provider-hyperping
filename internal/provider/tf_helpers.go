@@ -86,13 +86,13 @@ func boolValueOrFalse(v types.Bool) bool {
 // tfListToStringSlice converts a types.List to []string.
 // Returns nil if the list is null or unknown.
 // Appends diagnostics if conversion fails.
-func tfListToStringSlice(list types.List, diags *diag.Diagnostics) []string {
+func tfListToStringSlice(ctx context.Context, list types.List, diags *diag.Diagnostics) []string {
 	if isNullOrUnknown(list) {
 		return nil
 	}
 
 	var result []string
-	diags.Append(list.ElementsAs(context.TODO(), &result, false)...)
+	diags.Append(list.ElementsAs(ctx, &result, false)...)
 	return result
 }
 

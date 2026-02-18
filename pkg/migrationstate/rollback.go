@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Develeap
 // SPDX-License-Identifier: MPL-2.0
 
-package main
+package migrationstate
 
 import (
 	"context"
@@ -14,11 +14,10 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/pkg/recovery"
 )
 
-// performRollback deletes Hyperping resources created during migration
-func performRollback(migrationID string, hyperpingAPIKey string, force bool, logger *recovery.Logger) int {
+// PerformRollback deletes Hyperping resources created during a migration run.
+func PerformRollback(migrationID string, hyperpingAPIKey string, force bool, logger *recovery.Logger) int {
 	logger.Info("Starting rollback for migration: %s", migrationID)
 
-	// Load checkpoint
 	mgr, err := checkpoint.NewManager()
 	if err != nil {
 		logger.Error("Failed to create checkpoint manager: %v", err)
@@ -39,7 +38,6 @@ func performRollback(migrationID string, hyperpingAPIKey string, force bool, log
 		return 0
 	}
 
-	// Confirm deletion
 	if !force {
 		fmt.Fprintf(os.Stderr, "\nThis will delete %d resources from Hyperping:\n", len(cp.HyperpingCreated))
 		for i, uuid := range cp.HyperpingCreated {
@@ -59,12 +57,10 @@ func performRollback(migrationID string, hyperpingAPIKey string, force bool, log
 		}
 	}
 
-	// Create Hyperping client
 	hpClient := client.NewClient(hyperpingAPIKey)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	// Delete resources with retry
 	backoff := recovery.DefaultBackoff()
 	deletedCount := 0
 	failedCount := 0
@@ -91,7 +87,6 @@ func performRollback(migrationID string, hyperpingAPIKey string, force bool, log
 
 	logger.Info("Rollback complete: %d deleted, %d failed", deletedCount, failedCount)
 
-	// Delete checkpoint
 	if failedCount == 0 {
 		if err := mgr.Delete(migrationID); err != nil {
 			logger.Warn("Failed to delete checkpoint file: %v", err)
@@ -100,7 +95,6 @@ func performRollback(migrationID string, hyperpingAPIKey string, force bool, log
 		}
 	}
 
-	// Print summary
 	fmt.Fprintln(os.Stderr, "\n=== Rollback Complete ===")
 	fmt.Fprintf(os.Stderr, "Deleted: %d resources\n", deletedCount)
 	if failedCount > 0 {
@@ -113,8 +107,8 @@ func performRollback(migrationID string, hyperpingAPIKey string, force bool, log
 	return 0
 }
 
-// listCheckpoints displays available checkpoints
-func listCheckpoints(tool string) int {
+// ListCheckpoints displays available checkpoints, optionally filtered by tool name.
+func ListCheckpoints(tool string) int {
 	mgr, err := checkpoint.NewManager()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: Failed to create checkpoint manager: %v\n", err)
@@ -132,7 +126,6 @@ func listCheckpoints(tool string) int {
 		return 0
 	}
 
-	// Filter by tool if specified
 	var filtered []*checkpoint.Checkpoint
 	for _, cp := range checkpoints {
 		if tool == "" || cp.Tool == tool {

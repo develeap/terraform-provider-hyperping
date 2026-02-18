@@ -5,6 +5,7 @@ package provider
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
@@ -158,36 +159,6 @@ func newDeleteWarning(resourceType, message string) diag.Diagnostic {
 		fmt.Sprintf("%s Not Found", resourceType),
 		message+" The resource may have already been deleted outside of Terraform.",
 	)
-}
-
-// Deprecated: Use newCreateError, newReadError, etc. instead
-// formatResourceError formats an error message with resource context
-func formatResourceError(resourceType, operation, resourceID string, err error) (string, string) {
-	summary := fmt.Sprintf("Error %s %s", operation, resourceType)
-
-	var detail string
-	if resourceID != "" {
-		detail = fmt.Sprintf("Resource ID: %s\n\n%s\n\nCheck the Hyperping dashboard for more details: https://app.hyperping.io",
-			resourceID, err.Error())
-	} else {
-		detail = fmt.Sprintf("%s\n\nCheck the Hyperping dashboard for more details: https://app.hyperping.io", err.Error())
-	}
-
-	return summary, detail
-}
-
-// Deprecated: Use newClientConfigError instead
-// formatAPIError formats an API error with helpful context
-func formatAPIError(operation string, err error) (string, string) {
-	summary := fmt.Sprintf("API Error During %s", operation)
-	detail := fmt.Sprintf("%s\n\nThis may be due to:\n"+
-		"- Invalid API key\n"+
-		"- Network connectivity issues\n"+
-		"- Hyperping API service disruption\n\n"+
-		"Check your configuration and https://status.hyperping.app for service status.",
-		err.Error())
-
-	return summary, detail
 }
 
 // Enhanced Error Helpers with Context-Specific Troubleshooting
@@ -363,11 +334,7 @@ func getDashboardURL(resourceType string) string {
 
 // joinSteps formats troubleshooting steps into a readable string.
 func joinSteps(steps []string) string {
-	result := ""
-	for _, step := range steps {
-		result += step + "\n"
-	}
-	return result
+	return strings.Join(steps, "\n") + "\n"
 }
 
 // Enhanced error creation functions with context-specific troubleshooting

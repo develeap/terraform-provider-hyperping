@@ -31,6 +31,7 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-betterstack/generator"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-betterstack/report"
 	"github.com/develeap/terraform-provider-hyperping/pkg/checkpoint"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrationstate"
 	"github.com/develeap/terraform-provider-hyperping/pkg/recovery"
 )
 
@@ -132,7 +133,7 @@ func handleRollbackMode(hpKey string, logger *recovery.Logger) (int, bool) {
 		migrationID = latest.MigrationID
 	}
 
-	return performRollback(migrationID, hpKey, *rollbackForce, logger), true
+	return migrationstate.PerformRollback(migrationID, hpKey, *rollbackForce, logger), true
 }
 
 // validateSourceCredentials checks that source/dest credentials exist before a full migration.
@@ -171,7 +172,7 @@ func runDryValidation(ctx context.Context, bsToken string, logger *recovery.Logg
 }
 
 // resolveOrCreateState initialises a migration state, resuming from a checkpoint if requested.
-func resolveOrCreateState(ctx context.Context, totalResources int, logger *recovery.Logger) (*migrationState, string, error) {
+func resolveOrCreateState(ctx context.Context, totalResources int, logger *recovery.Logger) (*migrationstate.State, string, error) {
 	migID := *resumeID
 
 	if *resume || migID != "" {
@@ -187,7 +188,7 @@ func resolveOrCreateState(ctx context.Context, totalResources int, logger *recov
 			migID = latest.MigrationID
 		}
 
-		state, err := resumeFromCheckpoint(migID, logger)
+		state, err := migrationstate.Resume(migID, logger)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to resume from checkpoint: %w", err)
 		}
@@ -197,7 +198,7 @@ func resolveOrCreateState(ctx context.Context, totalResources int, logger *recov
 
 	_ = ctx
 	migID = checkpoint.GenerateMigrationID(toolName)
-	state, err := newMigrationState(migID, totalResources, logger)
+	state, err := migrationstate.New(toolName, migID, totalResources, logger)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create migration state: %w", err)
 	}
@@ -230,7 +231,7 @@ func fetchBetterStackResources(ctx context.Context, bsToken string, logger *reco
 func convertResources(
 	monitors []betterstack.Monitor,
 	heartbeats []betterstack.Heartbeat,
-	state *migrationState,
+	state *migrationstate.State,
 	logger *recovery.Logger,
 ) ([]converter.ConvertedMonitor, []converter.ConvertedHealthcheck, []converter.ConversionIssue, []converter.ConversionIssue) {
 	conv := converter.New()
@@ -248,7 +249,7 @@ func convertResources(
 func convertMonitorList(
 	monitors []betterstack.Monitor,
 	conv *converter.Converter,
-	state *migrationState,
+	state *migrationstate.State,
 	logger *recovery.Logger,
 ) ([]converter.ConvertedMonitor, []converter.ConversionIssue) {
 	var convertedMonitors []converter.ConvertedMonitor
@@ -256,7 +257,7 @@ func convertMonitorList(
 
 	for _, monitor := range monitors {
 		monitorID := fmt.Sprintf("monitor-%s", monitor.ID)
-		if state.isProcessed(monitorID) {
+		if state.IsProcessed(monitorID) {
 			logger.Debug("Skipping already processed monitor: %s", monitorID)
 			continue
 		}
@@ -264,13 +265,13 @@ func convertMonitorList(
 		converted, issues := conv.ConvertMonitors([]betterstack.Monitor{monitor})
 		if len(converted) > 0 {
 			convertedMonitors = append(convertedMonitors, converted...)
-			state.markResourceProcessed(monitorID)
+			state.MarkResourceProcessed(monitorID)
 		} else {
 			errorMsg := "conversion failed"
 			if len(issues) > 0 {
 				errorMsg = issues[0].Message
 			}
-			state.markResourceFailed(monitorID, "monitor", monitor.Attributes.URL, errorMsg)
+			state.MarkResourceFailed(monitorID, "monitor", monitor.Attributes.URL, errorMsg)
 		}
 		monitorIssues = append(monitorIssues, issues...)
 	}
@@ -282,7 +283,7 @@ func convertMonitorList(
 func convertHeartbeatList(
 	heartbeats []betterstack.Heartbeat,
 	conv *converter.Converter,
-	state *migrationState,
+	state *migrationstate.State,
 	logger *recovery.Logger,
 ) ([]converter.ConvertedHealthcheck, []converter.ConversionIssue) {
 	var convertedHealthchecks []converter.ConvertedHealthcheck
@@ -290,7 +291,7 @@ func convertHeartbeatList(
 
 	for _, heartbeat := range heartbeats {
 		heartbeatID := fmt.Sprintf("heartbeat-%s", heartbeat.ID)
-		if state.isProcessed(heartbeatID) {
+		if state.IsProcessed(heartbeatID) {
 			logger.Debug("Skipping already processed heartbeat: %s", heartbeatID)
 			continue
 		}
@@ -298,13 +299,13 @@ func convertHeartbeatList(
 		converted, issues := conv.ConvertHeartbeats([]betterstack.Heartbeat{heartbeat})
 		if len(converted) > 0 {
 			convertedHealthchecks = append(convertedHealthchecks, converted...)
-			state.markResourceProcessed(heartbeatID)
+			state.MarkResourceProcessed(heartbeatID)
 		} else {
 			errorMsg := "conversion failed"
 			if len(issues) > 0 {
 				errorMsg = issues[0].Message
 			}
-			state.markResourceFailed(heartbeatID, "heartbeat", heartbeat.Attributes.Name, errorMsg)
+			state.MarkResourceFailed(heartbeatID, "heartbeat", heartbeat.Attributes.Name, errorMsg)
 		}
 		healthcheckIssues = append(healthcheckIssues, issues...)
 	}
@@ -339,7 +340,7 @@ func runDryRunOutput(
 	monitors []betterstack.Monitor,
 	heartbeats []betterstack.Heartbeat,
 	result *migrationResult,
-	state *migrationState,
+	state *migrationstate.State,
 ) int {
 	dryRunReport := buildDryRunReport(
 		monitors,
@@ -355,7 +356,7 @@ func runDryRunOutput(
 
 	printEnhancedDryRun(dryRunReport, *verbose, *formatJSON)
 
-	if failureReport := state.getFailureReport(); failureReport != "" {
+	if failureReport := state.GetFailureReport(); failureReport != "" {
 		fmt.Fprintln(os.Stderr, "\n"+failureReport)
 	}
 
@@ -390,11 +391,11 @@ func writeOutputFiles(result *migrationResult, logger *recovery.Logger) (int, er
 }
 
 // printSuccessSummary prints the post-migration summary to stderr.
-func printSuccessSummary(result *migrationResult, state *migrationState, migrationID string) {
+func printSuccessSummary(result *migrationResult, state *migrationstate.State, migrationID string) {
 	fmt.Fprintln(os.Stderr, "\n=== Migration Complete ===")
 	result.migrationReport.PrintSummary(os.Stderr)
 
-	if failureReport := state.getFailureReport(); failureReport != "" {
+	if failureReport := state.GetFailureReport(); failureReport != "" {
 		fmt.Fprintln(os.Stderr, failureReport)
 		fmt.Fprintf(os.Stderr, "\nSome resources failed to convert. See details above.\n")
 		fmt.Fprintf(os.Stderr, "Migration ID: %s\n", migrationID)
@@ -449,13 +450,13 @@ func logDebugPath(logger *recovery.Logger) {
 func runConversionAndOutput(
 	monitors []betterstack.Monitor,
 	heartbeats []betterstack.Heartbeat,
-	state *migrationState,
+	state *migrationstate.State,
 	migrationID string,
 	logger *recovery.Logger,
 ) int {
 	logger.Info("Starting Better Stack to Hyperping migration...")
 	convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues := convertResources(monitors, heartbeats, state, logger)
-	state.saveCheckpoint()
+	state.SaveCheckpoint()
 
 	result := buildMigrationResult(monitors, heartbeats, convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues)
 
@@ -464,23 +465,23 @@ func runConversionAndOutput(
 	}
 
 	if code, writeErr := writeOutputFiles(result, logger); writeErr != nil {
-		state.finalize(false)
+		state.Finalize(false)
 		return code
 	}
 
-	hasFailures := state.checkpoint.Failed > 0
-	state.finalize(!hasFailures)
+	hasFailures := state.Checkpoint.Failed > 0
+	state.Finalize(!hasFailures)
 	printSuccessSummary(result, state, migrationID)
 	return finalizeMigration(hasFailures, state, logger)
 }
 
 // finalizeMigration runs optional validation and returns the final exit code.
-func finalizeMigration(hasFailures bool, state *migrationState, logger *recovery.Logger) int {
+func finalizeMigration(hasFailures bool, state *migrationstate.State, logger *recovery.Logger) int {
 	if code := runTerraformValidation(logger); code != 0 {
 		return code
 	}
 	if hasFailures {
-		logger.Warn("Migration completed with %d failures", state.checkpoint.Failed)
+		logger.Warn("Migration completed with %d failures", state.Checkpoint.Failed)
 		return 1
 	}
 	logger.Info("Migration completed successfully")
@@ -504,7 +505,7 @@ func run() int {
 	}
 
 	if *listCheckpointsFlag {
-		return listCheckpoints(toolName)
+		return migrationstate.ListCheckpoints(toolName)
 	}
 
 	bsToken, hpKey, _ := validateCredentials()

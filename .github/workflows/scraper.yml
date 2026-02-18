@@ -37,12 +37,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0  # Full history for proper caching
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: 'go.mod'
           cache-dependency-path: tools/cmd/scraper/go.sum
@@ -54,7 +54,7 @@ jobs:
           chromium-browser --version
 
       - name: Restore cache and snapshots
-        uses: actions/cache@v5
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: |
             tools/cmd/scraper/.scraper_cache.json
@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload scraper logs
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
           name: scraper-logs-${{ github.run_number }}
           path: tools/cmd/scraper/scraper.log
@@ -90,7 +90,7 @@ jobs:
 
       - name: Upload diff reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
           name: diff-reports-${{ github.run_number }}
           path: tools/cmd/scraper/api_changes_*.md
@@ -99,7 +99,7 @@ jobs:
 
       - name: Upload scraped data
         if: success()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
           name: scraped-data-${{ github.run_number }}
           path: tools/cmd/scraper/docs_scraped/
@@ -152,16 +152,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: 'go.mod'
           cache-dependency-path: tools/cmd/scraper/go.sum
 
       - name: Restore snapshots from cache
-        uses: actions/cache@v5
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: |
             tools/cmd/scraper/.scraper_cache.json
@@ -194,7 +194,7 @@ jobs:
 
       - name: Upload analysis logs
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
           name: analysis-logs-${{ github.run_number }}
           path: tools/cmd/scraper/analyze.log
@@ -202,7 +202,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
           name: coverage-report-${{ github.run_number }}
           path: tools/cmd/scraper/coverage_report*.md

@@ -23,17 +23,26 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/report"
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/pkg/checkpoint"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrationstate"
+	"github.com/develeap/terraform-provider-hyperping/pkg/recovery"
 )
 
 var (
-	pingdomAPIKey    = flag.String("pingdom-api-key", "", "Pingdom API token (or set PINGDOM_API_KEY)")
-	hyperpingAPIKey  = flag.String("hyperping-api-key", "", "Hyperping API key (or set HYPERPING_API_KEY)")
-	outputDir        = flag.String("output", "./pingdom-migration", "Output directory for generated files")
-	prefix           = flag.String("prefix", "", "Prefix for Terraform resource names")
-	pingdomBaseURL   = flag.String("pingdom-base-url", "", "Pingdom API base URL (optional)")
-	hyperpingBaseURL = flag.String("hyperping-base-url", "https://api.hyperping.io", "Hyperping API base URL")
-	dryRun           = flag.Bool("dry-run", false, "Generate configs without creating resources in Hyperping")
-	verbose          = flag.Bool("verbose", false, "Verbose output")
+	pingdomAPIKey       = flag.String("pingdom-api-key", "", "Pingdom API token (or set PINGDOM_API_KEY)")
+	hyperpingAPIKey     = flag.String("hyperping-api-key", "", "Hyperping API key (or set HYPERPING_API_KEY)")
+	outputDir           = flag.String("output", "./pingdom-migration", "Output directory for generated files")
+	prefix              = flag.String("prefix", "", "Prefix for Terraform resource names")
+	pingdomBaseURL      = flag.String("pingdom-base-url", "", "Pingdom API base URL (optional)")
+	hyperpingBaseURL    = flag.String("hyperping-base-url", "https://api.hyperping.io", "Hyperping API base URL")
+	dryRun              = flag.Bool("dry-run", false, "Generate configs without creating resources in Hyperping")
+	verbose             = flag.Bool("verbose", false, "Verbose output")
+	resume              = flag.Bool("resume", false, "Resume from last checkpoint")
+	resumeID            = flag.String("resume-id", "", "Resume from specific checkpoint ID")
+	rollback            = flag.Bool("rollback", false, "Rollback migration (delete Hyperping resources)")
+	rollbackID          = flag.String("rollback-id", "", "Rollback specific migration ID")
+	rollbackForce       = flag.Bool("force", false, "Force rollback without confirmation")
+	listCheckpointsFlag = flag.Bool("list-checkpoints", false, "List available checkpoints")
 )
 
 // pingdomRunner holds resolved configuration for a non-interactive run.
@@ -41,6 +50,9 @@ type pingdomRunner struct {
 	pingdomKey   string
 	hyperpingKey string
 	ctx          context.Context
+	cancel       context.CancelFunc
+	state        *migrationstate.State
+	migrationID  string
 }
 
 func main() {
@@ -56,6 +68,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  migrate-pingdom --output=./migration\n\n")
 		fmt.Fprintf(os.Stderr, "  # With resource name prefix\n")
 		fmt.Fprintf(os.Stderr, "  migrate-pingdom --prefix=pingdom_ --output=./migration\n\n")
+		fmt.Fprintf(os.Stderr, "  # Resume from last checkpoint\n")
+		fmt.Fprintf(os.Stderr, "  migrate-pingdom --resume\n\n")
+		fmt.Fprintf(os.Stderr, "  # Rollback migration\n")
+		fmt.Fprintf(os.Stderr, "  migrate-pingdom --rollback --rollback-id=pingdom-20260213-120000\n\n")
 	}
 
 	os.Exit(run())
@@ -68,10 +84,19 @@ func run() int {
 		return runInteractive()
 	}
 
+	if *listCheckpointsFlag {
+		return migrationstate.ListCheckpoints(toolName)
+	}
+
+	if *rollback {
+		return handleRollback()
+	}
+
 	r, exitCode := newPingdomRunner()
 	if exitCode != 0 {
 		return exitCode
 	}
+	defer r.cancel()
 
 	checks, results, exitCode := r.fetchAndConvert()
 	if exitCode != 0 {
@@ -91,11 +116,57 @@ func run() int {
 		return exitCode
 	}
 
+	if r.state != nil {
+		hasFailures := r.state.Checkpoint.Failed > 0
+		r.state.Finalize(!hasFailures)
+		if failureReport := r.state.GetFailureReport(); failureReport != "" {
+			fmt.Fprintln(os.Stderr, failureReport)
+		}
+	}
+
 	printRunSummary(migrationReport)
 	return 0
 }
 
-// newPingdomRunner validates flags, resolves API keys, and sets up the context.
+// handleRollback resolves the migration ID and delegates to the shared rollback implementation.
+func handleRollback() int {
+	hpKey := *hyperpingAPIKey
+	if hpKey == "" {
+		hpKey = os.Getenv("HYPERPING_API_KEY")
+	}
+	if hpKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: Hyperping API key is required for rollback")
+		fmt.Fprintln(os.Stderr, "Set --hyperping-api-key flag or HYPERPING_API_KEY environment variable")
+		return 1
+	}
+
+	logger, err := recovery.NewLogger(false)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Failed to create logger: %v\n", err)
+		return 1
+	}
+	defer logger.Close()
+
+	migID := *rollbackID
+	if migID == "" {
+		mgr, mgrErr := checkpoint.NewManager()
+		if mgrErr != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to create checkpoint manager: %v\n", mgrErr)
+			return 1
+		}
+		latest, latestErr := mgr.FindLatest(toolName)
+		if latestErr != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", latestErr)
+			fmt.Fprintln(os.Stderr, "Use --rollback-id to specify a checkpoint or --list-checkpoints to see available checkpoints")
+			return 1
+		}
+		migID = latest.MigrationID
+	}
+
+	return migrationstate.PerformRollback(migID, hpKey, *rollbackForce, logger)
+}
+
+// newPingdomRunner validates flags, resolves API keys, sets up the context, and initialises state.
 func newPingdomRunner() (*pingdomRunner, int) {
 	pingdomKey := *pingdomAPIKey
 	if pingdomKey == "" {
@@ -121,19 +192,71 @@ func newPingdomRunner() (*pingdomRunner, int) {
 		return nil, 1
 	}
 
-	if err := os.MkdirAll(*outputDir, 0o600); err != nil {
+	if err := os.MkdirAll(*outputDir, 0o700); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
 		return nil, 1
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	_ = cancel // caller manages lifetime via os.Exit
 
-	return &pingdomRunner{
+	r := &pingdomRunner{
 		pingdomKey:   pingdomKey,
 		hyperpingKey: hyperpingKey,
 		ctx:          ctx,
-	}, 0
+		cancel:       cancel,
+	}
+
+	if err := r.initState(); err != nil {
+		cancel()
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return nil, 1
+	}
+
+	return r, 0
+}
+
+// initState initialises or resumes migration state.
+func (r *pingdomRunner) initState() error {
+	logger, err := recovery.NewLogger(false)
+	if err != nil {
+		return fmt.Errorf("failed to create logger: %w", err)
+	}
+
+	migID := *resumeID
+	if *resume || migID != "" {
+		if migID == "" {
+			mgr, mgrErr := checkpoint.NewManager()
+			if mgrErr != nil {
+				logger.Close()
+				return fmt.Errorf("failed to create checkpoint manager: %w", mgrErr)
+			}
+			latest, latestErr := mgr.FindLatest(toolName)
+			if latestErr != nil {
+				logger.Close()
+				return fmt.Errorf("no checkpoint found to resume from")
+			}
+			migID = latest.MigrationID
+		}
+		state, stateErr := migrationstate.Resume(migID, logger)
+		if stateErr != nil {
+			logger.Close()
+			return fmt.Errorf("failed to resume from checkpoint: %w", stateErr)
+		}
+		r.state = state
+		r.migrationID = migID
+		return nil
+	}
+
+	migID = checkpoint.GenerateMigrationID(toolName)
+	// totalResources will be updated after fetch; use 0 as placeholder
+	state, stateErr := migrationstate.New(toolName, migID, 0, logger)
+	if stateErr != nil {
+		logger.Close()
+		return fmt.Errorf("failed to create migration state: %w", stateErr)
+	}
+	r.state = state
+	r.migrationID = migID
+	return nil
 }
 
 // fetchAndConvert fetches Pingdom checks and converts them to Hyperping format.
@@ -148,17 +271,43 @@ func (r *pingdomRunner) fetchAndConvert() ([]pingdom.Check, []converter.Conversi
 	}
 	log(fmt.Sprintf("Fetched %d checks from Pingdom", len(checks)))
 
+	if r.state != nil {
+		r.state.Checkpoint.TotalResources = len(checks)
+	}
+
 	log("Converting checks to Hyperping format...")
 	checkConverter := converter.NewCheckConverter()
 	results := make([]converter.ConversionResult, len(checks))
 	supportedCount := 0
 	for i, check := range checks {
+		checkID := fmt.Sprintf("check-%d", check.ID)
+		if r.state != nil && r.state.IsProcessed(checkID) {
+			log(fmt.Sprintf("Skipping already processed check: %s", checkID))
+			results[i] = checkConverter.Convert(check)
+			if results[i].Supported {
+				supportedCount++
+			}
+			continue
+		}
+
 		results[i] = checkConverter.Convert(check)
 		if results[i].Supported {
 			supportedCount++
 		}
+
+		if r.state != nil {
+			if results[i].Supported {
+				r.state.MarkResourceProcessed(checkID)
+			} else {
+				r.state.MarkResourceFailed(checkID, "check", check.Name, "unsupported check type")
+			}
+		}
 	}
 	log(fmt.Sprintf("Converted %d/%d checks (%d unsupported)", supportedCount, len(checks), len(checks)-supportedCount))
+
+	if r.state != nil {
+		r.state.SaveCheckpoint()
+	}
 
 	log("Generating Terraform configuration...")
 	tfGen := generator.NewTerraformGenerator(*prefix)
@@ -233,6 +382,9 @@ func (r *pingdomRunner) createHyperpingResources(checks []pingdom.Check, results
 		}
 
 		createdResources[check.ID] = monitor.UUID
+		if r.state != nil {
+			r.state.AddHyperpingResource(monitor.UUID)
+		}
 		createdCount++
 
 		if *verbose {
@@ -251,12 +403,12 @@ func (r *pingdomRunner) writeImportScript(checks []pingdom.Check, results []conv
 	importScriptContent := importGen.GenerateImportScript(checks, results, createdResources)
 
 	importPath := filepath.Join(*outputDir, "import.sh")
-	if writeErr := os.WriteFile(importPath, []byte(importScriptContent), 0o600); writeErr != nil {
+	if writeErr := os.WriteFile(importPath, []byte(importScriptContent), 0o700); writeErr != nil { //nolint:gosec // G306: import.sh must be executable (0700) to run as a shell script
 		fmt.Fprintf(os.Stderr, "Error writing import script: %v\n", writeErr)
 		return 1
 	}
 
-	if chmodErr := os.Chmod(importPath, 0o600); chmodErr != nil {
+	if chmodErr := os.Chmod(importPath, 0o700); chmodErr != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to make import.sh executable: %v\n", chmodErr)
 	}
 
@@ -323,7 +475,7 @@ func createHyperpingClient(apiKey string) *client.Client {
 }
 
 func log(msg string) {
-	if *verbose || true {
+	if *verbose {
 		fmt.Fprintf(os.Stderr, "[migrate-pingdom] %s\n", msg)
 	}
 }

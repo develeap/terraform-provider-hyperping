@@ -671,7 +671,7 @@ func (r *StatusPageResource) preserveServicesListBooleans(planServices, apiServi
 }
 
 // buildCreateRequest builds a CreateStatusPageRequest from the Terraform plan.
-func (r *StatusPageResource) buildCreateRequest(_ context.Context, plan *StatusPageResourceModel, diags *diag.Diagnostics) *client.CreateStatusPageRequest {
+func (r *StatusPageResource) buildCreateRequest(ctx context.Context, plan *StatusPageResourceModel, diags *diag.Diagnostics) *client.CreateStatusPageRequest {
 	req := &client.CreateStatusPageRequest{
 		Name: plan.Name.ValueString(),
 	}
@@ -682,7 +682,7 @@ func (r *StatusPageResource) buildCreateRequest(_ context.Context, plan *StatusP
 	req.Hostname = extractOptionalStringPtr(plan.Hostname)
 	req.Password = extractOptionalStringPtr(plan.Password)
 
-	populateSettingsFields(plan.Settings, &statusPageSettingsTarget{
+	populateSettingsFields(ctx, plan.Settings, &statusPageSettingsTarget{
 		Website:               &req.Website,
 		Theme:                 &req.Theme,
 		Font:                  &req.Font,
@@ -710,7 +710,7 @@ func (r *StatusPageResource) buildCreateRequest(_ context.Context, plan *StatusP
 }
 
 // buildUpdateRequest builds an UpdateStatusPageRequest from the Terraform plan.
-func (r *StatusPageResource) buildUpdateRequest(_ context.Context, plan *StatusPageResourceModel, diags *diag.Diagnostics) *client.UpdateStatusPageRequest {
+func (r *StatusPageResource) buildUpdateRequest(ctx context.Context, plan *StatusPageResourceModel, diags *diag.Diagnostics) *client.UpdateStatusPageRequest {
 	req := &client.UpdateStatusPageRequest{}
 
 	req.Name = extractOptionalStringPtr(plan.Name)
@@ -718,7 +718,7 @@ func (r *StatusPageResource) buildUpdateRequest(_ context.Context, plan *StatusP
 	req.Hostname = extractOptionalStringPtr(plan.Hostname)
 	req.Password = extractOptionalStringPtr(plan.Password)
 
-	populateSettingsFields(plan.Settings, &statusPageSettingsTarget{
+	populateSettingsFields(ctx, plan.Settings, &statusPageSettingsTarget{
 		Website:               &req.Website,
 		Theme:                 &req.Theme,
 		Font:                  &req.Font,
@@ -781,7 +781,7 @@ type statusPageSettingsTarget struct {
 }
 
 // populateSettingsFields extracts all settings fields and populates the target request.
-func populateSettingsFields(settings types.Object, target *statusPageSettingsTarget, diags *diag.Diagnostics) {
+func populateSettingsFields(ctx context.Context, settings types.Object, target *statusPageSettingsTarget, diags *diag.Diagnostics) {
 	if settings.IsNull() || settings.IsUnknown() {
 		return
 	}
@@ -791,7 +791,7 @@ func populateSettingsFields(settings types.Object, target *statusPageSettingsTar
 	populateBoolSettings(attrs, target)
 	populateCollectionSettings(attrs, target, diags)
 
-	subscribe, auth := mapTFToSettings(settings, diags)
+	subscribe, auth := mapTFToSettings(ctx, settings, diags)
 	*target.Subscribe = subscribe
 	*target.Authentication = auth
 }

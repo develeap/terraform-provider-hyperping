@@ -273,9 +273,9 @@ func buildUserAgent(version string) string {
 		}
 	}
 
-	// Cap total User-Agent length to prevent oversized headers
-	if len(userAgent) > maxUserAgentLength {
-		userAgent = userAgent[:maxUserAgentLength]
+	// Cap total User-Agent length to prevent oversized headers (rune-safe to avoid splitting multi-byte UTF-8 sequences)
+	if len([]rune(userAgent)) > maxUserAgentLength {
+		userAgent = string([]rune(userAgent)[:maxUserAgentLength])
 	}
 
 	return userAgent

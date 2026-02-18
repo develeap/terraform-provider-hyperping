@@ -21,6 +21,7 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/openapi"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 	tfjson "github.com/hashicorp/terraform-json"
 	"golang.org/x/time/rate"
 )
@@ -156,7 +157,11 @@ func runScrape(ctx context.Context) int {
 	defer cleanup()
 
 	// Scrape pages and extract parameters.
-	apiParams, newCache, stats := scrapeAndExtract(ctx, browser, discovered, cache, config)
+	apiParams, newCache, stats, err := scrapeAndExtract(ctx, browser, discovered, cache, config)
+	if err != nil {
+		log.Printf("❌ Failed to initialise scrape page: %v\n", err)
+		return 1
+	}
 	saveResults(discovered, stats, newCache, config.CacheFile)
 
 	// Generate OpenAPI spec from scraped params.
@@ -234,11 +239,18 @@ func scrapeAndExtract(
 	discovered []discovery.DiscoveredURL,
 	cache Cache,
 	config ScraperConfig,
-) (map[string][]extractor.APIParameter, Cache, ScrapeStats) {
+) (map[string][]extractor.APIParameter, Cache, ScrapeStats, error) {
 	log.Println("\n🔄 Scraping API documentation pages...")
 
-	page := browser.MustPage()
-	defer page.MustClose()
+	page, err := browser.Page(proto.TargetCreateTarget{})
+	if err != nil {
+		return nil, Cache{}, ScrapeStats{}, fmt.Errorf("failed to create browser page: %w", err)
+	}
+	defer func() {
+		if closeErr := page.Close(); closeErr != nil {
+			log.Printf("⚠️  Page close error: %v\n", closeErr)
+		}
+	}()
 
 	limiter := rate.NewLimiter(rate.Limit(config.RateLimit), 1)
 	newCache := Cache{Entries: make(map[string]CacheEntry), CreatedAt: time.Now()}
@@ -280,7 +292,7 @@ func scrapeAndExtract(
 	}
 
 	stats.Duration = time.Since(start)
-	return apiParams, newCache, stats
+	return apiParams, newCache, stats, nil
 }
 
 func saveResults(discovered []discovery.DiscoveredURL, stats ScrapeStats, newCache Cache, cacheFile string) {

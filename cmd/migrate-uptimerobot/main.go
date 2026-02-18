@@ -26,25 +26,36 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot/generator"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot/report"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot/uptimerobot"
+	"github.com/develeap/terraform-provider-hyperping/pkg/checkpoint"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrationstate"
+	"github.com/develeap/terraform-provider-hyperping/pkg/recovery"
 )
 
 var (
-	uptimerobotAPIKey = flag.String("uptimerobot-api-key", "", "UptimeRobot API key (or set UPTIMEROBOT_API_KEY)")
-	hyperpingAPIKey   = flag.String("hyperping-api-key", "", "Hyperping API key (or set HYPERPING_API_KEY)")
-	output            = flag.String("output", "hyperping.tf", "Output Terraform configuration file")
-	importScript      = flag.String("import-script", "import.sh", "Output import script file")
-	reportFile        = flag.String("report", "migration-report.json", "Output migration report file")
-	manualSteps       = flag.String("manual-steps", "manual-steps.md", "Output manual steps documentation")
-	dryRun            = flag.Bool("dry-run", false, "Perform dry run without creating output files")
-	validate          = flag.Bool("validate", false, "Validate UptimeRobot resources without generating output")
-	verbose           = flag.Bool("verbose", false, "Enable verbose output")
+	uptimerobotAPIKey   = flag.String("uptimerobot-api-key", "", "UptimeRobot API key (or set UPTIMEROBOT_API_KEY)")
+	hyperpingAPIKey     = flag.String("hyperping-api-key", "", "Hyperping API key (or set HYPERPING_API_KEY)")
+	output              = flag.String("output", "hyperping.tf", "Output Terraform configuration file")
+	importScript        = flag.String("import-script", "import.sh", "Output import script file")
+	reportFile          = flag.String("report", "migration-report.json", "Output migration report file")
+	manualSteps         = flag.String("manual-steps", "manual-steps.md", "Output manual steps documentation")
+	dryRun              = flag.Bool("dry-run", false, "Perform dry run without creating output files")
+	validate            = flag.Bool("validate", false, "Validate UptimeRobot resources without generating output")
+	verbose             = flag.Bool("verbose", false, "Enable verbose output")
+	resume              = flag.Bool("resume", false, "Resume from last checkpoint")
+	resumeID            = flag.String("resume-id", "", "Resume from specific checkpoint ID")
+	rollback            = flag.Bool("rollback", false, "Rollback migration (delete Hyperping resources)")
+	rollbackID          = flag.String("rollback-id", "", "Rollback specific migration ID")
+	rollbackForce       = flag.Bool("force", false, "Force rollback without confirmation")
+	listCheckpointsFlag = flag.Bool("list-checkpoints", false, "List available checkpoints")
 )
 
 // runner holds the resolved configuration for a non-interactive run.
 type runner struct {
-	urAPIKey string
-	hpAPIKey string
-	ctx      context.Context
+	urAPIKey    string
+	hpAPIKey    string
+	ctx         context.Context
+	state       *migrationstate.State
+	migrationID string
 }
 
 func main() {
@@ -60,6 +71,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  migrate-uptimerobot -dry-run -verbose\n\n")
 		fmt.Fprintf(os.Stderr, "  # Generate migration files\n")
 		fmt.Fprintf(os.Stderr, "  migrate-uptimerobot -output=hyperping.tf -import-script=import.sh\n\n")
+		fmt.Fprintf(os.Stderr, "  # Resume from last checkpoint\n")
+		fmt.Fprintf(os.Stderr, "  migrate-uptimerobot --resume\n\n")
+		fmt.Fprintf(os.Stderr, "  # Rollback migration\n")
+		fmt.Fprintf(os.Stderr, "  migrate-uptimerobot --rollback --rollback-id=uptimerobot-20260213-120000\n\n")
 	}
 
 	os.Exit(run())
@@ -70,6 +85,14 @@ func run() int {
 
 	if shouldUseInteractive() {
 		return runInteractive()
+	}
+
+	if *listCheckpointsFlag {
+		return migrationstate.ListCheckpoints(toolName)
+	}
+
+	if *rollback {
+		return handleRollback()
 	}
 
 	r, exitCode := newRunner()
@@ -93,6 +116,9 @@ func run() int {
 
 	if *dryRun {
 		fmt.Fprintln(os.Stderr, "\nDry run complete. No files written.")
+		if r.state != nil {
+			r.state.Finalize(true)
+		}
 		return 0
 	}
 
@@ -102,7 +128,45 @@ func run() int {
 // cancelKey is an unexported type used as a context key to avoid collisions.
 type cancelKey struct{}
 
-// newRunner validates flags, resolves API keys, and sets up the context.
+// handleRollback resolves the migration ID and delegates to the shared rollback implementation.
+func handleRollback() int {
+	hpKey := *hyperpingAPIKey
+	if hpKey == "" {
+		hpKey = os.Getenv("HYPERPING_API_KEY")
+	}
+	if hpKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: Hyperping API key is required for rollback")
+		fmt.Fprintln(os.Stderr, "Set --hyperping-api-key flag or HYPERPING_API_KEY environment variable")
+		return 1
+	}
+
+	logger, err := recovery.NewLogger(false)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Failed to create logger: %v\n", err)
+		return 1
+	}
+	defer logger.Close()
+
+	migID := *rollbackID
+	if migID == "" {
+		mgr, mgrErr := checkpoint.NewManager()
+		if mgrErr != nil {
+			fmt.Fprintf(os.Stderr, "Error: Failed to create checkpoint manager: %v\n", mgrErr)
+			return 1
+		}
+		latest, latestErr := mgr.FindLatest(toolName)
+		if latestErr != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", latestErr)
+			fmt.Fprintln(os.Stderr, "Use --rollback-id to specify a checkpoint or --list-checkpoints to see available checkpoints")
+			return 1
+		}
+		migID = latest.MigrationID
+	}
+
+	return migrationstate.PerformRollback(migID, hpKey, *rollbackForce, logger)
+}
+
+// newRunner validates flags, resolves API keys, and sets up the context and state.
 func newRunner() (*runner, int) {
 	urAPIKey := *uptimerobotAPIKey
 	if urAPIKey == "" {
@@ -128,7 +192,60 @@ func newRunner() (*runner, int) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	ctx = context.WithValue(ctx, cancelKey{}, cancel)
-	return &runner{urAPIKey: urAPIKey, hpAPIKey: hpAPIKey, ctx: ctx}, 0
+
+	r := &runner{urAPIKey: urAPIKey, hpAPIKey: hpAPIKey, ctx: ctx}
+
+	if err := r.initState(); err != nil {
+		cancel()
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return nil, 1
+	}
+
+	return r, 0
+}
+
+// initState initialises or resumes migration state.
+func (r *runner) initState() error {
+	logger, err := recovery.NewLogger(false)
+	if err != nil {
+		return fmt.Errorf("failed to create logger: %w", err)
+	}
+
+	migID := *resumeID
+	if *resume || migID != "" {
+		if migID == "" {
+			mgr, mgrErr := checkpoint.NewManager()
+			if mgrErr != nil {
+				logger.Close()
+				return fmt.Errorf("failed to create checkpoint manager: %w", mgrErr)
+			}
+			latest, latestErr := mgr.FindLatest(toolName)
+			if latestErr != nil {
+				logger.Close()
+				return fmt.Errorf("no checkpoint found to resume from")
+			}
+			migID = latest.MigrationID
+		}
+		state, stateErr := migrationstate.Resume(migID, logger)
+		if stateErr != nil {
+			logger.Close()
+			return fmt.Errorf("failed to resume from checkpoint: %w", stateErr)
+		}
+		r.state = state
+		r.migrationID = migID
+		return nil
+	}
+
+	migID = checkpoint.GenerateMigrationID(toolName)
+	// totalResources will be updated after fetch; use 0 as placeholder
+	state, stateErr := migrationstate.New(toolName, migID, 0, logger)
+	if stateErr != nil {
+		logger.Close()
+		return fmt.Errorf("failed to create migration state: %w", stateErr)
+	}
+	r.state = state
+	r.migrationID = migID
+	return nil
 }
 
 // fetchMonitors fetches monitors and alert contacts from UptimeRobot.
@@ -160,6 +277,10 @@ func (r *runner) fetchMonitors() ([]uptimerobot.Monitor, []uptimerobot.AlertCont
 		fmt.Fprintf(os.Stderr, "Fetched %d alert contacts\n", len(alertContacts))
 	}
 
+	if r.state != nil {
+		r.state.Checkpoint.TotalResources = len(monitors)
+	}
+
 	return monitors, alertContacts, 0
 }
 
@@ -171,6 +292,18 @@ func (r *runner) convertAndReport(monitors []uptimerobot.Monitor, alertContacts 
 
 	conv := converter.NewConverter()
 	conversionResult := conv.Convert(monitors, alertContacts)
+
+	if r.state != nil {
+		for _, m := range monitors {
+			monitorID := fmt.Sprintf("monitor-%d", m.ID)
+			if r.state.IsProcessed(monitorID) {
+				continue
+			}
+			r.state.MarkResourceProcessed(monitorID)
+		}
+		r.state.SaveCheckpoint()
+	}
+
 	migrationReport := report.Generate(monitors, alertContacts, conversionResult)
 
 	fmt.Fprintln(os.Stderr, "\nMigration Summary:")
@@ -212,6 +345,14 @@ func (r *runner) writeFiles(conversionResult *converter.ConversionResult, migrat
 		return exitCode
 	}
 
+	if r.state != nil {
+		hasFailures := r.state.Checkpoint.Failed > 0
+		r.state.Finalize(!hasFailures)
+		if failureReport := r.state.GetFailureReport(); failureReport != "" {
+			fmt.Fprintln(os.Stderr, failureReport)
+		}
+	}
+
 	fmt.Fprintln(os.Stderr, "\nMigration files generated successfully!")
 	fmt.Fprintln(os.Stderr, "\nNext steps:")
 	fmt.Fprintf(os.Stderr, "  1. Review %s and adjust as needed\n", *output)
@@ -241,7 +382,7 @@ func (r *runner) writeImportScript(conversionResult *converter.ConversionResult)
 		fmt.Fprintln(os.Stderr, "Generating import script...")
 	}
 	importScriptContent := generator.GenerateImportScript(conversionResult)
-	if err := os.WriteFile(*importScript, []byte(importScriptContent), 0o600); err != nil {
+	if err := os.WriteFile(*importScript, []byte(importScriptContent), 0o700); err != nil { //nolint:gosec // G306: import.sh must be executable (0700) to run as a shell script
 		fmt.Fprintf(os.Stderr, "Error writing import script: %v\n", err)
 		return 1
 	}

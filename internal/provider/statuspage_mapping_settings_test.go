@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -86,7 +87,7 @@ func TestMapSettingsToTF(t *testing.T) {
 func TestMapTFToSettings(t *testing.T) {
 	t.Run("null object returns nil", func(t *testing.T) {
 		var diags diag.Diagnostics
-		subscribe, auth := mapTFToSettings(types.ObjectNull(StatusPageSettingsAttrTypes()), &diags)
+		subscribe, auth := mapTFToSettings(context.Background(), types.ObjectNull(StatusPageSettingsAttrTypes()), &diags)
 
 		if diags.HasError() {
 			t.Errorf("unexpected error: %v", diags.Errors())
@@ -101,7 +102,7 @@ func TestMapTFToSettings(t *testing.T) {
 
 	t.Run("unknown object returns nil", func(t *testing.T) {
 		var diags diag.Diagnostics
-		subscribe, auth := mapTFToSettings(types.ObjectUnknown(StatusPageSettingsAttrTypes()), &diags)
+		subscribe, auth := mapTFToSettings(context.Background(), types.ObjectUnknown(StatusPageSettingsAttrTypes()), &diags)
 
 		if diags.HasError() {
 			t.Errorf("unexpected error: %v", diags.Errors())

@@ -483,10 +483,10 @@ func isFlagPassed() bool {
 	if *hyperpingBaseURL != "https://api.hyperping.io" {
 		return true
 	}
-	if *dryRun {
+	if *dryRun || *verbose || *resume || *rollback || *rollbackForce || *listCheckpointsFlag {
 		return true
 	}
-	if *verbose {
+	if *resumeID != "" || *rollbackID != "" {
 		return true
 	}
 	if os.Getenv("PINGDOM_API_KEY") != "" || os.Getenv("PINGDOM_API_TOKEN") != "" {

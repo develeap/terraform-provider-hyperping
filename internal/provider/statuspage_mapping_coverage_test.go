@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -58,7 +59,7 @@ func TestMapTFToSettings_WithValues(t *testing.T) {
 	})
 
 	var diags diag.Diagnostics
-	subscribe, auth := mapTFToSettings(settingsObj, &diags)
+	subscribe, auth := mapTFToSettings(context.Background(), settingsObj, &diags)
 
 	if diags.HasError() {
 		t.Fatalf("unexpected error: %v", diags.Errors())

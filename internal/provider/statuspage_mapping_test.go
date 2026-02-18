@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -124,7 +125,7 @@ func TestExtractAuthSettings_allFields(t *testing.T) {
 	})
 
 	var d diag.Diagnostics
-	result := extractAuthSettings(obj, &d)
+	result := extractAuthSettings(context.Background(), obj, &d)
 
 	if d.HasError() {
 		t.Fatalf("unexpected error: %v", d.Errors())
@@ -156,7 +157,7 @@ func assertAuthDomains(t *testing.T, got []string, want []string) {
 func TestExtractAuthSettings_nullHandling(t *testing.T) {
 	t.Run("returns nil when object is null", func(t *testing.T) {
 		var d diag.Diagnostics
-		result := extractAuthSettings(types.ObjectNull(AuthenticationSettingsAttrTypes()), &d)
+		result := extractAuthSettings(context.Background(), types.ObjectNull(AuthenticationSettingsAttrTypes()), &d)
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
@@ -167,7 +168,7 @@ func TestExtractAuthSettings_nullHandling(t *testing.T) {
 
 	t.Run("returns nil when object is unknown", func(t *testing.T) {
 		var d diag.Diagnostics
-		result := extractAuthSettings(types.ObjectUnknown(AuthenticationSettingsAttrTypes()), &d)
+		result := extractAuthSettings(context.Background(), types.ObjectUnknown(AuthenticationSettingsAttrTypes()), &d)
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
@@ -192,7 +193,7 @@ func TestExtractAuthSettings_nullBoolFields(t *testing.T) {
 	})
 
 	var d diag.Diagnostics
-	result := extractAuthSettings(obj, &d)
+	result := extractAuthSettings(context.Background(), obj, &d)
 
 	if d.HasError() {
 		t.Fatalf("unexpected error: %v", d.Errors())
@@ -221,7 +222,7 @@ func TestExtractAuthSettings_domainsList(t *testing.T) {
 		})
 
 		var d diag.Diagnostics
-		result := extractAuthSettings(obj, &d)
+		result := extractAuthSettings(context.Background(), obj, &d)
 
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
@@ -243,7 +244,7 @@ func TestExtractAuthSettings_domainsList(t *testing.T) {
 		})
 
 		var d diag.Diagnostics
-		result := extractAuthSettings(obj, &d)
+		result := extractAuthSettings(context.Background(), obj, &d)
 
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())

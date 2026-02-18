@@ -350,7 +350,7 @@ func TestStringSliceToTFList(t *testing.T) {
 
 			if !tt.want {
 				var result []string
-				diags := got.ElementsAs(context.TODO(), &result, false)
+				diags := got.ElementsAs(context.Background(), &result, false)
 				assert.False(t, diags.HasError())
 				assert.Equal(t, tt.slice, result)
 			}
@@ -488,7 +488,7 @@ func TestTfListToStringSlice(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			diags := &diag.Diagnostics{}
-			got := tfListToStringSlice(tt.list, diags)
+			got := tfListToStringSlice(context.Background(), tt.list, diags)
 			assert.False(t, diags.HasError())
 
 			if tt.wantNil {

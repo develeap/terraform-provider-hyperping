@@ -60,8 +60,10 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 		log.Printf("  ⚠️  Page stability timeout (continuing)\n")
 	}
 
-	// Remove noise elements.
-	page.Eval(`() => { document.querySelectorAll('script,style,noscript').forEach(e=>e.remove()); }`)
+	// Remove noise elements. Failure here is non-fatal; the page can still be scraped.
+	if _, err := page.Eval(`() => { document.querySelectorAll('script,style,noscript').forEach(e=>e.remove()); }`); err != nil {
+		GetLogger().Warn("DOM cleanup eval failed", map[string]interface{}{"error": err.Error()})
+	}
 
 	title := ""
 	if el, err := page.Timeout(5 * time.Second).Element("title"); err == nil {

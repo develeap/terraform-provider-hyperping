@@ -20,6 +20,7 @@ import (
 // interactiveConfig holds configuration collected from interactive prompts.
 type interactiveConfig struct {
 	betterstackToken string
+	hyperpingAPIKey  string
 	outputFile       string
 	importScript     string
 	reportFile       string
@@ -67,7 +68,8 @@ func promptSourceCredentials(prompter *interactive.Prompter) (string, []betterst
 }
 
 // promptDestinationConfig asks about dry-run mode and optional Hyperping API key.
-func promptDestinationConfig(prompter *interactive.Prompter) (bool, error) {
+// Returns (hyperpingAPIKey, dryRun, error).
+func promptDestinationConfig(prompter *interactive.Prompter) (string, bool, error) {
 	prompter.PrintHeader("Step 2/5: Destination Platform Configuration")
 	fmt.Fprintf(os.Stderr, "\n")
 
@@ -76,7 +78,7 @@ func promptDestinationConfig(prompter *interactive.Prompter) (bool, error) {
 		false,
 	)
 	if err != nil {
-		return false, fmt.Errorf("failed to get confirmation: %w", err)
+		return "", false, fmt.Errorf("failed to get confirmation: %w", err)
 	}
 
 	if !dryRunMode {
@@ -86,12 +88,12 @@ func promptDestinationConfig(prompter *interactive.Prompter) (bool, error) {
 			interactive.HyperpingAPIKeyValidator,
 		)
 		if keyErr != nil {
-			return false, fmt.Errorf("failed to get API key: %w", keyErr)
+			return "", false, fmt.Errorf("failed to get API key: %w", keyErr)
 		}
-		_ = hyperpingKey
+		return hyperpingKey, dryRunMode, nil
 	}
 
-	return dryRunMode, nil
+	return "", dryRunMode, nil
 }
 
 // promptOutputConfig asks for the four output file paths.
@@ -293,12 +295,13 @@ func runInteractive(_ *recovery.Logger) int {
 
 	config := &interactiveConfig{betterstackToken: token}
 
-	dryRunMode, err := promptDestinationConfig(prompter)
+	hyperpingKey, dryRunMode, err := promptDestinationConfig(prompter)
 	if err != nil {
 		prompter.PrintError(err.Error())
 		return 1
 	}
 	config.dryRun = dryRunMode
+	config.hyperpingAPIKey = hyperpingKey
 
 	config.outputFile, config.importScript, config.reportFile, config.manualStepsFile, err = promptOutputConfig(prompter)
 	if err != nil {
