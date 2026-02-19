@@ -71,7 +71,9 @@ Optional:
 
 - `name_regex` (String) Regular expression to match monitor names
 - `paused` (Boolean) Filter by paused status
+- `project_uuid` (String) Filter monitors by project UUID (exact match).
 - `protocol` (String) Filter by protocol (http, https, tcp, icmp, udp)
+- `status` (String) Filter monitors by status. Must be `up` or `down`.
 
 
 <a id="nestedatt--monitors"></a>
@@ -89,11 +91,14 @@ Read-Only:
 - `name` (String) The name of the monitor.
 - `paused` (Boolean) Whether the monitor is paused.
 - `port` (Number) Port number for port protocol monitors.
+- `project_uuid` (String) UUID of the project this monitor belongs to.
 - `protocol` (String) The protocol used for monitoring (http, icmp, tcp, udp).
 - `regions` (List of String) List of regions the monitor checks from.
 - `request_body` (String) Request body for POST/PUT/PATCH requests.
 - `request_headers` (Attributes List) Custom HTTP headers sent with the request. (see [below for nested schema](#nestedatt--monitors--request_headers))
 - `required_keyword` (String) Keyword that must appear in the response body.
+- `ssl_expiration` (Number) Days until the SSL certificate expires.
+- `status` (String) Current monitor status. Either `up` or `down`.
 - `url` (String) The URL being monitored.
 
 <a id="nestedatt--monitors--request_headers"></a>

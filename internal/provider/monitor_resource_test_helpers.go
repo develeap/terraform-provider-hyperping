@@ -404,6 +404,9 @@ func (m *mockHyperpingServer) createMonitor(w http.ResponseWriter, r *http.Reque
 		"regions":              getOrDefaultSlice(req, "regions", []string{"london", "frankfurt"}),
 		"request_headers":      []interface{}{},
 		"request_body":         "",
+		"status":               "up",
+		"ssl_expiration":       90,
+		"projectUuid":          "proj_test123",
 	}
 
 	if headers, ok := req["request_headers"].([]interface{}); ok {
@@ -511,11 +514,12 @@ var monitorStringFields = map[string]bool{
 	"name": true, "url": true, "protocol": true, "http_method": true,
 	"request_body": true, "expected_status_code": true,
 	"escalation_policy": true, "required_keyword": true,
+	"status": true, "projectUuid": true,
 }
 
 // intFields are monitor fields that map from JSON numbers.
 var monitorIntFields = map[string]bool{
-	"check_frequency": true, "port": true, "alerts_wait": true,
+	"check_frequency": true, "port": true, "alerts_wait": true, "ssl_expiration": true,
 }
 
 // boolFields are monitor fields that map from JSON booleans.

@@ -320,6 +320,157 @@ func (m *mockHyperpingServerForDS) createFullMonitor() {
 	}
 }
 
+// HCL config helpers for filter acceptance tests
+
+func testAccMonitorsDataSourceConfig_withStatusFilter(serverURL, status string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "hp_test_key"
+  base_url = %q
+}
+
+data "hyperping_monitors" "filtered" {
+  filter = {
+    status = %q
+  }
+}
+`, serverURL, status)
+}
+
+func testAccMonitorsDataSourceConfig_withProjectUUIDFilter(serverURL, uuid string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "hp_test_key"
+  base_url = %q
+}
+
+data "hyperping_monitors" "filtered" {
+  filter = {
+    project_uuid = %q
+  }
+}
+`, serverURL, uuid)
+}
+
+func testAccMonitorsDataSourceConfig_withCombinedFilter(serverURL, status, uuid string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "hp_test_key"
+  base_url = %q
+}
+
+data "hyperping_monitors" "filtered" {
+  filter = {
+    status       = %q
+    project_uuid = %q
+  }
+}
+`, serverURL, status, uuid)
+}
+
+func TestAccMonitorsDataSource_filterByStatus(t *testing.T) {
+	server := newMockHyperpingServerForDataSource(t)
+	defer server.Close()
+
+	server.monitors["mon_1"] = map[string]interface{}{
+		"uuid": "mon_1", "url": "https://example.com", "name": "Monitor 1",
+		"protocol": "https", "status": "up", "projectUuid": "proj_abc",
+		"paused": false, "check_frequency": 60,
+	}
+	server.monitors["mon_2"] = map[string]interface{}{
+		"uuid": "mon_2", "url": "https://api.example.com", "name": "Monitor 2",
+		"protocol": "https", "status": "up", "projectUuid": "proj_xyz",
+		"paused": false, "check_frequency": 60,
+	}
+	server.monitors["mon_3"] = map[string]interface{}{
+		"uuid": "mon_3", "url": "https://down.example.com", "name": "Monitor 3",
+		"protocol": "https", "status": "down", "projectUuid": "proj_abc",
+		"paused": false, "check_frequency": 60,
+	}
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config: testAccMonitorsDataSourceConfig_withStatusFilter(server.URL, "up"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.#", "2"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.0.status", "up"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccMonitorsDataSource_filterByProjectUUID(t *testing.T) {
+	server := newMockHyperpingServerForDataSource(t)
+	defer server.Close()
+
+	server.monitors["mon_1"] = map[string]interface{}{
+		"uuid": "mon_1", "url": "https://example.com", "name": "Monitor 1",
+		"protocol": "https", "status": "up", "projectUuid": "proj_abc",
+		"paused": false, "check_frequency": 60,
+	}
+	server.monitors["mon_2"] = map[string]interface{}{
+		"uuid": "mon_2", "url": "https://api.example.com", "name": "Monitor 2",
+		"protocol": "https", "status": "up", "projectUuid": "proj_abc",
+		"paused": false, "check_frequency": 60,
+	}
+	server.monitors["mon_3"] = map[string]interface{}{
+		"uuid": "mon_3", "url": "https://other.example.com", "name": "Monitor 3",
+		"protocol": "https", "status": "up", "projectUuid": "proj_xyz",
+		"paused": false, "check_frequency": 60,
+	}
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config: testAccMonitorsDataSourceConfig_withProjectUUIDFilter(server.URL, "proj_abc"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.#", "2"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.0.project_uuid", "proj_abc"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccMonitorsDataSource_filterByCombined(t *testing.T) {
+	server := newMockHyperpingServerForDataSource(t)
+	defer server.Close()
+
+	server.monitors["mon_1"] = map[string]interface{}{
+		"uuid": "mon_1", "url": "https://example.com", "name": "Monitor 1",
+		"protocol": "https", "status": "up", "projectUuid": "proj_abc",
+		"paused": false, "check_frequency": 60,
+	}
+	server.monitors["mon_2"] = map[string]interface{}{
+		"uuid": "mon_2", "url": "https://api.example.com", "name": "Monitor 2",
+		"protocol": "https", "status": "down", "projectUuid": "proj_abc",
+		"paused": false, "check_frequency": 60,
+	}
+	server.monitors["mon_3"] = map[string]interface{}{
+		"uuid": "mon_3", "url": "https://other.example.com", "name": "Monitor 3",
+		"protocol": "https", "status": "up", "projectUuid": "proj_xyz",
+		"paused": false, "check_frequency": 60,
+	}
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config: testAccMonitorsDataSourceConfig_withCombinedFilter(server.URL, "up", "proj_abc"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.#", "1"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.0.status", "up"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.0.project_uuid", "proj_abc"),
+				),
+			},
+		},
+	})
+}
+
 func TestMonitorsDataSource_mapMonitorToDataModel(t *testing.T) {
 	d := &MonitorsDataSource{}
 

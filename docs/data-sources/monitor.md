@@ -64,11 +64,14 @@ resource "hyperping_incident" "outage" {
 - `name` (String) The name of the monitor.
 - `paused` (Boolean) Whether the monitor is paused.
 - `port` (Number) Port number for port protocol monitors.
+- `project_uuid` (String) UUID of the project this monitor belongs to.
 - `protocol` (String) The protocol used for monitoring (http, icmp, tcp, udp).
 - `regions` (List of String) List of regions the monitor checks from.
 - `request_body` (String) Request body for POST/PUT/PATCH requests.
 - `request_headers` (Attributes List) Custom HTTP headers sent with requests. (see [below for nested schema](#nestedatt--request_headers))
 - `required_keyword` (String) Keyword that must appear in the response body.
+- `ssl_expiration` (Number) Days until the SSL certificate expires.
+- `status` (String) Current monitor status. Either `up` or `down`.
 - `url` (String) The URL being monitored.
 
 <a id="nestedatt--request_headers"></a>
