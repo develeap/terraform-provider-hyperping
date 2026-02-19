@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
@@ -12,10 +13,15 @@ import (
 // launchBrowser launches a new browser instance with resource blocking and returns cleanup function
 // The cleanup function ensures browser is always closed, even on panic
 func launchBrowser(config ScraperConfig) (*rod.Browser, func(), error) {
-	launchURL, err := launcher.New().
+	l := launcher.New().
 		Headless(config.Headless).
-		NoSandbox(true). // Required for CI environments (GitHub Actions, Docker)
-		Launch()
+		NoSandbox(true) // Required for CI environments (GitHub Actions, Docker)
+
+	if chromeBin := os.Getenv("CHROME_BIN"); chromeBin != "" {
+		l = l.Bin(chromeBin)
+	}
+
+	launchURL, err := l.Launch()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to launch browser: %w", err)
 	}
