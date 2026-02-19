@@ -30,6 +30,9 @@ func TestAccMonitorResource_basic(t *testing.T) {
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "follow_redirects", "true"),
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "paused", "false"),
 					tfresource.TestCheckResourceAttrSet("hyperping_monitor.test", "id"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "status", "up"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "ssl_expiration", "90"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "project_uuid", "proj_test123"),
 				),
 			},
 			// ImportState testing

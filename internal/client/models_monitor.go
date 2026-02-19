@@ -37,6 +37,7 @@ type CreateMonitorRequest struct {
 	Name               string          `json:"name"`
 	URL                string          `json:"url"`
 	Protocol           string          `json:"protocol"`
+	ProjectUUID        string          `json:"projectUuid,omitempty"`
 	HTTPMethod         string          `json:"http_method,omitempty"`
 	CheckFrequency     int             `json:"check_frequency,omitempty"`
 	Regions            []string        `json:"regions,omitempty"`
@@ -68,6 +69,7 @@ type UpdateMonitorRequest struct {
 	Name               *string          `json:"name,omitempty"`
 	URL                *string          `json:"url,omitempty"`
 	Protocol           *string          `json:"protocol,omitempty"`
+	ProjectUUID        *string          `json:"projectUuid,omitempty"`
 	HTTPMethod         *string          `json:"http_method,omitempty"`
 	CheckFrequency     *int             `json:"check_frequency,omitempty"`
 	Regions            *[]string        `json:"regions,omitempty"`

@@ -55,6 +55,9 @@ type MonitorDataModel struct {
 	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
 	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
 	RequiredKeyword    types.String `tfsdk:"required_keyword"`
+	Status             types.String `tfsdk:"status"`
+	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
+	ProjectUUID        types.String `tfsdk:"project_uuid"`
 }
 
 // Metadata returns the data source type name.
@@ -151,6 +154,18 @@ func (d *MonitorsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 							MarkdownDescription: "Keyword that must appear in the response body.",
 							Computed:            true,
 						},
+						"status": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "Current monitor status. Either `up` or `down`.",
+						},
+						"ssl_expiration": schema.Int64Attribute{
+							Computed:            true,
+							MarkdownDescription: "Days until the SSL certificate expires.",
+						},
+						"project_uuid": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "UUID of the project this monitor belongs to.",
+						},
 					},
 				},
 			},
@@ -246,6 +261,14 @@ func (d *MonitorsDataSource) shouldIncludeMonitor(monitor *client.Monitor, filte
 		func() bool {
 			return MatchesBool(monitor.Paused, filter.Paused)
 		},
+		// Status filter
+		func() bool {
+			return MatchesExact(monitor.Status, filter.Status)
+		},
+		// ProjectUUID filter
+		func() bool {
+			return MatchesExact(monitor.ProjectUUID, filter.ProjectUUID)
+		},
 	)
 }
 
@@ -269,4 +292,17 @@ func (d *MonitorsDataSource) mapMonitorToDataModel(monitor *client.Monitor, mode
 	model.AlertsWait = fields.AlertsWait
 	model.EscalationPolicy = fields.EscalationPolicy
 	model.RequiredKeyword = fields.RequiredKeyword
+	model.Status = types.StringValue(monitor.Status)
+	model.SSLExpiration = func() types.Int64 {
+		if monitor.SSLExpiration != nil {
+			return types.Int64Value(int64(*monitor.SSLExpiration))
+		}
+		return types.Int64Null()
+	}()
+	model.ProjectUUID = func() types.String {
+		if monitor.ProjectUUID != "" {
+			return types.StringValue(monitor.ProjectUUID)
+		}
+		return types.StringNull()
+	}()
 }

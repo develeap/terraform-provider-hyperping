@@ -75,6 +75,7 @@ resource "hyperping_monitor" "maintenance" {
 - `http_method` (String) HTTP method to use. Valid values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`. Defaults to `GET`.
 - `paused` (Boolean) Whether the monitor is paused. Defaults to `false`.
 - `port` (Number) Port number to check. Required when `protocol` is `port`.
+- `project_uuid` (String) UUID of the Hyperping project this monitor belongs to.
 - `protocol` (String) The protocol type. Valid values: `http`, `port`, `icmp`. Defaults to `http`.
 - `regions` (List of String) List of regions to check from. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.
 - `request_body` (String) Request body for POST/PUT/PATCH requests.
@@ -84,6 +85,8 @@ resource "hyperping_monitor" "maintenance" {
 ### Read-Only
 
 - `id` (String) The unique identifier (UUID) of the monitor.
+- `ssl_expiration` (Number) Days until the SSL certificate expires.
+- `status` (String) Current monitor status. Either `up` or `down`.
 
 <a id="nestedatt--request_headers"></a>
 ### Nested Schema for `request_headers`

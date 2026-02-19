@@ -9,9 +9,11 @@ import "github.com/hashicorp/terraform-plugin-framework/types"
 
 // MonitorFilterModel represents monitor filter criteria.
 type MonitorFilterModel struct {
-	NameRegex types.String `tfsdk:"name_regex"`
-	Protocol  types.String `tfsdk:"protocol"`
-	Paused    types.Bool   `tfsdk:"paused"`
+	NameRegex   types.String `tfsdk:"name_regex"`
+	Protocol    types.String `tfsdk:"protocol"`
+	Paused      types.Bool   `tfsdk:"paused"`
+	Status      types.String `tfsdk:"status"`
+	ProjectUUID types.String `tfsdk:"project_uuid"`
 }
 
 // IncidentFilterModel represents incident filter criteria.

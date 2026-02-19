@@ -153,6 +153,7 @@ func (p *HyperpingProvider) DataSources(_ context.Context) []func() datasource.D
 		NewMaintenanceWindowDataSource,
 		NewMaintenanceWindowsDataSource,
 		NewMonitorReportDataSource,
+		NewMonitorReportsDataSource,
 		NewOutageDataSource,
 		NewOutagesDataSource,
 		NewHealthcheckDataSource,

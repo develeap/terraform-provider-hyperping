@@ -1156,6 +1156,81 @@ func TestCreateMonitorRequest_JSONMarshaling(t *testing.T) {
 	}
 }
 
+func TestClient_ListMonitors_NewFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[{"uuid":"mon_abc","url":"https://example.com","name":"Test Monitor",` +
+			`"protocol":"https","status":"up","ssl_expiration":30,"projectUuid":"proj_abc123",` +
+			`"paused":false,"check_frequency":60}]`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+	monitors, err := c.ListMonitors(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(monitors) != 1 {
+		t.Fatalf("expected 1 monitor, got %d", len(monitors))
+	}
+	if monitors[0].Status != "up" {
+		t.Errorf("expected status 'up', got %q", monitors[0].Status)
+	}
+	if monitors[0].SSLExpiration == nil {
+		t.Fatal("expected SSLExpiration to be non-nil")
+	}
+	if *monitors[0].SSLExpiration != 30 {
+		t.Errorf("expected ssl_expiration 30, got %d", *monitors[0].SSLExpiration)
+	}
+	if monitors[0].ProjectUUID != "proj_abc123" {
+		t.Errorf("expected projectUuid 'proj_abc123', got %q", monitors[0].ProjectUUID)
+	}
+}
+
+func TestClient_ListMonitors_NilSSLExpiration(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[{"uuid":"mon_abc","url":"https://example.com","name":"Test Monitor",` +
+			`"protocol":"https","status":"up","projectUuid":"proj_abc123",` +
+			`"paused":false,"check_frequency":60}]`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+	monitors, err := c.ListMonitors(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(monitors) != 1 {
+		t.Fatalf("expected 1 monitor, got %d", len(monitors))
+	}
+	if monitors[0].SSLExpiration != nil {
+		t.Errorf("expected SSLExpiration nil, got %v", *monitors[0].SSLExpiration)
+	}
+}
+
+func TestClient_ListMonitors_EmptyProjectUUID(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[{"uuid":"mon_abc","url":"https://example.com","name":"Test Monitor",` +
+			`"protocol":"https","status":"up","projectUuid":"",` +
+			`"paused":false,"check_frequency":60}]`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+	monitors, err := c.ListMonitors(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(monitors) != 1 {
+		t.Fatalf("expected 1 monitor, got %d", len(monitors))
+	}
+	if monitors[0].ProjectUUID != "" {
+		t.Errorf("expected empty ProjectUUID, got %q", monitors[0].ProjectUUID)
+	}
+}
+
 func TestUpdateMonitorRequest_JSONMarshaling_OmitsNilFields(t *testing.T) {
 	name := "Updated"
 	req := UpdateMonitorRequest{

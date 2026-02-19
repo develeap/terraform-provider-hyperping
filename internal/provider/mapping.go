@@ -67,6 +67,23 @@ func MapMonitorCommonFields(monitor *client.Monitor, diags *diag.Diagnostics) Mo
 		result.RequiredKeyword = types.StringNull()
 	}
 
+	// Handle status (read-only)
+	result.Status = types.StringValue(monitor.Status)
+
+	// Handle ssl_expiration (read-only, nullable)
+	if monitor.SSLExpiration != nil {
+		result.SSLExpiration = types.Int64Value(int64(*monitor.SSLExpiration))
+	} else {
+		result.SSLExpiration = types.Int64Null()
+	}
+
+	// Handle project_uuid
+	if monitor.ProjectUUID != "" {
+		result.ProjectUUID = types.StringValue(monitor.ProjectUUID)
+	} else {
+		result.ProjectUUID = types.StringNull()
+	}
+
 	return result
 }
 
@@ -88,6 +105,9 @@ type MonitorCommonFields struct {
 	AlertsWait         types.Int64
 	EscalationPolicy   types.String
 	RequiredKeyword    types.String
+	Status             types.String
+	SSLExpiration      types.Int64
+	ProjectUUID        types.String
 }
 
 // mapStringSliceToList converts a Go string slice to a Terraform List.

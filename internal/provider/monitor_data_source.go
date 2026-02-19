@@ -49,6 +49,9 @@ type MonitorDataSourceModel struct {
 	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
 	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
 	RequiredKeyword    types.String `tfsdk:"required_keyword"`
+	Status             types.String `tfsdk:"status"`
+	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
+	ProjectUUID        types.String `tfsdk:"project_uuid"`
 }
 
 // Metadata returns the data source type name.
@@ -139,6 +142,18 @@ func (d *MonitorDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				MarkdownDescription: "Keyword that must appear in the response body.",
 				Computed:            true,
 			},
+			"status": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Current monitor status. Either `up` or `down`.",
+			},
+			"ssl_expiration": schema.Int64Attribute{
+				Computed:            true,
+				MarkdownDescription: "Days until the SSL certificate expires.",
+			},
+			"project_uuid": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "UUID of the project this monitor belongs to.",
+			},
 		},
 	}
 }
@@ -209,4 +224,7 @@ func (d *MonitorDataSource) mapMonitorToDataSourceModel(monitor *client.Monitor,
 	model.AlertsWait = fields.AlertsWait
 	model.EscalationPolicy = fields.EscalationPolicy
 	model.RequiredKeyword = fields.RequiredKeyword
+	model.Status = fields.Status
+	model.SSLExpiration = fields.SSLExpiration
+	model.ProjectUUID = fields.ProjectUUID
 }

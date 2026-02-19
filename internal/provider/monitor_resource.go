@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -60,6 +61,9 @@ type MonitorResourceModel struct {
 	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
 	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
 	RequiredKeyword    types.String `tfsdk:"required_keyword"`
+	Status             types.String `tfsdk:"status"`
+	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
+	ProjectUUID        types.String `tfsdk:"project_uuid"`
 }
 
 // Metadata returns the resource type name.
@@ -193,6 +197,28 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"required_keyword": schema.StringAttribute{
 				MarkdownDescription: "A keyword that must appear in the response body for the check to pass.",
 				Optional:            true,
+			},
+			"status": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Current monitor status. Either `up` or `down`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"ssl_expiration": schema.Int64Attribute{
+				Computed:            true,
+				MarkdownDescription: "Days until the SSL certificate expires.",
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
+			},
+			"project_uuid": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "UUID of the Hyperping project this monitor belongs to.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -499,6 +525,23 @@ func (r *MonitorResource) mapMonitorToModel(monitor *client.Monitor, model *Moni
 	} else {
 		model.RequiredKeyword = types.StringNull()
 	}
+
+	// Handle status (read-only)
+	model.Status = types.StringValue(monitor.Status)
+
+	// Handle ssl_expiration (read-only, nullable)
+	if monitor.SSLExpiration != nil {
+		model.SSLExpiration = types.Int64Value(int64(*monitor.SSLExpiration))
+	} else {
+		model.SSLExpiration = types.Int64Null()
+	}
+
+	// Handle project_uuid
+	if monitor.ProjectUUID != "" {
+		model.ProjectUUID = types.StringValue(monitor.ProjectUUID)
+	} else {
+		model.ProjectUUID = types.StringNull()
+	}
 }
 
 // buildCreateRequest constructs a CreateMonitorRequest from the Terraform plan.
@@ -544,6 +587,9 @@ func (r *MonitorResource) buildCreateRequest(ctx context.Context, plan *MonitorR
 
 	// Handle optional required_keyword
 	createReq.RequiredKeyword = tfStringToPtr(plan.RequiredKeyword)
+
+	// Handle optional project_uuid
+	createReq.ProjectUUID = plan.ProjectUUID.ValueString()
 
 	return createReq
 }
@@ -606,6 +652,10 @@ func (r *MonitorResource) applySimpleFieldChanges(plan *MonitorResourceModel, st
 
 	if !plan.Paused.Equal(state.Paused) {
 		updateReq.Paused = tfBoolToPtr(plan.Paused)
+	}
+
+	if !plan.ProjectUUID.Equal(state.ProjectUUID) {
+		updateReq.ProjectUUID = tfStringToPtr(plan.ProjectUUID)
 	}
 }
 

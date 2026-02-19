@@ -78,11 +78,11 @@ func TestProvider_DataSources(t *testing.T) {
 	dataSources := p.DataSources(context.Background())
 
 	// Monitor (single), Monitors (list), Incident (single), Incidents (list),
-	// MaintenanceWindow (single), MaintenanceWindows (list), MonitorReport,
+	// MaintenanceWindow (single), MaintenanceWindows (list), MonitorReport, MonitorReports (list),
 	// Outage (single), Outages (list), Healthcheck (single), Healthchecks (list),
 	// StatusPage (single), StatusPages (list), StatusPageSubscribers
-	if len(dataSources) != 14 {
-		t.Errorf("expected 14 data sources, got %d", len(dataSources))
+	if len(dataSources) != 15 {
+		t.Errorf("expected 15 data sources, got %d", len(dataSources))
 	}
 }
 

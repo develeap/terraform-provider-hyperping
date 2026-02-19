@@ -7,7 +7,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -46,6 +48,17 @@ func MonitorFilterSchema() schema.SingleNestedAttribute {
 			"paused": schema.BoolAttribute{
 				Optional:    true,
 				Description: "Filter by paused status",
+			},
+			"status": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Filter monitors by status. Must be `up` or `down`.",
+				Validators: []validator.String{
+					stringvalidator.OneOf("up", "down"),
+				},
+			},
+			"project_uuid": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Filter monitors by project UUID (exact match).",
 			},
 		},
 	}
