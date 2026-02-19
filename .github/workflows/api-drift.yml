@@ -10,17 +10,18 @@ jobs:
   drift:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # to commit updated OAS snapshots
-      issues: write     # to open/update drift issues
+      contents: write        # to commit OAS snapshot branches
+      issues: write          # to open/update drift issues
+      pull-requests: write   # to open snapshot update PRs
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: tools/cmd/scraper/go.mod
           cache-dependency-path: tools/cmd/scraper/go.sum
@@ -37,7 +38,7 @@ jobs:
           chromium-browser --version
 
       - name: Restore snapshots cache
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: |
             tools/cmd/scraper/.scraper_cache.json
@@ -48,7 +49,7 @@ jobs:
 
       - name: Build scraper
         working-directory: tools/cmd/scraper
-        run: GOTOOLCHAIN=local go build -o scraper .
+        run: go build -o scraper .
 
       - name: Scrape Hyperping API docs
         working-directory: tools/cmd/scraper
@@ -89,20 +90,29 @@ jobs:
             -snapshot-dir=./snapshots
 
       - name: Commit updated OpenAPI snapshots
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tools/cmd/scraper/snapshots/ tools/cmd/scraper/docs_scraped/ || true
           if git diff --cached --quiet; then
             echo "No OAS changes to commit."
           else
+            BRANCH="chore/oas-snapshots-$(date +%Y%m%d)"
+            git checkout -b "$BRANCH"
             git commit -m "chore(scraper): update OpenAPI snapshots [skip ci]"
-            git push
+            git push origin "$BRANCH"
+            gh pr create \
+              --title "chore(scraper): update OpenAPI snapshots $(date +%Y-%m-%d)" \
+              --body "Automated update of OpenAPI snapshots from weekly API drift detection." \
+              --base main \
+              --head "$BRANCH" || echo "PR creation skipped (may already exist)"
           fi
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@eba2a242da008728ae72aa629890215a9957fd8a # v4.5.0
+        uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
           name: coverage-report-${{ github.run_number }}
           path: tools/cmd/scraper/coverage_report*.md
