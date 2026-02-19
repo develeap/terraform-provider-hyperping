@@ -57,9 +57,6 @@ jobs:
           terraform_version: '1.8.*'
           terraform_wrapper: false
 
-      - name: Download dependencies
-        run: go mod download
-
       - name: Run Better Stack integration tests
         if: env.BETTERSTACK_API_TOKEN != '' && env.HYPERPING_API_KEY != ''
         env:
@@ -117,9 +114,6 @@ jobs:
           terraform_version: '1.8.*'
           terraform_wrapper: false
 
-      - name: Download dependencies
-        run: go mod download
-
       - name: Run UptimeRobot integration tests
         if: env.UPTIMEROBOT_API_KEY != '' && env.HYPERPING_API_KEY != ''
         env:
@@ -176,9 +170,6 @@ jobs:
         with:
           terraform_version: '1.8.*'
           terraform_wrapper: false
-
-      - name: Download dependencies
-        run: go mod download
 
       - name: Run Pingdom integration tests
         if: env.PINGDOM_API_KEY != '' && env.HYPERPING_API_KEY != ''

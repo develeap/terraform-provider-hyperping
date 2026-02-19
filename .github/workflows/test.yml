@@ -35,7 +35,6 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
-      - run: go mod download
       - run: go build -v .
       - name: Run linters
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
@@ -144,8 +143,6 @@ jobs:
           restore-keys: |
             vcr-cassettes-
 
-      - run: go mod download
-
       # Run unit tests + contract tests with parallel execution
       - name: Run unit & contract tests with coverage
         run: |
@@ -247,6 +244,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+          cache-dependency-path: |
+            go.sum
+            tools/cmd/scraper/go.sum
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_wrapper: false
@@ -281,13 +281,39 @@ jobs:
           fi
 
       - name: Generate provider schema
+        id: gen-schema
         if: steps.check-snapshots.outputs.found == 'true'
         run: |
-          terraform -chdir=examples/complete providers schema -json > tools/cmd/scraper/schema.json 2>/dev/null || \
-          terraform -chdir=. providers schema -json > tools/cmd/scraper/schema.json
+          # Build provider binary from source — avoids registry dependency and init failures
+          go build -o /tmp/terraform-provider-hyperping .
+
+          # Configure dev_overrides so 'providers schema' uses the local binary
+          cat > ~/.terraformrc <<'EOF'
+          provider_installation {
+            dev_overrides {
+              "develeap/hyperping" = "/tmp"
+            }
+            direct {}
+          }
+          EOF
+
+          if terraform -chdir=examples/complete providers schema -json \
+              > tools/cmd/scraper/schema.json 2>/dev/null; then
+            if python3 -c "import json,sys; json.load(open('tools/cmd/scraper/schema.json'))" 2>/dev/null; then
+              echo "available=true" >> "$GITHUB_OUTPUT"
+              echo "✅ Schema generated ($(wc -c < tools/cmd/scraper/schema.json) bytes)"
+            else
+              echo "available=false" >> "$GITHUB_OUTPUT"
+              echo "⚠️ Schema JSON is invalid — sync check will be skipped"
+              rm -f tools/cmd/scraper/schema.json
+            fi
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️ Could not generate provider schema — sync check will be skipped"
+          fi
 
       - name: Run sync check
-        if: steps.check-snapshots.outputs.found == 'true'
+        if: steps.check-snapshots.outputs.found == 'true' && steps.gen-schema.outputs.available == 'true'
         working-directory: tools/cmd/scraper
         run: |
           ./scraper -sync \
@@ -295,7 +321,11 @@ jobs:
             -snapshot-dir=./snapshots
 
       - name: Sync check skipped notice
-        if: steps.check-snapshots.outputs.found != 'true'
+        if: steps.check-snapshots.outputs.found != 'true' || steps.gen-schema.outputs.available != 'true'
         run: |
-          echo "::warning::Sync check skipped - no API snapshots available. Run 'API Documentation Scraper' workflow first."
+          if [ "${{ steps.check-snapshots.outputs.found }}" != 'true' ]; then
+            echo "::warning::Sync check skipped - no API snapshots available. Run 'API Documentation Scraper' workflow first."
+          else
+            echo "::warning::Sync check skipped - provider schema could not be generated."
+          fi
 
