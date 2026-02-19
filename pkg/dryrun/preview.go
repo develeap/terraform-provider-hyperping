@@ -34,9 +34,9 @@ func (g *PreviewGenerator) GeneratePreview(
 	// Show header
 	sb.WriteString(g.colorize("📄 Terraform Preview", "bold"))
 	if len(resources) > previewLimit {
-		sb.WriteString(fmt.Sprintf(" (showing %d of %d resources):\n\n", previewLimit, len(resources)))
+		fmt.Fprintf(&sb, " (showing %d of %d resources):\n\n", previewLimit, len(resources))
 	} else {
-		sb.WriteString(fmt.Sprintf(" (%d resources):\n\n", len(resources)))
+		fmt.Fprintf(&sb, " (%d resources):\n\n", len(resources))
 	}
 
 	// Show sample resources
@@ -55,7 +55,7 @@ func (g *PreviewGenerator) GeneratePreview(
 	// Show summary if truncated
 	if len(resources) > previewLimit {
 		remaining := len(resources) - previewLimit
-		sb.WriteString(fmt.Sprintf("\n... (%d more resources)\n", remaining))
+		fmt.Fprintf(&sb, "\n... (%d more resources)\n", remaining)
 	}
 
 	// Resource breakdown
@@ -63,13 +63,13 @@ func (g *PreviewGenerator) GeneratePreview(
 	sb.WriteString("\n")
 	sb.WriteString(g.colorize("📊 Resource Breakdown:\n", "bold"))
 	for resType, count := range breakdown {
-		sb.WriteString(fmt.Sprintf("  - %s: %d\n", resType, count))
+		fmt.Fprintf(&sb, "  - %s: %d\n", resType, count)
 	}
 
 	// Estimate file size
 	lines := strings.Count(tfContent, "\n")
 	size := len(tfContent)
-	sb.WriteString(fmt.Sprintf("\n  Total size: ~%d lines (~%s)\n", lines, g.formatBytes(int64(size))))
+	fmt.Fprintf(&sb, "\n  Total size: ~%d lines (~%s)\n", lines, g.formatBytes(int64(size)))
 
 	return sb.String()
 }
@@ -225,15 +225,15 @@ func (g *PreviewGenerator) GenerateResourceSummary(
 	var sb strings.Builder
 
 	sb.WriteString(g.colorize("📊 Resource Distribution:\n", "bold"))
-	sb.WriteString(fmt.Sprintf("  Monitors:     %d\n", monitorCount))
-	sb.WriteString(fmt.Sprintf("  Healthchecks: %d\n", healthcheckCount))
-	sb.WriteString(fmt.Sprintf("  Total:        %d\n", monitorCount+healthcheckCount))
+	fmt.Fprintf(&sb, "  Monitors:     %d\n", monitorCount)
+	fmt.Fprintf(&sb, "  Healthchecks: %d\n", healthcheckCount)
+	fmt.Fprintf(&sb, "  Total:        %d\n", monitorCount+healthcheckCount)
 
 	if len(frequencyDist) > 0 {
 		sb.WriteString("\n")
 		sb.WriteString(g.colorize("⏱️  Check Frequency Distribution:\n", "bold"))
 		for freq, count := range frequencyDist {
-			sb.WriteString(fmt.Sprintf("  %6ds: %d monitors\n", freq, count))
+			fmt.Fprintf(&sb, "  %6ds: %d monitors\n", freq, count)
 		}
 	}
 
@@ -241,7 +241,7 @@ func (g *PreviewGenerator) GenerateResourceSummary(
 		sb.WriteString("\n")
 		sb.WriteString(g.colorize("🌍 Region Distribution:\n", "bold"))
 		for region, count := range regionDist {
-			sb.WriteString(fmt.Sprintf("  %-12s: %d monitors\n", region, count))
+			fmt.Fprintf(&sb, "  %-12s: %d monitors\n", region, count)
 		}
 	}
 

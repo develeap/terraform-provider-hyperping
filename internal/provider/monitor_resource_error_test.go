@@ -125,7 +125,7 @@ func TestAccMonitorResource_deleteErrorNon404(t *testing.T) {
 
 		// Attempt to delete via the mock server
 		req, _ := http.NewRequest("DELETE", server.URL+client.MonitorsBasePath+"/"+monitorID, nil)
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := http.DefaultClient.Do(req) //nolint:gosec // G704: test-only controlled URL via httptest.NewServer, not tainted user input
 		if err != nil {
 			t.Fatalf("Failed to make request: %v", err)
 		}

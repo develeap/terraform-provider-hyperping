@@ -40,7 +40,7 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: latest
+          version: v2.10.1
           # Enable caching for faster builds (replaces deprecated skip-pkg-cache/skip-build-cache)
           skip-cache: false
           skip-save-cache: false
@@ -270,12 +270,13 @@ jobs:
         id: check-snapshots
         working-directory: tools/cmd/scraper
         run: |
-          if [ -d "./snapshots" ] && [ "$(ls -A ./snapshots 2>/dev/null)" ]; then
+          if find ./snapshots -name "hyperping-api.yaml" -type f 2>/dev/null | grep -q .; then
             echo "found=true" >> $GITHUB_OUTPUT
             echo "Snapshots found, proceeding with sync check"
+            find ./snapshots -name "hyperping-api.yaml" | head -3
           else
             echo "found=false" >> $GITHUB_OUTPUT
-            echo "No snapshots found - this is expected on first run or after cache expiry"
+            echo "No valid OAS snapshots found (directory may exist but contains no hyperping-api.yaml)"
             echo "Sync check will be skipped. Run the scraper workflow first to populate snapshots."
           fi
 

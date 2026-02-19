@@ -136,20 +136,20 @@ func (r *Reporter) GenerateTextReport(report *MigrationReport) string {
 	sb.WriteString("Pingdom to Hyperping Migration Report\n")
 	sb.WriteString("=================================================================\n\n")
 
-	sb.WriteString(fmt.Sprintf("Generated: %s\n\n", report.Timestamp.Format(time.RFC3339)))
+	fmt.Fprintf(&sb, "Generated: %s\n\n", report.Timestamp.Format(time.RFC3339))
 
 	sb.WriteString("Summary\n")
 	sb.WriteString("-------\n")
-	sb.WriteString(fmt.Sprintf("Total Checks:       %d\n", report.TotalChecks))
-	sb.WriteString(fmt.Sprintf("Supported:          %d (%.1f%%)\n", report.SupportedChecks, float64(report.SupportedChecks)/float64(report.TotalChecks)*100))
-	sb.WriteString(fmt.Sprintf("Unsupported:        %d (%.1f%%)\n", report.UnsupportedChecks, float64(report.UnsupportedChecks)/float64(report.TotalChecks)*100))
-	sb.WriteString(fmt.Sprintf("Manual Steps:       %d\n\n", len(report.ManualSteps)))
+	fmt.Fprintf(&sb, "Total Checks:       %d\n", report.TotalChecks)
+	fmt.Fprintf(&sb, "Supported:          %d (%.1f%%)\n", report.SupportedChecks, float64(report.SupportedChecks)/float64(report.TotalChecks)*100)
+	fmt.Fprintf(&sb, "Unsupported:        %d (%.1f%%)\n", report.UnsupportedChecks, float64(report.UnsupportedChecks)/float64(report.TotalChecks)*100)
+	fmt.Fprintf(&sb, "Manual Steps:       %d\n\n", len(report.ManualSteps))
 
 	if len(report.ChecksByType) > 0 {
 		sb.WriteString("Checks by Type\n")
 		sb.WriteString("--------------\n")
 		for checkType, count := range report.ChecksByType {
-			sb.WriteString(fmt.Sprintf("%-15s %d\n", checkType+":", count))
+			fmt.Fprintf(&sb, "%-15s %d\n", checkType+":", count)
 		}
 		sb.WriteString("\n")
 	}
@@ -158,7 +158,7 @@ func (r *Reporter) GenerateTextReport(report *MigrationReport) string {
 		sb.WriteString("Unsupported Check Types\n")
 		sb.WriteString("-----------------------\n")
 		for checkType, count := range report.UnsupportedTypes {
-			sb.WriteString(fmt.Sprintf("%-15s %d check(s)\n", checkType+":", count))
+			fmt.Fprintf(&sb, "%-15s %d check(s)\n", checkType+":", count)
 		}
 		sb.WriteString("\n")
 	}
@@ -167,7 +167,7 @@ func (r *Reporter) GenerateTextReport(report *MigrationReport) string {
 		sb.WriteString("Warnings\n")
 		sb.WriteString("--------\n")
 		for i, warning := range report.Warnings {
-			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, warning))
+			fmt.Fprintf(&sb, "%d. %s\n", i+1, warning)
 		}
 		sb.WriteString("\n")
 	}
@@ -177,12 +177,12 @@ func (r *Reporter) GenerateTextReport(report *MigrationReport) string {
 		sb.WriteString("=====================\n\n")
 
 		for i, step := range report.ManualSteps {
-			sb.WriteString(fmt.Sprintf("%d. Check ID %d: %s\n", i+1, step.CheckID, step.CheckName))
-			sb.WriteString(fmt.Sprintf("   Type: %s\n", step.CheckType))
-			sb.WriteString(fmt.Sprintf("   Issue: %s\n", step.Description))
+			fmt.Fprintf(&sb, "%d. Check ID %d: %s\n", i+1, step.CheckID, step.CheckName)
+			fmt.Fprintf(&sb, "   Type: %s\n", step.CheckType)
+			fmt.Fprintf(&sb, "   Issue: %s\n", step.Description)
 			sb.WriteString("   Action:\n")
 			for _, line := range strings.Split(step.Action, "\n") {
-				sb.WriteString(fmt.Sprintf("   %s\n", line))
+				fmt.Fprintf(&sb, "   %s\n", line)
 			}
 			sb.WriteString("\n")
 		}
@@ -198,21 +198,21 @@ func (r *Reporter) GenerateManualStepsMarkdown(report *MigrationReport) string {
 	var sb strings.Builder
 
 	sb.WriteString("# Manual Migration Steps\n\n")
-	sb.WriteString(fmt.Sprintf("Generated: %s\n\n", report.Timestamp.Format(time.RFC1123)))
+	fmt.Fprintf(&sb, "Generated: %s\n\n", report.Timestamp.Format(time.RFC1123))
 
 	if len(report.ManualSteps) == 0 {
 		sb.WriteString("No manual steps required. All checks were successfully converted!\n")
 		return sb.String()
 	}
 
-	sb.WriteString(fmt.Sprintf("The following %d check(s) require manual intervention:\n\n", len(report.ManualSteps)))
+	fmt.Fprintf(&sb, "The following %d check(s) require manual intervention:\n\n", len(report.ManualSteps))
 
 	sb.WriteString("---\n\n")
 
 	for i, step := range report.ManualSteps {
-		sb.WriteString(fmt.Sprintf("## %d. %s (ID: %d)\n\n", i+1, step.CheckName, step.CheckID))
-		sb.WriteString(fmt.Sprintf("**Type:** `%s`\n\n", step.CheckType))
-		sb.WriteString(fmt.Sprintf("**Issue:** %s\n\n", step.Description))
+		fmt.Fprintf(&sb, "## %d. %s (ID: %d)\n\n", i+1, step.CheckName, step.CheckID)
+		fmt.Fprintf(&sb, "**Type:** `%s`\n\n", step.CheckType)
+		fmt.Fprintf(&sb, "**Issue:** %s\n\n", step.Description)
 		sb.WriteString("**Action Required:**\n\n")
 		sb.WriteString(step.Action)
 		sb.WriteString("\n\n---\n\n")

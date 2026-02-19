@@ -60,14 +60,14 @@ func (g *Generator) GenerateImportScript(monitors []converter.ConvertedMonitor, 
 		sb.WriteString("echo \"${YELLOW}Importing monitors...${NC}\"\n\n")
 
 		for _, m := range monitors {
-			sb.WriteString(fmt.Sprintf("# Monitor: %s\n", m.Name))
+			fmt.Fprintf(&sb, "# Monitor: %s\n", m.Name)
 			sb.WriteString("TOTAL=$((TOTAL + 1))\n")
-			sb.WriteString(fmt.Sprintf("if terraform import \"hyperping_monitor.%s\" \"PLACEHOLDER_UUID\"; then\n", m.ResourceName))
+			fmt.Fprintf(&sb, "if terraform import \"hyperping_monitor.%s\" \"PLACEHOLDER_UUID\"; then\n", m.ResourceName)
 			sb.WriteString("    SUCCESS=$((SUCCESS + 1))\n")
-			sb.WriteString(fmt.Sprintf("    echo \"${GREEN}✓ Imported monitor: %s${NC}\"\n", m.Name))
+			fmt.Fprintf(&sb, "    echo \"${GREEN}✓ Imported monitor: %s${NC}\"\n", m.Name)
 			sb.WriteString("else\n")
 			sb.WriteString("    FAILED=$((FAILED + 1))\n")
-			sb.WriteString(fmt.Sprintf("    echo \"${RED}✗ Failed to import monitor: %s${NC}\"\n", m.Name))
+			fmt.Fprintf(&sb, "    echo \"${RED}✗ Failed to import monitor: %s${NC}\"\n", m.Name)
 			sb.WriteString("fi\n")
 			sb.WriteString("echo \"\"\n\n")
 		}
@@ -79,14 +79,14 @@ func (g *Generator) GenerateImportScript(monitors []converter.ConvertedMonitor, 
 		sb.WriteString("echo \"${YELLOW}Importing healthchecks...${NC}\"\n\n")
 
 		for _, h := range healthchecks {
-			sb.WriteString(fmt.Sprintf("# Healthcheck: %s\n", h.Name))
+			fmt.Fprintf(&sb, "# Healthcheck: %s\n", h.Name)
 			sb.WriteString("TOTAL=$((TOTAL + 1))\n")
-			sb.WriteString(fmt.Sprintf("if terraform import \"hyperping_healthcheck.%s\" \"PLACEHOLDER_UUID\"; then\n", h.ResourceName))
+			fmt.Fprintf(&sb, "if terraform import \"hyperping_healthcheck.%s\" \"PLACEHOLDER_UUID\"; then\n", h.ResourceName)
 			sb.WriteString("    SUCCESS=$((SUCCESS + 1))\n")
-			sb.WriteString(fmt.Sprintf("    echo \"${GREEN}✓ Imported healthcheck: %s${NC}\"\n", h.Name))
+			fmt.Fprintf(&sb, "    echo \"${GREEN}✓ Imported healthcheck: %s${NC}\"\n", h.Name)
 			sb.WriteString("else\n")
 			sb.WriteString("    FAILED=$((FAILED + 1))\n")
-			sb.WriteString(fmt.Sprintf("    echo \"${RED}✗ Failed to import healthcheck: %s${NC}\"\n", h.Name))
+			fmt.Fprintf(&sb, "    echo \"${RED}✗ Failed to import healthcheck: %s${NC}\"\n", h.Name)
 			sb.WriteString("fi\n")
 			sb.WriteString("echo \"\"\n\n")
 		}
@@ -149,8 +149,8 @@ func (g *Generator) GenerateManualSteps(monitorIssues, healthcheckIssues []conve
 	if len(errors) > 0 {
 		sb.WriteString("## ⚠️ Critical Issues (Must Fix)\n\n")
 		for _, issue := range errors {
-			sb.WriteString(fmt.Sprintf("### %s (%s)\n", issue.ResourceName, issue.ResourceType))
-			sb.WriteString(fmt.Sprintf("- **Issue**: %s\n\n", issue.Message))
+			fmt.Fprintf(&sb, "### %s (%s)\n", issue.ResourceName, issue.ResourceType)
+			fmt.Fprintf(&sb, "- **Issue**: %s\n\n", issue.Message)
 		}
 	}
 
@@ -170,9 +170,9 @@ func (g *Generator) GenerateManualSteps(monitorIssues, healthcheckIssues []conve
 			resourceName := parts[0]
 			resourceType := parts[1]
 
-			sb.WriteString(fmt.Sprintf("### %s (%s)\n", resourceName, resourceType))
+			fmt.Fprintf(&sb, "### %s (%s)\n", resourceName, resourceType)
 			for _, issue := range issues {
-				sb.WriteString(fmt.Sprintf("- %s\n", issue.Message))
+				fmt.Fprintf(&sb, "- %s\n", issue.Message)
 			}
 			sb.WriteString("\n")
 		}

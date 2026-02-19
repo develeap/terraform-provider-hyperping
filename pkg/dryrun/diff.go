@@ -25,7 +25,7 @@ func (f *DiffFormatter) FormatComparison(comp ResourceComparison, maxWidth int) 
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString(fmt.Sprintf("Resource: %q (%s)\n", comp.ResourceName, comp.ResourceType))
+	fmt.Fprintf(&sb, "Resource: %q (%s)\n", comp.ResourceName, comp.ResourceType)
 
 	// Determine column width
 	colWidth := (maxWidth - 3) / 2
@@ -40,7 +40,7 @@ func (f *DiffFormatter) FormatComparison(comp ResourceComparison, maxWidth int) 
 	// Column headers
 	sourceHeader := f.centerText("Source Platform", colWidth)
 	targetHeader := f.centerText("Hyperping", colWidth)
-	sb.WriteString(fmt.Sprintf("│%s│%s│\n", sourceHeader, targetHeader))
+	fmt.Fprintf(&sb, "│%s│%s│\n", sourceHeader, targetHeader)
 
 	// Separator
 	sb.WriteString(f.horizontalLine(colWidth, "├", "┼", "┤"))
@@ -86,8 +86,8 @@ func (f *DiffFormatter) FormatComparison(comp ResourceComparison, maxWidth int) 
 				tLine = targetLines[i]
 			}
 
-			sb.WriteString(fmt.Sprintf("│ %-*s │ %-*s │\n",
-				colWidth-2, sLine, colWidth-2, tLine))
+			fmt.Fprintf(&sb, "│ %-*s │ %-*s │\n",
+				colWidth-2, sLine, colWidth-2, tLine)
 		}
 	}
 
@@ -95,12 +95,12 @@ func (f *DiffFormatter) FormatComparison(comp ResourceComparison, maxWidth int) 
 	if len(comp.Unsupported) > 0 {
 		sb.WriteString(f.horizontalLine(colWidth, "├", "┼", "┤"))
 		sb.WriteString("\n")
-		sb.WriteString(fmt.Sprintf("│ %-*s │ %-*s │\n",
-			colWidth-2, "Unsupported features:", colWidth-2, ""))
+		fmt.Fprintf(&sb, "│ %-*s │ %-*s │\n",
+			colWidth-2, "Unsupported features:", colWidth-2, "")
 
 		for _, feature := range comp.Unsupported {
-			sb.WriteString(fmt.Sprintf("│ %-*s │ %-*s │\n",
-				colWidth-2, "  - "+feature, colWidth-2, f.colorize("⚠ Not available", "yellow")))
+			fmt.Fprintf(&sb, "│ %-*s │ %-*s │\n",
+				colWidth-2, "  - "+feature, colWidth-2, f.colorize("⚠ Not available", "yellow"))
 		}
 	}
 
@@ -113,7 +113,7 @@ func (f *DiffFormatter) FormatComparison(comp ResourceComparison, maxWidth int) 
 		sb.WriteString("\nTransformations:\n")
 		for _, trans := range comp.Transformations {
 			icon := f.getActionIcon(trans.Action)
-			sb.WriteString(fmt.Sprintf("  %s %s\n", icon, trans.Notes))
+			fmt.Fprintf(&sb, "  %s %s\n", icon, trans.Notes)
 		}
 	}
 
@@ -261,7 +261,7 @@ func (f *DiffFormatter) FormatComparisonList(comparisons []ResourceComparison, l
 
 	if limit > 0 && limit < len(comparisons) {
 		remaining := len(comparisons) - limit
-		sb.WriteString(fmt.Sprintf("\n... (%d more resources)\n", remaining))
+		fmt.Fprintf(&sb, "\n... (%d more resources)\n", remaining)
 	}
 
 	return sb.String()

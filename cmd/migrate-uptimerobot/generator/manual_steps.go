@@ -89,35 +89,35 @@ func generateAlertContactsSection(alertContacts []uptimerobot.AlertContact) stri
 	if len(contactInfo.Emails) > 0 {
 		sb.WriteString("**Email Contacts:**\n\n")
 		for _, email := range contactInfo.Emails {
-			sb.WriteString(fmt.Sprintf("- %s\n", email))
+			fmt.Fprintf(&sb, "- %s\n", email)
 		}
 		sb.WriteString("\n")
 	}
 	if len(contactInfo.SMSPhones) > 0 {
 		sb.WriteString("**SMS Contacts:**\n\n")
 		for _, phone := range contactInfo.SMSPhones {
-			sb.WriteString(fmt.Sprintf("- %s\n", phone))
+			fmt.Fprintf(&sb, "- %s\n", phone)
 		}
 		sb.WriteString("\n")
 	}
 	if len(contactInfo.Webhooks) > 0 {
 		sb.WriteString("**Webhook URLs:**\n\n")
 		for _, webhook := range contactInfo.Webhooks {
-			sb.WriteString(fmt.Sprintf("- %s\n", webhook))
+			fmt.Fprintf(&sb, "- %s\n", webhook)
 		}
 		sb.WriteString("\n")
 	}
 	if len(contactInfo.Slack) > 0 {
 		sb.WriteString("**Slack Integrations:**\n\n")
 		for _, slack := range contactInfo.Slack {
-			sb.WriteString(fmt.Sprintf("- %s\n", slack))
+			fmt.Fprintf(&sb, "- %s\n", slack)
 		}
 		sb.WriteString("\n")
 	}
 	if len(contactInfo.PagerDuty) > 0 {
 		sb.WriteString("**PagerDuty Integrations:**\n\n")
 		for _, pd := range contactInfo.PagerDuty {
-			sb.WriteString(fmt.Sprintf("- %s\n", pd))
+			fmt.Fprintf(&sb, "- %s\n", pd)
 		}
 		sb.WriteString("\n")
 	}
@@ -137,13 +137,13 @@ func generateHealthchecksSection(result *converter.ConversionResult) string {
 	sb.WriteString("You need to update your scripts to ping the new Hyperping URLs.\n\n")
 
 	for _, h := range result.Healthchecks {
-		sb.WriteString(fmt.Sprintf("### %s\n\n", h.Name))
-		sb.WriteString(fmt.Sprintf("**Original UptimeRobot Monitor ID:** %d\n\n", h.OriginalID))
+		fmt.Fprintf(&sb, "### %s\n\n", h.Name)
+		fmt.Fprintf(&sb, "**Original UptimeRobot Monitor ID:** %d\n\n", h.OriginalID)
 		sb.WriteString("**Steps:**\n\n")
 		sb.WriteString("1. Apply the Terraform configuration to create the healthcheck\n")
 		sb.WriteString("2. Get the ping URL:\n\n")
 		sb.WriteString("```bash\n")
-		sb.WriteString(fmt.Sprintf("terraform output -raw %s_ping_url\n", h.ResourceName))
+		fmt.Fprintf(&sb, "terraform output -raw %s_ping_url\n", h.ResourceName)
 		sb.WriteString("```\n\n")
 		sb.WriteString("3. Update your script/cron job to use the new URL:\n\n")
 		sb.WriteString("```bash\n")
@@ -171,9 +171,9 @@ func generateWarningsSection(result *converter.ConversionResult) string {
 
 	for _, m := range result.Monitors {
 		if len(m.Warnings) > 0 {
-			sb.WriteString(fmt.Sprintf("### %s\n\n", m.Name))
+			fmt.Fprintf(&sb, "### %s\n\n", m.Name)
 			for _, w := range m.Warnings {
-				sb.WriteString(fmt.Sprintf("- ⚠️ %s\n", w))
+				fmt.Fprintf(&sb, "- ⚠️ %s\n", w)
 			}
 			sb.WriteString("\n")
 		}
@@ -181,9 +181,9 @@ func generateWarningsSection(result *converter.ConversionResult) string {
 
 	for _, h := range result.Healthchecks {
 		if len(h.Warnings) > 0 {
-			sb.WriteString(fmt.Sprintf("### %s (Healthcheck)\n\n", h.Name))
+			fmt.Fprintf(&sb, "### %s (Healthcheck)\n\n", h.Name)
 			for _, w := range h.Warnings {
-				sb.WriteString(fmt.Sprintf("- ⚠️ %s\n", w))
+				fmt.Fprintf(&sb, "- ⚠️ %s\n", w)
 			}
 			sb.WriteString("\n")
 		}
@@ -203,9 +203,9 @@ func generateSkippedResourcesSection(result *converter.ConversionResult) string 
 	sb.WriteString("The following monitors could not be automatically migrated:\n\n")
 
 	for _, s := range result.Skipped {
-		sb.WriteString(fmt.Sprintf("### %s (ID: %d)\n\n", s.Name, s.ID))
-		sb.WriteString(fmt.Sprintf("**Type:** %d\n\n", s.Type))
-		sb.WriteString(fmt.Sprintf("**Reason:** %s\n\n", s.Reason))
+		fmt.Fprintf(&sb, "### %s (ID: %d)\n\n", s.Name, s.ID)
+		fmt.Fprintf(&sb, "**Type:** %d\n\n", s.Type)
+		fmt.Fprintf(&sb, "**Reason:** %s\n\n", s.Reason)
 		sb.WriteString("**Action Required:** Manual configuration needed\n\n")
 	}
 

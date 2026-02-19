@@ -191,7 +191,7 @@ func (vr *ValidationResult) Print(w io.Writer) {
 		fmt.Fprintln(w, "\nValidation passed: All resources are valid")
 	} else {
 		errorCount := vr.ErrorCount()
-		fmt.Fprintf(w, "\nValidation failed: %d error(s) found\n", errorCount)
+		fmt.Fprintf(w, "\nValidation failed: %d error(s) found\n", errorCount) //nolint:gosec // G705: errorCount is an integer, not user-controlled HTML content
 	}
 }
 

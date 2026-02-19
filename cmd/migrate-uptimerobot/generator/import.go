@@ -29,7 +29,7 @@ func GenerateImportScript(result *converter.ConversionResult) string {
 	sb.WriteString("#   2. Resources created in Hyperping manually or via API\n")
 	sb.WriteString("#   3. HYPERPING_API_KEY environment variable set\n")
 	sb.WriteString("#\n")
-	sb.WriteString(fmt.Sprintf("# Total resources to import: %d\n", len(result.Monitors)+len(result.Healthchecks)))
+	fmt.Fprintf(&sb, "# Total resources to import: %d\n", len(result.Monitors)+len(result.Healthchecks))
 	sb.WriteString("#\n\n")
 
 	sb.WriteString("set -e  # Exit on error\n\n")
@@ -73,10 +73,10 @@ func GenerateImportScript(result *converter.ConversionResult) string {
 		sb.WriteString("# ============================================\n\n")
 
 		for _, m := range result.Monitors {
-			sb.WriteString(fmt.Sprintf("echo \"Importing monitor: %s...\"\n", escapeShellString(m.Name)))
+			fmt.Fprintf(&sb, "echo \"Importing monitor: %s...\"\n", escapeShellString(m.Name))
 			sb.WriteString("# Note: You need the actual Hyperping monitor UUID\n")
 			sb.WriteString("# Replace 'mon_PLACEHOLDER' with the actual UUID from Hyperping\n")
-			sb.WriteString(fmt.Sprintf("if terraform import 'hyperping_monitor.%s' 'mon_PLACEHOLDER_%d' 2>/dev/null; then\n", m.ResourceName, m.OriginalID))
+			fmt.Fprintf(&sb, "if terraform import 'hyperping_monitor.%s' 'mon_PLACEHOLDER_%d' 2>/dev/null; then\n", m.ResourceName, m.OriginalID)
 			sb.WriteString("  echo \"${GREEN}✓ Successfully imported${NC}\"\n")
 			sb.WriteString("  ((SUCCESS_COUNT++))\n")
 			sb.WriteString("else\n")
@@ -94,10 +94,10 @@ func GenerateImportScript(result *converter.ConversionResult) string {
 		sb.WriteString("# ============================================\n\n")
 
 		for _, h := range result.Healthchecks {
-			sb.WriteString(fmt.Sprintf("echo \"Importing healthcheck: %s...\"\n", escapeShellString(h.Name)))
+			fmt.Fprintf(&sb, "echo \"Importing healthcheck: %s...\"\n", escapeShellString(h.Name))
 			sb.WriteString("# Note: You need the actual Hyperping healthcheck UUID\n")
 			sb.WriteString("# Replace 'hc_PLACEHOLDER' with the actual UUID from Hyperping\n")
-			sb.WriteString(fmt.Sprintf("if terraform import 'hyperping_healthcheck.%s' 'hc_PLACEHOLDER_%d' 2>/dev/null; then\n", h.ResourceName, h.OriginalID))
+			fmt.Fprintf(&sb, "if terraform import 'hyperping_healthcheck.%s' 'hc_PLACEHOLDER_%d' 2>/dev/null; then\n", h.ResourceName, h.OriginalID)
 			sb.WriteString("  echo \"${GREEN}✓ Successfully imported${NC}\"\n")
 			sb.WriteString("  ((SUCCESS_COUNT++))\n")
 			sb.WriteString("else\n")

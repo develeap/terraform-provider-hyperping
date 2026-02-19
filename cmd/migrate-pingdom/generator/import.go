@@ -45,21 +45,21 @@ func (g *ImportGenerator) GenerateImportScript(checks []pingdom.Check, results [
 
 		uuid, ok := createdResources[check.ID]
 		if !ok {
-			sb.WriteString(fmt.Sprintf("# Skipping Pingdom Check %d (not yet created in Hyperping)\n", check.ID))
+			fmt.Fprintf(&sb, "# Skipping Pingdom Check %d (not yet created in Hyperping)\n", check.ID)
 			continue
 		}
 
 		if result.Monitor != nil {
 			tfName := g.terraformName(result.Monitor.Name)
-			sb.WriteString(fmt.Sprintf("# Pingdom Check %d: %s\n", check.ID, check.Name))
-			sb.WriteString(fmt.Sprintf("echo \"Importing hyperping_monitor.%s...\"\n", tfName))
-			sb.WriteString(fmt.Sprintf("terraform import hyperping_monitor.%s %q || echo \"Warning: Import failed for %s\"\n", tfName, uuid, tfName))
+			fmt.Fprintf(&sb, "# Pingdom Check %d: %s\n", check.ID, check.Name)
+			fmt.Fprintf(&sb, "echo \"Importing hyperping_monitor.%s...\"\n", tfName)
+			fmt.Fprintf(&sb, "terraform import hyperping_monitor.%s %q || echo \"Warning: Import failed for %s\"\n", tfName, uuid, tfName)
 			sb.WriteString("echo \"\"\n\n")
 			importCount++
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("echo \"Import complete! Imported %d resources.\"\n", importCount))
+	fmt.Fprintf(&sb, "echo \"Import complete! Imported %d resources.\"\n", importCount)
 	sb.WriteString("echo \"Run 'terraform plan' to verify the state matches your configuration.\"\n")
 
 	return sb.String()
@@ -86,8 +86,8 @@ func (g *ImportGenerator) GenerateImportCommands(checks []pingdom.Check, results
 
 		if result.Monitor != nil {
 			tfName := g.terraformName(result.Monitor.Name)
-			sb.WriteString(fmt.Sprintf("# Pingdom Check %d: %s\n", check.ID, check.Name))
-			sb.WriteString(fmt.Sprintf("terraform import hyperping_monitor.%s %q\n\n", tfName, uuid))
+			fmt.Fprintf(&sb, "# Pingdom Check %d: %s\n", check.ID, check.Name)
+			fmt.Fprintf(&sb, "terraform import hyperping_monitor.%s %q\n\n", tfName, uuid)
 		}
 	}
 

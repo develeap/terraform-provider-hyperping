@@ -119,23 +119,23 @@ func (g *Generator) generateMonitorBlock(m converter.ConvertedMonitor) string {
 
 	writeMonitorMigrationNotes(&sb, m.Issues)
 
-	sb.WriteString(fmt.Sprintf("resource \"hyperping_monitor\" %q {\n", m.ResourceName))
-	sb.WriteString(fmt.Sprintf("  name                 = %s\n", quoteString(m.Name)))
-	sb.WriteString(fmt.Sprintf("  url                  = %s\n", quoteString(m.URL)))
+	fmt.Fprintf(&sb, "resource \"hyperping_monitor\" %q {\n", m.ResourceName)
+	fmt.Fprintf(&sb, "  name                 = %s\n", quoteString(m.Name))
+	fmt.Fprintf(&sb, "  url                  = %s\n", quoteString(m.URL))
 
 	for _, f := range buildMonitorOptionalFields(m) {
 		if !f.skip {
-			sb.WriteString(fmt.Sprintf("  %-20s = %s\n", f.name, f.value))
+			fmt.Fprintf(&sb, "  %-20s = %s\n", f.name, f.value)
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("  check_frequency      = %d\n", m.CheckFrequency))
+	fmt.Fprintf(&sb, "  check_frequency      = %d\n", m.CheckFrequency)
 
 	writeMonitorRegions(&sb, m.Regions)
 	writeMonitorRequestHeaders(&sb, m.RequestHeaders)
 
 	if m.RequestBody != "" {
-		sb.WriteString(fmt.Sprintf("\n  request_body = %s\n", quoteString(m.RequestBody)))
+		fmt.Fprintf(&sb, "\n  request_body = %s\n", quoteString(m.RequestBody))
 	}
 
 	sb.WriteString("}\n\n")
@@ -148,22 +148,22 @@ func (g *Generator) generateHealthcheckBlock(h converter.ConvertedHealthcheck) s
 	if len(h.Issues) > 0 {
 		sb.WriteString("# MIGRATION NOTES:\n")
 		for _, issue := range h.Issues {
-			sb.WriteString(fmt.Sprintf("# - %s\n", issue))
+			fmt.Fprintf(&sb, "# - %s\n", issue)
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("resource \"hyperping_healthcheck\" %q {\n", h.ResourceName))
-	sb.WriteString(fmt.Sprintf("  name               = %s\n", quoteString(h.Name)))
+	fmt.Fprintf(&sb, "resource \"hyperping_healthcheck\" %q {\n", h.ResourceName)
+	fmt.Fprintf(&sb, "  name               = %s\n", quoteString(h.Name))
 
 	cronExpr := periodToCron(h.Period)
-	sb.WriteString(fmt.Sprintf("  cron               = %s\n", quoteString(cronExpr)))
+	fmt.Fprintf(&sb, "  cron               = %s\n", quoteString(cronExpr))
 	sb.WriteString("  timezone           = \"UTC\"\n")
 
 	gracePeriodMinutes := h.Grace / 60
 	if gracePeriodMinutes < 1 {
 		gracePeriodMinutes = 1
 	}
-	sb.WriteString(fmt.Sprintf("  grace_period_value = %d\n", gracePeriodMinutes))
+	fmt.Fprintf(&sb, "  grace_period_value = %d\n", gracePeriodMinutes)
 	sb.WriteString("  grace_period_type  = \"minutes\"\n")
 
 	if h.Paused {

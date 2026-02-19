@@ -35,18 +35,18 @@ func (g *TerraformGenerator) GenerateHCL(checks []pingdom.Check, results []conve
 	for i, check := range checks {
 		result := results[i]
 
-		sb.WriteString(fmt.Sprintf("# Pingdom Check ID: %d\n", check.ID))
-		sb.WriteString(fmt.Sprintf("# Original Name: %s\n", check.Name))
-		sb.WriteString(fmt.Sprintf("# Type: %s\n", check.Type))
+		fmt.Fprintf(&sb, "# Pingdom Check ID: %d\n", check.ID)
+		fmt.Fprintf(&sb, "# Original Name: %s\n", check.Name)
+		fmt.Fprintf(&sb, "# Type: %s\n", check.Type)
 
 		if len(check.Tags) > 0 {
-			sb.WriteString(fmt.Sprintf("# Tags: %s\n", converter.TagsToString(check.Tags)))
+			fmt.Fprintf(&sb, "# Tags: %s\n", converter.TagsToString(check.Tags))
 		}
 
 		if !result.Supported {
-			sb.WriteString(fmt.Sprintf("# UNSUPPORTED: %s\n", result.UnsupportedType))
+			fmt.Fprintf(&sb, "# UNSUPPORTED: %s\n", result.UnsupportedType)
 			for _, note := range result.Notes {
-				sb.WriteString(fmt.Sprintf("# NOTE: %s\n", note))
+				fmt.Fprintf(&sb, "# NOTE: %s\n", note)
 			}
 			sb.WriteString("\n")
 			continue
@@ -57,7 +57,7 @@ func (g *TerraformGenerator) GenerateHCL(checks []pingdom.Check, results []conve
 		}
 
 		for _, note := range result.Notes {
-			sb.WriteString(fmt.Sprintf("  # NOTE: %s\n", note))
+			fmt.Fprintf(&sb, "  # NOTE: %s\n", note)
 		}
 
 		sb.WriteString("\n")

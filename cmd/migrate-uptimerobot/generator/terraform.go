@@ -18,10 +18,10 @@ func GenerateTerraform(result *converter.ConversionResult) string {
 	sb.WriteString("# Terraform configuration generated from UptimeRobot migration\n")
 	sb.WriteString("# Review and adjust as needed before applying\n")
 	sb.WriteString("#\n")
-	sb.WriteString(fmt.Sprintf("# Total monitors: %d\n", len(result.Monitors)))
-	sb.WriteString(fmt.Sprintf("# Total healthchecks: %d\n", len(result.Healthchecks)))
+	fmt.Fprintf(&sb, "# Total monitors: %d\n", len(result.Monitors))
+	fmt.Fprintf(&sb, "# Total healthchecks: %d\n", len(result.Healthchecks))
 	if len(result.Skipped) > 0 {
-		sb.WriteString(fmt.Sprintf("# Skipped resources: %d (see comments below)\n", len(result.Skipped)))
+		fmt.Fprintf(&sb, "# Skipped resources: %d (see comments below)\n", len(result.Skipped))
 	}
 	sb.WriteString("\n")
 
@@ -81,7 +81,7 @@ func GenerateTerraform(result *converter.ConversionResult) string {
 		sb.WriteString("# The following monitors could not be migrated:\n")
 		sb.WriteString("#\n")
 		for _, s := range result.Skipped {
-			sb.WriteString(fmt.Sprintf("# - %s (ID: %d, Type: %d): %s\n", s.Name, s.ID, s.Type, s.Reason))
+			fmt.Fprintf(&sb, "# - %s (ID: %d, Type: %d): %s\n", s.Name, s.ID, s.Type, s.Reason)
 		}
 		sb.WriteString("\n")
 	}
@@ -95,9 +95,9 @@ func GenerateTerraform(result *converter.ConversionResult) string {
 		sb.WriteString("# Healthcheck ping URLs\n")
 		sb.WriteString("# Use these URLs to update your heartbeat scripts\n")
 		for _, h := range result.Healthchecks {
-			sb.WriteString(fmt.Sprintf("output \"%s_ping_url\" {\n", h.ResourceName))
-			sb.WriteString(fmt.Sprintf("  description = \"Ping URL for %s\"\n", escapeString(h.Name)))
-			sb.WriteString(fmt.Sprintf("  value       = hyperping_healthcheck.%s.ping_url\n", h.ResourceName))
+			fmt.Fprintf(&sb, "output \"%s_ping_url\" {\n", h.ResourceName)
+			fmt.Fprintf(&sb, "  description = \"Ping URL for %s\"\n", escapeString(h.Name))
+			fmt.Fprintf(&sb, "  value       = hyperping_healthcheck.%s.ping_url\n", h.ResourceName)
 			sb.WriteString("  sensitive   = true\n")
 			sb.WriteString("}\n\n")
 		}
