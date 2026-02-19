@@ -90,7 +90,7 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
       - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Run govulncheck
         run: govulncheck ./...
         continue-on-error: true  # Don't fail build for stdlib vulnerabilities we can't control
