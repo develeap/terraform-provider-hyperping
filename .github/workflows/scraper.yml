@@ -51,12 +51,6 @@ jobs:
           go-version-file: 'tools/cmd/scraper/go.mod'
           cache-dependency-path: tools/cmd/scraper/go.sum
 
-      - name: Install Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser
-          chromium-browser --version
-
       - name: Restore cache and snapshots
         uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
@@ -80,6 +74,7 @@ jobs:
           GITHUB_REPO: ${{ github.event.repository.name }}
           LOG_FORMAT: json
           LOG_LEVEL: ${{ inputs.log_level || 'info' }}
+          CHROME_BIN: google-chrome-stable   # use pre-installed Chrome on ubuntu-latest
         run: |
           ./scraper 2>&1 | tee scraper.log
           echo "EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
@@ -161,8 +156,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version-file: 'tools/cmd/scraper/go.mod'
-          cache-dependency-path: tools/cmd/scraper/go.sum
+          go-version-file: go.mod   # root module (Go 1.24) — needed to build provider binary
+          cache-dependency-path: |
+            go.sum
+            tools/cmd/scraper/go.sum
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: '~1.8'
+          terraform_wrapper: false   # prevents ::error:: annotations from polluting schema stdout
 
       - name: Restore snapshots from cache
         uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
@@ -174,6 +177,42 @@ jobs:
           key: scraper-data-${{ github.run_id }}
           restore-keys: |
             scraper-data-
+
+      - name: Generate Terraform provider schema
+        env:
+          LOG_LEVEL: ${{ inputs.log_level || 'info' }}
+        run: |
+          # Build the provider binary from source — avoids registry download and
+          # the terraform_wrapper ::error:: stdout-pollution that corrupts schema.json.
+          go build -o /tmp/terraform-provider-hyperping .
+
+          # Configure dev_overrides so 'providers schema' uses the local binary.
+          # No 'terraform init' is needed or safe with dev_overrides.
+          cat > ~/.terraformrc <<'EOF'
+          provider_installation {
+            dev_overrides {
+              "develeap/hyperping" = "/tmp"
+            }
+            direct {}
+          }
+          EOF
+
+          # Extract schema; stderr (dev_overrides warning) is silenced.
+          if terraform -chdir=examples/complete providers schema -json \
+              > /tmp/schema.json 2>/tmp/tf-schema-err; then
+            if python3 -c "import json,sys; json.load(open('/tmp/schema.json'))" 2>/dev/null; then
+              echo "SCHEMA_AVAILABLE=true" >> "$GITHUB_ENV"
+              echo "✅ Schema generated ($(wc -c < /tmp/schema.json) bytes)"
+            else
+              echo "SCHEMA_AVAILABLE=false" >> "$GITHUB_ENV"
+              echo "⚠️ Schema JSON is invalid — coverage will be skipped"
+              head -3 /tmp/schema.json || true
+            fi
+          else
+            echo "SCHEMA_AVAILABLE=false" >> "$GITHUB_ENV"
+            echo "⚠️ Could not generate provider schema — coverage will be skipped"
+            cat /tmp/tf-schema-err || true
+          fi
 
       - name: Build scraper
         working-directory: tools/cmd/scraper
@@ -187,12 +226,11 @@ jobs:
           GITHUB_REPO: ${{ github.event.repository.name }}
           LOG_LEVEL: ${{ inputs.log_level || 'info' }}
         run: |
-          # schema-file is optional; skip coverage analysis if not present.
-          if [ -f schema.json ]; then
-            ./scraper -analyze -schema-file=./schema.json -snapshot-dir=./snapshots \
+          if [ "${SCHEMA_AVAILABLE}" = "true" ]; then
+            ./scraper -analyze -schema-file=/tmp/schema.json -snapshot-dir=./snapshots \
               2>&1 | tee analyze.log
           else
-            echo "schema.json not found — skipping coverage analysis (run terraform providers schema -json > schema.json first)" | tee analyze.log
+            echo "Provider schema unavailable — skipping coverage analysis" | tee analyze.log
           fi
           exit 0
 

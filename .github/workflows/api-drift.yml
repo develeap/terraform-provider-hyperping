@@ -23,19 +23,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version-file: tools/cmd/scraper/go.mod
-          cache-dependency-path: tools/cmd/scraper/go.sum
+          go-version-file: go.mod   # root module (Go 1.24) — needed to build provider binary
+          cache-dependency-path: |
+            go.sum
+            tools/cmd/scraper/go.sum
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: '~1.8'
-
-      - name: Install Chrome (for JS-rendered scraping)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y chromium-browser
-          chromium-browser --version
+          terraform_wrapper: false   # prevents ::error:: annotations from polluting schema stdout
 
       - name: Restore snapshots cache
         uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
@@ -57,19 +54,43 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPO_OWNER: ${{ github.repository_owner }}
           GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+          CHROME_BIN: google-chrome-stable   # use pre-installed Chrome on ubuntu-latest
         run: |
           ./scraper -snapshot-dir=./snapshots
           echo "SCRAPE_EXIT=$?" >> "$GITHUB_ENV"
 
       - name: Generate Terraform provider schema
         run: |
-          terraform init -backend=false ./examples/complete 2>/dev/null || true
-          terraform -chdir=examples/complete providers schema -json > /tmp/schema.json 2>/dev/null || true
-          if [ -s /tmp/schema.json ]; then
-            echo "SCHEMA_AVAILABLE=true" >> "$GITHUB_ENV"
+          # Build the provider binary from source — avoids registry download and
+          # the terraform_wrapper ::error:: stdout-pollution that corrupts schema.json.
+          go build -o /tmp/terraform-provider-hyperping .
+
+          # Configure dev_overrides so 'providers schema' uses the local binary.
+          # No 'terraform init' is needed or safe with dev_overrides.
+          cat > ~/.terraformrc <<'EOF'
+          provider_installation {
+            dev_overrides {
+              "develeap/hyperping" = "/tmp"
+            }
+            direct {}
+          }
+          EOF
+
+          # Extract schema; stderr (dev_overrides warning) is silenced.
+          if terraform -chdir=examples/complete providers schema -json \
+              > /tmp/schema.json 2>/tmp/tf-schema-err; then
+            if python3 -c "import json,sys; json.load(open('/tmp/schema.json'))" 2>/dev/null; then
+              echo "SCHEMA_AVAILABLE=true" >> "$GITHUB_ENV"
+              echo "✅ Schema generated ($(wc -c < /tmp/schema.json) bytes)"
+            else
+              echo "SCHEMA_AVAILABLE=false" >> "$GITHUB_ENV"
+              echo "⚠️ Schema JSON is invalid — coverage will be skipped"
+              head -3 /tmp/schema.json || true
+            fi
           else
             echo "SCHEMA_AVAILABLE=false" >> "$GITHUB_ENV"
-            echo "⚠️ Could not generate provider schema — coverage analysis will be skipped"
+            echo "⚠️ Could not generate provider schema — coverage will be skipped"
+            cat /tmp/tf-schema-err || true
           fi
 
       - name: Run coverage analysis
