@@ -64,7 +64,11 @@ func (sm *SnapshotManager) GetLatestSnapshot() (string, error) {
 
 	// Directories sort lexicographically by timestamp format, so last = newest.
 	latest := dirs[len(dirs)-1]
-	return filepath.Join(sm.BaseDir, latest, "hyperping-api.yaml"), nil
+	specPath := filepath.Join(sm.BaseDir, latest, "hyperping-api.yaml")
+	if _, err := os.Stat(specPath); err != nil {
+		return "", fmt.Errorf("snapshot: spec file missing in %s (cache incomplete?): %w", latest, err)
+	}
+	return specPath, nil
 }
 
 // CompareSnapshots loads the two most recent snapshots and compares them.
@@ -91,6 +95,13 @@ func (sm *SnapshotManager) CompareSnapshots() (oldPath, newPath string, err erro
 
 	oldPath = filepath.Join(sm.BaseDir, prevDir, "hyperping-api.yaml")
 	newPath = filepath.Join(sm.BaseDir, currDir, "hyperping-api.yaml")
+
+	if _, err := os.Stat(oldPath); err != nil {
+		return "", "", fmt.Errorf("snapshot: base spec missing (cache incomplete?): %s", oldPath)
+	}
+	if _, err := os.Stat(newPath); err != nil {
+		return "", "", fmt.Errorf("snapshot: current spec missing: %s", newPath)
+	}
 
 	log.Printf("🔍 Comparing snapshots: %s → %s\n", prevDir, currDir)
 	return oldPath, newPath, nil
