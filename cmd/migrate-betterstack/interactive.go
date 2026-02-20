@@ -167,10 +167,10 @@ func runInteractiveConversion(
 		converted, issues := conv.ConvertMonitors([]betterstack.Monitor{monitor})
 		convertedMonitors = append(convertedMonitors, converted...)
 		monitorIssues = append(monitorIssues, issues...)
-		//nolint:errcheck
+		//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
 		progressBar.Add(1)
 	}
-	//nolint:errcheck
+	//nolint:errcheck // best-effort progress display; Finish error does not affect migration correctness
 	progressBar.Finish()
 
 	progressBar = interactive.NewProgressBar(int64(len(heartbeats)), "Converting heartbeats", os.Stderr)
@@ -181,10 +181,10 @@ func runInteractiveConversion(
 		converted, issues := conv.ConvertHeartbeats([]betterstack.Heartbeat{heartbeat})
 		convertedHealthchecks = append(convertedHealthchecks, converted...)
 		healthcheckIssues = append(healthcheckIssues, issues...)
-		//nolint:errcheck
+		//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
 		progressBar.Add(1)
 	}
-	//nolint:errcheck
+	//nolint:errcheck // best-effort progress display; Finish error does not affect migration correctness
 	progressBar.Finish()
 
 	return convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues

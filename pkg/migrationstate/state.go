@@ -39,7 +39,7 @@ func New(toolName, migrationID string, totalResources int, logger *recovery.Logg
 		Failed:           0,
 		ProcessedIDs:     []string{},
 		FailedResources:  []checkpoint.FailedResource{},
-		HyperpingCreated: []string{},
+		HyperpingCreated: []checkpoint.CreatedResource{},
 		Metadata:         make(map[string]string),
 	}
 
@@ -95,9 +95,10 @@ func (s *State) MarkResourceFailed(resourceID, resourceType, resourceName, error
 	s.maybeCheckpoint()
 }
 
-// AddHyperpingResource tracks a created Hyperping resource UUID.
-func (s *State) AddHyperpingResource(uuid string) {
-	s.Checkpoint.AddHyperpingResource(uuid)
+// AddHyperpingResource tracks a created Hyperping resource UUID and type.
+// resourceType should be "monitor" or "healthcheck".
+func (s *State) AddHyperpingResource(uuid, resourceType string) {
+	s.Checkpoint.AddHyperpingResource(uuid, resourceType)
 }
 
 // maybeCheckpoint saves a checkpoint if the interval has been reached.

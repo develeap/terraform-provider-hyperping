@@ -36,6 +36,7 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Skip scraping if analyze-only mode
     if: ${{ github.event.inputs.mode != 'analyze-only' }}
 
@@ -43,7 +44,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
-          fetch-depth: 0  # Full history for proper caching
+          fetch-depth: 1  # Full history for proper caching
 
       - name: Set up Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
@@ -83,7 +84,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
-          name: scraper-logs-${{ github.run_number }}
+          name: scraper-logs-${{ github.run_id }}
           path: tools/cmd/scraper/scraper.log
           retention-days: 30
 
@@ -91,7 +92,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
-          name: diff-reports-${{ github.run_number }}
+          name: diff-reports-${{ github.run_id }}
           path: tools/cmd/scraper/api_changes_*.md
           retention-days: 90
           if-no-files-found: ignore
@@ -100,7 +101,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
-          name: scraped-data-${{ github.run_number }}
+          name: scraped-data-${{ github.run_id }}
           path: tools/cmd/scraper/docs_scraped/
           retention-days: 7
 
@@ -118,7 +119,7 @@ jobs:
           echo "## Scraper Run Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
-          echo "**Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Number:** ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
           echo "**Exit Code:** ${EXIT_CODE:-unknown}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -136,7 +137,7 @@ jobs:
             echo "### Changes Detected" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             for file in api_changes_*.md; do
-              echo "- [$file](../artifacts/${{ github.run_number }}/diff-reports-${{ github.run_number }}/$file)" >> $GITHUB_STEP_SUMMARY
+              echo "- [$file](../artifacts/${{ github.run_id }}/diff-reports-${{ github.run_id }}/$file)" >> $GITHUB_STEP_SUMMARY
             done
           else
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -145,6 +146,7 @@ jobs:
 
   analyze:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [scrape]
     # Run if scrape succeeded, or if analyze-only mode (skip dependency)
     if: ${{ always() && (needs.scrape.result == 'success' || github.event.inputs.mode == 'analyze-only') && github.event.inputs.mode != 'scrape-only' }}
@@ -238,7 +240,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
-          name: analysis-logs-${{ github.run_number }}
+          name: analysis-logs-${{ github.run_id }}
           path: tools/cmd/scraper/analyze.log
           retention-days: 30
 
@@ -246,7 +248,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
-          name: coverage-report-${{ github.run_number }}
+          name: coverage-report-${{ github.run_id }}
           path: tools/cmd/scraper/coverage_report*.md
           retention-days: 90
           if-no-files-found: ignore

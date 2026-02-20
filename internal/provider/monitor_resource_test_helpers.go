@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -232,7 +233,7 @@ func newMockHyperpingServer(t *testing.T) *mockHyperpingServer {
 
 func (m *mockHyperpingServer) createTestMonitor(id, name string) {
 	m.monitors[id] = map[string]interface{}{
-		"monitorUuid":     id,
+		"uuid":            id,
 		"name":            name,
 		"url":             "https://example.com",
 		"method":          "GET",
@@ -369,9 +370,16 @@ func (m *mockHyperpingServer) handleRequest(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockHyperpingServer) listMonitors(w http.ResponseWriter) {
+	// Collect UUIDs and sort for deterministic ordering across Go map iterations.
+	uuids := make([]string, 0, len(m.monitors))
+	for id := range m.monitors {
+		uuids = append(uuids, id)
+	}
+	sort.Strings(uuids)
+
 	monitors := make([]map[string]interface{}, 0, len(m.monitors))
-	for _, monitor := range m.monitors {
-		monitors = append(monitors, monitor)
+	for _, id := range uuids {
+		monitors = append(monitors, m.monitors[id])
 	}
 	if err := json.NewEncoder(w).Encode(monitors); err != nil {
 		m.t.Errorf("failed to encode monitors list: %v", err)

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 // maintenanceBasePath uses the exported constant for consistency.
@@ -15,7 +16,7 @@ var maintenanceBasePath = MaintenanceBasePath
 // ListMaintenance returns all maintenance windows.
 func (c *Client) ListMaintenance(ctx context.Context) ([]Maintenance, error) {
 	var rawResponse json.RawMessage
-	if err := c.doRequest(ctx, "GET", maintenanceBasePath, nil, &rawResponse); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, maintenanceBasePath, nil, &rawResponse); err != nil {
 		return nil, fmt.Errorf("failed to list maintenance windows: %w", err)
 	}
 
@@ -72,7 +73,7 @@ func (c *Client) GetMaintenance(ctx context.Context, uuid string) (*Maintenance,
 	}
 	var maintenance Maintenance
 	path := fmt.Sprintf("%s/%s", maintenanceBasePath, uuid)
-	if err := c.doRequest(ctx, "GET", path, nil, &maintenance); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &maintenance); err != nil {
 		return nil, fmt.Errorf("failed to get maintenance %s: %w", uuid, err)
 	}
 	return &maintenance, nil
@@ -90,7 +91,7 @@ func (c *Client) CreateMaintenance(ctx context.Context, req CreateMaintenanceReq
 	var createResp struct {
 		UUID string `json:"uuid"`
 	}
-	if err := c.doRequest(ctx, "POST", maintenanceBasePath, req, &createResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, maintenanceBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create maintenance: %w", err)
 	}
 
@@ -105,7 +106,7 @@ func (c *Client) UpdateMaintenance(ctx context.Context, uuid string, req UpdateM
 	}
 	var maintenance Maintenance
 	path := fmt.Sprintf("%s/%s", maintenanceBasePath, uuid)
-	if err := c.doRequest(ctx, "PUT", path, req, &maintenance); err != nil {
+	if err := c.doRequest(ctx, http.MethodPut, path, req, &maintenance); err != nil {
 		return nil, fmt.Errorf("failed to update maintenance %s: %w", uuid, err)
 	}
 	return &maintenance, nil
@@ -117,7 +118,7 @@ func (c *Client) DeleteMaintenance(ctx context.Context, uuid string) error {
 		return fmt.Errorf("DeleteMaintenance: %w", err)
 	}
 	path := fmt.Sprintf("%s/%s", maintenanceBasePath, uuid)
-	if err := c.doRequest(ctx, "DELETE", path, nil, nil); err != nil {
+	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete maintenance %s: %w", uuid, err)
 	}
 	return nil

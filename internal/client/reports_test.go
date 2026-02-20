@@ -438,3 +438,137 @@ func TestClient_ListMonitorReports(t *testing.T) {
 		})
 	}
 }
+
+// TestClient_GetMonitorReport_Unauthorized verifies a 401 response produces an unauthorized error.
+func TestClient_GetMonitorReport_Unauthorized(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid API key"})
+	}))
+	defer server.Close()
+
+	c := NewClient("bad-key",
+		WithHTTPClient(server.Client()),
+		WithBaseURL(server.URL),
+		WithMaxRetries(0),
+	)
+
+	_, err := c.GetMonitorReport(context.Background(), "mon_abc", "", "")
+	if err == nil {
+		t.Fatal("expected error for 401 response, got nil")
+	}
+	if !IsUnauthorized(err) {
+		t.Errorf("expected IsUnauthorized to be true, got false; err = %v", err)
+	}
+}
+
+// TestClient_GetMonitorReport_MalformedJSON verifies a 200 response with invalid JSON produces an error.
+func TestClient_GetMonitorReport_MalformedJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{invalid json`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test-key",
+		WithHTTPClient(server.Client()),
+		WithBaseURL(server.URL),
+		WithMaxRetries(0),
+	)
+
+	_, err := c.GetMonitorReport(context.Background(), "mon_abc", "", "")
+	if err == nil {
+		t.Fatal("expected error for malformed JSON response, got nil")
+	}
+}
+
+// TestClient_GetMonitorReport_ContextCancellation verifies a pre-cancelled context produces an error.
+func TestClient_GetMonitorReport_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(MonitorReport{UUID: "mon_abc"})
+	}))
+	defer server.Close()
+
+	c := NewClient("test-key",
+		WithHTTPClient(server.Client()),
+		WithBaseURL(server.URL),
+		WithMaxRetries(0),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := c.GetMonitorReport(ctx, "mon_abc", "", "")
+	if err == nil {
+		t.Fatal("expected error from cancelled context, got nil")
+	}
+}
+
+// TestClient_ListMonitorReports_Unauthorized verifies a 401 response produces an unauthorized error.
+func TestClient_ListMonitorReports_Unauthorized(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid API key"})
+	}))
+	defer server.Close()
+
+	c := NewClient("bad-key",
+		WithHTTPClient(server.Client()),
+		WithBaseURL(server.URL),
+		WithMaxRetries(0),
+	)
+
+	_, err := c.ListMonitorReports(context.Background(), "", "")
+	if err == nil {
+		t.Fatal("expected error for 401 response, got nil")
+	}
+	if !IsUnauthorized(err) {
+		t.Errorf("expected IsUnauthorized to be true, got false; err = %v", err)
+	}
+}
+
+// TestClient_ListMonitorReports_MalformedJSON verifies a 200 response with invalid JSON produces an error.
+func TestClient_ListMonitorReports_MalformedJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{invalid json`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test-key",
+		WithHTTPClient(server.Client()),
+		WithBaseURL(server.URL),
+		WithMaxRetries(0),
+	)
+
+	_, err := c.ListMonitorReports(context.Background(), "", "")
+	if err == nil {
+		t.Fatal("expected error for malformed JSON response, got nil")
+	}
+}
+
+// TestClient_ListMonitorReports_ContextCancellation verifies a pre-cancelled context produces an error.
+func TestClient_ListMonitorReports_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(ListMonitorReportsResponse{Monitors: []MonitorReport{}})
+	}))
+	defer server.Close()
+
+	c := NewClient("test-key",
+		WithHTTPClient(server.Client()),
+		WithBaseURL(server.URL),
+		WithMaxRetries(0),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := c.ListMonitorReports(ctx, "", "")
+	if err == nil {
+		t.Fatal("expected error from cancelled context, got nil")
+	}
+}

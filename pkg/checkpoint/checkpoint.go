@@ -30,6 +30,13 @@ type FailedResource struct {
 	Name  string `json:"name,omitempty"`
 }
 
+// CreatedResource tracks a resource created during migration for rollback.
+type CreatedResource struct {
+	UUID string `json:"uuid"`
+	// Type identifies the Hyperping resource kind: "monitor" or "healthcheck".
+	Type string `json:"type"`
+}
+
 // Checkpoint represents the state of a migration at a point in time
 type Checkpoint struct {
 	MigrationID      string            `json:"migration_id"`
@@ -41,8 +48,11 @@ type Checkpoint struct {
 	Failed           int               `json:"failed"`
 	ProcessedIDs     []string          `json:"processed_ids"`
 	FailedResources  []FailedResource  `json:"failed_resources"`
-	HyperpingCreated []string          `json:"hyperping_created,omitempty"`
+	HyperpingCreated []CreatedResource `json:"hyperping_created,omitempty"`
 	Metadata         map[string]string `json:"metadata,omitempty"`
+
+	// processedSet is an in-memory index for O(1) lookups (not serialized to JSON)
+	processedSet map[string]struct{}
 }
 
 // Manager handles checkpoint file operations
@@ -109,12 +119,91 @@ func (m *Manager) Load(migrationID string) (*Checkpoint, error) {
 		return nil, fmt.Errorf("failed to read checkpoint file: %w", err)
 	}
 
-	var checkpoint Checkpoint
-	if err := json.Unmarshal(data, &checkpoint); err != nil {
+	checkpoint, err := unmarshalCheckpoint(data)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal checkpoint: %w", err)
 	}
 
-	return &checkpoint, nil
+	return checkpoint, nil
+}
+
+// unmarshalCheckpoint deserializes checkpoint JSON and rebuilds in-memory indexes.
+// It also handles the legacy format where hyperping_created was []string.
+func unmarshalCheckpoint(data []byte) (*Checkpoint, error) {
+	// Use a raw intermediate to detect the legacy []string format
+	var raw struct {
+		MigrationID      string            `json:"migration_id"`
+		Tool             string            `json:"tool"`
+		Timestamp        time.Time         `json:"timestamp"`
+		Status           string            `json:"status"`
+		TotalResources   int               `json:"total_resources"`
+		Processed        int               `json:"processed"`
+		Failed           int               `json:"failed"`
+		ProcessedIDs     []string          `json:"processed_ids"`
+		FailedResources  []FailedResource  `json:"failed_resources"`
+		HyperpingCreated json.RawMessage   `json:"hyperping_created,omitempty"`
+		Metadata         map[string]string `json:"metadata,omitempty"`
+	}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+
+	cp := &Checkpoint{
+		MigrationID:     raw.MigrationID,
+		Tool:            raw.Tool,
+		Timestamp:       raw.Timestamp,
+		Status:          raw.Status,
+		TotalResources:  raw.TotalResources,
+		Processed:       raw.Processed,
+		Failed:          raw.Failed,
+		ProcessedIDs:    raw.ProcessedIDs,
+		FailedResources: raw.FailedResources,
+		Metadata:        raw.Metadata,
+	}
+
+	if len(raw.HyperpingCreated) > 0 {
+		cp.HyperpingCreated = parseHyperpingCreated(raw.HyperpingCreated)
+	}
+
+	cp.rebuildProcessedSet()
+	return cp, nil
+}
+
+// parseHyperpingCreated attempts to parse the hyperping_created field, which may be
+// either []CreatedResource (current format) or []string (legacy format).
+func parseHyperpingCreated(raw json.RawMessage) []CreatedResource {
+	// Try current format first: []CreatedResource
+	var resources []CreatedResource
+	if err := json.Unmarshal(raw, &resources); err == nil && len(resources) > 0 && resources[0].UUID != "" {
+		// Ensure any entry missing Type defaults to "monitor" for backward compat
+		for i := range resources {
+			if resources[i].Type == "" {
+				resources[i].Type = "monitor"
+			}
+		}
+		return resources
+	}
+
+	// Fall back to legacy format: []string (plain UUID list)
+	var uuids []string
+	if err := json.Unmarshal(raw, &uuids); err == nil {
+		result := make([]CreatedResource, len(uuids))
+		for i, uuid := range uuids {
+			result[i] = CreatedResource{UUID: uuid, Type: "monitor"}
+		}
+		return result
+	}
+
+	return nil
+}
+
+// rebuildProcessedSet initialises the in-memory O(1) lookup set from ProcessedIDs.
+func (c *Checkpoint) rebuildProcessedSet() {
+	c.processedSet = make(map[string]struct{}, len(c.ProcessedIDs))
+	for _, id := range c.ProcessedIDs {
+		c.processedSet[id] = struct{}{}
+	}
 }
 
 // Delete removes a checkpoint file
@@ -193,22 +282,26 @@ func GenerateMigrationID(tool string) string {
 	return fmt.Sprintf("%s-%s", tool, timestamp)
 }
 
-// IsProcessed checks if a resource ID has been processed
+// IsProcessed checks if a resource ID has been processed using an O(1) map lookup.
 func (c *Checkpoint) IsProcessed(id string) bool {
-	for _, processedID := range c.ProcessedIDs {
-		if processedID == id {
-			return true
-		}
+	if c.processedSet == nil {
+		c.rebuildProcessedSet()
 	}
-	return false
+	_, ok := c.processedSet[id]
+	return ok
 }
 
 // MarkProcessed marks a resource as processed
 func (c *Checkpoint) MarkProcessed(id string) {
-	if !c.IsProcessed(id) {
-		c.ProcessedIDs = append(c.ProcessedIDs, id)
-		c.Processed = len(c.ProcessedIDs)
+	if c.IsProcessed(id) {
+		return
 	}
+	if c.processedSet == nil {
+		c.rebuildProcessedSet()
+	}
+	c.ProcessedIDs = append(c.ProcessedIDs, id)
+	c.processedSet[id] = struct{}{}
+	c.Processed = len(c.ProcessedIDs)
 }
 
 // MarkFailed marks a resource as failed
@@ -217,7 +310,11 @@ func (c *Checkpoint) MarkFailed(failed FailedResource) {
 	c.Failed = len(c.FailedResources)
 }
 
-// AddHyperpingResource tracks a created Hyperping resource
-func (c *Checkpoint) AddHyperpingResource(uuid string) {
-	c.HyperpingCreated = append(c.HyperpingCreated, uuid)
+// AddHyperpingResource tracks a created Hyperping resource with its type.
+// resourceType should be "monitor" or "healthcheck".
+func (c *Checkpoint) AddHyperpingResource(uuid, resourceType string) {
+	c.HyperpingCreated = append(c.HyperpingCreated, CreatedResource{
+		UUID: uuid,
+		Type: resourceType,
+	})
 }

@@ -46,7 +46,7 @@ func TestSaveAndLoad(t *testing.T) {
 		FailedResources: []FailedResource{
 			{ID: "fail1", Type: "monitor", Error: "test error"},
 		},
-		HyperpingCreated: []string{"uuid1", "uuid2"},
+		HyperpingCreated: []CreatedResource{{UUID: "uuid1", Type: "monitor"}, {UUID: "uuid2", Type: "healthcheck"}},
 		Metadata:         map[string]string{"key": "value"},
 	}
 

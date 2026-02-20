@@ -334,7 +334,7 @@ func ExpectAPIError(t *testing.T, err error, expectedStatus int) {
 
 	apiErr, ok := err.(*APIError)
 	if !ok {
-		t.Logf("Warning: expected APIError, got %T: %v", err, err)
+		t.Errorf("expected *APIError with status %d, got %T: %v", expectedStatus, err, err)
 		return
 	}
 

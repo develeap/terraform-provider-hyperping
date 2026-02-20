@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 // incidentsBasePath uses the exported constant for consistency.
@@ -15,7 +16,7 @@ var incidentsBasePath = IncidentsBasePath
 // ListIncidents returns all incidents.
 func (c *Client) ListIncidents(ctx context.Context) ([]Incident, error) {
 	var rawResponse json.RawMessage
-	if err := c.doRequest(ctx, "GET", incidentsBasePath, nil, &rawResponse); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, incidentsBasePath, nil, &rawResponse); err != nil {
 		return nil, fmt.Errorf("failed to list incidents: %w", err)
 	}
 
@@ -63,7 +64,7 @@ func (c *Client) GetIncident(ctx context.Context, uuid string) (*Incident, error
 	}
 	var incident Incident
 	path := fmt.Sprintf("%s/%s", incidentsBasePath, uuid)
-	if err := c.doRequest(ctx, "GET", path, nil, &incident); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &incident); err != nil {
 		return nil, fmt.Errorf("failed to get incident %s: %w", uuid, err)
 	}
 	return &incident, nil
@@ -82,7 +83,7 @@ func (c *Client) CreateIncident(ctx context.Context, req CreateIncidentRequest) 
 		Message string `json:"message"`
 		UUID    string `json:"uuid"`
 	}
-	if err := c.doRequest(ctx, "POST", incidentsBasePath, req, &createResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, incidentsBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create incident: %w", err)
 	}
 
@@ -97,7 +98,7 @@ func (c *Client) UpdateIncident(ctx context.Context, uuid string, req UpdateInci
 	}
 	var incident Incident
 	path := fmt.Sprintf("%s/%s", incidentsBasePath, uuid)
-	if err := c.doRequest(ctx, "PUT", path, req, &incident); err != nil {
+	if err := c.doRequest(ctx, http.MethodPut, path, req, &incident); err != nil {
 		return nil, fmt.Errorf("failed to update incident %s: %w", uuid, err)
 	}
 	return &incident, nil
@@ -110,7 +111,7 @@ func (c *Client) AddIncidentUpdate(ctx context.Context, uuid string, req AddInci
 	}
 	var incident Incident
 	path := fmt.Sprintf("%s/%s/updates", incidentsBasePath, uuid)
-	if err := c.doRequest(ctx, "POST", path, req, &incident); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, req, &incident); err != nil {
 		return nil, fmt.Errorf("failed to add update to incident %s: %w", uuid, err)
 	}
 	return &incident, nil
@@ -132,7 +133,7 @@ func (c *Client) DeleteIncident(ctx context.Context, uuid string) error {
 		return fmt.Errorf("DeleteIncident: %w", err)
 	}
 	path := fmt.Sprintf("%s/%s", incidentsBasePath, uuid)
-	if err := c.doRequest(ctx, "DELETE", path, nil, nil); err != nil {
+	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete incident %s: %w", uuid, err)
 	}
 	return nil

@@ -373,6 +373,9 @@ func (r *StatusPageResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
+	// Preserve write-only fields not returned by the API
+	priorPassword := state.Password
+
 	// Get status page from API
 	statusPage, err := r.client.GetStatusPage(ctx, state.ID.ValueString())
 	if err != nil {
@@ -387,6 +390,12 @@ func (r *StatusPageResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	// Map response to state
 	r.mapStatusPageToModel(statusPage, &state, &resp.Diagnostics)
+
+	// Restore password: API never returns this field, so preserve prior state value
+	// to prevent perpetual drift on every plan/apply cycle.
+	if !priorPassword.IsNull() {
+		state.Password = priorPassword
+	}
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

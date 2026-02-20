@@ -8,14 +8,13 @@ on:
     tags:
       - 'v*'
 
-# Releases need permissions to read and write the repository contents.
-# GitHub considers creating releases and uploading assets as writing contents.
-permissions:
-  contents: write
-
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Scoped to this job only (principle of least privilege)
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:

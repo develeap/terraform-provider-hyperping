@@ -579,41 +579,6 @@ func TestClient_CreateMonitor_ServerError(t *testing.T) {
 	}
 }
 
-// assertFullMonitorRequest validates all fields of a CreateMonitorRequest decoded from an HTTP request body.
-func assertFullMonitorRequest(t *testing.T, req CreateMonitorRequest, expectedBody string) {
-	t.Helper()
-	if req.Name != "Full Monitor" {
-		t.Errorf("Name = %q, expected 'Full Monitor'", req.Name)
-	}
-	if req.URL != "https://api.example.com" {
-		t.Errorf("URL = %q, expected 'https://api.example.com'", req.URL)
-	}
-	if req.Protocol != "http" {
-		t.Errorf("Protocol = %q, expected 'http'", req.Protocol)
-	}
-	if req.HTTPMethod != "POST" {
-		t.Errorf("HTTPMethod = %q, expected 'POST'", req.HTTPMethod)
-	}
-	if req.CheckFrequency != 120 {
-		t.Errorf("CheckFrequency = %d, expected 120", req.CheckFrequency)
-	}
-	if len(req.Regions) != 2 {
-		t.Errorf("len(Regions) = %d, expected 2", len(req.Regions))
-	}
-	if req.ExpectedStatusCode != "201" {
-		t.Errorf("ExpectedStatusCode = %q, expected '201'", req.ExpectedStatusCode)
-	}
-	if req.FollowRedirects == nil || !*req.FollowRedirects {
-		t.Errorf("FollowRedirects = %v, expected true", req.FollowRedirects)
-	}
-	if req.RequestBody == nil || *req.RequestBody != expectedBody {
-		t.Errorf("RequestBody = %v, expected %q", req.RequestBody, expectedBody)
-	}
-	if len(req.RequestHeaders) != 1 || req.RequestHeaders[0].Name != "Content-Type" {
-		t.Errorf("RequestHeaders not properly set")
-	}
-}
-
 // assertCreateMonitorRequest validates the core fields of a decoded CreateMonitorRequest.
 func assertCreateMonitorRequest(t *testing.T, req CreateMonitorRequest, expectedBody string) {
 	t.Helper()
