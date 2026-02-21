@@ -3,7 +3,7 @@ module github.com/develeap/terraform-provider-hyperping/tools/scraper
 go 1.24.0
 
 require (
-	github.com/PuerkitoBio/goquery v1.9.0
+	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/go-rod/rod v0.116.2
 	github.com/google/go-github/v68 v68.0.0
@@ -17,7 +17,7 @@ require (
 require (
 	cloud.google.com/go v0.112.2 // indirect
 	github.com/TwiN/go-color v1.4.1 // indirect
-	github.com/andybalholm/cascadia v1.3.2 // indirect
+	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
@@ -41,6 +41,6 @@ require (
 	github.com/ysmood/leakless v0.9.0 // indirect
 	github.com/zclconf/go-cty v1.16.4 // indirect
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 )
