@@ -94,9 +94,12 @@ jobs:
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Run govulncheck
-        continue-on-error: true  # Don't fail build for stdlib vulnerabilities we can't control
+        # -scan package avoids a govulncheck v1.1.4 internal error triggered by
+        # golang.org/x/sys/unix v0.35+ using //go:linkname in auxv.go, which causes
+        # go/packages to fail type-checking in symbol scan mode (-scan symbol is default).
+        # Package-level scanning still catches all imported vulnerable packages.
         run: |
-          govulncheck ./... 2>&1 | tee /tmp/govulncheck.txt || true
+          govulncheck -scan package ./... 2>&1 | tee /tmp/govulncheck.txt
           echo "## govulncheck Results" >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/govulncheck.txt >> "$GITHUB_STEP_SUMMARY"
         shell: bash
