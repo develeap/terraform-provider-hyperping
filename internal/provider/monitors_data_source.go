@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -214,11 +215,21 @@ func (d *MonitorsDataSource) Read(ctx context.Context, req datasource.ReadReques
 	// Apply client-side filtering if filter provided
 	var filteredMonitors []client.Monitor
 	if config.Filter != nil {
+		// Pre-compile name_regex once before the loop for efficiency
+		var compiledNameRegex *regexp.Regexp
+		if !config.Filter.NameRegex.IsNull() && !config.Filter.NameRegex.IsUnknown() && config.Filter.NameRegex.ValueString() != "" {
+			var compileErr error
+			compiledNameRegex, compileErr = regexp.Compile(config.Filter.NameRegex.ValueString())
+			if compileErr != nil {
+				resp.Diagnostics.AddError(
+					"Invalid name_regex",
+					fmt.Sprintf("name_regex %q is not a valid regular expression: %v", config.Filter.NameRegex.ValueString(), compileErr),
+				)
+				return
+			}
+		}
 		for _, monitor := range monitors {
-			if d.shouldIncludeMonitor(&monitor, config.Filter, &resp.Diagnostics) {
-				if resp.Diagnostics.HasError() {
-					return
-				}
+			if d.filterMonitor(&monitor, config.Filter, compiledNameRegex) {
 				filteredMonitors = append(filteredMonitors, monitor)
 			}
 		}
@@ -239,6 +250,7 @@ func (d *MonitorsDataSource) Read(ctx context.Context, req datasource.ReadReques
 }
 
 // shouldIncludeMonitor determines if a monitor matches the filter criteria.
+// For bulk filtering, prefer filterMonitor which accepts a pre-compiled *regexp.Regexp.
 func (d *MonitorsDataSource) shouldIncludeMonitor(monitor *client.Monitor, filter *MonitorFilterModel, diags *diag.Diagnostics) bool {
 	return ApplyAllFilters(
 		// Name regex filter
@@ -252,6 +264,36 @@ func (d *MonitorsDataSource) shouldIncludeMonitor(monitor *client.Monitor, filte
 				return false
 			}
 			return match
+		},
+		// Protocol filter
+		func() bool {
+			return MatchesExact(monitor.Protocol, filter.Protocol)
+		},
+		// Paused filter
+		func() bool {
+			return MatchesBool(monitor.Paused, filter.Paused)
+		},
+		// Status filter
+		func() bool {
+			return MatchesExact(monitor.Status, filter.Status)
+		},
+		// ProjectUUID filter
+		func() bool {
+			return MatchesExact(monitor.ProjectUUID, filter.ProjectUUID)
+		},
+	)
+}
+
+// filterMonitor determines if a monitor matches the filter criteria using a pre-compiled regex.
+// compiledNameRegex is compiled once before the loop for efficiency; pass nil to skip regex filtering.
+func (d *MonitorsDataSource) filterMonitor(monitor *client.Monitor, filter *MonitorFilterModel, compiledNameRegex *regexp.Regexp) bool {
+	return ApplyAllFilters(
+		// Name regex filter (uses pre-compiled regex for efficiency)
+		func() bool {
+			if compiledNameRegex == nil {
+				return true
+			}
+			return compiledNameRegex.MatchString(monitor.Name)
 		},
 		// Protocol filter
 		func() bool {

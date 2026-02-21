@@ -7,15 +7,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 // monitorsBasePath uses the exported constant for consistency.
 var monitorsBasePath = MonitorsBasePath
 
 // ListMonitors returns all monitors.
+//
+// NOTE: The Hyperping API returns all monitors in a single response (no pagination).
 func (c *Client) ListMonitors(ctx context.Context) ([]Monitor, error) {
 	var rawResponse json.RawMessage
-	if err := c.doRequest(ctx, "GET", monitorsBasePath, nil, &rawResponse); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, monitorsBasePath, nil, &rawResponse); err != nil {
 		return nil, fmt.Errorf("failed to list monitors: %w", err)
 	}
 
@@ -26,6 +29,13 @@ func (c *Client) ListMonitors(ctx context.Context) ([]Monitor, error) {
 	monitors, err := parseMonitorListResponse(rawResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse monitors response: %w", err)
+	}
+
+	if len(monitors) > 200 {
+		c.logDebug(ctx, "large monitor list returned", map[string]interface{}{
+			"count":   len(monitors),
+			"warning": "response contains more than 200 monitors; consider filtering at the API level if supported",
+		})
 	}
 
 	return monitors, nil
@@ -66,7 +76,7 @@ func (c *Client) GetMonitor(ctx context.Context, id string) (*Monitor, error) {
 	}
 	var monitor Monitor
 	path := fmt.Sprintf("%s/%s", monitorsBasePath, id)
-	if err := c.doRequest(ctx, "GET", path, nil, &monitor); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &monitor); err != nil {
 		return nil, fmt.Errorf("failed to get monitor %s: %w", id, err)
 	}
 	return &monitor, nil
@@ -78,7 +88,7 @@ func (c *Client) CreateMonitor(ctx context.Context, req CreateMonitorRequest) (*
 		return nil, fmt.Errorf("CreateMonitor: %w", err)
 	}
 	var monitor Monitor
-	if err := c.doRequest(ctx, "POST", monitorsBasePath, req, &monitor); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, monitorsBasePath, req, &monitor); err != nil {
 		return nil, fmt.Errorf("failed to create monitor: %w", err)
 	}
 	return &monitor, nil
@@ -91,7 +101,7 @@ func (c *Client) UpdateMonitor(ctx context.Context, id string, req UpdateMonitor
 	}
 	var monitor Monitor
 	path := fmt.Sprintf("%s/%s", monitorsBasePath, id)
-	if err := c.doRequest(ctx, "PUT", path, req, &monitor); err != nil {
+	if err := c.doRequest(ctx, http.MethodPut, path, req, &monitor); err != nil {
 		return nil, fmt.Errorf("failed to update monitor %s: %w", id, err)
 	}
 	return &monitor, nil
@@ -103,7 +113,7 @@ func (c *Client) DeleteMonitor(ctx context.Context, id string) error {
 		return fmt.Errorf("DeleteMonitor: %w", err)
 	}
 	path := fmt.Sprintf("%s/%s", monitorsBasePath, id)
-	if err := c.doRequest(ctx, "DELETE", path, nil, nil); err != nil {
+	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete monitor %s: %w", id, err)
 	}
 	return nil

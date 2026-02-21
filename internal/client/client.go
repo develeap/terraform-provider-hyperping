@@ -550,23 +550,36 @@ func (c *Client) parseErrorResponse(statusCode int, headers http.Header, body []
 	return apiErr
 }
 
+// maxRetryAfterSeconds is the maximum Retry-After value we honour (10 minutes).
+// Values above this are clamped to prevent integer overflow when converting to
+// time.Duration and to protect against a server directing us to wait forever.
+const maxRetryAfterSeconds = 600
+
 // parseRetryAfter parses the Retry-After header value.
 // Supports two formats:
 //  1. Integer seconds: "120" means wait 120 seconds
 //  2. HTTP-date format: "Wed, 21 Oct 2015 07:28:00 GMT"
 //
 // Returns 0 if the header is missing, invalid, or in the past.
+// The returned value is always in [0, maxRetryAfterSeconds].
 func parseRetryAfter(retryAfter string) int {
 	if retryAfter == "" {
 		return 0
 	}
 
+	clampRetryAfter := func(s int) int {
+		if s <= 0 {
+			return 0
+		}
+		if s > maxRetryAfterSeconds {
+			return maxRetryAfterSeconds
+		}
+		return s
+	}
+
 	// Try parsing as integer (seconds)
 	if seconds, err := strconv.Atoi(strings.TrimSpace(retryAfter)); err == nil {
-		if seconds > 0 {
-			return seconds
-		}
-		return 0
+		return clampRetryAfter(seconds)
 	}
 
 	// Try parsing as HTTP-date (RFC1123, RFC850, or ANSI C formats)
@@ -576,12 +589,7 @@ func parseRetryAfter(retryAfter string) int {
 	}
 
 	// Calculate seconds until the specified time
-	seconds := int(time.Until(parsedTime).Seconds())
-	if seconds <= 0 {
-		return 0
-	}
-
-	return seconds
+	return clampRetryAfter(int(time.Until(parsedTime).Seconds()))
 }
 
 // calculateBackoff calculates the wait time for a retry attempt.

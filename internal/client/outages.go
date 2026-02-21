@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 // outagesBasePath uses the exported constant for consistency.
@@ -52,7 +53,7 @@ func (c *Client) GetOutage(ctx context.Context, uuid string) (*Outage, error) {
 	var getResp struct {
 		Outage Outage `json:"outage"`
 	}
-	if err := c.doRequest(ctx, "GET", path, nil, &getResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &getResp); err != nil {
 		return nil, fmt.Errorf("failed to get outage: %w", err)
 	}
 
@@ -70,7 +71,7 @@ func (c *Client) ListOutages(ctx context.Context) ([]Outage, error) {
 	path := outagesBasePath
 
 	var rawResponse json.RawMessage
-	if err := c.doRequest(ctx, "GET", path, nil, &rawResponse); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &rawResponse); err != nil {
 		return nil, fmt.Errorf("failed to list outages: %w", err)
 	}
 
@@ -98,7 +99,7 @@ func (c *Client) CreateOutage(ctx context.Context, req CreateOutageRequest) (*Ou
 		Message string `json:"message"`
 		Outage  Outage `json:"outage"`
 	}
-	if err := c.doRequest(ctx, "POST", outagesBasePath, req, &createResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, outagesBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create outage: %w", err)
 	}
 
@@ -114,7 +115,7 @@ func (c *Client) AcknowledgeOutage(ctx context.Context, uuid string) (*OutageAct
 	path := fmt.Sprintf("%s/%s/acknowledge", outagesBasePath, uuid)
 
 	var response OutageAction
-	if err := c.doRequest(ctx, "POST", path, nil, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to acknowledge outage: %w", err)
 	}
 
@@ -130,7 +131,7 @@ func (c *Client) UnacknowledgeOutage(ctx context.Context, uuid string) (*OutageA
 	path := fmt.Sprintf("%s/%s/unacknowledge", outagesBasePath, uuid)
 
 	var response OutageAction
-	if err := c.doRequest(ctx, "POST", path, nil, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to unacknowledge outage: %w", err)
 	}
 
@@ -146,7 +147,7 @@ func (c *Client) ResolveOutage(ctx context.Context, uuid string) (*OutageAction,
 	path := fmt.Sprintf("%s/%s/resolve", outagesBasePath, uuid)
 
 	var response OutageAction
-	if err := c.doRequest(ctx, "POST", path, nil, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to resolve outage: %w", err)
 	}
 
@@ -162,7 +163,7 @@ func (c *Client) EscalateOutage(ctx context.Context, uuid string) (*OutageAction
 	path := fmt.Sprintf("%s/%s/escalate", outagesBasePath, uuid)
 
 	var response OutageAction
-	if err := c.doRequest(ctx, "POST", path, nil, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to escalate outage: %w", err)
 	}
 
@@ -177,7 +178,7 @@ func (c *Client) DeleteOutage(ctx context.Context, uuid string) error {
 	}
 	path := fmt.Sprintf("%s/%s", outagesBasePath, uuid)
 
-	if err := c.doRequest(ctx, "DELETE", path, nil, nil); err != nil {
+	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete outage: %w", err)
 	}
 

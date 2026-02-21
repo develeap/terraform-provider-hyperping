@@ -17,6 +17,10 @@ updates:
     directory: "/tools"
     schedule:
       interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/tools/cmd/scraper"
+    schedule:
+      interval: "daily"
   - package-ecosystem: "github-actions"
     directory: "/"
     groups:

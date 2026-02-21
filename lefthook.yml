@@ -73,8 +73,12 @@ pre-push:
       fail_text: "go vet found issues"
 
     govulncheck:
-      run: govulncheck ./... || true  # Non-fatal: govulncheck has known issues with some deps
-      fail_text: "Vulnerabilities found. Run: govulncheck ./..."
+      # -scan package avoids a govulncheck v1.1.4 internal error: golang.org/x/sys/unix
+      # v0.35+ uses //go:linkname runtime.getAuxv in auxv.go, which causes go/packages
+      # to fail type-checking in the default symbol scan mode. Package-level scanning
+      # still detects all imported packages with known CVEs.
+      run: govulncheck -scan package ./...
+      fail_text: "Vulnerabilities found. Run: govulncheck -scan package ./..."
 
 # Skip hooks in CI (GitHub Actions sets CI=true)
 skip_in_ci: true

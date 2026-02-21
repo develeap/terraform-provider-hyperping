@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 )
 
@@ -33,7 +34,7 @@ func (c *Client) GetMonitorReport(ctx context.Context, uuid string, from, to str
 	}
 
 	var report MonitorReport
-	if err := c.doRequest(ctx, "GET", path, nil, &report); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &report); err != nil {
 		return nil, fmt.Errorf("failed to get monitor report %s: %w", uuid, err)
 	}
 	return &report, nil
@@ -58,7 +59,7 @@ func (c *Client) ListMonitorReports(ctx context.Context, from, to string) ([]Mon
 	}
 
 	var response ListMonitorReportsResponse
-	if err := c.doRequest(ctx, "GET", path, nil, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to list monitor reports: %w", err)
 	}
 	return response.Monitors, nil

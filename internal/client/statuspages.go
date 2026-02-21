@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 )
@@ -34,7 +35,7 @@ func (c *Client) ListStatusPages(ctx context.Context, page *int, search *string)
 	}
 
 	var response StatusPagePaginatedResponse
-	if err := c.doRequest(ctx, "GET", path, nil, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to list status pages: %w", err)
 	}
 
@@ -52,7 +53,7 @@ func (c *Client) GetStatusPage(ctx context.Context, uuid string) (*StatusPage, e
 		StatusPage StatusPage `json:"statuspage"`
 	}
 	path := fmt.Sprintf("%s/%s", statuspagesBasePath, uuid)
-	if err := c.doRequest(ctx, "GET", path, nil, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to get status page %s: %w", uuid, err)
 	}
 
@@ -71,7 +72,7 @@ func (c *Client) CreateStatusPage(ctx context.Context, req CreateStatusPageReque
 		StatusPage StatusPage `json:"statuspage"`
 	}
 
-	if err := c.doRequest(ctx, "POST", statuspagesBasePath, req, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, statuspagesBasePath, req, &response); err != nil {
 		return nil, fmt.Errorf("failed to create status page: %w", err)
 	}
 
@@ -92,7 +93,7 @@ func (c *Client) UpdateStatusPage(ctx context.Context, uuid string, req UpdateSt
 	}
 
 	path := fmt.Sprintf("%s/%s", statuspagesBasePath, uuid)
-	if err := c.doRequest(ctx, "PUT", path, req, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodPut, path, req, &response); err != nil {
 		return nil, fmt.Errorf("failed to update status page %s: %w", uuid, err)
 	}
 
@@ -107,7 +108,7 @@ func (c *Client) DeleteStatusPage(ctx context.Context, uuid string) error {
 	}
 
 	path := fmt.Sprintf("%s/%s", statuspagesBasePath, uuid)
-	if err := c.doRequest(ctx, "DELETE", path, nil, nil); err != nil {
+	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete status page %s: %w", uuid, err)
 	}
 
@@ -140,7 +141,7 @@ func (c *Client) ListSubscribers(ctx context.Context, uuid string, page *int, su
 	}
 
 	var response SubscriberPaginatedResponse
-	if err := c.doRequest(ctx, "GET", path, nil, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to list subscribers for status page %s: %w", uuid, err)
 	}
 
@@ -171,7 +172,7 @@ func (c *Client) AddSubscriber(ctx context.Context, uuid string, req AddSubscrib
 	}
 
 	path := fmt.Sprintf("%s/%s/subscribers", statuspagesBasePath, uuid)
-	if err := c.doRequest(ctx, "POST", path, req, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, req, &response); err != nil {
 		return nil, fmt.Errorf("failed to add subscriber to status page %s: %w", uuid, err)
 	}
 
@@ -189,7 +190,7 @@ func (c *Client) DeleteSubscriber(ctx context.Context, uuid string, subscriberID
 	}
 
 	path := fmt.Sprintf("%s/%s/subscribers/%d", statuspagesBasePath, uuid, subscriberID)
-	if err := c.doRequest(ctx, "DELETE", path, nil, nil); err != nil {
+	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete subscriber %d from status page %s: %w", subscriberID, uuid, err)
 	}
 

@@ -14,8 +14,14 @@ import (
 // The cleanup function ensures browser is always closed, even on panic
 func launchBrowser(config ScraperConfig) (*rod.Browser, func(), error) {
 	l := launcher.New().
-		Headless(config.Headless).
-		NoSandbox(true) // Required for CI environments (GitHub Actions, Docker)
+		Headless(config.Headless)
+
+	// NoSandbox disables Chrome's renderer sandbox. Only enable in CI/Docker
+	// environments where the sandbox is not available. Never enable locally,
+	// as it removes a critical defense against malicious content in scraped pages.
+	if os.Getenv("CI") == "true" || os.Getenv("CHROME_NO_SANDBOX") == "true" {
+		l = l.NoSandbox(true)
+	}
 
 	if chromeBin := os.Getenv("CHROME_BIN"); chromeBin != "" {
 		l = l.Bin(chromeBin)

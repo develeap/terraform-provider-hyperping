@@ -249,14 +249,14 @@ func (w *interactiveWizardPD) executeMigration() int {
 
 	createdResources := w.createHyperpingResources(progressBar)
 
-	//nolint:errcheck
+	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
 	progressBar.Add(1)
 
 	if exitCode := w.writeImportScript(createdResources); exitCode != 0 {
 		return exitCode
 	}
 
-	//nolint:errcheck
+	//nolint:errcheck // best-effort progress display; Finish error does not affect migration correctness
 	progressBar.Finish()
 
 	w.printFinalSummary(migrationReport)
@@ -272,7 +272,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to write Terraform config: %v", writeErr))
 		return 1
 	}
-	//nolint:errcheck
+	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
 	progressBar.Add(1)
 
 	jsonReport, err := reporter.GenerateJSONReport(migrationReport)
@@ -285,7 +285,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to write JSON report: %v", writeErr))
 		return 1
 	}
-	//nolint:errcheck
+	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
 	progressBar.Add(1)
 
 	textReport := reporter.GenerateTextReport(migrationReport)
@@ -294,7 +294,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to write text report: %v", writeErr))
 		return 1
 	}
-	//nolint:errcheck
+	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
 	progressBar.Add(1)
 
 	manualSteps := reporter.GenerateManualStepsMarkdown(migrationReport)
@@ -303,7 +303,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to write manual steps: %v", writeErr))
 		return 1
 	}
-	//nolint:errcheck
+	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
 	progressBar.Add(1)
 
 	return 0

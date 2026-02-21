@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 // healthchecksBasePath uses the exported constant for consistency.
@@ -52,7 +53,7 @@ func (c *Client) GetHealthcheck(ctx context.Context, uuid string) (*Healthcheck,
 	var getResp struct {
 		Healthcheck Healthcheck `json:"healthcheck"`
 	}
-	if err := c.doRequest(ctx, "GET", path, nil, &getResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &getResp); err != nil {
 		return nil, fmt.Errorf("failed to get healthcheck: %w", err)
 	}
 
@@ -70,7 +71,7 @@ func (c *Client) ListHealthchecks(ctx context.Context) ([]Healthcheck, error) {
 	path := healthchecksBasePath
 
 	var rawResponse json.RawMessage
-	if err := c.doRequest(ctx, "GET", path, nil, &rawResponse); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, path, nil, &rawResponse); err != nil {
 		return nil, fmt.Errorf("failed to list healthchecks: %w", err)
 	}
 
@@ -95,7 +96,7 @@ func (c *Client) CreateHealthcheck(ctx context.Context, req CreateHealthcheckReq
 		Message     string      `json:"message"`
 		Healthcheck Healthcheck `json:"healthcheck"`
 	}
-	if err := c.doRequest(ctx, "POST", healthchecksBasePath, req, &createResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, healthchecksBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create healthcheck: %w", err)
 	}
 
@@ -115,7 +116,7 @@ func (c *Client) UpdateHealthcheck(ctx context.Context, uuid string, req UpdateH
 		Message     string      `json:"message"`
 		Healthcheck Healthcheck `json:"healthcheck"`
 	}
-	if err := c.doRequest(ctx, "PUT", path, req, &updateResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPut, path, req, &updateResp); err != nil {
 		return nil, fmt.Errorf("failed to update healthcheck: %w", err)
 	}
 	return &updateResp.Healthcheck, nil
@@ -129,7 +130,7 @@ func (c *Client) DeleteHealthcheck(ctx context.Context, uuid string) error {
 	}
 	path := fmt.Sprintf("%s/%s", healthchecksBasePath, uuid)
 
-	if err := c.doRequest(ctx, "DELETE", path, nil, nil); err != nil {
+	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete healthcheck: %w", err)
 	}
 	return nil
@@ -144,7 +145,7 @@ func (c *Client) PauseHealthcheck(ctx context.Context, uuid string) (*Healthchec
 	path := fmt.Sprintf("%s/%s/pause", healthchecksBasePath, uuid)
 
 	var action HealthcheckAction
-	if err := c.doRequest(ctx, "POST", path, nil, &action); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, nil, &action); err != nil {
 		return nil, fmt.Errorf("failed to pause healthcheck: %w", err)
 	}
 	return &action, nil
@@ -159,7 +160,7 @@ func (c *Client) ResumeHealthcheck(ctx context.Context, uuid string) (*Healthche
 	path := fmt.Sprintf("%s/%s/resume", healthchecksBasePath, uuid)
 
 	var action HealthcheckAction
-	if err := c.doRequest(ctx, "POST", path, nil, &action); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, nil, &action); err != nil {
 		return nil, fmt.Errorf("failed to resume healthcheck: %w", err)
 	}
 	return &action, nil

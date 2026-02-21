@@ -41,6 +41,9 @@ jobs:
       github.ref == 'refs/heads/main' ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
 
+    env:
+      HAS_BETTERSTACK_CREDS: ${{ secrets.BETTERSTACK_API_TOKEN != '' && secrets.HYPERPING_TEST_API_KEY != '' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -58,34 +61,33 @@ jobs:
           terraform_wrapper: false
 
       - name: Run Better Stack integration tests
-        if: env.BETTERSTACK_API_TOKEN != '' && env.HYPERPING_API_KEY != ''
+        if: env.HAS_BETTERSTACK_CREDS == 'true'
         env:
           BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
           HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+          # Use env var to avoid direct interpolation of user input into shell (injection prevention)
+          SCENARIO_INPUT: ${{ github.event.inputs.scenario }}
         run: |
           echo "Running Better Stack integration tests..."
 
-          # Determine which tests to run based on scenario
+          # Validate and map scenario to test pattern (prevents shell injection)
           TEST_PATTERN="."
-          if [ "${{ github.event.inputs.scenario }}" = "small" ]; then
-            TEST_PATTERN="SmallScenario"
-          elif [ "${{ github.event.inputs.scenario }}" = "medium" ]; then
-            TEST_PATTERN="MediumScenario"
-          elif [ "${{ github.event.inputs.scenario }}" = "large" ]; then
-            TEST_PATTERN="LargeScenario"
-          fi
+          case "$SCENARIO_INPUT" in
+            small)  TEST_PATTERN="SmallScenario" ;;
+            medium) TEST_PATTERN="MediumScenario" ;;
+            large)  TEST_PATTERN="LargeScenario" ;;
+            all|"") ;;
+            *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
+          esac
 
           go test -v -tags=integration -timeout=30m \
             -run="TestBetterStack.*$TEST_PATTERN" \
             ./cmd/migrate-betterstack/
 
       - name: Skip notice (missing credentials)
-        if: env.BETTERSTACK_API_TOKEN == '' || env.HYPERPING_API_KEY == ''
-        env:
-          BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        if: env.HAS_BETTERSTACK_CREDS != 'true'
         run: |
-          echo "⚠️  Better Stack integration tests skipped - credentials not available"
+          echo "Skipping Better Stack integration tests - credentials not configured"
           echo "This is expected for pull requests from forks."
 
   integration-uptimerobot:
@@ -97,6 +99,9 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/main' ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+
+    env:
+      HAS_UPTIMEROBOT_CREDS: ${{ secrets.UPTIMEROBOT_API_KEY != '' && secrets.HYPERPING_TEST_API_KEY != '' }}
 
     steps:
       - name: Checkout code
@@ -115,34 +120,33 @@ jobs:
           terraform_wrapper: false
 
       - name: Run UptimeRobot integration tests
-        if: env.UPTIMEROBOT_API_KEY != '' && env.HYPERPING_API_KEY != ''
+        if: env.HAS_UPTIMEROBOT_CREDS == 'true'
         env:
           UPTIMEROBOT_API_KEY: ${{ secrets.UPTIMEROBOT_API_KEY }}
           HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+          # Use env var to avoid direct interpolation of user input into shell (injection prevention)
+          SCENARIO_INPUT: ${{ github.event.inputs.scenario }}
         run: |
           echo "Running UptimeRobot integration tests..."
 
-          # Determine which tests to run based on scenario
+          # Validate and map scenario to test pattern (prevents shell injection)
           TEST_PATTERN="."
-          if [ "${{ github.event.inputs.scenario }}" = "small" ]; then
-            TEST_PATTERN="SmallScenario"
-          elif [ "${{ github.event.inputs.scenario }}" = "medium" ]; then
-            TEST_PATTERN="MediumScenario"
-          elif [ "${{ github.event.inputs.scenario }}" = "large" ]; then
-            TEST_PATTERN="LargeScenario"
-          fi
+          case "$SCENARIO_INPUT" in
+            small)  TEST_PATTERN="SmallScenario" ;;
+            medium) TEST_PATTERN="MediumScenario" ;;
+            large)  TEST_PATTERN="LargeScenario" ;;
+            all|"") ;;
+            *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
+          esac
 
           go test -v -tags=integration -timeout=30m \
             -run="TestUptimeRobot.*$TEST_PATTERN" \
             ./cmd/migrate-uptimerobot/
 
       - name: Skip notice (missing credentials)
-        if: env.UPTIMEROBOT_API_KEY == '' || env.HYPERPING_API_KEY == ''
-        env:
-          UPTIMEROBOT_API_KEY: ${{ secrets.UPTIMEROBOT_API_KEY }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        if: env.HAS_UPTIMEROBOT_CREDS != 'true'
         run: |
-          echo "⚠️  UptimeRobot integration tests skipped - credentials not available"
+          echo "Skipping UptimeRobot integration tests - credentials not configured"
           echo "This is expected for pull requests from forks."
 
   integration-pingdom:
@@ -154,6 +158,9 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/main' ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+
+    env:
+      HAS_PINGDOM_CREDS: ${{ secrets.PINGDOM_API_KEY != '' && secrets.HYPERPING_TEST_API_KEY != '' }}
 
     steps:
       - name: Checkout code
@@ -172,34 +179,33 @@ jobs:
           terraform_wrapper: false
 
       - name: Run Pingdom integration tests
-        if: env.PINGDOM_API_KEY != '' && env.HYPERPING_API_KEY != ''
+        if: env.HAS_PINGDOM_CREDS == 'true'
         env:
           PINGDOM_API_KEY: ${{ secrets.PINGDOM_API_KEY }}
           HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+          # Use env var to avoid direct interpolation of user input into shell (injection prevention)
+          SCENARIO_INPUT: ${{ github.event.inputs.scenario }}
         run: |
           echo "Running Pingdom integration tests..."
 
-          # Determine which tests to run based on scenario
+          # Validate and map scenario to test pattern (prevents shell injection)
           TEST_PATTERN="."
-          if [ "${{ github.event.inputs.scenario }}" = "small" ]; then
-            TEST_PATTERN="SmallScenario"
-          elif [ "${{ github.event.inputs.scenario }}" = "medium" ]; then
-            TEST_PATTERN="MediumScenario"
-          elif [ "${{ github.event.inputs.scenario }}" = "large" ]; then
-            TEST_PATTERN="LargeScenario"
-          fi
+          case "$SCENARIO_INPUT" in
+            small)  TEST_PATTERN="SmallScenario" ;;
+            medium) TEST_PATTERN="MediumScenario" ;;
+            large)  TEST_PATTERN="LargeScenario" ;;
+            all|"") ;;
+            *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
+          esac
 
           go test -v -tags=integration -timeout=30m \
             -run="TestPingdom.*$TEST_PATTERN" \
             ./cmd/migrate-pingdom/
 
       - name: Skip notice (missing credentials)
-        if: env.PINGDOM_API_KEY == '' || env.HYPERPING_API_KEY == ''
-        env:
-          PINGDOM_API_KEY: ${{ secrets.PINGDOM_API_KEY }}
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_TEST_API_KEY }}
+        if: env.HAS_PINGDOM_CREDS != 'true'
         run: |
-          echo "⚠️  Pingdom integration tests skipped - credentials not available"
+          echo "Skipping Pingdom integration tests - credentials not configured"
           echo "This is expected for pull requests from forks."
 
   integration-summary:
@@ -218,11 +224,14 @@ jobs:
           echo "Pingdom: ${{ needs.integration-pingdom.result }}"
           echo ""
 
-          # Fail if any job failed (but allow skipped)
+          # Fail if any job failed or was cancelled (allow skipped)
           if [ "${{ needs.integration-betterstack.result }}" = "failure" ] || \
+             [ "${{ needs.integration-betterstack.result }}" = "cancelled" ] || \
              [ "${{ needs.integration-uptimerobot.result }}" = "failure" ] || \
-             [ "${{ needs.integration-pingdom.result }}" = "failure" ]; then
-            echo "❌ One or more integration test jobs failed"
+             [ "${{ needs.integration-uptimerobot.result }}" = "cancelled" ] || \
+             [ "${{ needs.integration-pingdom.result }}" = "failure" ] || \
+             [ "${{ needs.integration-pingdom.result }}" = "cancelled" ]; then
+            echo "❌ One or more integration test jobs failed or were cancelled"
             exit 1
           fi
 

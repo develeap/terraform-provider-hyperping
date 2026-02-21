@@ -9,6 +9,7 @@ on:
 jobs:
   drift:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write        # to commit OAS snapshot branches
       issues: write          # to open/update drift issues
@@ -40,7 +41,7 @@ jobs:
           path: |
             tools/cmd/scraper/.scraper_cache.json
             tools/cmd/scraper/snapshots/
-          key: scraper-snapshots-${{ github.run_id }}
+          key: scraper-snapshots-${{ github.sha }}
           restore-keys: |
             scraper-snapshots-
 
@@ -135,7 +136,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@615b319bd27bb32c3d64dca6b6ed6974d5fbe653 # v6.0.0
         with:
-          name: coverage-report-${{ github.run_number }}
+          name: coverage-report-${{ github.run_id }}
           path: tools/cmd/scraper/coverage_report*.md
           retention-days: 90
           if-no-files-found: ignore

@@ -383,7 +383,7 @@ func (r *pingdomRunner) createHyperpingResources(checks []pingdom.Check, results
 
 		createdResources[check.ID] = monitor.UUID
 		if r.state != nil {
-			r.state.AddHyperpingResource(monitor.UUID)
+			r.state.AddHyperpingResource(monitor.UUID, "monitor")
 		}
 		createdCount++
 

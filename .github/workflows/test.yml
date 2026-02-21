@@ -47,7 +47,9 @@ jobs:
   # Documentation check: Verify docs are up-to-date (generated via lefthook pre-commit)
   generate:
     name: Documentation
+    needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
@@ -92,8 +94,15 @@ jobs:
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Run govulncheck
-        run: govulncheck ./...
-        continue-on-error: true  # Don't fail build for stdlib vulnerabilities we can't control
+        # -scan package avoids a govulncheck v1.1.4 internal error triggered by
+        # golang.org/x/sys/unix v0.35+ using //go:linkname in auxv.go, which causes
+        # go/packages to fail type-checking in symbol scan mode (-scan symbol is default).
+        # Package-level scanning still catches all imported vulnerable packages.
+        run: |
+          govulncheck -scan package ./... 2>&1 | tee /tmp/govulncheck.txt
+          echo "## govulncheck Results" >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/govulncheck.txt >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
       - name: Run gosec
         uses: securego/gosec@398ad549bbf1a51dc978fd966169f660c59774de # v2.23.0
         with:
@@ -258,7 +267,7 @@ jobs:
             tools/cmd/scraper/.scraper_cache.json
             tools/cmd/scraper/snapshots/
             tools/cmd/scraper/docs_scraped/
-          key: scraper-data-
+          key: scraper-data-${{ hashFiles('tools/cmd/scraper/snapshots/**') }}
           restore-keys: |
             scraper-data-
 

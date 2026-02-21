@@ -39,18 +39,7 @@ func PerformRollback(migrationID string, hyperpingAPIKey string, force bool, log
 	}
 
 	if !force {
-		fmt.Fprintf(os.Stderr, "\nThis will delete %d resources from Hyperping:\n", len(cp.HyperpingCreated))
-		for i, uuid := range cp.HyperpingCreated {
-			if i < 10 {
-				fmt.Fprintf(os.Stderr, "  - %s\n", uuid)
-			} else if i == 10 {
-				fmt.Fprintf(os.Stderr, "  ... and %d more\n", len(cp.HyperpingCreated)-10)
-				break
-			}
-		}
-		fmt.Fprintln(os.Stderr)
-
-		if !recovery.ConfirmAction("Are you sure you want to delete these resources?", false) {
+		if !confirmRollback(cp.HyperpingCreated) {
 			logger.Info("Rollback cancelled by user")
 			fmt.Fprintln(os.Stderr, "Rollback cancelled")
 			return 0
@@ -62,31 +51,72 @@ func PerformRollback(migrationID string, hyperpingAPIKey string, force bool, log
 	defer cancel()
 
 	backoff := recovery.DefaultBackoff()
-	deletedCount := 0
-	failedCount := 0
+	deletedCount, failedCount := deleteResources(ctx, cp.HyperpingCreated, hpClient, backoff, logger)
 
-	logger.Info("Deleting %d Hyperping resources...", len(cp.HyperpingCreated))
+	logger.Info("Rollback complete: %d deleted, %d failed", deletedCount, failedCount)
+	return finalizeRollback(mgr, migrationID, deletedCount, failedCount, logger)
+}
 
-	for _, uuid := range cp.HyperpingCreated {
-		logger.Debug("Deleting resource: %s", uuid)
+// confirmRollback prints the resource list and asks for user confirmation.
+// Returns true if the user confirmed, false if they cancelled.
+func confirmRollback(resources []checkpoint.CreatedResource) bool {
+	fmt.Fprintf(os.Stderr, "\nThis will delete %d resources from Hyperping:\n", len(resources))
+	for i, r := range resources {
+		if i < 10 {
+			fmt.Fprintf(os.Stderr, "  - %s (%s)\n", r.UUID, r.Type)
+		} else if i == 10 {
+			fmt.Fprintf(os.Stderr, "  ... and %d more\n", len(resources)-10)
+			break
+		}
+	}
+	fmt.Fprintln(os.Stderr)
+
+	return recovery.ConfirmAction("Are you sure you want to delete these resources?", false)
+}
+
+// deleteResources iterates over created resources and deletes each by dispatching on type.
+func deleteResources(
+	ctx context.Context,
+	resources []checkpoint.CreatedResource,
+	hpClient *client.Client,
+	backoff *recovery.ExponentialBackoff,
+	logger *recovery.Logger,
+) (deletedCount, failedCount int) {
+	logger.Info("Deleting %d Hyperping resources...", len(resources))
+
+	for _, r := range resources {
+		logger.Debug("Deleting %s resource: %s", r.Type, r.UUID)
 
 		err := backoff.Retry(ctx, func() error {
-			return hpClient.DeleteMonitor(ctx, uuid)
+			return deleteByType(ctx, hpClient, r)
 		})
 
 		if err != nil {
-			logger.Error("Failed to delete resource %s: %v", uuid, err)
-			fmt.Fprintf(os.Stderr, "Warning: Failed to delete %s: %v\n", uuid, err)
+			logger.Error("Failed to delete %s %s: %v", r.Type, r.UUID, err)
+			fmt.Fprintf(os.Stderr, "Warning: Failed to delete %s %s: %v\n", r.Type, r.UUID, err)
 			failedCount++
 			continue
 		}
 
 		deletedCount++
-		logger.Debug("Successfully deleted resource: %s", uuid)
+		logger.Debug("Successfully deleted %s resource: %s", r.Type, r.UUID)
 	}
 
-	logger.Info("Rollback complete: %d deleted, %d failed", deletedCount, failedCount)
+	return deletedCount, failedCount
+}
 
+// deleteByType dispatches the delete call based on the resource type.
+func deleteByType(ctx context.Context, hpClient *client.Client, r checkpoint.CreatedResource) error {
+	switch r.Type {
+	case "healthcheck":
+		return hpClient.DeleteHealthcheck(ctx, r.UUID)
+	default: // "monitor" and any legacy entries default to monitor deletion
+		return hpClient.DeleteMonitor(ctx, r.UUID)
+	}
+}
+
+// finalizeRollback prints the result summary and cleans up the checkpoint if successful.
+func finalizeRollback(mgr *checkpoint.Manager, migrationID string, deletedCount, failedCount int, logger *recovery.Logger) int {
 	if failedCount == 0 {
 		if err := mgr.Delete(migrationID); err != nil {
 			logger.Warn("Failed to delete checkpoint file: %v", err)
@@ -126,20 +156,34 @@ func ListCheckpoints(tool string) int {
 		return 0
 	}
 
-	var filtered []*checkpoint.Checkpoint
-	for _, cp := range checkpoints {
-		if tool == "" || cp.Tool == tool {
-			filtered = append(filtered, cp)
-		}
-	}
-
+	filtered := filterCheckpoints(checkpoints, tool)
 	if len(filtered) == 0 {
 		fmt.Fprintf(os.Stderr, "No checkpoints found for tool: %s\n", tool)
 		return 0
 	}
 
+	printCheckpoints(filtered)
+	return 0
+}
+
+// filterCheckpoints returns checkpoints matching tool (or all if tool is empty).
+func filterCheckpoints(checkpoints []*checkpoint.Checkpoint, tool string) []*checkpoint.Checkpoint {
+	if tool == "" {
+		return checkpoints
+	}
+	var filtered []*checkpoint.Checkpoint
+	for _, cp := range checkpoints {
+		if cp.Tool == tool {
+			filtered = append(filtered, cp)
+		}
+	}
+	return filtered
+}
+
+// printCheckpoints writes checkpoint details to stderr.
+func printCheckpoints(checkpoints []*checkpoint.Checkpoint) {
 	fmt.Fprintf(os.Stderr, "Available checkpoints:\n\n")
-	for _, cp := range filtered {
+	for _, cp := range checkpoints {
 		fmt.Fprintf(os.Stderr, "Migration ID: %s\n", cp.MigrationID)
 		fmt.Fprintf(os.Stderr, "  Tool: %s\n", cp.Tool)
 		fmt.Fprintf(os.Stderr, "  Status: %s\n", cp.Status)
@@ -150,6 +194,4 @@ func ListCheckpoints(tool string) int {
 		}
 		fmt.Fprintln(os.Stderr)
 	}
-
-	return 0
 }
