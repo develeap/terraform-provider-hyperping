@@ -1,6 +1,6 @@
 module github.com/develeap/terraform-provider-hyperping/tools/scraper
 
-go 1.22.2
+go 1.24.0
 
 require (
 	github.com/PuerkitoBio/goquery v1.9.0
@@ -9,7 +9,7 @@ require (
 	github.com/google/go-github/v68 v68.0.0
 	github.com/hashicorp/terraform-json v0.22.1
 	github.com/tufin/oasdiff v1.10.15
-	golang.org/x/oauth2 v0.20.0
+	golang.org/x/oauth2 v0.35.0
 	golang.org/x/time v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 )
