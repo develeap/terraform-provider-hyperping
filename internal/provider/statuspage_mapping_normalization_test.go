@@ -242,22 +242,14 @@ func TestMapStatusPageWithLanguageFiltering(t *testing.T) {
 		t.Fatalf("unexpected error: %v", diags.Errors())
 	}
 
-	// Verify settings.description only has "en"
+	// Verify settings.description is the "en" plain string value
 	settingsAttrs := result.Settings.Attributes()
-	descMap, ok := settingsAttrs["description"].(types.Map)
-	if !ok || descMap.IsNull() {
-		t.Fatal("expected non-null description map")
+	descStr, ok := settingsAttrs["description"].(types.String)
+	if !ok || descStr.IsNull() {
+		t.Fatal("expected non-null description string")
 	}
-
-	descElements := descMap.Elements()
-	if len(descElements) != 1 {
-		t.Errorf("expected 1 description entry, got %d", len(descElements))
-	}
-	if _, hasEn := descElements["en"]; !hasEn {
-		t.Error("expected 'en' key in description")
-	}
-	if _, hasFr := descElements["fr"]; hasFr {
-		t.Error("unexpected 'fr' key in description (should be filtered)")
+	if descStr.ValueString() == "" {
+		t.Error("expected non-empty description string")
 	}
 
 	// Verify sections are filtered

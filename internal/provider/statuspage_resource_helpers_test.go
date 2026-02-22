@@ -56,10 +56,7 @@ resource "hyperping_statuspage" "test" {
     accent_color = "#0066cc"
     languages    = ["en", "fr"]
 
-    description = {
-      en = "Production system status"
-      fr = "État du système de production"
-    }
+    description = "Production system status"
 
     subscribe = {
       enabled = true
@@ -399,10 +396,15 @@ func buildMockSections(sectionsReq []interface{}) []map[string]interface{} {
 }
 
 // buildDescriptionMap builds the multi-language description map from a request value.
+// The real API accepts a plain string on write and returns a localized map on read.
+// When a plain string is received it is stored under the "en" key (all others remain empty).
 func buildDescriptionMap(description interface{}) map[string]string {
 	descMap := map[string]string{"en": "", "fr": "", "de": "", "ru": "", "nl": ""}
-	if reqDesc, ok := description.(map[string]interface{}); ok {
-		for lang, val := range reqDesc {
+	switch v := description.(type) {
+	case string:
+		descMap["en"] = v
+	case map[string]interface{}:
+		for lang, val := range v {
 			if valStr, ok := val.(string); ok {
 				descMap[lang] = valStr
 			}

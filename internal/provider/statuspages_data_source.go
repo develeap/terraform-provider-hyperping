@@ -100,9 +100,8 @@ func (d *StatusPagesDataSource) Schema(ctx context.Context, req datasource.Schem
 								"website": schema.StringAttribute{
 									Computed: true,
 								},
-								"description": schema.MapAttribute{
-									ElementType: types.StringType,
-									Computed:    true,
+								"description": schema.StringAttribute{
+									Computed: true,
 								},
 								"languages": schema.ListAttribute{
 									ElementType: types.StringType,

@@ -196,7 +196,7 @@ Optional:
 - `auto_refresh` (Boolean) Enable auto-refresh of status page
 - `banner_header` (Boolean) Show banner header
 - `default_language` (String) Default language code
-- `description` (Map of String) Localized descriptions (language code -> text)
+- `description` (String) Status page description. The API accepts a plain string on write; the read response wraps it in a localized map, from which the 'en' value (or default language) is used.
 - `favicon` (String) Favicon URL
 - `font` (String) Font family (default: Inter)
 - `google_analytics` (String) Google Analytics tracking ID

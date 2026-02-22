@@ -96,11 +96,12 @@ type StatusPagePaginatedResponse struct {
 // CreateStatusPageRequest represents a request to create a status page.
 // API: ... /v2/statuspages
 type CreateStatusPageRequest struct {
-	Name                  string                                  `json:"name"`
-	Subdomain             *string                                 `json:"subdomain,omitempty"`
-	Hostname              *string                                 `json:"hostname,omitempty"`
-	Website               *string                                 `json:"website,omitempty"`
-	Description           map[string]string                       `json:"description,omitempty"`
+	Name      string  `json:"name"`
+	Subdomain *string `json:"subdomain,omitempty"`
+	Hostname  *string `json:"hostname,omitempty"`
+	Website   *string `json:"website,omitempty"`
+	// Description is a plain string on write; the API returns a localized map on read.
+	Description           *string                                 `json:"description,omitempty"`
 	Languages             []string                                `json:"languages,omitempty"`
 	DefaultLanguage       *string                                 `json:"default_language,omitempty"`
 	Theme                 *string                                 `json:"theme,omitempty"`
@@ -176,11 +177,12 @@ func (r CreateStatusPageRequest) Validate() error {
 // UpdateStatusPageRequest represents a request to update a status page.
 // API: ... /v2/statuspages/{uuid}
 type UpdateStatusPageRequest struct {
-	Name                  *string                                 `json:"name,omitempty"`
-	Subdomain             *string                                 `json:"subdomain,omitempty"`
-	Hostname              *string                                 `json:"hostname,omitempty"`
-	Website               *string                                 `json:"website,omitempty"`
-	Description           map[string]string                       `json:"description,omitempty"`
+	Name      *string `json:"name,omitempty"`
+	Subdomain *string `json:"subdomain,omitempty"`
+	Hostname  *string `json:"hostname,omitempty"`
+	Website   *string `json:"website,omitempty"`
+	// Description is a plain string on write; the API returns a localized map on read.
+	Description           *string                                 `json:"description,omitempty"`
 	Languages             []string                                `json:"languages,omitempty"`
 	DefaultLanguage       *string                                 `json:"default_language,omitempty"`
 	Theme                 *string                                 `json:"theme,omitempty"`

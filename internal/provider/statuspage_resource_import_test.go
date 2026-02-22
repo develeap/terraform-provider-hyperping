@@ -32,13 +32,6 @@ func TestAccStatusPageResource_import(t *testing.T) {
 				ResourceName:      "hyperping_statuspage.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"settings.description.%",
-					"settings.description.fr",
-					"settings.description.de",
-					"settings.description.ru",
-					"settings.description.nl",
-				},
 			},
 		},
 	})
@@ -61,7 +54,7 @@ func TestAccStatusPageResource_importFull(t *testing.T) {
 					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.font", "Inter"),
 					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.accent_color", "#0066cc"),
 					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.languages.#", "2"),
-					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.description.en", "Production system status"),
+					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.description", "Production system status"),
 					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.subscribe.enabled", "true"),
 				),
 			},
@@ -70,13 +63,6 @@ func TestAccStatusPageResource_importFull(t *testing.T) {
 				ResourceName:      "hyperping_statuspage.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"settings.description.%",
-					"settings.description.fr",
-					"settings.description.de",
-					"settings.description.ru",
-					"settings.description.nl",
-				},
 			},
 		},
 	})

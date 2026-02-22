@@ -221,10 +221,11 @@ func checkBoolField(t *testing.T, name string, got *bool, want bool) {
 	}
 }
 
-// TestPopulateCollectionSettings verifies that description map and languages list are populated correctly.
+// TestPopulateCollectionSettings verifies description (plain string) and languages list are populated correctly.
+// API asymmetry: description is written as a plain string but returned as a localized map on read.
 func TestPopulateCollectionSettings(t *testing.T) {
-	t.Run("description map populated when non-null", func(t *testing.T) {
-		var desc map[string]string
+	t.Run("description string populated when non-null", func(t *testing.T) {
+		var desc *string
 		var langs []string
 
 		target := &statusPageSettingsTarget{
@@ -232,13 +233,8 @@ func TestPopulateCollectionSettings(t *testing.T) {
 			Languages:   &langs,
 		}
 
-		descMap, _ := types.MapValue(types.StringType, map[string]attr.Value{
-			"en": types.StringValue("English description"),
-			"fr": types.StringValue("Description française"),
-		})
-
 		attrs := map[string]attr.Value{
-			"description": descMap,
+			"description": types.StringValue("English description"),
 			"languages":   types.ListNull(types.StringType),
 		}
 
@@ -248,19 +244,16 @@ func TestPopulateCollectionSettings(t *testing.T) {
 		if diags.HasError() {
 			t.Fatalf("unexpected error: %v", diags.Errors())
 		}
-		if len(desc) != 2 {
-			t.Errorf("expected 2 description entries, got %d", len(desc))
+		if desc == nil {
+			t.Fatal("expected description *string to be set, got nil")
 		}
-		if desc["en"] != "English description" {
-			t.Errorf("expected en=%q, got %q", "English description", desc["en"])
-		}
-		if desc["fr"] != "Description française" {
-			t.Errorf("expected fr=%q, got %q", "Description française", desc["fr"])
+		if *desc != "English description" {
+			t.Errorf("expected %q, got %q", "English description", *desc)
 		}
 	})
 
 	t.Run("languages list populated when non-null", func(t *testing.T) {
-		var desc map[string]string
+		var desc *string
 		var langs []string
 
 		target := &statusPageSettingsTarget{
@@ -275,7 +268,7 @@ func TestPopulateCollectionSettings(t *testing.T) {
 		})
 
 		attrs := map[string]attr.Value{
-			"description": types.MapNull(types.StringType),
+			"description": types.StringNull(),
 			"languages":   langsList,
 		}
 
@@ -290,8 +283,8 @@ func TestPopulateCollectionSettings(t *testing.T) {
 		}
 	})
 
-	t.Run("empty description map not assigned", func(t *testing.T) {
-		var desc map[string]string
+	t.Run("empty description string not assigned", func(t *testing.T) {
+		var desc *string
 		var langs []string
 
 		target := &statusPageSettingsTarget{
@@ -299,10 +292,8 @@ func TestPopulateCollectionSettings(t *testing.T) {
 			Languages:   &langs,
 		}
 
-		emptyMap, _ := types.MapValue(types.StringType, map[string]attr.Value{})
-
 		attrs := map[string]attr.Value{
-			"description": emptyMap,
+			"description": types.StringValue(""),
 			"languages":   types.ListNull(types.StringType),
 		}
 
@@ -312,42 +303,13 @@ func TestPopulateCollectionSettings(t *testing.T) {
 		if diags.HasError() {
 			t.Fatalf("unexpected error: %v", diags.Errors())
 		}
-		// Empty map should not be assigned (len check guards it)
 		if desc != nil {
-			t.Errorf("expected description to remain nil for empty map, got %v", desc)
-		}
-	})
-
-	t.Run("empty languages list not assigned", func(t *testing.T) {
-		var desc map[string]string
-		var langs []string
-
-		target := &statusPageSettingsTarget{
-			Description: &desc,
-			Languages:   &langs,
-		}
-
-		emptyList, _ := types.ListValue(types.StringType, []attr.Value{})
-
-		attrs := map[string]attr.Value{
-			"description": types.MapNull(types.StringType),
-			"languages":   emptyList,
-		}
-
-		var diags diag.Diagnostics
-		populateCollectionSettings(attrs, target, &diags)
-
-		if diags.HasError() {
-			t.Fatalf("unexpected error: %v", diags.Errors())
-		}
-		// Empty list should not be assigned (len check guards it)
-		if langs != nil {
-			t.Errorf("expected languages to remain nil for empty list, got %v", langs)
+			t.Errorf("expected description to remain nil for empty string, got %q", *desc)
 		}
 	})
 
 	t.Run("both null does not modify target", func(t *testing.T) {
-		var desc map[string]string
+		var desc *string
 		var langs []string
 
 		target := &statusPageSettingsTarget{
@@ -356,7 +318,7 @@ func TestPopulateCollectionSettings(t *testing.T) {
 		}
 
 		attrs := map[string]attr.Value{
-			"description": types.MapNull(types.StringType),
+			"description": types.StringNull(),
 			"languages":   types.ListNull(types.StringType),
 		}
 
@@ -367,7 +329,7 @@ func TestPopulateCollectionSettings(t *testing.T) {
 			t.Fatalf("unexpected error: %v", diags.Errors())
 		}
 		if desc != nil {
-			t.Errorf("expected description nil, got %v", desc)
+			t.Errorf("expected description nil, got %q", *desc)
 		}
 		if langs != nil {
 			t.Errorf("expected languages nil, got %v", langs)

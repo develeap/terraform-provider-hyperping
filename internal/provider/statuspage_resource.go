@@ -107,9 +107,8 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 							URLFormat(),
 						},
 					},
-					"description": schema.MapAttribute{
-						MarkdownDescription: "Localized descriptions (language code -> text)",
-						ElementType:         types.StringType,
+					"description": schema.StringAttribute{
+						MarkdownDescription: "Status page description. The API accepts a plain string on write; the read response wraps it in a localized map, from which the 'en' value (or default language) is used.",
 						Optional:            true,
 						Computed:            true,
 					},
@@ -822,7 +821,7 @@ type statusPageSettingsTarget struct {
 	BannerHeader          **bool
 	HidePoweredBy         **bool
 	HideFromSearchEngines **bool
-	Description           *map[string]string
+	Description           **string
 	Languages             *[]string
 	DefaultLanguage       **string
 	Subscribe             **client.CreateStatusPageSubscribeSettings
@@ -890,13 +889,13 @@ func populateBoolSettings(attrs map[string]attr.Value, target *statusPageSetting
 	}
 }
 
-// populateCollectionSettings populates the description map and languages list into target.
-// Handles: description (map[string]string), languages ([]string).
+// populateCollectionSettings populates the description string and languages list into target.
+// Handles: description (plain string for API write), languages ([]string).
+// API asymmetry: description is written as a plain string but read back as a localized map.
 func populateCollectionSettings(attrs map[string]attr.Value, target *statusPageSettingsTarget, diags *diag.Diagnostics) {
-	if descAttr, ok := attrs["description"].(types.Map); ok && !descAttr.IsNull() {
-		desc := mapTFToStringMap(descAttr, diags)
-		if len(desc) > 0 {
-			*target.Description = desc
+	if descAttr, ok := attrs["description"].(types.String); ok && !descAttr.IsNull() && !descAttr.IsUnknown() {
+		if v := descAttr.ValueString(); v != "" {
+			*target.Description = &v
 		}
 	}
 

@@ -80,9 +80,8 @@ func (d *StatusPageDataSource) Schema(ctx context.Context, req datasource.Schema
 						MarkdownDescription: "Link to main website",
 						Computed:            true,
 					},
-					"description": schema.MapAttribute{
-						MarkdownDescription: "Localized descriptions",
-						ElementType:         types.StringType,
+					"description": schema.StringAttribute{
+						MarkdownDescription: "Status page description (extracted from the API's localized map).",
 						Computed:            true,
 					},
 					"languages": schema.ListAttribute{

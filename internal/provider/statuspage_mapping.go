@@ -125,10 +125,10 @@ func mapSettingsToTFWithFilter(settings client.StatusPageSettings, configuredLan
 	})
 	diags.Append(authDiags...)
 
-	// Map description (map[string]string) with optional language filtering
-	// Filter to only configured languages to prevent drift from API auto-population
-	filteredDescription := filterLocalizedMap(settings.Description, configuredLangs)
-	descriptionMap := mapStringMapToTF(filteredDescription)
+	// Map description: API returns a localized map on read, but accepts a plain string on write.
+	// We extract the default-language value ("en" preferred) from the map for TF state.
+	// configuredLangs is unused for description since we always store a single string.
+	descriptionStr := extractLocalizedString(settings.Description, configuredLangs)
 
 	// Map languages ([]string)
 	languagesList := mapStringSliceToList(settings.Languages, diags)
@@ -156,7 +156,7 @@ func mapSettingsToTFWithFilter(settings client.StatusPageSettings, configuredLan
 	settingsObj, settingsDiags := types.ObjectValue(StatusPageSettingsAttrTypes(), map[string]attr.Value{
 		"name":                     types.StringValue(settings.Name),
 		"website":                  types.StringValue(settings.Website),
-		"description":              descriptionMap,
+		"description":              descriptionStr,
 		"languages":                languagesList,
 		"default_language":         types.StringValue(settings.DefaultLanguage),
 		"theme":                    types.StringValue(settings.Theme),
@@ -596,6 +596,28 @@ func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []client.Cr
 // Map[string]string Helpers (for multi-language fields)
 // =============================================================================
 
+// extractLocalizedString extracts a single plain string from a localized map.
+// The API returns description as a map (e.g. {"en":"text","fr":"texte"}) but only
+// accepts a plain string on write. We extract the "en" value by default; if absent,
+// we fall back to the first value of configuredLangs, then to the first non-empty value.
+func extractLocalizedString(m map[string]string, configuredLangs []string) types.String {
+	if len(m) == 0 {
+		return types.StringNull()
+	}
+	if v, ok := m["en"]; ok {
+		return types.StringValue(v)
+	}
+	for _, lang := range configuredLangs {
+		if v, ok := m[lang]; ok {
+			return types.StringValue(v)
+		}
+	}
+	for _, v := range m {
+		return types.StringValue(v)
+	}
+	return types.StringNull()
+}
+
 // mapStringMapToTF converts a Go map[string]string to Terraform Map type.
 func mapStringMapToTF(m map[string]string) types.Map {
 	if len(m) == 0 {
@@ -752,7 +774,7 @@ func StatusPageSettingsAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 		"name":                     types.StringType,
 		"website":                  types.StringType,
-		"description":              types.MapType{ElemType: types.StringType},
+		"description":              types.StringType,
 		"languages":                types.ListType{ElemType: types.StringType},
 		"default_language":         types.StringType,
 		"theme":                    types.StringType,

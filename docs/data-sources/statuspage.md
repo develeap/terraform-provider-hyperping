@@ -128,7 +128,7 @@ Read-Only:
 - `auto_refresh` (Boolean) Auto-refresh enabled
 - `banner_header` (Boolean) Banner header shown
 - `default_language` (String) Default language code
-- `description` (Map of String) Localized descriptions
+- `description` (String) Status page description (extracted from the API's localized map).
 - `favicon` (String) Favicon URL
 - `font` (String) Font family
 - `google_analytics` (String) Google Analytics ID

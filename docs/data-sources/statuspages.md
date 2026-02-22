@@ -174,7 +174,7 @@ Read-Only:
 - `auto_refresh` (Boolean)
 - `banner_header` (Boolean)
 - `default_language` (String)
-- `description` (Map of String)
+- `description` (String)
 - `favicon` (String)
 - `font` (String)
 - `google_analytics` (String)

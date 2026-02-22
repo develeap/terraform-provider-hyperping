@@ -40,7 +40,7 @@ func TestMapTFToSettings_WithValues(t *testing.T) {
 	settingsObj, _ := types.ObjectValue(StatusPageSettingsAttrTypes(), map[string]attr.Value{
 		"name":                     types.StringValue("Test"),
 		"website":                  types.StringValue("https://example.com"),
-		"description":              types.MapNull(types.StringType),
+		"description":              types.StringNull(),
 		"languages":                types.ListNull(types.StringType),
 		"default_language":         types.StringValue("en"),
 		"theme":                    types.StringValue("light"),
