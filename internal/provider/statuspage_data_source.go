@@ -233,6 +233,39 @@ func (d *StatusPageDataSource) Schema(ctx context.Context, req datasource.Schema
 										MarkdownDescription: "Show response times",
 										Computed:            true,
 									},
+									"services": schema.ListNestedAttribute{
+										MarkdownDescription: "Nested monitor services within this group",
+										Computed:            true,
+										NestedObject: schema.NestedAttributeObject{
+											Attributes: map[string]schema.Attribute{
+												"id": schema.StringAttribute{
+													MarkdownDescription: "Service ID (computed)",
+													Computed:            true,
+												},
+												"uuid": schema.StringAttribute{
+													MarkdownDescription: "Monitor UUID",
+													Computed:            true,
+												},
+												"name": schema.MapAttribute{
+													MarkdownDescription: "Localized service name",
+													ElementType:         types.StringType,
+													Computed:            true,
+												},
+												"is_group": schema.BoolAttribute{
+													MarkdownDescription: "Service is a group",
+													Computed:            true,
+												},
+												"show_uptime": schema.BoolAttribute{
+													MarkdownDescription: "Show uptime",
+													Computed:            true,
+												},
+												"show_response_times": schema.BoolAttribute{
+													MarkdownDescription: "Show response times",
+													Computed:            true,
+												},
+											},
+										},
+									},
 								},
 							},
 						},

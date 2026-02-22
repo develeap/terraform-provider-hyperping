@@ -247,16 +247,29 @@ Optional:
 <a id="nestedatt--sections--services"></a>
 ### Nested Schema for `sections.services`
 
-Required:
-
-- `uuid` (String) Monitor UUID to display
-
 Optional:
 
 - `is_group` (Boolean) Whether this service is a group containing nested services
 - `name` (Map of String) Localized service name (language code -> text)
+- `services` (Attributes List) Nested monitor services within this group (only used when is_group=true) (see [below for nested schema](#nestedatt--sections--services--services))
 - `show_response_times` (Boolean) Show response times
 - `show_uptime` (Boolean) Show uptime percentage
+- `uuid` (String) Monitor UUID to display. Omit for group header entries (is_group=true).
+
+Read-Only:
+
+- `id` (String) Service ID (computed)
+
+<a id="nestedatt--sections--services--services"></a>
+### Nested Schema for `sections.services.services`
+
+Optional:
+
+- `is_group` (Boolean) Whether this nested service is a group
+- `name` (Map of String) Localized service name (language code -> text)
+- `show_response_times` (Boolean) Show response times
+- `show_uptime` (Boolean) Show uptime percentage
+- `uuid` (String) Monitor UUID to display
 
 Read-Only:
 

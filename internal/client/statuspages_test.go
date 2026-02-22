@@ -382,7 +382,7 @@ func TestCreateStatusPage_WithAllFields(t *testing.T) {
 				IsSplit: boolPtr(true),
 				Services: []CreateStatusPageService{
 					{
-						MonitorUUID:       "mon_123",
+						MonitorUUID:       stringPtr("mon_123"),
 						NameShown:         stringPtr("Main API"),
 						ShowUptime:        boolPtr(true),
 						ShowResponseTimes: boolPtr(true),

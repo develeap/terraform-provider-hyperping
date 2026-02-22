@@ -284,8 +284,9 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 										Computed:            true,
 									},
 									"uuid": schema.StringAttribute{
-										MarkdownDescription: "Monitor UUID to display",
-										Required:            true,
+										MarkdownDescription: "Monitor UUID to display. Omit for group header entries (is_group=true).",
+										Optional:            true,
+										Computed:            true,
 									},
 									"name": schema.MapAttribute{
 										MarkdownDescription: "Localized service name (language code -> text)",
@@ -307,6 +308,45 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 										MarkdownDescription: "Show response times",
 										Optional:            true,
 										Computed:            true,
+									},
+									"services": schema.ListNestedAttribute{
+										MarkdownDescription: "Nested monitor services within this group (only used when is_group=true)",
+										Optional:            true,
+										Computed:            true,
+										NestedObject: schema.NestedAttributeObject{
+											Attributes: map[string]schema.Attribute{
+												"id": schema.StringAttribute{
+													MarkdownDescription: "Service ID (computed)",
+													Computed:            true,
+												},
+												"uuid": schema.StringAttribute{
+													MarkdownDescription: "Monitor UUID to display",
+													Optional:            true,
+													Computed:            true,
+												},
+												"name": schema.MapAttribute{
+													MarkdownDescription: "Localized service name (language code -> text)",
+													ElementType:         types.StringType,
+													Optional:            true,
+													Computed:            true,
+												},
+												"is_group": schema.BoolAttribute{
+													MarkdownDescription: "Whether this nested service is a group",
+													Optional:            true,
+													Computed:            true,
+												},
+												"show_uptime": schema.BoolAttribute{
+													MarkdownDescription: "Show uptime percentage",
+													Optional:            true,
+													Computed:            true,
+												},
+												"show_response_times": schema.BoolAttribute{
+													MarkdownDescription: "Show response times",
+													Optional:            true,
+													Computed:            true,
+												},
+											},
+										},
 									},
 								},
 							},
