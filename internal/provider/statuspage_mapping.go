@@ -462,8 +462,27 @@ func mapTFToServices(list types.List, diags *diag.Diagnostics) []client.CreateSt
 	elements := list.Elements()
 	services := make([]client.CreateStatusPageService, 0, len(elements))
 
-	for _, elem := range elements {
+	for i, elem := range elements {
 		service := mapTFToService(elem, diags)
+
+		// Apply-time validation: non-group services must have a UUID.
+		if (service.IsGroup == nil || !*service.IsGroup) && service.MonitorUUID == nil {
+			diags.AddError(
+				"uuid required for non-group service",
+				fmt.Sprintf("sections[*].services[%d]: uuid must be set for non-group services (is_group=false or unset). "+
+					"Only group header entries (is_group=true) may omit uuid.", i),
+			)
+		}
+
+		// Apply-time validation: group services must have at least one nested service.
+		if service.IsGroup != nil && *service.IsGroup && len(service.Services) == 0 {
+			diags.AddError(
+				"group service must have at least one nested service",
+				fmt.Sprintf("sections[*].services[%d]: is_group=true but services list is empty or null. "+
+					"Add at least one nested service, or set is_group=false.", i),
+			)
+		}
+
 		services = append(services, service)
 	}
 

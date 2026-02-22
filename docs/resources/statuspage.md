@@ -251,10 +251,10 @@ Optional:
 
 - `is_group` (Boolean) Whether this service is a group containing nested services
 - `name` (Map of String) Localized service name (language code -> text)
-- `services` (Attributes List) Nested monitor services within this group (only used when is_group=true) (see [below for nested schema](#nestedatt--sections--services--services))
+- `services` (Attributes List) Nested monitor services within this group. Required when is_group=true; must contain at least one entry. Ignored when is_group=false. (see [below for nested schema](#nestedatt--sections--services--services))
 - `show_response_times` (Boolean) Show response times
 - `show_uptime` (Boolean) Show uptime percentage
-- `uuid` (String) Monitor UUID to display. Omit for group header entries (is_group=true).
+- `uuid` (String) Monitor UUID to display. Required for non-group services (is_group=false). Omit for group header entries (is_group=true).
 
 Read-Only:
 

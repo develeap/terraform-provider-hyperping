@@ -284,7 +284,7 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 										Computed:            true,
 									},
 									"uuid": schema.StringAttribute{
-										MarkdownDescription: "Monitor UUID to display. Omit for group header entries (is_group=true).",
+										MarkdownDescription: "Monitor UUID to display. Required for non-group services (is_group=false). Omit for group header entries (is_group=true).",
 										Optional:            true,
 										Computed:            true,
 									},
@@ -310,7 +310,7 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 										Computed:            true,
 									},
 									"services": schema.ListNestedAttribute{
-										MarkdownDescription: "Nested monitor services within this group (only used when is_group=true)",
+										MarkdownDescription: "Nested monitor services within this group. Required when is_group=true; must contain at least one entry. Ignored when is_group=false.",
 										Optional:            true,
 										Computed:            true,
 										NestedObject: schema.NestedAttributeObject{

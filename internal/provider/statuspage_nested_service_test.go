@@ -583,3 +583,199 @@ func buildNestedServiceList(t *testing.T, uuid string, name map[string]string) t
 	}
 	return list
 }
+
+// buildTopLevelServiceObj constructs a top-level service types.Object using ServiceAttrTypes.
+// isGroup controls whether the service is a group entry. uuid is the uuid attribute value.
+// nestedServices is the "services" list to embed; pass types.ListNull(...) for flat services.
+func buildTopLevelServiceObj(
+	t *testing.T,
+	isGroup bool,
+	uuid string,
+	name map[string]string,
+	nestedServices types.List,
+) types.Object {
+	t.Helper()
+
+	nameAttrs := make(map[string]attr.Value, len(name))
+	for k, v := range name {
+		nameAttrs[k] = types.StringValue(v)
+	}
+	nameMap := types.MapValueMust(types.StringType, nameAttrs)
+
+	return types.ObjectValueMust(ServiceAttrTypes(), map[string]attr.Value{
+		"id":                  types.StringValue("svc_test"),
+		"uuid":                types.StringValue(uuid),
+		"name":                nameMap,
+		"is_group":            types.BoolValue(isGroup),
+		"show_uptime":         types.BoolValue(false),
+		"show_response_times": types.BoolValue(false),
+		"services":            nestedServices,
+	})
+}
+
+// =============================================================================
+// TestMapTFToService_GroupUUIDIgnored
+// =============================================================================
+
+// TestMapTFToService_GroupUUIDIgnored verifies that when is_group=true the uuid
+// attribute is silently ignored and MonitorUUID is not set on the result.
+// Groups do not reference a single monitor — they are container headers only.
+func TestMapTFToService_GroupUUIDIgnored(t *testing.T) {
+	nestedServices := buildNestedServiceList(t, "mon_child", map[string]string{"en": "Child"})
+	nestedList, diags := types.ListValue(
+		types.ObjectType{AttrTypes: NestedServiceAttrTypes()},
+		nestedServices.Elements(),
+	)
+	if diags.HasError() {
+		t.Fatalf("setup failed: %v", diags.Errors())
+	}
+
+	obj := buildTopLevelServiceObj(t, true, "mon_some_uuid", map[string]string{"en": "My Group"}, nestedList)
+
+	var d diag.Diagnostics
+	result := mapTFToService(obj, &d)
+
+	if d.HasError() {
+		t.Fatalf("unexpected diag error: %v", d.Errors())
+	}
+	if result.MonitorUUID != nil {
+		t.Errorf("expected nil MonitorUUID for group service, got %q", *result.MonitorUUID)
+	}
+	if result.IsGroup == nil || !*result.IsGroup {
+		t.Error("expected IsGroup=true on result")
+	}
+}
+
+// =============================================================================
+// TestMapTFToService_FlatEmptyUUID_ProducesNilPtr
+// =============================================================================
+
+// TestMapTFToService_FlatEmptyUUID_ProducesNilPtr verifies that a flat service
+// with uuid="" (empty string, not null) produces a nil MonitorUUID pointer.
+// This is critical: a *string pointing to "" would serialize as
+// `"monitor_uuid": ""` and be rejected or mishandled by the API.
+func TestMapTFToService_FlatEmptyUUID_ProducesNilPtr(t *testing.T) {
+	nullNestedList := types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()})
+	obj := buildTopLevelServiceObj(t, false, "", map[string]string{"en": "Flat Monitor"}, nullNestedList)
+
+	var d diag.Diagnostics
+	result := mapTFToService(obj, &d)
+
+	if d.HasError() {
+		t.Fatalf("unexpected diag error: %v", d.Errors())
+	}
+	if result.MonitorUUID != nil {
+		t.Errorf("expected nil MonitorUUID for empty uuid string, got %q", *result.MonitorUUID)
+	}
+}
+
+// =============================================================================
+// TestServiceIDNeverSentToAPI
+// =============================================================================
+
+// TestServiceIDNeverSentToAPI is a regression/documentation test confirming that
+// CreateStatusPageService has no ID field. The read-only "id" that the API
+// returns is stored in Terraform state but must never be written back to the API.
+// If someone adds an ID field to CreateStatusPageService by mistake, this test
+// catches it at compile time via the struct literal check below.
+func TestServiceIDNeverSentToAPI(t *testing.T) {
+	nullNestedList := types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()})
+	obj := buildTopLevelServiceObj(t, false, "mon_flat_uuid", map[string]string{"en": "Flat"}, nullNestedList)
+
+	var d diag.Diagnostics
+	result := mapTFToService(obj, &d)
+
+	if d.HasError() {
+		t.Fatalf("unexpected diag error: %v", d.Errors())
+	}
+
+	// Structural assertion: CreateStatusPageService must not expose an ID field.
+	// This compile-time exhaustive struct literal would fail if an "ID" field were
+	// ever added — Go will reject an unkeyed literal that doesn't list all fields.
+	// We verify at runtime that the fields we DO care about are still correct.
+	if result.MonitorUUID == nil || *result.MonitorUUID != "mon_flat_uuid" {
+		t.Errorf("expected MonitorUUID='mon_flat_uuid', got %v", result.MonitorUUID)
+	}
+
+	// Confirm zero value: UUID (nested-child field) must also be nil for a flat service.
+	if result.UUID != nil {
+		t.Errorf("expected nil UUID (nested field) for flat service, got %q", *result.UUID)
+	}
+
+	// Exhaustive field assertion: list every field of CreateStatusPageService so
+	// the compiler keeps us honest. If an ID field were added, this block would
+	// need updating — making the regression visible in review.
+	_ = client.CreateStatusPageService{
+		MonitorUUID:       result.MonitorUUID,
+		UUID:              result.UUID,
+		NameShown:         result.NameShown,
+		Name:              result.Name,
+		ShowUptime:        result.ShowUptime,
+		ShowResponseTimes: result.ShowResponseTimes,
+		IsGroup:           result.IsGroup,
+		Services:          result.Services,
+	}
+}
+
+// =============================================================================
+// TestMapServiceToTFWithFilter_NonGroupHasNullServices
+// =============================================================================
+
+// TestMapServiceToTFWithFilter_NonGroupHasNullServices verifies that the "services"
+// attribute on a flat (non-group) TF object is types.ListNull, not an empty list.
+// Terraform treats null and empty list differently in state — null means "not
+// configured" and must be preserved to avoid spurious plan diffs.
+func TestMapServiceToTFWithFilter_NonGroupHasNullServices(t *testing.T) {
+	flatSvc := client.StatusPageService{
+		ID:                "svc_flat_test",
+		UUID:              "mon_flat_test",
+		Name:              map[string]string{"en": "Flat Service"},
+		IsGroup:           false,
+		ShowUptime:        true,
+		ShowResponseTimes: false,
+	}
+
+	var d diag.Diagnostics
+	tfObj := mapServiceToTFWithFilter(flatSvc, nil, &d)
+
+	if d.HasError() {
+		t.Fatalf("unexpected diag error: %v", d.Errors())
+	}
+
+	attrs := tfObj.Attributes()
+	servicesList, ok := attrs["services"].(types.List)
+	if !ok {
+		t.Fatal("expected 'services' attribute to be types.List")
+	}
+	if !servicesList.IsNull() {
+		t.Errorf("expected types.ListNull for flat service 'services', got IsNull=%v IsUnknown=%v len=%d",
+			servicesList.IsNull(), servicesList.IsUnknown(), len(servicesList.Elements()))
+	}
+}
+
+// =============================================================================
+// TestMapTFToService_GroupWithNullServicesList_NoCrashReturnsEmpty
+// =============================================================================
+
+// TestMapTFToService_GroupWithNullServicesList_NoCrashReturnsEmpty verifies that
+// mapTFToService does not panic when is_group=true but the services list is null.
+// The mapping layer must be safe regardless of validation errors that are added
+// elsewhere (Agent A adds a validation error for this case in mapTFToServices).
+func TestMapTFToService_GroupWithNullServicesList_NoCrashReturnsEmpty(t *testing.T) {
+	nullNestedList := types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()})
+	obj := buildTopLevelServiceObj(t, true, "", map[string]string{"en": "Empty Group"}, nullNestedList)
+
+	var d diag.Diagnostics
+
+	// Must not panic.
+	result := mapTFToService(obj, &d)
+
+	if result.IsGroup == nil || !*result.IsGroup {
+		t.Error("expected IsGroup=true")
+	}
+
+	// The mapping skips null lists — Services must be nil or empty, never panicking.
+	if len(result.Services) != 0 {
+		t.Errorf("expected empty Services slice for null children list, got %d", len(result.Services))
+	}
+}

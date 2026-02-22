@@ -93,7 +93,8 @@ func TestMapTFToSettings_WithValues(t *testing.T) {
 
 // Increase coverage for mapTFToSections
 func TestMapTFToSections_WithValues(t *testing.T) {
-	// Create a service object
+	// Create a service object — must include "services" key (null for non-group) to satisfy
+	// ServiceAttrTypes() and the new apply-time validation (uuid required for non-group).
 	serviceObj, _ := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
 		"id":   types.StringValue("svc_1"),
 		"uuid": types.StringValue("mon_123"),
@@ -104,6 +105,7 @@ func TestMapTFToSections_WithValues(t *testing.T) {
 		"is_group":            types.BoolValue(false),
 		"show_uptime":         types.BoolValue(true),
 		"show_response_times": types.BoolValue(true),
+		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 
 	// Create services list
@@ -159,6 +161,19 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 	})
 
 	// service2 is a group (is_group=true) — MonitorUUID is intentionally omitted for groups.
+	// Groups must have at least one nested service to satisfy the new apply-time validation.
+	nestedSvc, _ := types.ObjectValue(NestedServiceAttrTypes(), map[string]attr.Value{
+		"id":   types.StringValue("nsvc_1"),
+		"uuid": types.StringValue("mon_456"),
+		"name": types.MapValueMust(types.StringType, map[string]attr.Value{
+			"en": types.StringValue("Primary DB"),
+		}),
+		"is_group":            types.BoolValue(false),
+		"show_uptime":         types.BoolValue(false),
+		"show_response_times": types.BoolValue(false),
+	})
+	nestedSvcList, _ := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, []attr.Value{nestedSvc})
+
 	service2, _ := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
 		"id":   types.StringValue("svc_2"),
 		"uuid": types.StringNull(),
@@ -168,7 +183,7 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 		"is_group":            types.BoolValue(true),
 		"show_uptime":         types.BoolValue(false),
 		"show_response_times": types.BoolValue(true),
-		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
+		"services":            nestedSvcList,
 	})
 
 	servicesList, _ := types.ListValue(types.ObjectType{AttrTypes: ServiceAttrTypes()}, []attr.Value{service1, service2})
