@@ -144,9 +144,23 @@ Read-Only:
 - `id` (String)
 - `is_group` (Boolean)
 - `name` (Map of String)
+- `services` (Attributes List) (see [below for nested schema](#nestedatt--statuspages--sections--services--services))
 - `show_response_times` (Boolean)
 - `show_uptime` (Boolean)
 - `uuid` (String)
+
+<a id="nestedatt--statuspages--sections--services--services"></a>
+### Nested Schema for `statuspages.sections.services.services`
+
+Read-Only:
+
+- `id` (String)
+- `is_group` (Boolean)
+- `name` (Map of String)
+- `show_response_times` (Boolean)
+- `show_uptime` (Boolean)
+- `uuid` (String)
+
 
 
 
