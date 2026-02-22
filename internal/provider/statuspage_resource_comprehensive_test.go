@@ -521,13 +521,18 @@ resource "hyperping_statuspage" "test" {
       is_split = true
       services = [
         {
-          uuid                = "mon_test001"
           name = {
             en = "API Service"
           }
           is_group            = true
           show_uptime         = true
           show_response_times = true
+          services = [
+            {
+              uuid = "mon_test001a"
+              name = { en = "API Node 1" }
+            }
+          ]
         },
         {
           uuid                = "mon_test002"

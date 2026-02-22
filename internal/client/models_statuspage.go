@@ -67,9 +67,15 @@ type StatusPageSection struct {
 }
 
 // StatusPageService represents a service (monitor or component) in a section.
+// The ID field uses interface{} because the Hyperping API returns:
+//   - a string UUID (e.g. "mon_abc123") for flat services in sections
+//   - an integer (e.g. 117122) for nested child services inside groups
+//   - absent entirely for group header entries (which have no top-level monitor)
+//
+// UUID is empty for group header entries; only their nested children carry UUIDs.
 type StatusPageService struct {
-	ID                string              `json:"id"`
-	UUID              string              `json:"uuid"`
+	ID                interface{}         `json:"id,omitempty"`
+	UUID              string              `json:"uuid,omitempty"`
 	Name              map[string]string   `json:"name"` // language -> text
 	IsGroup           bool                `json:"is_group"`
 	ShowUptime        bool                `json:"show_uptime"`
@@ -139,9 +145,15 @@ type CreateStatusPageSection struct {
 }
 
 // CreateStatusPageService represents a service in create requests.
+// Top-level monitor entries use MonitorUUID ("monitor_uuid").
+// Nested child services inside groups use UUID ("uuid") — the Hyperping API uses
+// different field names at each nesting level.
+// Group header entries omit both UUID fields and use only NameShown + IsGroup + Services.
 type CreateStatusPageService struct {
-	MonitorUUID       string                    `json:"monitor_uuid"`
-	NameShown         *string                   `json:"name_shown,omitempty"`
+	MonitorUUID       *string                   `json:"monitor_uuid,omitempty"` // top-level monitor services
+	UUID              *string                   `json:"uuid,omitempty"`         // nested child services
+	NameShown         *string                   `json:"name_shown,omitempty"`   // top-level display name (string)
+	Name              map[string]string         `json:"name,omitempty"`         // nested child display name (localized map)
 	ShowUptime        *bool                     `json:"show_uptime,omitempty"`
 	ShowResponseTimes *bool                     `json:"show_response_times,omitempty"`
 	IsGroup           *bool                     `json:"is_group,omitempty"`

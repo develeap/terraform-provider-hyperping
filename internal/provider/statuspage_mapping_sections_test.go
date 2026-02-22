@@ -250,8 +250,8 @@ func buildServiceTestCases() []serviceTestCase {
 			wantError: true,
 			verify: func(t *testing.T, s client.CreateStatusPageService) {
 				t.Helper()
-				if s.MonitorUUID != "" {
-					t.Error("expected empty MonitorUUID for error case")
+				if s.MonitorUUID != nil {
+					t.Error("expected nil MonitorUUID for error case")
 				}
 			},
 		},
@@ -268,6 +268,7 @@ func buildFullServiceObj() types.Object {
 		"show_uptime":         types.BoolValue(true),
 		"show_response_times": types.BoolValue(true),
 		"is_group":            types.BoolValue(false),
+		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 }
 
@@ -279,13 +280,14 @@ func buildMinimalServiceObj() types.Object {
 		"show_uptime":         types.BoolNull(),
 		"show_response_times": types.BoolNull(),
 		"is_group":            types.BoolNull(),
+		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 }
 
 func verifyFullService(t *testing.T, result client.CreateStatusPageService) {
 	t.Helper()
-	if result.MonitorUUID != "mon_123" {
-		t.Errorf("expected MonitorUUID 'mon_123', got %q", result.MonitorUUID)
+	if result.MonitorUUID == nil || *result.MonitorUUID != "mon_123" {
+		t.Errorf("expected MonitorUUID 'mon_123', got %v", result.MonitorUUID)
 	}
 	if result.NameShown == nil || *result.NameShown != "API Service" {
 		t.Errorf("expected NameShown 'API Service', got %v", result.NameShown)
@@ -303,8 +305,8 @@ func verifyFullService(t *testing.T, result client.CreateStatusPageService) {
 
 func verifyMinimalService(t *testing.T, result client.CreateStatusPageService) {
 	t.Helper()
-	if result.MonitorUUID != "mon_minimal" {
-		t.Errorf("expected MonitorUUID 'mon_minimal', got %q", result.MonitorUUID)
+	if result.MonitorUUID == nil || *result.MonitorUUID != "mon_minimal" {
+		t.Errorf("expected MonitorUUID 'mon_minimal', got %v", result.MonitorUUID)
 	}
 	if result.NameShown != nil {
 		t.Errorf("expected nil NameShown, got %v", *result.NameShown)

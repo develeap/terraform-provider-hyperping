@@ -93,7 +93,8 @@ func TestMapTFToSettings_WithValues(t *testing.T) {
 
 // Increase coverage for mapTFToSections
 func TestMapTFToSections_WithValues(t *testing.T) {
-	// Create a service object
+	// Create a service object — must include "services" key (null for non-group) to satisfy
+	// ServiceAttrTypes() and the new apply-time validation (uuid required for non-group).
 	serviceObj, _ := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
 		"id":   types.StringValue("svc_1"),
 		"uuid": types.StringValue("mon_123"),
@@ -104,6 +105,7 @@ func TestMapTFToSections_WithValues(t *testing.T) {
 		"is_group":            types.BoolValue(false),
 		"show_uptime":         types.BoolValue(true),
 		"show_response_times": types.BoolValue(true),
+		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 
 	// Create services list
@@ -155,17 +157,33 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 		"is_group":            types.BoolValue(false),
 		"show_uptime":         types.BoolValue(true),
 		"show_response_times": types.BoolValue(false),
+		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
+
+	// service2 is a group (is_group=true) — MonitorUUID is intentionally omitted for groups.
+	// Groups must have at least one nested service to satisfy the new apply-time validation.
+	nestedSvc, _ := types.ObjectValue(NestedServiceAttrTypes(), map[string]attr.Value{
+		"id":   types.StringValue("nsvc_1"),
+		"uuid": types.StringValue("mon_456"),
+		"name": types.MapValueMust(types.StringType, map[string]attr.Value{
+			"en": types.StringValue("Primary DB"),
+		}),
+		"is_group":            types.BoolValue(false),
+		"show_uptime":         types.BoolValue(false),
+		"show_response_times": types.BoolValue(false),
+	})
+	nestedSvcList, _ := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, []attr.Value{nestedSvc})
 
 	service2, _ := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
 		"id":   types.StringValue("svc_2"),
-		"uuid": types.StringValue("mon_456"),
+		"uuid": types.StringNull(),
 		"name": types.MapValueMust(types.StringType, map[string]attr.Value{
-			"en": types.StringValue("Database"),
+			"en": types.StringValue("Database Group"),
 		}),
 		"is_group":            types.BoolValue(true),
 		"show_uptime":         types.BoolValue(false),
 		"show_response_times": types.BoolValue(true),
+		"services":            nestedSvcList,
 	})
 
 	servicesList, _ := types.ListValue(types.ObjectType{AttrTypes: ServiceAttrTypes()}, []attr.Value{service1, service2})
@@ -182,13 +200,13 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 	}
 
 	// Check first service
-	if services[0].MonitorUUID != "mon_123" {
-		t.Errorf("service[0].MonitorUUID = %q, want 'mon_123'", services[0].MonitorUUID)
+	if services[0].MonitorUUID == nil || *services[0].MonitorUUID != "mon_123" {
+		t.Errorf("service[0].MonitorUUID = %v, want 'mon_123'", services[0].MonitorUUID)
 	}
 
-	// Check second service
-	if services[1].MonitorUUID != "mon_456" {
-		t.Errorf("service[1].MonitorUUID = %q, want 'mon_456'", services[1].MonitorUUID)
+	// Check second service — it's a group, so MonitorUUID is nil (groups don't reference a monitor directly)
+	if services[1].MonitorUUID != nil {
+		t.Errorf("service[1].MonitorUUID should be nil for groups, got %v", *services[1].MonitorUUID)
 	}
 	if services[1].IsGroup == nil || !*services[1].IsGroup {
 		t.Error("service[1].IsGroup should be true")

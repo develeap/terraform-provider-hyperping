@@ -98,9 +98,23 @@ Read-Only:
 - `id` (String) Service ID
 - `is_group` (Boolean) Service is a group
 - `name` (Map of String) Localized service name
+- `services` (Attributes List) Nested monitor services within this group (see [below for nested schema](#nestedatt--sections--services--services))
 - `show_response_times` (Boolean) Show response times
 - `show_uptime` (Boolean) Show uptime
 - `uuid` (String) Monitor UUID
+
+<a id="nestedatt--sections--services--services"></a>
+### Nested Schema for `sections.services.services`
+
+Read-Only:
+
+- `id` (String) Service ID (computed)
+- `is_group` (Boolean) Service is a group
+- `name` (Map of String) Localized service name
+- `show_response_times` (Boolean) Show response times
+- `show_uptime` (Boolean) Show uptime
+- `uuid` (String) Monitor UUID
+
 
 
 

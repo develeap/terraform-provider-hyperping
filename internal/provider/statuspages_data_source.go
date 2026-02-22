@@ -202,6 +202,32 @@ func (d *StatusPagesDataSource) Schema(ctx context.Context, req datasource.Schem
 												"show_response_times": schema.BoolAttribute{
 													Computed: true,
 												},
+												"services": schema.ListNestedAttribute{
+													Computed: true,
+													NestedObject: schema.NestedAttributeObject{
+														Attributes: map[string]schema.Attribute{
+															"id": schema.StringAttribute{
+																Computed: true,
+															},
+															"uuid": schema.StringAttribute{
+																Computed: true,
+															},
+															"name": schema.MapAttribute{
+																ElementType: types.StringType,
+																Computed:    true,
+															},
+															"is_group": schema.BoolAttribute{
+																Computed: true,
+															},
+															"show_uptime": schema.BoolAttribute{
+																Computed: true,
+															},
+															"show_response_times": schema.BoolAttribute{
+																Computed: true,
+															},
+														},
+													},
+												},
 											},
 										},
 									},

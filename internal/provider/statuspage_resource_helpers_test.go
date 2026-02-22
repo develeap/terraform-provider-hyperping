@@ -270,11 +270,14 @@ func (m *mockStatusPageServer) listStatusPages(w http.ResponseWriter, _ *http.Re
 }
 
 // buildMockService converts a service map from the request into the mock response format.
+// For group services (is_group=true) with nested children, integer IDs are assigned to
+// the children to exercise the real API behavior where nested child IDs are integers.
 func buildMockService(svcMap map[string]interface{}) map[string]interface{} {
+	isGroup := getOrDefaultBool(svcMap, "is_group", false)
 	service := map[string]interface{}{
 		"id":                  "svc_001",
 		"uuid":                getOrDefault(svcMap, "monitor_uuid", "mon_default"),
-		"is_group":            getOrDefaultBool(svcMap, "is_group", false),
+		"is_group":            isGroup,
 		"show_uptime":         getOrDefaultBool(svcMap, "show_uptime", true),
 		"show_response_times": getOrDefaultBool(svcMap, "show_response_times", true),
 	}
@@ -291,7 +294,63 @@ func buildMockService(svcMap map[string]interface{}) map[string]interface{} {
 		service["name"] = map[string]string{"en": nameShown}
 	}
 
+	// For group services, build nested children with integer IDs to match real API behavior.
+	// The Hyperping API returns integer IDs for nested child services inside groups.
+	if isGroup {
+		service["services"] = buildMockGroupChildren(svcMap)
+	}
+
 	return service
+}
+
+// buildMockGroupChildren builds the nested children for a group service.
+// Assigns integer IDs starting at 117122 to match real API behavior for nested children.
+func buildMockGroupChildren(svcMap map[string]interface{}) []map[string]interface{} {
+	children := []map[string]interface{}{}
+
+	nestedServices, ok := svcMap["services"].([]interface{})
+	if !ok || len(nestedServices) == 0 {
+		return children
+	}
+
+	startID := 117122
+	for i, childInterface := range nestedServices {
+		childMap, ok := childInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		child := map[string]interface{}{
+			"id":                  startID + i, // integer ID — matches real API behavior
+			"is_group":            false,
+			"show_uptime":         true,
+			"show_response_times": true,
+		}
+
+		// Nested children carry their uuid string value alongside the integer id
+		if uuid, ok := childMap["uuid"].(string); ok && uuid != "" {
+			child["uuid"] = uuid
+		}
+
+		// Nested children use name as a localized map (not name_shown string)
+		if childName, ok := childMap["name"].(map[string]interface{}); ok {
+			nameStrMap := make(map[string]string)
+			for k, v := range childName {
+				if vStr, ok := v.(string); ok {
+					nameStrMap[k] = vStr
+				}
+			}
+			child["name"] = nameStrMap
+		} else if nameShown, ok := childMap["name_shown"].(string); ok {
+			child["name"] = map[string]string{"en": nameShown}
+		} else {
+			child["name"] = map[string]string{"en": ""}
+		}
+
+		children = append(children, child)
+	}
+
+	return children
 }
 
 // buildMockSections converts a sections slice from the request into the mock response format.

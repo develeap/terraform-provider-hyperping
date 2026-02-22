@@ -327,30 +327,76 @@ func mapServicesToTFWithFilter(services []client.StatusPageService, configuredLa
 	return list
 }
 
+// serviceIDToString converts the flexible ID field (string or float64) to a string.
+// The Hyperping API returns string UUIDs for flat services and integers for nested ones.
+func serviceIDToString(id interface{}) string {
+	switch v := id.(type) {
+	case string:
+		return v
+	case float64:
+		return fmt.Sprintf("%.0f", v)
+	case nil:
+		return ""
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
 // mapServiceToTFWithFilter converts a single API service to Terraform Object type with optional language filtering.
 // Pass nil for configuredLangs to include all languages (used by data sources).
+// Handles group entries (is_group=true with nested services) and flat monitor entries.
 func mapServiceToTFWithFilter(service client.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.Object {
-	// Map service name (map[string]string) with optional language filtering
 	filteredName := filterLocalizedMap(service.Name, configuredLangs)
 	nameMap := mapStringMapToTF(filteredName)
 
-	attrs := ServiceAttrTypes()
+	// Map nested services for group entries
+	var nestedServicesList types.List
+	if service.IsGroup && len(service.Services) > 0 {
+		nestedServicesList = mapNestedServicesToTF(service.Services, configuredLangs, diags)
+	} else {
+		nestedServicesList = types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()})
+	}
 
-	// Note: Nested services are not supported in the Terraform schema.
-	// If the API returns nested services, they will be ignored.
-	// Only the top-level service configuration is mapped.
-
-	serviceObj, serviceDiags := types.ObjectValue(attrs, map[string]attr.Value{
-		"id":                  types.StringValue(service.ID),
+	serviceObj, serviceDiags := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
+		"id":                  types.StringValue(serviceIDToString(service.ID)),
 		"uuid":                types.StringValue(service.UUID),
 		"name":                nameMap,
 		"is_group":            types.BoolValue(service.IsGroup),
 		"show_uptime":         types.BoolValue(service.ShowUptime),
 		"show_response_times": types.BoolValue(service.ShowResponseTimes),
+		"services":            nestedServicesList,
 	})
 	diags.Append(serviceDiags...)
 
 	return serviceObj
+}
+
+// mapNestedServicesToTF converts nested child services (inside a group) to Terraform List type.
+func mapNestedServicesToTF(services []client.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.List {
+	if len(services) == 0 {
+		return types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()})
+	}
+
+	values := make([]attr.Value, len(services))
+	for i, svc := range services {
+		filteredName := filterLocalizedMap(svc.Name, configuredLangs)
+		nameMap := mapStringMapToTF(filteredName)
+
+		obj, objDiags := types.ObjectValue(NestedServiceAttrTypes(), map[string]attr.Value{
+			"id":                  types.StringValue(serviceIDToString(svc.ID)),
+			"uuid":                types.StringValue(svc.UUID),
+			"name":                nameMap,
+			"is_group":            types.BoolValue(svc.IsGroup),
+			"show_uptime":         types.BoolValue(svc.ShowUptime),
+			"show_response_times": types.BoolValue(svc.ShowResponseTimes),
+		})
+		diags.Append(objDiags...)
+		values[i] = obj
+	}
+
+	list, listDiags := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, values)
+	diags.Append(listDiags...)
+	return list
 }
 
 // mapTFToSections converts Terraform List to API sections array.
@@ -416,15 +462,36 @@ func mapTFToServices(list types.List, diags *diag.Diagnostics) []client.CreateSt
 	elements := list.Elements()
 	services := make([]client.CreateStatusPageService, 0, len(elements))
 
-	for _, elem := range elements {
+	for i, elem := range elements {
 		service := mapTFToService(elem, diags)
+
+		// Apply-time validation: non-group services must have a UUID.
+		if (service.IsGroup == nil || !*service.IsGroup) && service.MonitorUUID == nil {
+			diags.AddError(
+				"uuid required for non-group service",
+				fmt.Sprintf("sections[*].services[%d]: uuid must be set for non-group services (is_group=false or unset). "+
+					"Only group header entries (is_group=true) may omit uuid.", i),
+			)
+		}
+
+		// Apply-time validation: group services must have at least one nested service.
+		if service.IsGroup != nil && *service.IsGroup && len(service.Services) == 0 {
+			diags.AddError(
+				"group service must have at least one nested service",
+				fmt.Sprintf("sections[*].services[%d]: is_group=true but services list is empty or null. "+
+					"Add at least one nested service, or set is_group=false.", i),
+			)
+		}
+
 		services = append(services, service)
 	}
 
 	return services
 }
 
-// mapTFToService converts a Terraform Object to API service (recursive for nested services).
+// mapTFToService converts a Terraform Object to API service.
+// For group entries (is_group=true), uuid is omitted and services list is mapped recursively.
+// For regular monitor entries, uuid is required and services is empty.
 func mapTFToService(elem attr.Value, diags *diag.Diagnostics) client.CreateStatusPageService {
 	obj, ok := elem.(types.Object)
 	if !ok {
@@ -435,22 +502,32 @@ func mapTFToService(elem attr.Value, diags *diag.Diagnostics) client.CreateStatu
 	attrs := obj.Attributes()
 	service := client.CreateStatusPageService{}
 
-	// Extract monitor_uuid
-	if monitorUUID, ok := attrs["uuid"].(types.String); ok && !monitorUUID.IsNull() {
-		service.MonitorUUID = monitorUUID.ValueString()
+	// Extract is_group first — determines how we handle other fields
+	isGroupVal := false
+	if isGroup, ok := attrs["is_group"].(types.Bool); ok && !isGroup.IsNull() {
+		isGroupVal = isGroup.ValueBool()
+		service.IsGroup = &isGroupVal
 	}
 
-	// Extract name_shown (optional)
+	// Extract monitor_uuid — only for non-group entries
+	if !isGroupVal {
+		if monitorUUID, ok := attrs["uuid"].(types.String); ok && !monitorUUID.IsNull() && monitorUUID.ValueString() != "" {
+			val := monitorUUID.ValueString()
+			service.MonitorUUID = &val
+		}
+	}
+
+	// Extract name_shown (always used — group name or monitor display name)
 	if nameMap, ok := attrs["name"].(types.Map); ok && !nameMap.IsNull() {
-		// For create requests, we only send name_shown as a string (not localized)
-		// Extract the first value from the map as the display name
 		nameStrMap := mapTFToStringMap(nameMap, diags)
-		if len(nameStrMap) > 0 {
-			// Get first value (typically "en")
+		if enName, ok := nameStrMap["en"]; ok && enName != "" {
+			service.NameShown = &enName
+		} else {
 			for _, v := range nameStrMap {
-				nameShown := v
-				service.NameShown = &nameShown
-				break
+				if v != "" {
+					service.NameShown = &v
+					break
+				}
 			}
 		}
 	}
@@ -467,16 +544,52 @@ func mapTFToService(elem attr.Value, diags *diag.Diagnostics) client.CreateStatu
 		service.ShowResponseTimes = &val
 	}
 
-	// Extract is_group
-	if isGroup, ok := attrs["is_group"].(types.Bool); ok && !isGroup.IsNull() {
-		val := isGroup.ValueBool()
-		service.IsGroup = &val
+	// Extract nested services for group entries
+	if isGroupVal {
+		if servicesList, ok := attrs["services"].(types.List); ok && !servicesList.IsNull() {
+			service.Services = mapTFToNestedServices(servicesList, diags)
+		}
 	}
 
-	// Note: Nested services are not supported in the Terraform schema.
-	// The services field has been removed from the schema.
-
 	return service
+}
+
+// mapTFToNestedServices converts Terraform List of nested services (inside a group) to API structs.
+func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []client.CreateStatusPageService {
+	if list.IsNull() || list.IsUnknown() {
+		return nil
+	}
+
+	elements := list.Elements()
+	services := make([]client.CreateStatusPageService, 0, len(elements))
+
+	for _, elem := range elements {
+		obj, ok := elem.(types.Object)
+		if !ok {
+			diags.AddError("Invalid nested service element", "Expected object type for nested service")
+			continue
+		}
+
+		attrs := obj.Attributes()
+		svc := client.CreateStatusPageService{}
+
+		if uuid, ok := attrs["uuid"].(types.String); ok && !uuid.IsNull() && uuid.ValueString() != "" {
+			val := uuid.ValueString()
+			svc.UUID = &val // nested services use "uuid" field, not "monitor_uuid"
+		}
+
+		// Nested services use name as a localized map (not name_shown string)
+		if nameMap, ok := attrs["name"].(types.Map); ok && !nameMap.IsNull() {
+			svc.Name = mapTFToStringMap(nameMap, diags)
+		}
+
+		// Note: show_uptime and show_response_times are group-level settings.
+		// The Hyperping API ignores these fields on nested child services.
+
+		services = append(services, svc)
+	}
+
+	return services
 }
 
 // =============================================================================
@@ -688,10 +801,9 @@ func SectionAttrTypes() map[string]attr.Type {
 	}
 }
 
-// ServiceAttrTypes returns the attribute types for service nested object (supports recursion).
-func ServiceAttrTypes() map[string]attr.Type {
-	// Note: Deeply nested services are not supported due to Terraform Plugin Framework
-	// limitations with recursive DynamicType inside collections.
+// NestedServiceAttrTypes returns attribute types for services nested inside a group.
+// This is one level deep — nested services are not groups themselves.
+func NestedServiceAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 		"id":                  types.StringType,
 		"uuid":                types.StringType,
@@ -699,5 +811,19 @@ func ServiceAttrTypes() map[string]attr.Type {
 		"is_group":            types.BoolType,
 		"show_uptime":         types.BoolType,
 		"show_response_times": types.BoolType,
+	}
+}
+
+// ServiceAttrTypes returns the attribute types for top-level services in a section.
+// Top-level services can be group entries with a nested services list.
+func ServiceAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"id":                  types.StringType,
+		"uuid":                types.StringType,
+		"name":                types.MapType{ElemType: types.StringType},
+		"is_group":            types.BoolType,
+		"show_uptime":         types.BoolType,
+		"show_response_times": types.BoolType,
+		"services":            types.ListType{ElemType: types.ObjectType{AttrTypes: NestedServiceAttrTypes()}},
 	}
 }
