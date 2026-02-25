@@ -629,29 +629,35 @@ func (r *StatusPageResource) preserveServiceBooleans(planSections, apiSections t
 	return newList
 }
 
-// preserveSectionServiceBooleans preserves boolean values in a single section's services.
+// preserveSectionServiceBooleans preserves boolean values in a single section.
+// It handles two independent API limitations:
+//  1. is_split: accepted on write but never returned on read (always false).
+//  2. show_response_times / show_uptime on services: accepted but not persisted by the API.
 func (r *StatusPageResource) preserveSectionServiceBooleans(planSection, apiSection types.Object, diags *diag.Diagnostics) types.Object {
 	planAttrs := planSection.Attributes()
 	apiAttrs := apiSection.Attributes()
 
-	planServices, planOk := planAttrs["services"].(types.List)
-	apiServices, apiOk := apiAttrs["services"].(types.List)
-
-	if !planOk || !apiOk || planServices.IsNull() || apiServices.IsNull() {
-		return apiSection
-	}
-
-	// Preserve booleans in each service
-	newServices := r.preserveServicesListBooleans(planServices, apiServices, diags)
-
-	// Build new section with preserved services
+	// Start from API attrs, then selectively override with plan values.
 	newAttrs := make(map[string]attr.Value, len(apiAttrs))
 	for k, v := range apiAttrs {
-		if k == "services" {
-			newAttrs[k] = newServices
-		} else {
-			newAttrs[k] = v
+		newAttrs[k] = v
+	}
+
+	// Preserve is_split: API accepts it on write but never returns it (always false on read).
+	// This must run even for sections with no services.
+	if planIsSplit, ok := planAttrs["is_split"].(types.Bool); ok && !planIsSplit.IsNull() {
+		if apiIsSplit, ok := apiAttrs["is_split"].(types.Bool); ok && !apiIsSplit.IsNull() {
+			if planIsSplit.ValueBool() && !apiIsSplit.ValueBool() {
+				newAttrs["is_split"] = planIsSplit
+			}
 		}
+	}
+
+	// Preserve service-level booleans when services are present in both plan and API response.
+	planServices, planOk := planAttrs["services"].(types.List)
+	apiServices, apiOk := apiAttrs["services"].(types.List)
+	if planOk && apiOk && !planServices.IsNull() && !apiServices.IsNull() {
+		newAttrs["services"] = r.preserveServicesListBooleans(planServices, apiServices, diags)
 	}
 
 	newSection, newDiags := types.ObjectValue(SectionAttrTypes(), newAttrs)

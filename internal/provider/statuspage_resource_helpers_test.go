@@ -360,7 +360,9 @@ func buildMockSections(sectionsReq []interface{}) []map[string]interface{} {
 		}
 
 		section := map[string]interface{}{
-			"is_split": false,
+			// is_split is intentionally omitted from the response to match real API behaviour:
+			// the Hyperping v2 API accepts is_split on write but never returns it on read.
+			// The provider's preserveSectionServiceBooleans workaround handles this.
 			"services": nil,
 		}
 
@@ -375,9 +377,6 @@ func buildMockSections(sectionsReq []interface{}) []map[string]interface{} {
 				}
 			}
 			section["name"] = nameStrMap
-		}
-		if isSplit, ok := secMap["is_split"].(bool); ok {
-			section["is_split"] = isSplit
 		}
 
 		if servicesReq, ok := secMap["services"].([]interface{}); ok {

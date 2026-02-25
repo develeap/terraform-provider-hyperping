@@ -433,8 +433,13 @@ func (m *mockHyperpingServer) createMonitor(w http.ResponseWriter, r *http.Reque
 		monitor["alerts_wait"] = int(alertsWait)
 	}
 
-	if escalationPolicy, ok := req["escalation_policy"].(string); ok {
-		monitor["escalation_policy"] = escalationPolicy
+	if ep, ok := req["escalation_policy"].(string); ok && ep != "" {
+		monitor["escalation_policy"] = map[string]interface{}{
+			"uuid": ep,
+			"name": "Mock Policy",
+		}
+	} else {
+		monitor["escalation_policy"] = nil
 	}
 
 	if requiredKeyword, ok := req["required_keyword"].(string); ok {
@@ -521,8 +526,8 @@ func applyHeadersField(monitor map[string]interface{}, key string, value interfa
 var monitorStringFields = map[string]bool{
 	"name": true, "url": true, "protocol": true, "http_method": true,
 	"request_body": true, "expected_status_code": true,
-	"escalation_policy": true, "required_keyword": true,
-	"status": true, "projectUuid": true,
+	"required_keyword": true,
+	"status":           true, "projectUuid": true,
 }
 
 // intFields are monitor fields that map from JSON numbers.
@@ -548,6 +553,16 @@ func applyMonitorField(monitor map[string]interface{}, key string, value interfa
 		applyRegionsField(monitor, key, value)
 	case key == "request_headers":
 		applyHeadersField(monitor, key, value)
+	case key == "escalation_policy":
+		// Store as object to match real API GET response shape.
+		if ep, ok := value.(string); ok && ep != "" {
+			monitor[key] = map[string]interface{}{
+				"uuid": ep,
+				"name": "Mock Policy",
+			}
+		} else {
+			monitor[key] = nil
+		}
 	}
 }
 
