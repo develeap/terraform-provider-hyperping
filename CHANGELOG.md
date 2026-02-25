@@ -10,6 +10,12 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.3.5] - 2026-02-25
+
+### Fixed
+
+- **`hyperping_monitor`**: Fix "Provider produced inconsistent result after apply" when `escalation_policy` is set — the API returns `null` for this field in the POST/PUT response even when a policy was successfully attached. The provider now preserves the plan value in state after create/update, matching the same save-restore pattern used for `required_keyword` (v1.2.1). Subsequent refreshes continue to read the live UUID from the API's object-shape GET response.
+
 ## [1.3.4] - 2026-02-25
 
 ### Fixed
@@ -586,7 +592,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.4...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.5...HEAD
+[1.3.5]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.1...v1.3.2
