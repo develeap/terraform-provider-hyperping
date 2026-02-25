@@ -359,9 +359,53 @@ func TestAccMonitorResource_escalationPolicy(t *testing.T) {
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "escalation_policy", "policy_def456"),
 				),
 			},
+			// Crash reproduction: API returns object shape {"uuid":"...","name":"..."}, must not panic
+			{
+				RefreshState: true,
+				Check: tfresource.ComposeTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "escalation_policy", "policy_def456"),
+				),
+			},
 			// Clear escalation_policy
 			{
 				Config: testAccMonitorResourceConfigBasic(server.URL, "escalation-test"),
+			},
+		},
+	})
+}
+
+// TestAccMonitorResource_escalationPolicyStateRefresh verifies the crash fix for escalation_policy.
+// The real API returns escalation_policy as {"uuid":"...","name":"..."} on GET, not a plain string.
+// Before the fix, this caused a panic. This test reproduces the crash condition by triggering
+// a state refresh after create, where the mock server returns the object shape.
+func TestAccMonitorResource_escalationPolicyStateRefresh(t *testing.T) {
+	server := newMockHyperpingServer(t)
+	defer server.Close()
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			// Step 1: Create monitor with escalation_policy set (POST sends string UUID)
+			{
+				Config: testAccMonitorResourceConfigWithEscalationPolicy(server.URL, "policy_abc123"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "escalation_policy", "policy_abc123"),
+					tfresource.TestCheckResourceAttrSet("hyperping_monitor.test", "id"),
+				),
+			},
+			// Step 2: Crash reproduction — RefreshState forces a GET which returns the object shape.
+			// UnmarshalJSON must decode {"uuid":"policy_abc123","name":"Mock Policy"} without panic.
+			{
+				RefreshState: true,
+				Check: tfresource.ComposeTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "escalation_policy", "policy_abc123"),
+				),
+			},
+			// Step 3: ImportState verify — confirms zero-drift after object-shape round-trip.
+			{
+				ResourceName:      "hyperping_monitor.test",
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})

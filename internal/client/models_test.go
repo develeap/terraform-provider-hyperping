@@ -189,6 +189,78 @@ func TestFlexibleString_Integration(t *testing.T) {
 	})
 }
 
+// TestMonitor_UnmarshalJSON_escalationPolicy verifies the custom unmarshaler
+// for Monitor.escalation_policy, which the real API returns as an object
+// {"uuid":"...","name":"..."} on GET even though POST/PUT send a plain string.
+func TestMonitor_UnmarshalJSON_escalationPolicy(t *testing.T) {
+	tests := []struct {
+		name     string
+		json     string
+		wantUUID string // empty string means nil
+		wantErr  bool
+	}{
+		{
+			name:     "object shape (real API GET response)",
+			json:     `{"uuid":"mon_1","name":"test","url":"https://example.com","protocol":"HTTPS","http_method":"GET","check_frequency":60,"follow_redirects":true,"expected_status_code":"200","escalation_policy":{"uuid":"policy_abc123","name":"Core-Escalation"}}`,
+			wantUUID: "policy_abc123",
+		},
+		{
+			name:     "plain string (legacy / write path)",
+			json:     `{"uuid":"mon_1","name":"test","url":"https://example.com","protocol":"HTTPS","http_method":"GET","check_frequency":60,"follow_redirects":true,"expected_status_code":"200","escalation_policy":"policy_abc123"}`,
+			wantUUID: "policy_abc123",
+		},
+		{
+			name:     "null value",
+			json:     `{"uuid":"mon_1","name":"test","url":"https://example.com","protocol":"HTTPS","http_method":"GET","check_frequency":60,"follow_redirects":true,"expected_status_code":"200","escalation_policy":null}`,
+			wantUUID: "",
+		},
+		{
+			name:     "field absent",
+			json:     `{"uuid":"mon_1","name":"test","url":"https://example.com","protocol":"HTTPS","http_method":"GET","check_frequency":60,"follow_redirects":true,"expected_status_code":"200"}`,
+			wantUUID: "",
+		},
+		{
+			name:     "object with empty UUID",
+			json:     `{"uuid":"mon_1","name":"test","url":"https://example.com","protocol":"HTTPS","http_method":"GET","check_frequency":60,"follow_redirects":true,"expected_status_code":"200","escalation_policy":{"uuid":"","name":"Unnamed"}}`,
+			wantUUID: "",
+		},
+		{
+			name:     "empty string value",
+			json:     `{"uuid":"mon_1","name":"test","url":"https://example.com","protocol":"HTTPS","http_method":"GET","check_frequency":60,"follow_redirects":true,"expected_status_code":"200","escalation_policy":""}`,
+			wantUUID: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var m Monitor
+			err := json.Unmarshal([]byte(tt.json), &m)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if tt.wantUUID == "" {
+				if m.EscalationPolicy != nil {
+					t.Errorf("expected nil EscalationPolicy, got %q", *m.EscalationPolicy)
+				}
+			} else {
+				if m.EscalationPolicy == nil {
+					t.Errorf("expected EscalationPolicy = %q, got nil", tt.wantUUID)
+				} else if *m.EscalationPolicy != tt.wantUUID {
+					t.Errorf("EscalationPolicy = %q, want %q", *m.EscalationPolicy, tt.wantUUID)
+				}
+			}
+		})
+	}
+}
+
 func TestCreateMonitorRequest_Validate(t *testing.T) {
 	t.Run("valid request", func(t *testing.T) {
 		req := CreateMonitorRequest{Name: "test", URL: "https://example.com"}

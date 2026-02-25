@@ -174,3 +174,40 @@ func testAccExternallyChangeMonitorKeyword(server *mockHyperpingServer, newKeywo
 		return nil
 	}
 }
+
+// testAccExternallyRemoveEscalationPolicy simulates an external removal of escalation_policy
+func testAccExternallyRemoveEscalationPolicy(server *mockHyperpingServer) tfresource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		for id, monitor := range server.monitors {
+			monitor["escalation_policy"] = nil
+			server.monitors[id] = monitor
+		}
+		return nil
+	}
+}
+
+// TestAccMonitorResource_driftDetection_escalationPolicy tests that removing
+// escalation_policy externally is detected as drift.
+// Also validates that reading the object-shape response does not crash (the core bug fix).
+func TestAccMonitorResource_driftDetection_escalationPolicy(t *testing.T) {
+	server := newMockHyperpingServer(t)
+	defer server.Close()
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			// Create with escalation_policy. The mock returns it as the object shape
+			// {"uuid":"policy_abc123","name":"Mock Policy"} — the crash scenario.
+			{
+				Config: testAccMonitorResourceConfigWithEscalationPolicy(server.URL, "policy_abc123"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "escalation_policy", "policy_abc123"),
+					tfresource.TestCheckResourceAttrSet("hyperping_monitor.test", "id"),
+					// Externally remove the escalation policy
+					testAccExternallyRemoveEscalationPolicy(server),
+				),
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
