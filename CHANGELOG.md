@@ -10,6 +10,57 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-02-25
+
+### Fixed
+
+- **hyperping_monitor**: Fix crash on `terraform plan`/`terraform refresh` when an escalation policy is set — the Hyperping API returns `escalation_policy` as an object `{"uuid":"...","name":"..."}` on read, but the provider expected a plain string, causing `json.Unmarshal` to panic. A custom `UnmarshalJSON` on `Monitor` now transparently handles both the object and plain-string shapes, normalising both to the UUID string. Write side (POST/PUT) is unchanged.
+- **hyperping_statuspage**: Fix `is_split` perpetual drift on status page sections — sections configured with `is_split = true` showed a non-empty diff on every subsequent plan because the API accepts the field on write but never returns it on read. The provider now correctly preserves the configured value across refreshes.
+
+### Changed
+
+- Bumped `goreleaser/goreleaser-action` to v7 in release workflow.
+
+## [1.3.3] - 2026-02-24
+
+### Fixed
+
+- **hyperping_statuspage**: Fix `description` field API write/read asymmetry — the API accepts `description` as a plain string on POST/PUT but returns a localised map `{"en":"..."}` on GET. Changed the schema from `MapAttribute` to `StringAttribute` and added extraction logic in the mapping layer. Prevents state drift and "inconsistent result after apply" errors for status pages with a description set.
+
+## [1.3.2] - 2026-02-23
+
+### Added
+
+- **hyperping_statuspage**: Nested service group support — status page sections can now contain child service groups using `is_group = true` with nested `children` blocks. Allows hierarchical organisation of services on public status pages.
+
+## [1.3.1] - 2026-02-22
+
+### Fixed
+
+- **Code quality**: Addressed all findings from comprehensive multi-expert code review — security hardening, error handling improvements, and deduplication across provider and client packages (#36).
+
+### Changed
+
+- Dependency bumps: `goquery` 1.9.0 → 1.11.0, `golang.org/x/time`, `golang.org/x/oauth2`, `hashicorp/terraform-json`, and GitHub Actions group updates.
+
+## [1.3.0] - 2026-02-21
+
+### Added
+
+- **hyperping_monitor data source**: New fields `status`, `ssl_expiration`, and `project_uuid` — expose monitor runtime state and SSL certificate expiry days directly in data source reads.
+- **hyperping_monitors data source**: New filter attributes `status`, `project_uuid`, and `has_ssl_expiration` for server-side result narrowing.
+- **hyperping_monitor_reports** (plural) data source — list uptime/performance reports across multiple monitors in a single data source call, with optional `monitor_uuid` and date-range filters.
+
+### Changed
+
+- **Scraper/analyzer tooling**: Replaced custom rod-based Chromium scraper and custom analyzer with an OSS stack (goquery + static HTML), reducing tool code by 82% and eliminating the Chromium runtime dependency from CI.
+- **CI**: Pinned `govulncheck` to v1.1.4 for reproducible security scans; fixed schema extraction, coverage analysis activation, and workflow permissions.
+
+### Fixed
+
+- Resolved 106 lint issues introduced by `golangci-lint` v2.10.1 upgrade.
+- Security hardening across client and migration tools (gosec false-positive suppressions with documented justifications).
+
 ## [1.2.3] - 2026-02-17
 
 ### Changed
@@ -535,7 +586,14 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.4...HEAD
+[1.3.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.3...v1.3.4
+[1.3.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.2...v1.3.3
+[1.3.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.1...v1.3.2
+[1.3.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.0...v1.3.1
+[1.3.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.2.3...v1.3.0
+[1.2.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.2.2...v1.2.3
+[1.2.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.0.9...v1.1.0
