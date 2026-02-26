@@ -48,6 +48,7 @@ type MonitorDataSourceModel struct {
 	Port               types.Int64  `tfsdk:"port"`
 	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
 	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
+	DNSRecordType      types.String `tfsdk:"dns_record_type"`
 	RequiredKeyword    types.String `tfsdk:"required_keyword"`
 	Status             types.String `tfsdk:"status"`
 	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
@@ -138,6 +139,10 @@ func (d *MonitorDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				MarkdownDescription: "UUID of the escalation policy linked to this monitor.",
 				Computed:            true,
 			},
+			"dns_record_type": schema.StringAttribute{
+				MarkdownDescription: "DNS record type for DNS-protocol monitors.",
+				Computed:            true,
+			},
 			"required_keyword": schema.StringAttribute{
 				MarkdownDescription: "Keyword that must appear in the response body.",
 				Computed:            true,
@@ -223,6 +228,7 @@ func (d *MonitorDataSource) mapMonitorToDataSourceModel(monitor *client.Monitor,
 	model.Port = fields.Port
 	model.AlertsWait = fields.AlertsWait
 	model.EscalationPolicy = fields.EscalationPolicy
+	model.DNSRecordType = fields.DNSRecordType
 	model.RequiredKeyword = fields.RequiredKeyword
 	model.Status = fields.Status
 	model.SSLExpiration = fields.SSLExpiration

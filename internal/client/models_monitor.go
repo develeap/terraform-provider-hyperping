@@ -44,8 +44,9 @@ type Monitor struct {
 	Port               *int            `json:"port,omitempty"`
 	AlertsWait         int             `json:"alerts_wait,omitempty"`
 	EscalationPolicy   *string         `json:"escalation_policy,omitempty"`
-	Status             string          `json:"status,omitempty"`         // up, down (read-only)
-	SSLExpiration      *int            `json:"ssl_expiration,omitempty"` // Days until SSL cert expiration (read-only)
+	DNSRecordType      *string         `json:"dns_record_type,omitempty"` // Required for DNS-protocol monitors
+	Status             string          `json:"status,omitempty"`          // up, down (read-only)
+	SSLExpiration      *int            `json:"ssl_expiration,omitempty"`  // Days until SSL cert expiration (read-only)
 }
 
 // monitorAlias is used to prevent infinite recursion in Monitor.UnmarshalJSON.
@@ -118,6 +119,7 @@ type CreateMonitorRequest struct {
 	Port               *int            `json:"port,omitempty"`
 	AlertsWait         *int            `json:"alerts_wait,omitempty"`
 	EscalationPolicy   *string         `json:"escalation_policy,omitempty"`
+	DNSRecordType      *string         `json:"dns_record_type,omitempty"`
 }
 
 // Validate checks input lengths on CreateMonitorRequest fields.
@@ -150,4 +152,5 @@ type UpdateMonitorRequest struct {
 	Port               *int             `json:"port,omitempty"`
 	AlertsWait         *int             `json:"alerts_wait,omitempty"`
 	EscalationPolicy   *string          `json:"escalation_policy,omitempty"`
+	DNSRecordType      *string          `json:"dns_record_type,omitempty"`
 }

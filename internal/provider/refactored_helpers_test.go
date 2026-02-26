@@ -410,7 +410,7 @@ func TestApplyMonitoringFieldChanges_changedEscalationPolicyIncluded(t *testing.
 	}
 }
 
-func TestApplyMonitoringFieldChanges_nullEscalationPolicyClearsToEmpty(t *testing.T) {
+func TestApplyMonitoringFieldChanges_nullEscalationPolicyClearsToNone(t *testing.T) {
 	ctx := context.Background()
 	var diags diag.Diagnostics
 
@@ -436,10 +436,10 @@ func TestApplyMonitoringFieldChanges_nullEscalationPolicyClearsToEmpty(t *testin
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
 	if req.EscalationPolicy == nil {
-		t.Fatal("expected EscalationPolicy to be set to empty string")
+		t.Fatal("expected EscalationPolicy to be set to 'none'")
 	}
-	if *req.EscalationPolicy != "" {
-		t.Errorf("expected EscalationPolicy='', got=%q", *req.EscalationPolicy)
+	if *req.EscalationPolicy != "none" {
+		t.Errorf("expected EscalationPolicy='none', got=%q", *req.EscalationPolicy)
 	}
 }
 

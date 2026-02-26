@@ -60,6 +60,7 @@ type MonitorResourceModel struct {
 	Port               types.Int64  `tfsdk:"port"`
 	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
 	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
+	DNSRecordType      types.String `tfsdk:"dns_record_type"`
 	RequiredKeyword    types.String `tfsdk:"required_keyword"`
 	Status             types.String `tfsdk:"status"`
 	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
@@ -193,6 +194,13 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"escalation_policy": schema.StringAttribute{
 				MarkdownDescription: "UUID of the escalation policy to link to this monitor.",
 				Optional:            true,
+			},
+			"dns_record_type": schema.StringAttribute{
+				MarkdownDescription: "DNS record type for DNS-protocol monitors. Valid values: `A`, `AAAA`, `CNAME`, `MX`, `NS`, `TXT`, `SOA`, `SRV`, `CAA`, `PTR`. Required when `protocol` is `dns`.",
+				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(client.AllowedDNSRecordTypes...),
+				},
 			},
 			"required_keyword": schema.StringAttribute{
 				MarkdownDescription: "A keyword that must appear in the response body for the check to pass.",
@@ -535,6 +543,13 @@ func (r *MonitorResource) mapMonitorToModel(monitor *client.Monitor, model *Moni
 		model.EscalationPolicy = types.StringNull()
 	}
 
+	// Handle dns_record_type (DNS-protocol monitors only)
+	if monitor.DNSRecordType != nil && *monitor.DNSRecordType != "" {
+		model.DNSRecordType = types.StringValue(*monitor.DNSRecordType)
+	} else {
+		model.DNSRecordType = types.StringNull()
+	}
+
 	// Handle required_keyword
 	if monitor.RequiredKeyword != nil && *monitor.RequiredKeyword != "" {
 		model.RequiredKeyword = types.StringValue(*monitor.RequiredKeyword)
@@ -600,6 +615,9 @@ func (r *MonitorResource) buildCreateRequest(ctx context.Context, plan *MonitorR
 
 	// Handle optional escalation_policy
 	createReq.EscalationPolicy = tfStringToPtr(plan.EscalationPolicy)
+
+	// Handle optional dns_record_type (DNS-protocol monitors only; omitted for HTTP/port/icmp)
+	createReq.DNSRecordType = tfStringToPtr(plan.DNSRecordType)
 
 	// Handle optional required_keyword
 	createReq.RequiredKeyword = tfStringToPtr(plan.RequiredKeyword)
@@ -673,6 +691,15 @@ func (r *MonitorResource) applySimpleFieldChanges(plan *MonitorResourceModel, st
 	if !plan.ProjectUUID.Equal(state.ProjectUUID) {
 		updateReq.ProjectUUID = tfStringToPtr(plan.ProjectUUID)
 	}
+
+	// Handle dns_record_type: only send if plan has a value (API rejects empty string "").
+	// Omitting the field is safe for HTTP/port/icmp monitors.
+	if !plan.DNSRecordType.Equal(state.DNSRecordType) {
+		if !plan.DNSRecordType.IsNull() {
+			updateReq.DNSRecordType = tfStringToPtr(plan.DNSRecordType)
+		}
+		// If plan is null (field removed), omit from request — API accepts missing field.
+	}
 }
 
 // applyHTTPFieldChanges handles HTTP-specific field changes for monitor updates.
@@ -731,10 +758,11 @@ func applyMonitoringFieldChanges(ctx context.Context, plan *MonitorResourceModel
 	}
 
 	// Handle escalation_policy
+	// API docs: send UUID to link, "none" to unlink. Empty string "" is rejected.
 	if !plan.EscalationPolicy.Equal(state.EscalationPolicy) {
 		if plan.EscalationPolicy.IsNull() {
-			empty := ""
-			updateReq.EscalationPolicy = &empty
+			none := "none"
+			updateReq.EscalationPolicy = &none
 		} else {
 			updateReq.EscalationPolicy = tfStringToPtr(plan.EscalationPolicy)
 		}
