@@ -140,10 +140,13 @@ var (
 	AllowedTimeouts = []int{5, 10, 15, 20}
 
 	// AllowedProtocols contains valid monitor protocols.
-	AllowedProtocols = []string{"http", "port", "icmp"}
+	AllowedProtocols = []string{"http", "port", "icmp", "dns"}
 
 	// AllowedMethods contains valid HTTP methods for monitors.
 	AllowedMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+
+	// AllowedDNSRecordTypes contains valid DNS record type values for DNS-protocol monitors.
+	AllowedDNSRecordTypes = []string{"A", "AAAA", "CNAME", "MX", "NS", "TXT", "SOA", "SRV", "CAA", "PTR"}
 
 	// AllowedRegions contains valid monitor check regions.
 	// Combined from official Hyperping API documentation and real API responses.

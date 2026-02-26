@@ -60,6 +60,13 @@ func MapMonitorCommonFields(monitor *client.Monitor, diags *diag.Diagnostics) Mo
 		result.EscalationPolicy = types.StringNull()
 	}
 
+	// Handle dns_record_type (DNS-protocol monitors only)
+	if monitor.DNSRecordType != nil && *monitor.DNSRecordType != "" {
+		result.DNSRecordType = types.StringValue(*monitor.DNSRecordType)
+	} else {
+		result.DNSRecordType = types.StringNull()
+	}
+
 	// Handle required_keyword
 	if monitor.RequiredKeyword != nil && *monitor.RequiredKeyword != "" {
 		result.RequiredKeyword = types.StringValue(*monitor.RequiredKeyword)
@@ -104,6 +111,7 @@ type MonitorCommonFields struct {
 	Port               types.Int64
 	AlertsWait         types.Int64
 	EscalationPolicy   types.String
+	DNSRecordType      types.String
 	RequiredKeyword    types.String
 	Status             types.String
 	SSLExpiration      types.Int64
