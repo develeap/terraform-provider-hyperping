@@ -10,6 +10,17 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.3.6] - 2026-02-26
+
+### Added
+
+- **`hyperping_monitor`**: New `dns_record_type` attribute (Optional, `String`) for DNS-protocol monitors. Accepted values: `A`, `AAAA`, `CNAME`, `MX`, `NS`, `TXT`, `SOA`, `SRV`, `CAA`, `PTR`. Also exposed as a computed field on the `hyperping_monitor` and `hyperping_monitors` data sources.
+
+### Fixed
+
+- **`hyperping_monitor`**: Fix 422 validation error on UPDATE for HTTP/port/icmp monitors — the provider was serialising `dns_record_type: ""` in every PUT payload. The Hyperping API rejects an empty string but accepts a missing field. The field is now typed as `*string` with `omitempty` so it is omitted from the request when unset.
+- **`hyperping_monitor`**: Fix escalation policy unlinking — clearing `escalation_policy` now sends `"none"` in the PUT payload instead of `""`, matching the API contract ("send `null` or `"none"` to unlink").
+
 ## [1.3.5] - 2026-02-25
 
 ### Fixed
