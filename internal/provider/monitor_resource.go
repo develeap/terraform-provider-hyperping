@@ -196,10 +196,10 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:            true,
 			},
 			"dns_record_type": schema.StringAttribute{
-				MarkdownDescription: "DNS record type for DNS-protocol monitors. Valid values: `A`, `AAAA`, `CNAME`, `MX`, `NS`, `TXT`, `SOA`, `SRV`, `CAA`, `PTR`. Required when `protocol` is `dns`.",
-				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedDNSRecordTypes...),
+				MarkdownDescription: "DNS record type for DNS-protocol monitors (read-only, set by the API).",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			"required_keyword": schema.StringAttribute{
@@ -616,9 +616,6 @@ func (r *MonitorResource) buildCreateRequest(ctx context.Context, plan *MonitorR
 	// Handle optional escalation_policy
 	createReq.EscalationPolicy = tfStringToPtr(plan.EscalationPolicy)
 
-	// Handle optional dns_record_type (DNS-protocol monitors only; omitted for HTTP/port/icmp)
-	createReq.DNSRecordType = tfStringToPtr(plan.DNSRecordType)
-
 	// Handle optional required_keyword
 	createReq.RequiredKeyword = tfStringToPtr(plan.RequiredKeyword)
 
@@ -690,15 +687,6 @@ func (r *MonitorResource) applySimpleFieldChanges(plan *MonitorResourceModel, st
 
 	if !plan.ProjectUUID.Equal(state.ProjectUUID) {
 		updateReq.ProjectUUID = tfStringToPtr(plan.ProjectUUID)
-	}
-
-	// Handle dns_record_type: only send if plan has a value (API rejects empty string "").
-	// Omitting the field is safe for HTTP/port/icmp monitors.
-	if !plan.DNSRecordType.Equal(state.DNSRecordType) {
-		if !plan.DNSRecordType.IsNull() {
-			updateReq.DNSRecordType = tfStringToPtr(plan.DNSRecordType)
-		}
-		// If plan is null (field removed), omit from request — API accepts missing field.
 	}
 }
 

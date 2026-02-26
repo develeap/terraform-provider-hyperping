@@ -530,8 +530,8 @@ func applyHeadersField(monitor map[string]interface{}, key string, value interfa
 var monitorStringFields = map[string]bool{
 	"name": true, "url": true, "protocol": true, "http_method": true,
 	"request_body": true, "expected_status_code": true,
-	"required_keyword": true, "dns_record_type": true,
-	"status": true, "projectUuid": true,
+	"required_keyword": true,
+	"status":           true, "projectUuid": true,
 }
 
 // intFields are monitor fields that map from JSON numbers.

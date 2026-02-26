@@ -69,7 +69,6 @@ resource "hyperping_monitor" "maintenance" {
 
 - `alerts_wait` (Number) Seconds to wait before sending alerts after an outage is detected. Allows time for transient issues to resolve.
 - `check_frequency` (Number) Check frequency in seconds. Valid values: `10`, `20`, `30`, `60`, `120`, `180`, `300`, `600`, `1800`, `3600`, `21600`, `43200`, `86400`. Defaults to `60`.
-- `dns_record_type` (String) DNS record type for DNS-protocol monitors. Valid values: `A`, `AAAA`, `CNAME`, `MX`, `NS`, `TXT`, `SOA`, `SRV`, `CAA`, `PTR`. Required when `protocol` is `dns`.
 - `escalation_policy` (String) UUID of the escalation policy to link to this monitor.
 - `expected_status_code` (String) Expected HTTP status code pattern. Use `2xx` for any 2xx status, or specific like `200`, `201`. Defaults to `2xx`.
 - `follow_redirects` (Boolean) Whether to follow HTTP redirects. Defaults to `true`.
@@ -85,6 +84,7 @@ resource "hyperping_monitor" "maintenance" {
 
 ### Read-Only
 
+- `dns_record_type` (String) DNS record type for DNS-protocol monitors (read-only, set by the API).
 - `id` (String) The unique identifier (UUID) of the monitor.
 - `ssl_expiration` (Number) Days until the SSL certificate expires.
 - `status` (String) Current monitor status. Either `up` or `down`.

@@ -119,7 +119,6 @@ type CreateMonitorRequest struct {
 	Port               *int            `json:"port,omitempty"`
 	AlertsWait         *int            `json:"alerts_wait,omitempty"`
 	EscalationPolicy   *string         `json:"escalation_policy,omitempty"`
-	DNSRecordType      *string         `json:"dns_record_type,omitempty"`
 }
 
 // Validate checks input lengths on CreateMonitorRequest fields.
@@ -152,5 +151,4 @@ type UpdateMonitorRequest struct {
 	Port               *int             `json:"port,omitempty"`
 	AlertsWait         *int             `json:"alerts_wait,omitempty"`
 	EscalationPolicy   *string          `json:"escalation_policy,omitempty"`
-	DNSRecordType      *string          `json:"dns_record_type,omitempty"`
 }
