@@ -20,6 +20,10 @@ Published releases start from v1.0.3.
   even when the field is absent from the request body, so these monitors continued to fail.
   The provider now sends `"dns_record_type": null` explicitly in every PUT, which instructs the
   API to clear the stale stored `""`. Monitors created with v1.3.7+ are unaffected.
+- **All resources**: Circuit breaker open state now surfaces actionable troubleshooting steps
+  (wait 30 seconds, use `terraform apply -parallelism=1`, check API status at
+  https://status.hyperping.app) instead of misleading "check your API key / verify resource
+  exists" guidance.
 
 ## [1.3.6] - 2026-02-26
 
