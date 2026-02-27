@@ -241,7 +241,7 @@ func (r *MaintenanceResource) Read(ctx context.Context, req resource.ReadRequest
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.Append(newReadError("Maintenance Window", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewReadErrorWithContext("Maintenance Window", state.ID.ValueString(), err))
 		return
 	}
 

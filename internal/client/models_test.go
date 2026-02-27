@@ -305,3 +305,21 @@ func TestCreateIncidentRequest_Validate(t *testing.T) {
 		}
 	})
 }
+
+// TestUpdateMonitorRequest_DNSRecordTypeAlwaysNull verifies that an empty
+// UpdateMonitorRequest serialises dns_record_type as JSON null (not omitted).
+// This is the critical behaviour that clears any stale dns_record_type:""
+// stored by provider versions before v1.3.7. Omitting the field leaves the
+// stored "" in place, causing the Hyperping API to return 422 on every PUT.
+func TestUpdateMonitorRequest_DNSRecordTypeAlwaysNull(t *testing.T) {
+	req := UpdateMonitorRequest{}
+	b, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	body := string(b)
+
+	if !strings.Contains(body, `"dns_record_type":null`) {
+		t.Errorf("expected dns_record_type:null in serialized body, got: %s", body)
+	}
+}

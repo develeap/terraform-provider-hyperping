@@ -345,7 +345,7 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.Append(newReadError("Monitor", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewReadErrorWithContext("Monitor", state.ID.ValueString(), err))
 		return
 	}
 

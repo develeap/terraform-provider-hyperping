@@ -136,7 +136,7 @@ func (d *MaintenanceWindowDataSource) Read(ctx context.Context, req datasource.R
 
 	maint, err := d.client.GetMaintenance(ctx, config.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.Append(newReadError("Maintenance Window", config.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewReadErrorWithContext("Maintenance Window", config.ID.ValueString(), err))
 		return
 	}
 

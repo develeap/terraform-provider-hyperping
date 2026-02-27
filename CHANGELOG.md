@@ -10,6 +10,17 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.3.7] - 2026-02-27
+
+### Fixed
+
+- **`hyperping_monitor`**: Fix persistent 422 on UPDATE for monitors created by provider versions
+  before v1.3.7. v1.3.6 stopped sending `dns_record_type: ""` on create, but existing monitors
+  already had `""` stored in the Hyperping API. The API validates the stored value on every PUT
+  even when the field is absent from the request body, so these monitors continued to fail.
+  The provider now sends `"dns_record_type": null` explicitly in every PUT, which instructs the
+  API to clear the stale stored `""`. Monitors created with v1.3.7+ are unaffected.
+
 ## [1.3.6] - 2026-02-26
 
 ### Fixed

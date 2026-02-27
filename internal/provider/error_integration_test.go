@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sony/gobreaker"
+
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
@@ -531,6 +533,34 @@ func TestErrorMessage_Format(t *testing.T) {
 				t.Errorf("Expected troubleshooting section in detail")
 			}
 		})
+	}
+}
+
+func TestNewReadErrorWithContext_CircuitBreaker(t *testing.T) {
+	err := gobreaker.ErrOpenState
+	d := NewReadErrorWithContext("Monitor", "mon_abc123", err)
+
+	summary := d.Summary()
+	detail := d.Detail()
+
+	if !strings.Contains(summary, "Failed to Read Monitor") {
+		t.Errorf("Expected summary to contain 'Failed to Read Monitor', got: %s", summary)
+	}
+
+	if !strings.Contains(detail, "circuit breaker is open") {
+		t.Errorf("Expected detail to contain 'circuit breaker is open', got: %s", detail)
+	}
+
+	if !strings.Contains(detail, "Wait 30 seconds") {
+		t.Errorf("Expected detail to contain 'Wait 30 seconds', got: %s", detail)
+	}
+
+	if !strings.Contains(detail, "-parallelism=1") {
+		t.Errorf("Expected detail to contain '-parallelism=1', got: %s", detail)
+	}
+
+	if !strings.Contains(detail, "status.hyperping.app") {
+		t.Errorf("Expected detail to contain API status URL, got: %s", detail)
 	}
 }
 

@@ -178,6 +178,8 @@ func BuildTroubleshootingSteps(ctx ErrorContext) string {
 		steps = buildServerErrorSteps(ctx)
 	case "validation":
 		steps = buildValidationErrorSteps(ctx)
+	case "circuit_breaker":
+		steps = buildCircuitBreakerSteps(ctx)
 	default:
 		steps = buildGenericSteps(ctx)
 	}
@@ -296,6 +298,22 @@ func buildValidationErrorSteps(ctx ErrorContext) []string {
 	steps = append(steps, "5. Review documentation: https://docs.hyperping.io")
 
 	return steps
+}
+
+// buildCircuitBreakerSteps generates troubleshooting steps for circuit breaker open errors.
+// The circuit breaker trips when too many recent API calls fail (60% failure rate across
+// ≥3 requests in a 60s window). It recovers automatically after 30 seconds.
+func buildCircuitBreakerSteps(_ ErrorContext) []string {
+	return []string{
+		"1. The API circuit breaker is open — too many recent requests failed",
+		"2. Wait 30 seconds for automatic recovery, then retry:",
+		"   $ terraform apply",
+		"3. Reduce parallel operations to limit API pressure:",
+		"   $ terraform apply -parallelism=1",
+		"4. Check Hyperping API status: https://status.hyperping.app",
+		"5. If the API is healthy, force a state refresh:",
+		"   $ terraform refresh",
+	}
 }
 
 // buildGenericSteps generates generic troubleshooting steps for unknown errors.

@@ -163,7 +163,7 @@ func (d *HealthcheckDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	healthcheck, err := d.client.GetHealthcheck(ctx, config.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.Append(newReadError("Healthcheck", config.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewReadErrorWithContext("Healthcheck", config.ID.ValueString(), err))
 		return
 	}
 

@@ -483,6 +483,7 @@ func (c *Client) doRequestWithRetry(ctx context.Context, method, path string, bo
 			"method":  method,
 			"path":    path,
 			"attempt": attempt + 1,
+			"body":    string(jsonBody),
 		})
 
 		startTime := time.Now()

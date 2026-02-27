@@ -147,7 +147,7 @@ func (d *IncidentDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	incident, err := d.client.GetIncident(ctx, config.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.Append(newReadError("Incident", config.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewReadErrorWithContext("Incident", config.ID.ValueString(), err))
 		return
 	}
 

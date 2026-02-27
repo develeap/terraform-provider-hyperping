@@ -7,6 +7,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/sony/gobreaker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -425,6 +426,20 @@ func TestDetectErrorContext_ServerErrorVariants(t *testing.T) {
 			assert.Equal(t, tc.statusCode, ctx.HTTPStatus)
 		})
 	}
+}
+
+func TestDetectErrorContext_CircuitBreakerOpen(t *testing.T) {
+	t.Parallel()
+
+	err := gobreaker.ErrOpenState
+	ctx := DetectErrorContext("Monitor", "mon_123", "read", err)
+
+	assert.Equal(t, "circuit_breaker", ctx.Type)
+	assert.Equal(t, 0, ctx.HTTPStatus)
+	assert.Equal(t, "Monitor", ctx.ResourceType)
+	assert.Equal(t, "mon_123", ctx.ResourceID)
+	assert.Equal(t, "read", ctx.Operation)
+	assert.Contains(t, ctx.Message, "circuit breaker is open")
 }
 
 func TestDetectErrorContext_ValidationErrorVariants(t *testing.T) {

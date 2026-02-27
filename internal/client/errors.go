@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+
+	"github.com/sony/gobreaker"
 )
 
 // Common errors returned by the client.
@@ -166,4 +168,11 @@ func IsValidation(err error) bool {
 // IsServerError checks if an error is a server error.
 func IsServerError(err error) bool {
 	return errors.Is(err, ErrServerError)
+}
+
+// IsCircuitBreakerOpen checks if an error is due to the circuit breaker being open.
+// This occurs when too many recent API calls failed, triggering the circuit breaker
+// to stop all requests for a recovery period (30 seconds by default).
+func IsCircuitBreakerOpen(err error) bool {
+	return errors.Is(err, gobreaker.ErrOpenState)
 }

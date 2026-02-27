@@ -313,7 +313,7 @@ func (d *StatusPageDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	// Fetch status page from API
 	statusPage, err := d.client.GetStatusPage(ctx, config.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.Append(newReadError("Status Page", config.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewReadErrorWithContext("Status Page", config.ID.ValueString(), err))
 		return
 	}
 

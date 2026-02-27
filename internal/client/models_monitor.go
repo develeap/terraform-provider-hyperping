@@ -134,6 +134,14 @@ func (r CreateMonitorRequest) Validate() error {
 
 // UpdateMonitorRequest represents a request to update a monitor.
 // API: PUT /v1/monitors/{uuid}
+//
+// DNSRecordType is intentionally included WITHOUT omitempty so it is always
+// serialised as JSON null. This is necessary because monitors created by
+// provider versions before v1.3.7 may have dns_record_type:"" stored in the
+// Hyperping API. The API now validates the stored value on every PUT and
+// rejects "" as not being in [A, AAAA, CNAME, MX, NS, TXT, SOA, SRV, CAA, PTR].
+// Sending explicit JSON null instructs the API to clear the stale stored value.
+// Omitting the field entirely leaves the stored "" in place and triggers the 422.
 type UpdateMonitorRequest struct {
 	Name               *string          `json:"name,omitempty"`
 	URL                *string          `json:"url,omitempty"`
@@ -151,4 +159,5 @@ type UpdateMonitorRequest struct {
 	Port               *int             `json:"port,omitempty"`
 	AlertsWait         *int             `json:"alerts_wait,omitempty"`
 	EscalationPolicy   *string          `json:"escalation_policy,omitempty"`
+	DNSRecordType      *string          `json:"dns_record_type"` // no omitempty: nil → JSON null → clears stale stored ""
 }

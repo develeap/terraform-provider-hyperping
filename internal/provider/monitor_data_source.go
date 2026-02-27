@@ -197,7 +197,7 @@ func (d *MonitorDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	monitor, err := d.client.GetMonitor(ctx, config.ID.ValueString())
 	if err != nil {
-		resp.Diagnostics.Append(newReadError("Monitor", config.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewReadErrorWithContext("Monitor", config.ID.ValueString(), err))
 		return
 	}
 

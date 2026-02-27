@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -1226,5 +1227,92 @@ func TestUpdateMonitorRequest_JSONMarshaling_OmitsNilFields(t *testing.T) {
 	}
 	if _, exists := decoded["check_frequency"]; exists {
 		t.Error("check_frequency should not be present when nil")
+	}
+
+	// dns_record_type MUST always be present as null — no omitempty.
+	// This clears any stale "" stored by pre-v1.3.7 providers (see models_monitor.go).
+	val, exists := decoded["dns_record_type"]
+	if !exists {
+		t.Error("dns_record_type must always be present in the PUT body (no omitempty)")
+	}
+	if val != nil {
+		t.Errorf("dns_record_type must be null when unset, got %v", val)
+	}
+}
+
+// TestUpdateMonitor_DNSRecordType_BeforeAfterComparison captures the real PUT request
+// body at the HTTP layer and confirms the before/after behavior of the v1.3.7 fix.
+//
+// BEFORE (pre-v1.3.7): UpdateMonitorRequest had no dns_record_type field.
+//
+//	PUT body: {"name":"Updated"} — field absent
+//	API behaviour: validates stored value ("" from old provider) → 422
+//
+// AFTER (v1.3.7): DNSRecordType *string without omitempty → nil serialises as null.
+//
+//	PUT body: {"name":"Updated","dns_record_type":null} — field explicitly null
+//	API behaviour: clears stored "" → 200
+func TestUpdateMonitor_DNSRecordType_BeforeAfterComparison(t *testing.T) {
+	t.Parallel()
+
+	var capturedBody string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("failed to read request body: %v", err)
+		}
+		capturedBody = string(bodyBytes)
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(Monitor{
+			UUID:     "mon_qoVhs5ZEiknFdW",
+			Name:     "Updated",
+			Protocol: "http",
+		})
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+
+	name := "Updated"
+	_, err := c.UpdateMonitor(context.Background(), "mon_qoVhs5ZEiknFdW", UpdateMonitorRequest{
+		Name: &name,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMonitor failed: %v", err)
+	}
+
+	t.Logf("=== PUT body captured from HTTP server ===")
+	t.Logf("AFTER  (v1.3.7): %s", capturedBody)
+	t.Logf("BEFORE (v1.3.6): {\"name\":\"Updated\"}  — dns_record_type absent, API used stored \"\" → 422")
+	t.Logf("==========================================")
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal([]byte(capturedBody), &decoded); err != nil {
+		t.Fatalf("failed to parse captured body: %v", err)
+	}
+
+	// AFTER: dns_record_type must be present and null
+	val, exists := decoded["dns_record_type"]
+	if !exists {
+		t.Errorf("AFTER: dns_record_type must be in PUT body — it was absent (pre-v1.3.7 bug)")
+	}
+	if val != nil {
+		t.Errorf("AFTER: dns_record_type must be null, got %v", val)
+	}
+
+	// Sanity: intentionally-set fields still present
+	if decoded["name"] != "Updated" {
+		t.Errorf("name field missing or wrong: %v", decoded["name"])
+	}
+
+	// Sanity: omitempty fields still absent when nil
+	for _, absent := range []string{"url", "protocol", "http_method", "check_frequency",
+		"regions", "request_headers", "follow_redirects", "paused", "port",
+		"alerts_wait", "escalation_policy", "required_keyword"} {
+		if _, exists := decoded[absent]; exists {
+			t.Errorf("field %q should be absent (omitempty, nil), but was present", absent)
+		}
 	}
 }

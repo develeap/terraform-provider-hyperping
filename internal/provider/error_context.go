@@ -15,7 +15,7 @@ import (
 // ErrorContext provides structured error information for enhanced error messages.
 // This context is used to generate actionable troubleshooting steps for users.
 type ErrorContext struct {
-	Type         string // "not_found", "auth_error", "rate_limit", "server_error", "validation", "unknown"
+	Type         string // "not_found", "auth_error", "rate_limit", "server_error", "validation", "circuit_breaker", "unknown"
 	HTTPStatus   int
 	RetryAfter   int    // seconds (for rate limit errors)
 	ResourceType string // "Monitor", "Incident", "Maintenance", etc.
@@ -62,6 +62,8 @@ func DetectErrorContext(resourceType, resourceID, operation string, err error) E
 		ctx.Type = "rate_limit"
 		ctx.HTTPStatus = 429
 		ctx.RetryAfter = extractRetryAfter(err)
+	case client.IsCircuitBreakerOpen(err):
+		ctx.Type = "circuit_breaker"
 	case client.IsServerError(err):
 		ctx.Type = "server_error"
 		ctx.HTTPStatus = extractStatusCode(err, 500)

@@ -194,7 +194,7 @@ func (r *IncidentResource) Read(ctx context.Context, req resource.ReadRequest, r
 			resp.State.RemoveResource(ctx)
 			return
 		}
-		resp.Diagnostics.Append(newReadError("Incident", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewReadErrorWithContext("Incident", state.ID.ValueString(), err))
 		return
 	}
 
