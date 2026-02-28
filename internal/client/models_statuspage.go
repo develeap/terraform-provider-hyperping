@@ -67,12 +67,14 @@ type StatusPageSection struct {
 }
 
 // StatusPageService represents a service (monitor or component) in a section.
-// The ID field uses interface{} because the Hyperping API returns:
-//   - a string UUID (e.g. "mon_abc123") for flat services in sections
-//   - an integer (e.g. 117122) for nested child services inside groups
+// The ID field uses interface{} because the Hyperping v2 API returns different
+// types depending on how the service was created:
+//   - a string UUID (e.g. "mon_abc123") when set via v2 API with UUID strings
+//   - an integer (e.g. 117122) when set via v1 admin UI or numeric ID workaround
 //   - absent entirely for group header entries (which have no top-level monitor)
 //
-// UUID is empty for group header entries; only their nested children carry UUIDs.
+// The provider writes numeric IDs (translated from UUIDs) for renderer compatibility,
+// so read responses typically contain integers. UUID is empty for group headers.
 type StatusPageService struct {
 	ID                interface{}         `json:"id,omitempty"`
 	UUID              string              `json:"uuid,omitempty"`

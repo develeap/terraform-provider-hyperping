@@ -10,6 +10,28 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.3.9] - 2026-03-01
+
+### Fixed
+
+- **Status page renderer**: Services now use numeric v1 monitor IDs instead of UUID strings,
+  fixing the critical bug where the renderer showed "up" status for all monitors regardless
+  of actual state. The provider transparently translates UUIDs to numeric IDs on write and
+  back on read — no HCL changes needed.
+- **Status page boolean preservation**: `show_response_times`, `show_uptime`, and `is_split`
+  now use UUID-based matching instead of fragile index-based matching. Fixes perpetual drift
+  when API reorders services, and adds support for nested services inside groups.
+- **Status page isProtected drift**: Every status page PUT now includes authentication settings
+  (similar to the `dns_record_type: "A"` workaround for monitors). This triggers ISR cache
+  revalidation on the Hyperping renderer, fixing the admin UI regression where editing any
+  setting via the Hyperping dashboard resets an internal `isProtected` flag to `true`. The
+  provider also emits a warning diagnostic when `password_protected` and
+  `authentication.password_protection` disagree. **Known limitation**: if no Terraform fields
+  changed, no PUT is sent, so the flag stays stale until the next apply that touches the page.
+- **Description localization**: `extractLocalizedString` now skips empty string values when
+  searching for a non-empty localized value, preventing drift when the API returns
+  `{"en":"","fr":"texte"}`.
+
 ## [1.3.8] - 2026-02-27
 
 ### Fixed

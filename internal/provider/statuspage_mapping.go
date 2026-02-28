@@ -600,20 +600,32 @@ func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []client.Cr
 // The API returns description as a map (e.g. {"en":"text","fr":"texte"}) but only
 // accepts a plain string on write. We extract the "en" value by default; if absent,
 // we fall back to the first value of configuredLangs, then to the first non-empty value.
+// Empty strings are treated as "no value" — the function skips them and falls through
+// to the next candidate, preventing drift when the API returns {"en":"","fr":"texte"}.
 func extractLocalizedString(m map[string]string, configuredLangs []string) types.String {
 	if len(m) == 0 {
 		return types.StringNull()
 	}
-	if v, ok := m["en"]; ok {
+	// Prefer "en" if present and non-empty
+	if v, ok := m["en"]; ok && v != "" {
 		return types.StringValue(v)
 	}
+	// Fall back to configured languages
 	for _, lang := range configuredLangs {
-		if v, ok := m[lang]; ok {
+		if v, ok := m[lang]; ok && v != "" {
 			return types.StringValue(v)
 		}
 	}
+	// Fall back to first non-empty value from any language
 	for _, v := range m {
-		return types.StringValue(v)
+		if v != "" {
+			return types.StringValue(v)
+		}
+	}
+	// All values are empty — return empty string to match the API's "en" key
+	// if it exists (prevents null vs "" mismatch), otherwise null.
+	if _, hasEn := m["en"]; hasEn {
+		return types.StringValue("")
 	}
 	return types.StringNull()
 }

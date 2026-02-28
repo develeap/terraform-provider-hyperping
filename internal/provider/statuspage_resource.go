@@ -389,6 +389,12 @@ func (r *StatusPageResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	// Translate UUIDs to numeric IDs for status page renderer compatibility
+	if len(createReq.Sections) > 0 {
+		uuidToID, _ := buildMonitorIDMaps(ctx, r.client, &resp.Diagnostics)
+		createReq.Sections = translateSectionsToNumericIDs(createReq.Sections, uuidToID)
+	}
+
 	// Create status page via API
 	statusPage, err := r.client.CreateStatusPage(ctx, *createReq)
 	if err != nil {
@@ -397,7 +403,7 @@ func (r *StatusPageResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// Map response to state
-	r.mapStatusPageToModel(statusPage, &plan, &resp.Diagnostics)
+	r.mapStatusPageToModel(ctx, statusPage, &plan, &resp.Diagnostics)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -428,7 +434,7 @@ func (r *StatusPageResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// Map response to state
-	r.mapStatusPageToModel(statusPage, &state, &resp.Diagnostics)
+	r.mapStatusPageToModel(ctx, statusPage, &state, &resp.Diagnostics)
 
 	// Restore password: API never returns this field, so preserve prior state value
 	// to prevent perpetual drift on every plan/apply cycle.
@@ -457,6 +463,12 @@ func (r *StatusPageResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
+	// Translate UUIDs to numeric IDs for status page renderer compatibility
+	if len(updateReq.Sections) > 0 {
+		uuidToID, _ := buildMonitorIDMaps(ctx, r.client, &resp.Diagnostics)
+		updateReq.Sections = translateSectionsToNumericIDs(updateReq.Sections, uuidToID)
+	}
+
 	// Update status page via API
 	statusPage, err := r.client.UpdateStatusPage(ctx, state.ID.ValueString(), *updateReq)
 	if err != nil {
@@ -465,7 +477,7 @@ func (r *StatusPageResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// Map response to state
-	r.mapStatusPageToModel(statusPage, &plan, &resp.Diagnostics)
+	r.mapStatusPageToModel(ctx, statusPage, &plan, &resp.Diagnostics)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -507,7 +519,25 @@ func (r *StatusPageResource) ImportState(ctx context.Context, req resource.Impor
 // mapStatusPageToModel maps API response to Terraform model.
 // It extracts configured languages from the model's settings to filter API response localized fields,
 // preventing drift from API auto-population of all supported languages.
-func (r *StatusPageResource) mapStatusPageToModel(sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
+func (r *StatusPageResource) mapStatusPageToModel(ctx context.Context, sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
+	// Reverse-translate numeric IDs to UUIDs for TF state consistency
+	_, idToUUID := buildMonitorIDMaps(ctx, r.client, diags)
+	translateStatusPageToUUIDs(sp, idToUUID)
+
+	// Detect isProtected drift: the Hyperping admin UI can reset an internal
+	// isProtected flag to true via v1 writes, causing a "Sign In" wall even when
+	// password_protection is false. The top-level PasswordProtected field reflects
+	// the actual isProtected state; if it disagrees with the auth settings, warn.
+	if sp.PasswordProtected && !sp.Settings.Authentication.PasswordProtection {
+		diags.AddWarning(
+			"Status page isProtected drift detected",
+			fmt.Sprintf("Status page %q has password_protected=true at the API level but "+
+				"authentication.password_protection=false in settings. This typically happens "+
+				"when someone edits the page in the Hyperping admin UI, which resets an internal "+
+				"isProtected flag. Run 'terraform apply' to send a PUT that fixes this.", sp.UUID),
+		)
+	}
+
 	// Extract configured languages from the model's settings
 	// This is used to filter localized fields in the API response
 	configuredLangs := r.extractConfiguredLanguages(model.Settings, diags)
@@ -522,8 +552,8 @@ func (r *StatusPageResource) mapStatusPageToModel(sp *client.StatusPage, model *
 		}
 	}
 
-	// 2. sections - needed to preserve show_response_times boolean values
-	planSections := model.Sections
+	// 2. Extract write-only booleans BEFORE API overwrites them
+	serviceMap, sectionIsSplit := extractWriteOnlyBooleans(model.Sections)
 
 	// Map with language filtering to prevent drift
 	commonFields := MapStatusPageCommonFieldsWithFilter(sp, configuredLangs, diags)
@@ -542,10 +572,9 @@ func (r *StatusPageResource) mapStatusPageToModel(sp *client.StatusPage, model *
 	// Map sections from API
 	model.Sections = commonFields.Sections
 
-	// Preserve show_response_times and show_uptime boolean values from plan
-	// API may return false even when true was set (API bug or default value issue)
-	if !planSections.IsNull() && !planSections.IsUnknown() {
-		model.Sections = r.preserveServiceBooleans(planSections, model.Sections, diags)
+	// Apply write-only boolean values using UUID-based matching
+	if len(serviceMap) > 0 || len(sectionIsSplit) > 0 {
+		model.Sections = r.applyWriteOnlyBooleans(model.Sections, serviceMap, sectionIsSplit, diags)
 	}
 }
 
@@ -589,139 +618,6 @@ func (r *StatusPageResource) replaceSettingsName(settings types.Object, name typ
 	diags.Append(newDiags...)
 
 	return newSettings
-}
-
-// preserveServiceBooleans preserves boolean field values from plan when API returns false.
-// This handles API bugs where show_response_times and show_uptime may not persist correctly.
-func (r *StatusPageResource) preserveServiceBooleans(planSections, apiSections types.List, diags *diag.Diagnostics) types.List {
-	if planSections.IsNull() || planSections.IsUnknown() || apiSections.IsNull() || apiSections.IsUnknown() {
-		return apiSections
-	}
-
-	planElements := planSections.Elements()
-	apiElements := apiSections.Elements()
-
-	// If lengths don't match, something is very wrong - just return API sections
-	if len(planElements) != len(apiElements) {
-		return apiSections
-	}
-
-	// Build new sections list with preserved boolean values
-	newSections := make([]attr.Value, len(apiElements))
-
-	for i := range apiElements {
-		planSection, planOk := planElements[i].(types.Object)
-		apiSection, apiOk := apiElements[i].(types.Object)
-
-		if !planOk || !apiOk {
-			newSections[i] = apiElements[i]
-			continue
-		}
-
-		// Preserve booleans in services list
-		newSection := r.preserveSectionServiceBooleans(planSection, apiSection, diags)
-		newSections[i] = newSection
-	}
-
-	newList, newDiags := types.ListValue(apiSections.ElementType(context.Background()), newSections)
-	diags.Append(newDiags...)
-
-	return newList
-}
-
-// preserveSectionServiceBooleans preserves boolean values in a single section.
-// It handles two independent API limitations:
-//  1. is_split: accepted on write but never returned on read (always false).
-//  2. show_response_times / show_uptime on services: accepted but not persisted by the API.
-func (r *StatusPageResource) preserveSectionServiceBooleans(planSection, apiSection types.Object, diags *diag.Diagnostics) types.Object {
-	planAttrs := planSection.Attributes()
-	apiAttrs := apiSection.Attributes()
-
-	// Start from API attrs, then selectively override with plan values.
-	newAttrs := make(map[string]attr.Value, len(apiAttrs))
-	for k, v := range apiAttrs {
-		newAttrs[k] = v
-	}
-
-	// Preserve is_split: API accepts it on write but never returns it (always false on read).
-	// This must run even for sections with no services.
-	if planIsSplit, ok := planAttrs["is_split"].(types.Bool); ok && !planIsSplit.IsNull() {
-		if apiIsSplit, ok := apiAttrs["is_split"].(types.Bool); ok && !apiIsSplit.IsNull() {
-			if planIsSplit.ValueBool() && !apiIsSplit.ValueBool() {
-				newAttrs["is_split"] = planIsSplit
-			}
-		}
-	}
-
-	// Preserve service-level booleans when services are present in both plan and API response.
-	planServices, planOk := planAttrs["services"].(types.List)
-	apiServices, apiOk := apiAttrs["services"].(types.List)
-	if planOk && apiOk && !planServices.IsNull() && !apiServices.IsNull() {
-		newAttrs["services"] = r.preserveServicesListBooleans(planServices, apiServices, diags)
-	}
-
-	newSection, newDiags := types.ObjectValue(SectionAttrTypes(), newAttrs)
-	diags.Append(newDiags...)
-
-	return newSection
-}
-
-// preserveServicesListBooleans preserves boolean values in a services list.
-func (r *StatusPageResource) preserveServicesListBooleans(planServices, apiServices types.List, diags *diag.Diagnostics) types.List {
-	planElements := planServices.Elements()
-	apiElements := apiServices.Elements()
-
-	if len(planElements) != len(apiElements) {
-		return apiServices
-	}
-
-	newServices := make([]attr.Value, len(apiElements))
-
-	for i := range apiElements {
-		planService, planOk := planElements[i].(types.Object)
-		apiService, apiOk := apiElements[i].(types.Object)
-
-		if !planOk || !apiOk {
-			newServices[i] = apiElements[i]
-			continue
-		}
-
-		planAttrs := planService.Attributes()
-		apiAttrs := apiService.Attributes()
-
-		// Check show_response_times: if plan=true and api=false, keep plan value
-		needsPreservation := false
-		newAttrs := make(map[string]attr.Value, len(apiAttrs))
-		for k, v := range apiAttrs {
-			if k == "show_response_times" || k == "show_uptime" {
-				planVal, planHas := planAttrs[k].(types.Bool)
-				apiVal, apiHas := v.(types.Bool)
-
-				if planHas && apiHas && !planVal.IsNull() && !apiVal.IsNull() {
-					// If plan had true but API returned false, preserve plan value
-					if planVal.ValueBool() && !apiVal.ValueBool() {
-						newAttrs[k] = planVal
-						needsPreservation = true
-						continue
-					}
-				}
-			}
-			newAttrs[k] = v
-		}
-
-		if needsPreservation {
-			newService, newDiags := types.ObjectValue(ServiceAttrTypes(), newAttrs)
-			diags.Append(newDiags...)
-			newServices[i] = newService
-		} else {
-			newServices[i] = apiElements[i]
-		}
-	}
-
-	newList, newDiags := types.ListValue(apiServices.ElementType(context.Background()), newServices)
-	diags.Append(newDiags...)
-
-	return newList
 }
 
 // buildCreateRequest builds a CreateStatusPageRequest from the Terraform plan.

@@ -27,6 +27,7 @@ type escalationPolicyShape struct {
 // {"uuid":"...","name":"..."}, while POST/PUT send a plain UUID string.
 // UnmarshalJSON handles both shapes and normalises to a UUID string.
 type Monitor struct {
+	ID                 int             `json:"id"` // v1 numeric ID (used by status page renderer)
 	UUID               string          `json:"uuid"`
 	Name               string          `json:"name"`
 	URL                string          `json:"url"`

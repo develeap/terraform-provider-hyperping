@@ -216,6 +216,8 @@ func (m *mockStatusPageServer) handleRequest(w http.ResponseWriter, r *http.Requ
 	isSubscriber := isSubscriberPath(r.URL.Path)
 
 	switch {
+	case r.Method == "GET" && r.URL.Path == client.MonitorsBasePath:
+		m.listMonitors(w)
 	case r.Method == "GET" && r.URL.Path == basePath:
 		m.listStatusPages(w, r)
 	case r.Method == "POST" && r.URL.Path == basePath:
@@ -249,6 +251,16 @@ func (m *mockStatusPageServer) handleSubscriberRequest(w http.ResponseWriter, r 
 	}
 }
 
+// listMonitors returns a mock monitor list for UUID-to-numeric-ID translation.
+func (m *mockStatusPageServer) listMonitors(w http.ResponseWriter) {
+	monitors := []map[string]interface{}{
+		{"id": 115746, "uuid": "mon_abc123", "name": "Test Monitor 1", "url": "https://example1.com", "protocol": "http"},
+		{"id": 115747, "uuid": "mon_def456", "name": "Test Monitor 2", "url": "https://example2.com", "protocol": "http"},
+		{"id": 115748, "uuid": "mon_ghi789", "name": "Test Monitor 3", "url": "https://example3.com", "protocol": "http"},
+	}
+	json.NewEncoder(w).Encode(monitors)
+}
+
 func (m *mockStatusPageServer) listStatusPages(w http.ResponseWriter, _ *http.Request) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -271,9 +283,10 @@ func (m *mockStatusPageServer) listStatusPages(w http.ResponseWriter, _ *http.Re
 // the children to exercise the real API behavior where nested child IDs are integers.
 func buildMockService(svcMap map[string]interface{}) map[string]interface{} {
 	isGroup := getOrDefaultBool(svcMap, "is_group", false)
+	monitorID := getOrDefault(svcMap, "monitor_uuid", "mon_default")
 	service := map[string]interface{}{
-		"id":                  "svc_001",
-		"uuid":                getOrDefault(svcMap, "monitor_uuid", "mon_default"),
+		"id":                  monitorID,
+		"uuid":                monitorID,
 		"is_group":            isGroup,
 		"show_uptime":         getOrDefaultBool(svcMap, "show_uptime", true),
 		"show_response_times": getOrDefaultBool(svcMap, "show_response_times", true),

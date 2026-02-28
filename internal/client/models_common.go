@@ -54,6 +54,11 @@ func (fs FlexibleString) String() string {
 	return string(fs)
 }
 
+// boolPtr returns a pointer to the given bool value.
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 // Input length limits to prevent resource exhaustion (VULN-007).
 const (
 	maxNameLength    = 255
