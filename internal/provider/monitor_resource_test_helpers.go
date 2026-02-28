@@ -446,9 +446,8 @@ func (m *mockHyperpingServer) createMonitor(w http.ResponseWriter, r *http.Reque
 		monitor["required_keyword"] = requiredKeyword
 	}
 
-	if dnsRecordType, ok := req["dns_record_type"].(string); ok && dnsRecordType != "" {
-		monitor["dns_record_type"] = dnsRecordType
-	}
+	// dns_record_type is intentionally NOT stored — the real API ignores it
+	// for non-DNS monitors and returns null. See dnsRecordTypeWorkaround in monitors.go.
 
 	m.monitors[id] = monitor
 

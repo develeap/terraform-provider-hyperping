@@ -273,8 +273,12 @@ func (m *mockIntegrationServer) updateMonitor(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Update fields
+	// Update fields — skip dns_record_type to match real API behavior.
+	// The real API ignores dns_record_type for non-DNS monitors and returns null.
 	for key, value := range req {
+		if key == "dns_record_type" {
+			continue
+		}
 		monitor[key] = value
 	}
 
