@@ -10,16 +10,25 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.3.8] - 2026-02-27
+
+### Fixed
+
+- **`hyperping_monitor`**: Fix 422 regression introduced in v1.3.7. The Hyperping API's PUT
+  endpoint requires a valid `dns_record_type` enum value in every request, even for non-DNS
+  monitors — omitted, `null`, and `""` are all rejected with 422. v1.3.7 sent `null` which
+  is also rejected. The provider now sends `dns_record_type: "A"` in every PUT request as a
+  workaround. The API accepts it, ignores it for non-DNS protocols (response returns `null`),
+  and monitor behavior is unaffected. This is a Hyperping API validation bug — PUT should not
+  require `dns_record_type` for non-DNS monitors.
+
 ## [1.3.7] - 2026-02-27
 
 ### Fixed
 
-- **`hyperping_monitor`**: Fix persistent 422 on UPDATE for monitors created by provider versions
-  before v1.3.7. v1.3.6 stopped sending `dns_record_type: ""` on create, but existing monitors
-  already had `""` stored in the Hyperping API. The API validates the stored value on every PUT
-  even when the field is absent from the request body, so these monitors continued to fail.
-  The provider now sends `"dns_record_type": null` explicitly in every PUT, which instructs the
-  API to clear the stale stored `""`. Monitors created with v1.3.7+ are unaffected.
+- **`hyperping_monitor`**: (**Broken** — see v1.3.8) Attempted to fix 422 by sending
+  `dns_record_type: null` in every PUT. The API also rejects `null`, making all monitor
+  updates fail.
 - **All resources**: Circuit breaker open state now surfaces actionable troubleshooting steps
   (wait 30 seconds, use `terraform apply -parallelism=1`, check API status at
   https://status.hyperping.app) instead of misleading "check your API key / verify resource

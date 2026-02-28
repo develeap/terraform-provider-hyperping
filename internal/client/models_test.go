@@ -306,12 +306,11 @@ func TestCreateIncidentRequest_Validate(t *testing.T) {
 	})
 }
 
-// TestUpdateMonitorRequest_DNSRecordTypeAlwaysNull verifies that an empty
-// UpdateMonitorRequest serialises dns_record_type as JSON null (not omitted).
-// This is the critical behaviour that clears any stale dns_record_type:""
-// stored by provider versions before v1.3.7. Omitting the field leaves the
-// stored "" in place, causing the Hyperping API to return 422 on every PUT.
-func TestUpdateMonitorRequest_DNSRecordTypeAlwaysNull(t *testing.T) {
+// TestUpdateMonitorRequest_DNSRecordTypeOmittedWhenNil verifies that an empty
+// UpdateMonitorRequest omits dns_record_type from the JSON body. The workaround
+// for the Hyperping API validation bug (defaulting to "A") is applied in
+// UpdateMonitor(), not at the struct serialisation level.
+func TestUpdateMonitorRequest_DNSRecordTypeOmittedWhenNil(t *testing.T) {
 	req := UpdateMonitorRequest{}
 	b, err := json.Marshal(req)
 	if err != nil {
@@ -319,7 +318,7 @@ func TestUpdateMonitorRequest_DNSRecordTypeAlwaysNull(t *testing.T) {
 	}
 	body := string(b)
 
-	if !strings.Contains(body, `"dns_record_type":null`) {
-		t.Errorf("expected dns_record_type:null in serialized body, got: %s", body)
+	if strings.Contains(body, "dns_record_type") {
+		t.Errorf("expected dns_record_type to be omitted when nil, got: %s", body)
 	}
 }

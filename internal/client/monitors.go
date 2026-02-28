@@ -94,11 +94,28 @@ func (c *Client) CreateMonitor(ctx context.Context, req CreateMonitorRequest) (*
 	return &monitor, nil
 }
 
+// dnsRecordTypeWorkaround is a valid enum value sent in every PUT to work
+// around a Hyperping API bug. The PUT /v1/monitors/{uuid} endpoint requires
+// dns_record_type to be a valid enum value in every request, even for non-DNS
+// monitors. Omitted, null, and "" values are all rejected with 422. Sending a
+// valid value like "A" passes validation without affecting monitor behavior —
+// the API ignores dns_record_type for non-DNS protocols and returns null in
+// the response.
+const dnsRecordTypeWorkaround = "A"
+
 // UpdateMonitor updates an existing monitor.
 func (c *Client) UpdateMonitor(ctx context.Context, id string, req UpdateMonitorRequest) (*Monitor, error) {
 	if err := ValidateResourceID(id); err != nil {
 		return nil, fmt.Errorf("UpdateMonitor: %w", err)
 	}
+
+	// Always include a valid dns_record_type to work around the Hyperping
+	// API PUT validation bug. See dnsRecordTypeWorkaround doc for details.
+	if req.DNSRecordType == nil {
+		workaround := dnsRecordTypeWorkaround
+		req.DNSRecordType = &workaround
+	}
+
 	var monitor Monitor
 	path := fmt.Sprintf("%s/%s", monitorsBasePath, id)
 	if err := c.doRequest(ctx, http.MethodPut, path, req, &monitor); err != nil {

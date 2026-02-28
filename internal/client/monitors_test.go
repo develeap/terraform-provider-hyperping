@@ -1229,30 +1229,21 @@ func TestUpdateMonitorRequest_JSONMarshaling_OmitsNilFields(t *testing.T) {
 		t.Error("check_frequency should not be present when nil")
 	}
 
-	// dns_record_type MUST always be present as null — no omitempty.
-	// This clears any stale "" stored by pre-v1.3.7 providers (see models_monitor.go).
-	val, exists := decoded["dns_record_type"]
-	if !exists {
-		t.Error("dns_record_type must always be present in the PUT body (no omitempty)")
-	}
-	if val != nil {
-		t.Errorf("dns_record_type must be null when unset, got %v", val)
+	// dns_record_type should be omitted when nil (omitempty). The workaround
+	// that injects "A" is applied in UpdateMonitor(), not at the struct level.
+	if _, exists := decoded["dns_record_type"]; exists {
+		t.Error("dns_record_type should not be present when nil (omitempty)")
 	}
 }
 
-// TestUpdateMonitor_DNSRecordType_BeforeAfterComparison captures the real PUT request
-// body at the HTTP layer and confirms the before/after behavior of the v1.3.7 fix.
+// TestUpdateMonitor_DNSRecordType_WorkaroundApplied captures the real PUT request
+// body at the HTTP layer and confirms UpdateMonitor injects dns_record_type:"A".
 //
-// BEFORE (pre-v1.3.7): UpdateMonitorRequest had no dns_record_type field.
-//
-//	PUT body: {"name":"Updated"} — field absent
-//	API behaviour: validates stored value ("" from old provider) → 422
-//
-// AFTER (v1.3.7): DNSRecordType *string without omitempty → nil serialises as null.
-//
-//	PUT body: {"name":"Updated","dns_record_type":null} — field explicitly null
-//	API behaviour: clears stored "" → 200
-func TestUpdateMonitor_DNSRecordType_BeforeAfterComparison(t *testing.T) {
+// The Hyperping API PUT endpoint requires dns_record_type to be a valid enum
+// value in every request, even for non-DNS monitors. Omitted, null, and ""
+// values are all rejected with 422. Sending "A" passes validation without
+// affecting monitor behavior (the API ignores it for non-DNS protocols).
+func TestUpdateMonitor_DNSRecordType_WorkaroundApplied(t *testing.T) {
 	t.Parallel()
 
 	var capturedBody string
@@ -1284,8 +1275,9 @@ func TestUpdateMonitor_DNSRecordType_BeforeAfterComparison(t *testing.T) {
 	}
 
 	t.Logf("=== PUT body captured from HTTP server ===")
-	t.Logf("AFTER  (v1.3.7): %s", capturedBody)
-	t.Logf("BEFORE (v1.3.6): {\"name\":\"Updated\"}  — dns_record_type absent, API used stored \"\" → 422")
+	t.Logf("CURRENT (v1.3.8): %s", capturedBody)
+	t.Logf("v1.3.7 (broken):  {\"name\":\"Updated\",\"dns_record_type\":null} → API rejects null → 422")
+	t.Logf("v1.3.6 (broken):  {\"name\":\"Updated\"} — field absent, API validates stored \"\" → 422")
 	t.Logf("==========================================")
 
 	var decoded map[string]interface{}
@@ -1293,13 +1285,13 @@ func TestUpdateMonitor_DNSRecordType_BeforeAfterComparison(t *testing.T) {
 		t.Fatalf("failed to parse captured body: %v", err)
 	}
 
-	// AFTER: dns_record_type must be present and null
+	// dns_record_type must be "A" — the workaround value injected by UpdateMonitor
 	val, exists := decoded["dns_record_type"]
 	if !exists {
-		t.Errorf("AFTER: dns_record_type must be in PUT body — it was absent (pre-v1.3.7 bug)")
+		t.Error("dns_record_type must be present in PUT body (workaround for API validation bug)")
 	}
-	if val != nil {
-		t.Errorf("AFTER: dns_record_type must be null, got %v", val)
+	if val != "A" {
+		t.Errorf("dns_record_type must be \"A\" (workaround), got %v", val)
 	}
 
 	// Sanity: intentionally-set fields still present
@@ -1307,12 +1299,48 @@ func TestUpdateMonitor_DNSRecordType_BeforeAfterComparison(t *testing.T) {
 		t.Errorf("name field missing or wrong: %v", decoded["name"])
 	}
 
-	// Sanity: omitempty fields still absent when nil
+	// Sanity: omitempty fields still absent when nil (except dns_record_type which is injected)
 	for _, absent := range []string{"url", "protocol", "http_method", "check_frequency",
 		"regions", "request_headers", "follow_redirects", "paused", "port",
 		"alerts_wait", "escalation_policy", "required_keyword"} {
 		if _, exists := decoded[absent]; exists {
 			t.Errorf("field %q should be absent (omitempty, nil), but was present", absent)
 		}
+	}
+}
+
+// TestUpdateMonitor_DNSRecordType_PreservesExplicitValue verifies that when a caller
+// explicitly sets DNSRecordType (e.g. for a DNS monitor), UpdateMonitor preserves it.
+func TestUpdateMonitor_DNSRecordType_PreservesExplicitValue(t *testing.T) {
+	t.Parallel()
+
+	var capturedBody string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, _ := io.ReadAll(r.Body)
+		capturedBody = string(bodyBytes)
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(Monitor{UUID: "mon_dns", Protocol: "dns"})
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+
+	cname := "CNAME"
+	_, err := c.UpdateMonitor(context.Background(), "mon_dns", UpdateMonitorRequest{
+		DNSRecordType: &cname,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMonitor failed: %v", err)
+	}
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal([]byte(capturedBody), &decoded); err != nil {
+		t.Fatalf("failed to parse captured body: %v", err)
+	}
+
+	if decoded["dns_record_type"] != "CNAME" {
+		t.Errorf("expected dns_record_type \"CNAME\" (explicitly set), got %v", decoded["dns_record_type"])
 	}
 }
