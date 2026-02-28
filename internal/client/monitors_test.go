@@ -1344,3 +1344,41 @@ func TestUpdateMonitor_DNSRecordType_PreservesExplicitValue(t *testing.T) {
 		t.Errorf("expected dns_record_type \"CNAME\" (explicitly set), got %v", decoded["dns_record_type"])
 	}
 }
+
+// TestMonitor_NumericID_Deserialization verifies that the v1 numeric "id" field
+// is properly captured alongside the UUID during JSON deserialization.
+// The status page renderer uses numeric IDs to resolve monitor status.
+func TestMonitor_NumericID_Deserialization(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[
+			{"id": 115746, "uuid": "mon_abc123", "name": "API Monitor", "url": "https://api.example.com", "protocol": "http", "check_frequency": 60},
+			{"id": 115747, "uuid": "mon_def456", "name": "Web Monitor", "url": "https://web.example.com", "protocol": "http", "check_frequency": 60}
+		]`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+	monitors, err := c.ListMonitors(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(monitors) != 2 {
+		t.Fatalf("expected 2 monitors, got %d", len(monitors))
+	}
+
+	if monitors[0].ID != 115746 {
+		t.Errorf("expected ID 115746, got %d", monitors[0].ID)
+	}
+	if monitors[0].UUID != "mon_abc123" {
+		t.Errorf("expected UUID 'mon_abc123', got %q", monitors[0].UUID)
+	}
+
+	if monitors[1].ID != 115747 {
+		t.Errorf("expected ID 115747, got %d", monitors[1].ID)
+	}
+	if monitors[1].UUID != "mon_def456" {
+		t.Errorf("expected UUID 'mon_def456', got %q", monitors[1].UUID)
+	}
+}

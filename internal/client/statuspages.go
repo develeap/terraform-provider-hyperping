@@ -79,11 +79,29 @@ func (c *Client) CreateStatusPage(ctx context.Context, req CreateStatusPageReque
 	return &response.StatusPage, nil
 }
 
+// authenticationWorkaround is a default authentication settings value sent in
+// every PUT to work around a Hyperping API bug. The admin UI uses an internal
+// v1 API that resets an internal isProtected flag to true on any change,
+// causing a "Sign In" wall even when password_protection is false. Including
+// authentication settings in every PUT triggers ISR revalidation, which
+// recomputes isProtected from the v2 auth settings.
+var authenticationWorkaround = &CreateStatusPageAuthenticationSettings{
+	PasswordProtection: boolPtr(false),
+	GoogleSSO:          boolPtr(false),
+	SAMLSSO:            boolPtr(false),
+}
+
 // UpdateStatusPage updates an existing status page.
 // Only provided fields will be updated.
 func (c *Client) UpdateStatusPage(ctx context.Context, uuid string, req UpdateStatusPageRequest) (*StatusPage, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("UpdateStatusPage: %w", err)
+	}
+
+	// Always include authentication settings to work around the Hyperping
+	// isProtected regression. See authenticationWorkaround doc for details.
+	if req.Authentication == nil {
+		req.Authentication = authenticationWorkaround
 	}
 
 	// API returns: {"message": "Status page updated", "statuspage": {...}}
