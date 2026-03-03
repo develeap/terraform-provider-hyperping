@@ -52,7 +52,7 @@ func Compare(basePath, currPath string) (*Result, error) {
 		return &Result{}, nil
 	}
 
-	changes := checker.CheckBackwardCompatibility(checker.GetDefaultChecks(), d, sources)
+	changes := checker.CheckBackwardCompatibility(checker.NewConfig(checker.GetAllChecks()), d, sources)
 
 	return &Result{
 		HasChanges: true,
