@@ -181,18 +181,20 @@ func applyServicesWriteOnlyBooleans(servicesList types.List, serviceMap map[stri
 		newAttrs := copyAttrs(svcAttrs)
 		modified := false
 
-		// Apply boolean overrides if we have plan values for this UUID
+		// Apply boolean overrides if we have plan values for this UUID.
+		// The API ignores these booleans on write and always returns its own
+		// value, so we trust the plan value whenever it differs from the API.
 		if uuid != "" {
 			if wb, ok := serviceMap[uuid]; ok {
-				if wb.showUptime != nil && *wb.showUptime {
-					if apiVal, ok := svcAttrs["show_uptime"].(types.Bool); ok && !apiVal.IsNull() && !apiVal.ValueBool() {
-						newAttrs["show_uptime"] = types.BoolValue(true)
+				if wb.showUptime != nil {
+					if apiVal, ok := svcAttrs["show_uptime"].(types.Bool); ok && !apiVal.IsNull() && apiVal.ValueBool() != *wb.showUptime {
+						newAttrs["show_uptime"] = types.BoolValue(*wb.showUptime)
 						modified = true
 					}
 				}
-				if wb.showResponseTimes != nil && *wb.showResponseTimes {
-					if apiVal, ok := svcAttrs["show_response_times"].(types.Bool); ok && !apiVal.IsNull() && !apiVal.ValueBool() {
-						newAttrs["show_response_times"] = types.BoolValue(true)
+				if wb.showResponseTimes != nil {
+					if apiVal, ok := svcAttrs["show_response_times"].(types.Bool); ok && !apiVal.IsNull() && apiVal.ValueBool() != *wb.showResponseTimes {
+						newAttrs["show_response_times"] = types.BoolValue(*wb.showResponseTimes)
 						modified = true
 					}
 				}
