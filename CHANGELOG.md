@@ -10,6 +10,15 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-03-03
+
+### Fixed
+
+- **`hyperping_statuspage`**: `show_response_times = false` now correctly preserved when the
+  Hyperping API ignores the value and returns `true`. Previously the provider only overrode
+  API responses in one direction (plan=true, API=false), causing perpetual drift. Same fix
+  applied to `show_uptime`.
+
 ## [1.4.0] - 2026-03-02
 
 ### Added
