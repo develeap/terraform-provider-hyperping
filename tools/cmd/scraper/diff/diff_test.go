@@ -192,7 +192,11 @@ func TestFormatMarkdown_ModifiedWithTypeChange(t *testing.T) {
 	result := FormatMarkdown(d)
 
 	if !strings.Contains(result, "`~ count`: type changed") {
-		t.Error("expected type change detail")
+		t.Error("expected generic type change detail for count property")
+	}
+
+	if !strings.Contains(result, "type changed from string to integer") {
+		t.Error("expected detailed type change message including 'from string to integer'")
 	}
 }
 
