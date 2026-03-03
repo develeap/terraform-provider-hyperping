@@ -309,7 +309,7 @@ func TestCreateIncidentRequest_Validate(t *testing.T) {
 // TestUpdateMonitorRequest_DNSRecordTypeOmittedWhenNil verifies that an empty
 // UpdateMonitorRequest omits dns_record_type from the JSON body. The workaround
 // for the Hyperping API validation bug (defaulting to "A") is applied in
-// UpdateMonitor(), not at the struct serialisation level.
+// UpdateMonitor(), not at the struct serialization level.
 func TestUpdateMonitorRequest_DNSRecordTypeOmittedWhenNil(t *testing.T) {
 	req := UpdateMonitorRequest{}
 	b, err := json.Marshal(req)
