@@ -52,40 +52,55 @@ func buildTestSection(isSplit bool, services types.List) types.Object {
 }
 
 // buildServicesList builds a types.List of services from objects.
-func buildServicesList(services ...types.Object) types.List {
+func buildServicesList(t *testing.T, services ...types.Object) types.List {
+	t.Helper()
+
 	values := make([]attr.Value, len(services))
 	for i, s := range services {
 		values[i] = s
 	}
-	list, _ := types.ListValue(types.ObjectType{AttrTypes: ServiceAttrTypes()}, values)
+	list, diags := types.ListValue(types.ObjectType{AttrTypes: ServiceAttrTypes()}, values)
+	if diags.HasError() {
+		t.Fatalf("failed to build services list: %v", diags)
+	}
 	return list
 }
 
 // buildNestedServicesList builds a types.List of nested services from objects.
-func buildNestedServicesList(services ...types.Object) types.List {
+func buildNestedServicesList(t *testing.T, services ...types.Object) types.List {
+	t.Helper()
+
 	values := make([]attr.Value, len(services))
 	for i, s := range services {
 		values[i] = s
 	}
-	list, _ := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, values)
+	list, diags := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, values)
+	if diags.HasError() {
+		t.Fatalf("failed to build nested services list: %v", diags)
+	}
 	return list
 }
 
 // buildSectionsList builds a types.List of sections from objects.
-func buildSectionsList(sections ...types.Object) types.List {
+func buildSectionsList(t *testing.T, sections ...types.Object) types.List {
+	t.Helper()
+
 	values := make([]attr.Value, len(sections))
 	for i, s := range sections {
 		values[i] = s
 	}
-	list, _ := types.ListValue(types.ObjectType{AttrTypes: SectionAttrTypes()}, values)
+	list, diags := types.ListValue(types.ObjectType{AttrTypes: SectionAttrTypes()}, values)
+	if diags.HasError() {
+		t.Fatalf("failed to build sections list: %v", diags)
+	}
 	return list
 }
 
 func TestExtractWriteOnlyBooleans_BasicService(t *testing.T) {
 	svc := buildTestService("mon_abc123", true, true, false, types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}))
-	svcList := buildServicesList(svc)
+	svcList := buildServicesList(t, svc)
 	section := buildTestSection(true, svcList)
-	sections := buildSectionsList(section)
+	sections := buildSectionsList(t, section)
 
 	serviceMap, sectionIsSplit := extractWriteOnlyBooleans(sections)
 
