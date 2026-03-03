@@ -252,6 +252,32 @@ func (m *mockIntegrationServer) getMonitor(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// applyMonitorFieldForIntegration applies a single field update to a monitor
+// in the integration mock server. It mirrors the main mock's field-specific
+// behavior as closely as possible within this file, particularly for
+// dns_record_type, while remaining a no-op for unknown fields.
+func applyMonitorFieldForIntegration(monitor map[string]interface{}, key string, value interface{}) {
+	switch key {
+	case "dns_record_type":
+		// The real API ignores dns_record_type for non-DNS monitors and may
+		// return null. We treat an empty or nil value as "no record type",
+		// storing nil so the JSON encoder emits `null`. For non-empty values
+		// we simply persist what the caller sent, allowing tests to assert on it.
+		if value == nil {
+			monitor[key] = nil
+			return
+		}
+		if s, ok := value.(string); ok && s == "" {
+			monitor[key] = nil
+			return
+		}
+		monitor[key] = value
+	default:
+		// Default behavior: just assign the value.
+		monitor[key] = value
+	}
+}
+
 func (m *mockIntegrationServer) updateMonitor(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
 
@@ -273,13 +299,11 @@ func (m *mockIntegrationServer) updateMonitor(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Update fields — skip dns_record_type to match real API behavior.
-	// The real API ignores dns_record_type for non-DNS monitors and returns null.
+	// Update fields using field-specific logic to keep behavior in sync
+	// with the main mock server's monitor update behavior. In particular,
+	// dns_record_type is handled in a dedicated helper to emulate the real API.
 	for key, value := range req {
-		if key == "dns_record_type" {
-			continue
-		}
-		monitor[key] = value
+		applyMonitorFieldForIntegration(monitor, key, value)
 	}
 
 	m.monitors[id] = monitor
