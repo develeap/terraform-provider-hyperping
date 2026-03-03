@@ -356,8 +356,8 @@ func (w *interactiveWizardPD) createHyperpingResources(progressBar *interactive.
 func (w *interactiveWizardPD) writeImportScript(createdResources map[int]string) int {
 	importGen := generator.NewImportGenerator(w.config.prefix)
 	importScript := importGen.GenerateImportScript(w.checks, w.results, createdResources)
-	importPath := filepath.Join(w.config.outputDir, "import.sh")
-	if writeErr := os.WriteFile(importPath, []byte(importScript), 0o700); writeErr != nil { //nolint:gosec // #nosec G306 -- import.sh must be executable; G703 path from CLI flag
+	importPath := filepath.Clean(filepath.Join(w.config.outputDir, "import.sh"))
+	if writeErr := os.WriteFile(importPath, []byte(importScript), 0o700); writeErr != nil { // #nosec G306,G703 -- import.sh must be executable; path from CLI flag
 		w.prompter.PrintError(fmt.Sprintf("Failed to write import script: %v", writeErr))
 		return 1
 	}
