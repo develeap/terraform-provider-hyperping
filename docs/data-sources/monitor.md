@@ -59,7 +59,7 @@ resource "hyperping_incident" "outage" {
 - `check_frequency` (Number) Check frequency in seconds.
 - `dns_record_type` (String) DNS record type for DNS-protocol monitors.
 - `escalation_policy` (String) UUID of the escalation policy linked to this monitor.
-- `expected_status_code` (String) Expected HTTP status code or pattern (e.g., `200`, `2xx`).
+- `expected_status_code` (String) Expected HTTP status code or pattern (e.g., `200`, `2xx`, `1xx-3xx`).
 - `follow_redirects` (Boolean) Whether the monitor follows HTTP redirects.
 - `http_method` (String) HTTP method used for checks (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
 - `name` (String) The name of the monitor.

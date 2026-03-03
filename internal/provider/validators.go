@@ -429,3 +429,56 @@ func (v emailFormatValidator) ValidateString(_ context.Context, req validator.St
 func EmailFormat() validator.String {
 	return emailFormatValidator{}
 }
+
+// statusCodePattern matches valid expected_status_code values:
+// - Specific code: "200", "404", "503" (3-digit, 100-599)
+// - Single wildcard: "2xx", "5xx" (digit 1-5 followed by "xx")
+// - Multi-range: "1xx-3xx", "2xx-5xx" (two wildcards joined by "-", left <= right)
+var statusCodePattern = regexp.MustCompile(`^(?:[1-5]\d{2}|[1-5]xx(?:-[1-5]xx)?)$`)
+
+// statusCodePatternValidator validates expected_status_code against the patterns
+// that the Hyperping API accepts.
+type statusCodePatternValidator struct{}
+
+func (v statusCodePatternValidator) Description(_ context.Context) string {
+	return "value must be a valid status code pattern (e.g., \"200\", \"2xx\", \"1xx-3xx\")"
+}
+
+func (v statusCodePatternValidator) MarkdownDescription(_ context.Context) string {
+	return "value must be a valid status code pattern (e.g., `200`, `2xx`, `1xx-3xx`)"
+}
+
+func (v statusCodePatternValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueString()
+	if !statusCodePattern.MatchString(value) {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Status Code Pattern",
+			fmt.Sprintf("The value %q is not a valid status code pattern. "+
+				"Use a specific code (\"200\"), a wildcard (\"2xx\"), "+
+				"or a range (\"1xx-3xx\").", value),
+		)
+		return
+	}
+
+	// For range patterns (e.g., "2xx-5xx"), verify left <= right
+	if len(value) == 7 && value[3] == '-' {
+		if value[0] > value[4] {
+			resp.Diagnostics.AddAttributeError(
+				req.Path,
+				"Invalid Status Code Range",
+				fmt.Sprintf("The range %q is inverted — the start class (%cxx) must be "+
+					"less than or equal to the end class (%cxx).", value, value[0], value[4]),
+			)
+		}
+	}
+}
+
+// StatusCodePattern returns a validator that checks for valid HTTP status code patterns.
+func StatusCodePattern() validator.String {
+	return statusCodePatternValidator{}
+}

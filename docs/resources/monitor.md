@@ -70,7 +70,7 @@ resource "hyperping_monitor" "maintenance" {
 - `alerts_wait` (Number) Seconds to wait before sending alerts after an outage is detected. Allows time for transient issues to resolve.
 - `check_frequency` (Number) Check frequency in seconds. Valid values: `10`, `20`, `30`, `60`, `120`, `180`, `300`, `600`, `1800`, `3600`, `21600`, `43200`, `86400`. Defaults to `60`.
 - `escalation_policy` (String) UUID of the escalation policy to link to this monitor.
-- `expected_status_code` (String) Expected HTTP status code pattern. Use `2xx` for any 2xx status, or specific like `200`, `201`. Defaults to `2xx`.
+- `expected_status_code` (String) Expected HTTP status code pattern. Use a specific code like `200`, a wildcard like `2xx` (200-299), or a range like `1xx-3xx` (100-399). Defaults to `2xx`.
 - `follow_redirects` (Boolean) Whether to follow HTTP redirects. Defaults to `true`.
 - `http_method` (String) HTTP method to use. Valid values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`. Defaults to `GET`.
 - `paused` (Boolean) Whether the monitor is paused. Defaults to `false`.

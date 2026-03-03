@@ -7,6 +7,7 @@ package diff
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -61,6 +62,7 @@ func Compare(basePath, currPath string) (*Result, error) {
 }
 
 // FormatMarkdown converts a diff.Diff to a human-readable markdown string.
+// Includes field-level change details for modified endpoints.
 func FormatMarkdown(d *diff.Diff) string {
 	if d == nil || d.Empty() {
 		return "No API changes detected."
@@ -93,12 +95,180 @@ func FormatMarkdown(d *diff.Diff) string {
 	}
 
 	if len(pd.Modified) > 0 {
-		sb.WriteString("### Modified Endpoints\n")
-		for path := range pd.Modified {
-			sb.WriteString("- `" + path + "`\n")
+		sb.WriteString("### Modified Endpoints\n\n")
+		paths := sortedKeys(pd.Modified)
+		for _, path := range paths {
+			pathDiff := pd.Modified[path]
+			formatPathDiff(&sb, path, pathDiff)
 		}
-		sb.WriteString("\n")
 	}
 
 	return sb.String()
+}
+
+// formatPathDiff writes operation-level details for a single modified path.
+func formatPathDiff(sb *strings.Builder, path string, pd *diff.PathDiff) {
+	if pd.OperationsDiff == nil {
+		sb.WriteString("#### `" + path + "`\n_No operation changes._\n\n")
+		return
+	}
+
+	for _, method := range pd.OperationsDiff.Added {
+		sb.WriteString("- `" + strings.ToUpper(method) + " " + path + "` (new method)\n")
+	}
+
+	for _, method := range pd.OperationsDiff.Deleted {
+		sb.WriteString("- `" + strings.ToUpper(method) + " " + path + "` (removed method, BREAKING)\n")
+	}
+
+	methods := sortedKeys(pd.OperationsDiff.Modified)
+	for _, method := range methods {
+		methodDiff := pd.OperationsDiff.Modified[method]
+		sb.WriteString("#### `" + strings.ToUpper(method) + " " + path + "`\n")
+		formatMethodDiff(sb, methodDiff)
+		sb.WriteString("\n")
+	}
+}
+
+// formatMethodDiff writes field-level details for a single operation change.
+func formatMethodDiff(sb *strings.Builder, md *diff.MethodDiff) {
+	hasDetail := false
+
+	// Parameter changes (path, query, header, cookie)
+	if md.ParametersDiff != nil {
+		if formatParametersDiff(sb, md.ParametersDiff) {
+			hasDetail = true
+		}
+	}
+
+	// Request body property changes
+	if md.RequestBodyDiff != nil && md.RequestBodyDiff.ContentDiff != nil {
+		if formatContentDiff(sb, md.RequestBodyDiff.ContentDiff) {
+			hasDetail = true
+		}
+	}
+
+	// Response body property changes (sorted by status code)
+	if md.ResponsesDiff != nil {
+		for _, statusCode := range sortedKeys(md.ResponsesDiff.Modified) {
+			respDiff := md.ResponsesDiff.Modified[statusCode]
+			if respDiff != nil && respDiff.ContentDiff != nil {
+				if formatContentDiff(sb, respDiff.ContentDiff) {
+					hasDetail = true
+				}
+			}
+		}
+	}
+
+	if !hasDetail {
+		sb.WriteString("- _operation metadata changed_\n")
+	}
+}
+
+// formatContentDiff writes property-level details from a content diff.
+// Returns true if any detail was written.
+func formatContentDiff(sb *strings.Builder, cd *diff.ContentDiff) bool {
+	wrote := false
+	for _, mediaType := range sortedKeys(cd.MediaTypeModified) {
+		mtDiff := cd.MediaTypeModified[mediaType]
+		if mtDiff.SchemaDiff != nil && mtDiff.SchemaDiff.PropertiesDiff != nil {
+			if formatPropertiesDiff(sb, mtDiff.SchemaDiff.PropertiesDiff) {
+				wrote = true
+			}
+		}
+	}
+	return wrote
+}
+
+// formatPropertiesDiff writes added, deleted, and modified property details.
+// Returns true if any detail was written.
+func formatPropertiesDiff(sb *strings.Builder, pd *diff.SchemasDiff) bool {
+	wrote := false
+
+	for _, name := range pd.Added {
+		sb.WriteString("- `+ " + name + "` (new property)\n")
+		wrote = true
+	}
+
+	for _, name := range pd.Deleted {
+		sb.WriteString("- `- " + name + "` (removed property)\n")
+		wrote = true
+	}
+
+	names := sortedKeys(pd.Modified)
+	for _, name := range names {
+		schemaDiff := pd.Modified[name]
+		detail := describePropertyChange(schemaDiff)
+		sb.WriteString("- `~ " + name + "`: " + detail + "\n")
+		wrote = true
+	}
+
+	return wrote
+}
+
+// formatParametersDiff writes added, deleted, and modified parameter details.
+// Returns true if any detail was written.
+func formatParametersDiff(sb *strings.Builder, pd *diff.ParametersDiffByLocation) bool {
+	wrote := false
+
+	for _, location := range sortedKeys(pd.Added) {
+		for _, name := range pd.Added[location] {
+			sb.WriteString("- `+ " + name + "` (" + location + " parameter, new)\n")
+			wrote = true
+		}
+	}
+
+	for _, location := range sortedKeys(pd.Deleted) {
+		for _, name := range pd.Deleted[location] {
+			sb.WriteString("- `- " + name + "` (" + location + " parameter, removed)\n")
+			wrote = true
+		}
+	}
+
+	for _, location := range sortedKeys(pd.Modified) {
+		for _, name := range sortedKeys(pd.Modified[location]) {
+			sb.WriteString("- `~ " + name + "` (" + location + " parameter, changed)\n")
+			wrote = true
+		}
+	}
+
+	return wrote
+}
+
+// describePropertyChange returns a concise description of what changed in a property.
+func describePropertyChange(sd *diff.SchemaDiff) string {
+	if sd == nil {
+		return "schema changed"
+	}
+
+	var parts []string
+
+	if sd.DescriptionDiff != nil {
+		parts = append(parts, "description updated")
+	}
+	if sd.TypeDiff != nil {
+		parts = append(parts, fmt.Sprintf("type changed (added: %v, removed: %v)", sd.TypeDiff.Added, sd.TypeDiff.Deleted))
+	}
+	if sd.DefaultDiff != nil {
+		parts = append(parts, fmt.Sprintf("default %v → %v", sd.DefaultDiff.From, sd.DefaultDiff.To))
+	}
+	if sd.EnumDiff != nil {
+		parts = append(parts, "enum values changed")
+	}
+
+	if len(parts) == 0 {
+		return "schema changed"
+	}
+	return strings.Join(parts, ", ")
+}
+
+// sortedKeys returns the keys of a map sorted alphabetically.
+// Works with any map[string]V type.
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }

@@ -157,6 +157,20 @@ func TestAccMonitorResource_statusCodeRanges(t *testing.T) {
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "expected_status_code", "404"),
 				),
 			},
+			// Test multi-range pattern (1xx-3xx)
+			{
+				Config: testAccMonitorResourceConfigWithStatusCode(server.URL, "1xx-3xx"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "expected_status_code", "1xx-3xx"),
+				),
+			},
+			// Test multi-range pattern (2xx-5xx)
+			{
+				Config: testAccMonitorResourceConfigWithStatusCode(server.URL, "2xx-5xx"),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "expected_status_code", "2xx-5xx"),
+				),
+			},
 		},
 	})
 }

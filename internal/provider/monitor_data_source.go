@@ -116,7 +116,7 @@ func (d *MonitorDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				Computed:            true,
 			},
 			"expected_status_code": schema.StringAttribute{
-				MarkdownDescription: "Expected HTTP status code or pattern (e.g., `200`, `2xx`).",
+				MarkdownDescription: "Expected HTTP status code or pattern (e.g., `200`, `2xx`, `1xx-3xx`).",
 				Computed:            true,
 			},
 			"follow_redirects": schema.BoolAttribute{

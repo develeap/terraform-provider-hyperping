@@ -163,10 +163,15 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:            true,
 			},
 			"expected_status_code": schema.StringAttribute{
-				MarkdownDescription: "Expected HTTP status code pattern. Use `2xx` for any 2xx status, or specific like `200`, `201`. Defaults to `2xx`.",
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString("2xx"),
+				MarkdownDescription: "Expected HTTP status code pattern. " +
+					"Use a specific code like `200`, a wildcard like `2xx` (200-299), " +
+					"or a range like `1xx-3xx` (100-399). Defaults to `2xx`.",
+				Optional: true,
+				Computed: true,
+				Default:  stringdefault.StaticString("2xx"),
+				Validators: []validator.String{
+					StatusCodePattern(),
+				},
 			},
 			"follow_redirects": schema.BoolAttribute{
 				MarkdownDescription: "Whether to follow HTTP redirects. Defaults to `true`.",
