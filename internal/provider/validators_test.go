@@ -947,3 +947,119 @@ func TestEmailFormat_Description(t *testing.T) {
 		t.Error("description and markdown description should match")
 	}
 }
+
+func TestStatusCodePatternValidator(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		value     string
+		wantError bool
+	}{
+		// Valid specific codes
+		{"valid specific 200", "200", false},
+		{"valid specific 404", "404", false},
+		{"valid specific 599", "599", false},
+		{"valid specific 100", "100", false},
+		{"valid specific 503", "503", false},
+
+		// Valid single wildcards
+		{"valid wildcard 2xx", "2xx", false},
+		{"valid wildcard 5xx", "5xx", false},
+		{"valid wildcard 1xx", "1xx", false},
+		{"valid wildcard 3xx", "3xx", false},
+		{"valid wildcard 4xx", "4xx", false},
+
+		// Valid multi-range patterns
+		{"valid range 1xx-3xx", "1xx-3xx", false},
+		{"valid range 2xx-5xx", "2xx-5xx", false},
+		{"valid range same class 2xx-2xx", "2xx-2xx", false},
+		{"valid range 1xx-5xx", "1xx-5xx", false},
+		{"valid range 3xx-4xx", "3xx-4xx", false},
+
+		// Invalid: inverted range
+		{"invalid inverted range 3xx-1xx", "3xx-1xx", true},
+		{"invalid inverted range 5xx-2xx", "5xx-2xx", true},
+
+		// Invalid: class out of range
+		{"invalid class 6xx", "6xx", true},
+		{"invalid class 0xx", "0xx", true},
+		{"invalid code 600", "600", true},
+		{"invalid code 099", "099", true},
+
+		// Invalid: malformed patterns
+		{"invalid text abc", "abc", true},
+		{"invalid too long 2xxx", "2xxx", true},
+		{"invalid too short 20", "20", true},
+		{"invalid incomplete 2x", "2x", true},
+		{"invalid empty string", "", true},
+		{"invalid spaces", "2 xx", true},
+		{"invalid mixed 2xX", "2xX", true},
+		{"invalid range with specific 200-3xx", "200-3xx", true},
+		{"invalid uppercase 2XX", "2XX", true},
+		{"invalid trailing dash 1xx-", "1xx-", true},
+		{"invalid leading dash -3xx", "-3xx", true},
+		{"invalid range endpoint 1xx-6xx", "1xx-6xx", true},
+		{"invalid trailing dash after wildcard 2xx-", "2xx-", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := StatusCodePattern()
+			req := validator.StringRequest{
+				Path:        path.Root("expected_status_code"),
+				ConfigValue: types.StringValue(tt.value),
+			}
+			resp := &validator.StringResponse{}
+			v.ValidateString(context.Background(), req, resp)
+
+			hasError := resp.Diagnostics.HasError()
+			if hasError != tt.wantError {
+				t.Errorf("StatusCodePattern(%q): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			}
+		})
+	}
+}
+
+func TestStatusCodePattern_Null(t *testing.T) {
+	v := StatusCodePattern()
+	req := validator.StringRequest{
+		Path:        path.Root("test"),
+		ConfigValue: types.StringNull(),
+	}
+	resp := &validator.StringResponse{}
+	v.ValidateString(context.Background(), req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Errorf("StatusCodePattern(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
+	}
+}
+
+func TestStatusCodePattern_Unknown(t *testing.T) {
+	v := StatusCodePattern()
+	req := validator.StringRequest{
+		Path:        path.Root("test"),
+		ConfigValue: types.StringUnknown(),
+	}
+	resp := &validator.StringResponse{}
+	v.ValidateString(context.Background(), req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Errorf("StatusCodePattern(unknown): unexpected error: %v", resp.Diagnostics.Errors())
+	}
+}
+
+func TestStatusCodePattern_Description(t *testing.T) {
+	v := StatusCodePattern()
+	ctx := context.Background()
+
+	desc := v.Description(ctx)
+	if desc == "" {
+		t.Error("expected non-empty description")
+	}
+
+	mdDesc := v.MarkdownDescription(ctx)
+	if mdDesc == "" {
+		t.Error("expected non-empty markdown description")
+	}
+}

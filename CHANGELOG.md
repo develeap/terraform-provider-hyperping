@@ -10,6 +10,22 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-03-02
+
+### Added
+
+- **`hyperping_monitor`**: Plan-time validator for `expected_status_code` — catches invalid
+  patterns before they reach the API. Accepts specific codes (`200`), wildcards (`2xx`),
+  and ranges (`1xx-3xx`).
+
+### Changed
+
+- **`hyperping_monitor`**: Updated `expected_status_code` description to document multi-range
+  patterns (`1xx-3xx`) newly revealed by Hyperping API docs.
+- **API drift detection**: Enhanced drift issue reports to include field-level change details
+  (added/removed/modified properties with description, type, default, and enum diffs).
+  Previously only listed modified endpoint names.
+
 ## [1.3.9] - 2026-03-01
 
 ### Fixed
@@ -645,7 +661,12 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.5...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.9...v1.4.0
+[1.3.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.8...v1.3.9
+[1.3.8]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.7...v1.3.8
+[1.3.7]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.6...v1.3.7
+[1.3.6]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.2...v1.3.3
