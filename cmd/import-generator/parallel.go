@@ -199,7 +199,7 @@ func (pi *ParallelImporter) executeImport(ctx context.Context, job ImportJob) Im
 
 	// Build terraform import command
 	resourceAddress := fmt.Sprintf("%s.%s", job.ResourceType, job.ResourceName)
-	cmd := exec.CommandContext(ctx, "terraform", "import", resourceAddress, job.ResourceID)
+	cmd := exec.CommandContext(ctx, "terraform", "import", resourceAddress, job.ResourceID) // #nosec G204 -- args are structured internal data, not user input
 
 	// Execute command
 	output, err := cmd.CombinedOutput()
@@ -289,7 +289,7 @@ func (si *SequentialImporter) executeImport(ctx context.Context, job ImportJob) 
 	}
 
 	resourceAddress := fmt.Sprintf("%s.%s", job.ResourceType, job.ResourceName)
-	cmd := exec.CommandContext(ctx, "terraform", "import", resourceAddress, job.ResourceID)
+	cmd := exec.CommandContext(ctx, "terraform", "import", resourceAddress, job.ResourceID) // #nosec G204 -- args are structured internal data, not user input
 
 	output, err := cmd.CombinedOutput()
 	result.Output = string(output)

@@ -111,7 +111,7 @@ func (m *Manager) Save(checkpoint *Checkpoint) error {
 func (m *Manager) Load(migrationID string) (*Checkpoint, error) {
 	filename := m.getCheckpointFilename(migrationID)
 
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(filepath.Clean(filename)) // #nosec G304 -- filename derived from operator-controlled migration ID
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("checkpoint not found: %s", migrationID)

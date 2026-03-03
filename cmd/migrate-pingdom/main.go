@@ -403,13 +403,9 @@ func (r *pingdomRunner) writeImportScript(checks []pingdom.Check, results []conv
 	importScriptContent := importGen.GenerateImportScript(checks, results, createdResources)
 
 	importPath := filepath.Join(*outputDir, "import.sh")
-	if writeErr := os.WriteFile(importPath, []byte(importScriptContent), 0o700); writeErr != nil { //nolint:gosec // G306: import.sh must be executable (0700) to run as a shell script
+	if writeErr := os.WriteFile(importPath, []byte(importScriptContent), 0o700); writeErr != nil { // #nosec G306 -- import.sh must be executable (0700)
 		fmt.Fprintf(os.Stderr, "Error writing import script: %v\n", writeErr)
 		return 1
-	}
-
-	if chmodErr := os.Chmod(importPath, 0o700); chmodErr != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to make import.sh executable: %v\n", chmodErr)
 	}
 
 	log(fmt.Sprintf("Import script written to %s", importPath))

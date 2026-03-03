@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 )
 
@@ -70,7 +71,7 @@ func LoadImportLog(filename string) (*ImportLog, error) {
 		filename = defaultImportLogFile
 	}
 
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(filepath.Clean(filename)) // #nosec G304 -- filename from CLI flag or default constant
 	if err != nil {
 		return nil, fmt.Errorf("failed to read import log: %w", err)
 	}
@@ -184,7 +185,7 @@ func (rm *RollbackManager) executeRollback(ctx context.Context, log *ImportLog) 
 		}
 
 		// Execute terraform state rm
-		cmd := exec.CommandContext(ctx, "terraform", "state", "rm", resourceAddress)
+		cmd := exec.CommandContext(ctx, "terraform", "state", "rm", resourceAddress) // #nosec G204 -- args are structured internal data, not user input
 		output, err := cmd.CombinedOutput()
 
 		if err != nil {

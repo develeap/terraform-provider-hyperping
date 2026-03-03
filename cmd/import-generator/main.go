@@ -221,7 +221,7 @@ func runGeneration(ctx context.Context, gen *Generator) int {
 
 		// Make script executable if format is script
 		if *outputFormat == "script" {
-			if err := os.Chmod(*outputFile, 0o755); err != nil {
+			if err := os.Chmod(*outputFile, 0o750); err != nil { // #nosec G302 -- generated script needs execute permission
 				fmt.Fprintf(os.Stderr, "Warning: Failed to make script executable: %v\n", err)
 			}
 		}

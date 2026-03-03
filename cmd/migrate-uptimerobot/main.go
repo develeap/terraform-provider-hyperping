@@ -382,7 +382,7 @@ func (r *runner) writeImportScript(conversionResult *converter.ConversionResult)
 		fmt.Fprintln(os.Stderr, "Generating import script...")
 	}
 	importScriptContent := generator.GenerateImportScript(conversionResult)
-	if err := os.WriteFile(*importScript, []byte(importScriptContent), 0o700); err != nil { //nolint:gosec // G306: import.sh must be executable (0700) to run as a shell script
+	if err := os.WriteFile(*importScript, []byte(importScriptContent), 0o700); err != nil { // #nosec G306 -- import.sh must be executable (0700)
 		fmt.Fprintf(os.Stderr, "Error writing import script: %v\n", err)
 		return 1
 	}

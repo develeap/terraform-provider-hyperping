@@ -233,7 +233,7 @@ func (w *interactiveWizardPD) executeMigration() int {
 	w.prompter.PrintHeader(fmt.Sprintf("Step %d/5: Running Migration", stepNum+1))
 	fmt.Fprintf(os.Stderr, "\n")
 
-	if mkdirErr := os.MkdirAll(w.config.outputDir, 0o755); mkdirErr != nil {
+	if mkdirErr := os.MkdirAll(w.config.outputDir, 0o750); mkdirErr != nil { // #nosec G301 -- output dir needs group read for CI pipelines
 		w.prompter.PrintError(fmt.Sprintf("Failed to create output directory: %v", mkdirErr))
 		return 1
 	}
@@ -356,8 +356,8 @@ func (w *interactiveWizardPD) createHyperpingResources(progressBar *interactive.
 func (w *interactiveWizardPD) writeImportScript(createdResources map[int]string) int {
 	importGen := generator.NewImportGenerator(w.config.prefix)
 	importScript := importGen.GenerateImportScript(w.checks, w.results, createdResources)
-	importPath := filepath.Join(w.config.outputDir, "import.sh")                            //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
-	if writeErr := os.WriteFile(importPath, []byte(importScript), 0o700); writeErr != nil { //nolint:gosec // G306: import.sh must be executable (0700); G703: importPath derived from operator-controlled CLI flag
+	importPath := filepath.Clean(filepath.Join(w.config.outputDir, "import.sh"))
+	if writeErr := os.WriteFile(importPath, []byte(importScript), 0o700); writeErr != nil { // #nosec G306,G703 -- import.sh must be executable; path from CLI flag
 		w.prompter.PrintError(fmt.Sprintf("Failed to write import script: %v", writeErr))
 		return 1
 	}
