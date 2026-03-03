@@ -376,6 +376,46 @@ func TestApplyWriteOnlyBooleans_MixedPreservation(t *testing.T) {
 	}
 }
 
+func TestApplyWriteOnlyBooleans_PlanFalseApiTrue(t *testing.T) {
+	r := &StatusPageResource{}
+	var diags diag.Diagnostics
+
+	// API always returns true for show_response_times (the bug)
+	apiSvc := buildTestService("mon_abc123", true, true, false, types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}))
+	apiSvcList := buildServicesList(apiSvc)
+	apiSection := buildTestSection(false, apiSvcList)
+	apiSections := buildSectionsList(apiSection)
+
+	// Plan had false — user explicitly set show_response_times = false
+	serviceMap := map[string]writeOnlyBooleans{
+		"mon_abc123": {
+			showUptime:        boolPtr(false),
+			showResponseTimes: boolPtr(false),
+		},
+	}
+	sectionIsSplit := map[int]bool{}
+
+	result := r.applyWriteOnlyBooleans(apiSections, serviceMap, sectionIsSplit, &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected errors: %v", diags.Errors())
+	}
+
+	secObj := result.Elements()[0].(types.Object)
+	svcList := secObj.Attributes()["services"].(types.List)
+	svcAttrs := svcList.Elements()[0].(types.Object).Attributes()
+
+	showUptime := svcAttrs["show_uptime"].(types.Bool)
+	if showUptime.ValueBool() {
+		t.Error("expected show_uptime=false (plan should override API true)")
+	}
+
+	showRT := svcAttrs["show_response_times"].(types.Bool)
+	if showRT.ValueBool() {
+		t.Error("expected show_response_times=false (plan should override API true)")
+	}
+}
+
 func boolPtr(v bool) *bool {
 	return &v
 }
