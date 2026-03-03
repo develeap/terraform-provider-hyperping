@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -100,7 +101,7 @@ func LoadCheckpoint(filename string) (*ImportCheckpoint, error) {
 		filename = defaultCheckpointFile
 	}
 
-	data, err := os.ReadFile(filename)
+	data, err := os.ReadFile(filepath.Clean(filename)) // #nosec G304 -- filename from CLI flag or default constant
 	if err != nil {
 		return nil, fmt.Errorf("failed to read checkpoint file: %w", err)
 	}

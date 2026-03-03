@@ -43,7 +43,7 @@ func NewLogger(debugMode bool) (*Logger, error) {
 		timestamp := time.Now().UTC().Format("20060102-150405")
 		logFilePath := filepath.Join(logDir, fmt.Sprintf("migration-%s.log", timestamp))
 
-		logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+		logFile, err := os.OpenFile(filepath.Clean(logFilePath), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600) // #nosec G304 -- path built from controlled logDir + timestamp
 		if err != nil {
 			return nil, fmt.Errorf("failed to create log file: %w", err)
 		}
