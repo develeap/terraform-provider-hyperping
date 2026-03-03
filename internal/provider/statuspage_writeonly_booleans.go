@@ -35,9 +35,9 @@ func extractWriteOnlyBooleans(planSections types.List) (serviceMap map[string]wr
 		}
 		secAttrs := secObj.Attributes()
 
-		// Extract is_split for this section
-		if isSplit, isSplitOK := secAttrs["is_split"].(types.Bool); isSplitOK && !isSplit.IsNull() && isSplit.ValueBool() {
-			sectionIsSplit[secIdx] = true
+		// Extract is_split for this section (track both true and false)
+		if isSplit, isSplitOK := secAttrs["is_split"].(types.Bool); isSplitOK && !isSplit.IsNull() {
+			sectionIsSplit[secIdx] = isSplit.ValueBool()
 		}
 
 		// Extract service booleans
@@ -137,10 +137,10 @@ func (r *StatusPageResource) applyWriteOnlyBooleans(apiSections types.List, serv
 		secAttrs := secObj.Attributes()
 		newAttrs := copyAttrs(secAttrs)
 
-		// Preserve is_split by section index
-		if sectionIsSplit[i] {
-			if apiIsSplit, ok := secAttrs["is_split"].(types.Bool); ok && !apiIsSplit.IsNull() && !apiIsSplit.ValueBool() {
-				newAttrs["is_split"] = types.BoolValue(true)
+		// Preserve is_split by section index — trust plan value in both directions
+		if planVal, tracked := sectionIsSplit[i]; tracked {
+			if apiIsSplit, ok := secAttrs["is_split"].(types.Bool); ok && !apiIsSplit.IsNull() && apiIsSplit.ValueBool() != planVal {
+				newAttrs["is_split"] = types.BoolValue(planVal)
 			}
 		}
 

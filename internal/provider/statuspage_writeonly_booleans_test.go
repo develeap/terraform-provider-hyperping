@@ -376,6 +376,33 @@ func TestApplyWriteOnlyBooleans_MixedPreservation(t *testing.T) {
 	}
 }
 
+func TestApplyWriteOnlyBooleans_IsSplitPlanFalseApiTrue(t *testing.T) {
+	r := &StatusPageResource{}
+	var diags diag.Diagnostics
+
+	// API returns is_split=true
+	apiSvc := buildTestService("mon_abc123", false, false, false, types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}))
+	apiSvcList := buildServicesList(apiSvc)
+	apiSection := buildTestSection(true, apiSvcList) // API says true
+	apiSections := buildSectionsList(apiSection)
+
+	// Plan had is_split=false
+	serviceMap := map[string]writeOnlyBooleans{}
+	sectionIsSplit := map[int]bool{0: false} // plan says false
+
+	result := r.applyWriteOnlyBooleans(apiSections, serviceMap, sectionIsSplit, &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected errors: %v", diags.Errors())
+	}
+
+	secObj := result.Elements()[0].(types.Object)
+	isSplit := secObj.Attributes()["is_split"].(types.Bool)
+	if isSplit.ValueBool() {
+		t.Error("expected is_split=false (plan should override API true)")
+	}
+}
+
 func TestApplyWriteOnlyBooleans_PlanFalseApiTrue(t *testing.T) {
 	r := &StatusPageResource{}
 	var diags diag.Diagnostics

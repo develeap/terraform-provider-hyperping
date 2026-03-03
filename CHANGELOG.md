@@ -10,6 +10,14 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-03-03
+
+### Fixed
+
+- **`hyperping_statuspage`**: `is_split = false` now correctly preserved when the Hyperping API
+  ignores the value and returns `true`. Same bidirectional fix applied to `show_response_times`
+  and `show_uptime` in v1.4.1.
+
 ## [1.4.1] - 2026-03-03
 
 ### Fixed
