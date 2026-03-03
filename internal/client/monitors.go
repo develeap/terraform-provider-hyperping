@@ -100,7 +100,7 @@ func (c *Client) CreateMonitor(ctx context.Context, req CreateMonitorRequest) (*
 // monitors. Omitted, null, and "" values are all rejected with 422. Sending a
 // valid value like "A" passes validation without affecting monitor behavior —
 // the API ignores dns_record_type for non-DNS protocols and returns null in
-// the response.
+// the response. Tracked at https://github.com/develeap/terraform-provider-hyperping/issues/123.
 const dnsRecordTypeWorkaround = "A"
 
 // UpdateMonitor updates an existing monitor.
