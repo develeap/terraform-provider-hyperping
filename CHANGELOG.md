@@ -10,11 +10,15 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-03-04
+
 ### Fixed
 
 - **Circuit breaker**: Client errors (400, 404, 422) no longer trip the circuit breaker.
   Previously, validation errors on multiple monitors would cause the breaker to open, masking
   the real error with "circuit breaker is open". Only 429 and 5xx now count as failures.
+- **`hyperping_monitor`**: `alerts_wait = -1` (disabled) now correctly preserved in state.
+  Previously the mapping treated all values <= 0 as null, losing the "disabled" setting.
 
 ### Added
 
@@ -695,7 +699,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.2...v1.4.3
 [1.4.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.9...v1.4.0
 [1.3.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.8...v1.3.9
 [1.3.8]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.7...v1.3.8
