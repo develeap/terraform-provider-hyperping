@@ -548,11 +548,6 @@ func (r *StatusPageResource) ImportState(ctx context.Context, req resource.Impor
 // It extracts configured languages from the model's settings to filter API response localized fields,
 // preventing drift from API auto-population of all supported languages.
 func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
-	// Warn if any services have numeric UUIDs (legacy drift from older provider versions).
-	// We intentionally do NOT translate numeric IDs back to UUIDs here — storing the raw
-	// API values lets the plan engine detect drift and trigger an apply that fixes the data.
-	warnUnresolvedNumericUUIDs(sp, diags)
-
 	// Detect isProtected drift: the Hyperping admin UI can reset an internal
 	// isProtected flag to true via v1 writes, causing a "Sign In" wall even when
 	// password_protection is false. The top-level PasswordProtected field reflects
