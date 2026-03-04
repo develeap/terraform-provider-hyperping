@@ -389,12 +389,6 @@ func (r *StatusPageResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	// Translate UUIDs to numeric IDs for status page renderer compatibility
-	if len(createReq.Sections) > 0 {
-		uuidToID, _ := buildMonitorIDMaps(ctx, r.client, &resp.Diagnostics)
-		createReq.Sections = translateSectionsToNumericIDs(createReq.Sections, uuidToID)
-	}
-
 	// Create status page via API
 	statusPage, err := r.client.CreateStatusPage(ctx, *createReq)
 	if err != nil {
@@ -463,12 +457,6 @@ func (r *StatusPageResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	// Translate UUIDs to numeric IDs for status page renderer compatibility
-	if len(updateReq.Sections) > 0 {
-		uuidToID, _ := buildMonitorIDMaps(ctx, r.client, &resp.Diagnostics)
-		updateReq.Sections = translateSectionsToNumericIDs(updateReq.Sections, uuidToID)
-	}
-
 	// Update status page via API
 	statusPage, err := r.client.UpdateStatusPage(ctx, state.ID.ValueString(), *updateReq)
 	if err != nil {
@@ -520,9 +508,14 @@ func (r *StatusPageResource) ImportState(ctx context.Context, req resource.Impor
 // It extracts configured languages from the model's settings to filter API response localized fields,
 // preventing drift from API auto-population of all supported languages.
 func (r *StatusPageResource) mapStatusPageToModel(ctx context.Context, sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
-	// Reverse-translate numeric IDs to UUIDs for TF state consistency
-	_, idToUUID := buildMonitorIDMaps(ctx, r.client, diags)
+	// Reverse-translate numeric IDs to UUIDs for TF state consistency.
+	// This handles legacy data where the provider previously sent numeric IDs
+	// to the API, which stored the service's own ID instead of the monitor ID.
+	idToUUID := buildMonitorIDToUUIDMap(ctx, r.client, diags)
 	translateStatusPageToUUIDs(sp, idToUUID)
+
+	// Warn if any services still have numeric UUIDs after translation
+	warnUnresolvedNumericUUIDs(sp, diags)
 
 	// Detect isProtected drift: the Hyperping admin UI can reset an internal
 	// isProtected flag to true via v1 writes, causing a "Sign In" wall even when

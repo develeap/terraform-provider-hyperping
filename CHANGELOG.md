@@ -10,6 +10,19 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`hyperping_statuspage`**: Fixed critical UUID drift bug where status page services had their
+  `uuid` field set to the service's own numeric ID instead of the linked monitor UUID. This caused
+  all status pages to show orphaned entries with no live data. The provider no longer translates
+  `mon_xxx` UUIDs to numeric IDs on write — the API preserves them correctly when sent directly.
+  Existing broken status pages will self-heal on the next `terraform apply`.
+
+### Added
+
+- **`hyperping_statuspage`**: Read-time warning when services have unresolved numeric UUIDs from
+  legacy drift, guiding users to re-apply to fix the data.
+
 ## [1.4.3] - 2026-03-04
 
 ### Fixed
