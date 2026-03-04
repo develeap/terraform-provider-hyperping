@@ -507,14 +507,10 @@ func (r *StatusPageResource) ImportState(ctx context.Context, req resource.Impor
 // mapStatusPageToModel maps API response to Terraform model.
 // It extracts configured languages from the model's settings to filter API response localized fields,
 // preventing drift from API auto-population of all supported languages.
-func (r *StatusPageResource) mapStatusPageToModel(ctx context.Context, sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
-	// Reverse-translate numeric IDs to UUIDs for TF state consistency.
-	// This handles legacy data where the provider previously sent numeric IDs
-	// to the API, which stored the service's own ID instead of the monitor ID.
-	idToUUID := buildMonitorIDToUUIDMap(ctx, r.client, diags)
-	translateStatusPageToUUIDs(sp, idToUUID)
-
-	// Warn if any services still have numeric UUIDs after translation
+func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
+	// Warn if any services have numeric UUIDs (legacy drift from older provider versions).
+	// We intentionally do NOT translate numeric IDs back to UUIDs here — storing the raw
+	// API values lets the plan engine detect drift and trigger an apply that fixes the data.
 	warnUnresolvedNumericUUIDs(sp, diags)
 
 	// Detect isProtected drift: the Hyperping admin UI can reset an internal

@@ -341,6 +341,7 @@ func (d *StatusPagesDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Map status pages to list
 	statusPages := make([]StatusPageCommonFields, len(filteredStatusPages))
 	for i, sp := range filteredStatusPages {
+		warnUnresolvedNumericUUIDs(&sp, &resp.Diagnostics)
 		statusPages[i] = MapStatusPageCommonFields(&sp, &resp.Diagnostics)
 	}
 
