@@ -46,8 +46,8 @@ func MapMonitorCommonFields(monitor *client.Monitor, diags *diag.Diagnostics) Mo
 		result.Port = types.Int64Null()
 	}
 
-	// Handle alerts_wait
-	if monitor.AlertsWait > 0 {
+	// Handle alerts_wait (0 means not set; -1 means disabled and must be preserved)
+	if monitor.AlertsWait != 0 {
 		result.AlertsWait = types.Int64Value(int64(monitor.AlertsWait))
 	} else {
 		result.AlertsWait = types.Int64Null()

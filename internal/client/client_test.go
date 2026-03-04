@@ -990,6 +990,8 @@ func TestClient_CircuitBreakerStates(t *testing.T) {
 	t.Run("successful requests with closed circuit", testCircuitBreakerClosedOnSuccess)
 	t.Run("partial failures don't open circuit", testCircuitBreakerPartialFailures)
 	t.Run("mixed success and failure patterns", testCircuitBreakerMixedPatterns)
+	t.Run("client errors (422) don't trip circuit", testCircuitBreakerIgnoresClientErrors)
+	t.Run("429 rate limit trips circuit", testCircuitBreakerTripsOn429)
 }
 
 // testCircuitBreakerOpens verifies that enough consecutive failures transition the
@@ -1206,6 +1208,84 @@ func testCircuitBreakerMixedPatterns(t *testing.T) {
 
 	if len(metrics.apiCalls) != 9 {
 		t.Errorf("expected 9 API calls recorded, got %d", len(metrics.apiCalls))
+	}
+}
+
+// testCircuitBreakerIgnoresClientErrors verifies that 4xx client errors (e.g. 422)
+// are treated as successes by the circuit breaker and do not trip it.
+func testCircuitBreakerIgnoresClientErrors(t *testing.T) {
+	metrics := &mockMetrics{}
+	requestCount := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"error":"validation failed","details":[{"field":"alerts_wait","message":"invalid value"}]}`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key",
+		WithBaseURL(server.URL),
+		WithMetrics(metrics),
+		WithMaxRetries(0),
+	)
+
+	// Send 10 requests that all return 422 — circuit should stay closed
+	for i := 0; i < 10; i++ {
+		err := c.doRequest(context.Background(), "GET", "/monitors", nil, nil)
+		if err == nil {
+			t.Errorf("request %d: expected error for 422, got nil", i)
+		}
+	}
+
+	// All 10 requests should have reached the server (circuit never opened)
+	if requestCount != 10 {
+		t.Errorf("expected 10 requests to reach server (circuit stayed closed), got %d", requestCount)
+	}
+
+	// No "open" state transition should have been recorded
+	for _, state := range metrics.circuitBreakerStates {
+		if state == "open" {
+			t.Error("circuit breaker should not open for 422 client errors")
+		}
+	}
+}
+
+// testCircuitBreakerTripsOn429 verifies that 429 (rate limit) responses are
+// counted as failures and trip the circuit breaker.
+func testCircuitBreakerTripsOn429(t *testing.T) {
+	metrics := &mockMetrics{}
+	requestCount := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":"rate limit exceeded"}`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key",
+		WithBaseURL(server.URL),
+		WithMetrics(metrics),
+		WithMaxRetries(0),
+		WithRetryWait(1*time.Millisecond, 1*time.Millisecond),
+	)
+
+	// Send 5 requests that all return 429 — should trip the breaker
+	for i := 0; i < 5; i++ {
+		_ = c.doRequest(context.Background(), "GET", "/monitors", nil, nil)
+	}
+
+	hasOpenState := false
+	for _, state := range metrics.circuitBreakerStates {
+		if state == "open" {
+			hasOpenState = true
+			break
+		}
+	}
+	if !hasOpenState {
+		t.Errorf("expected circuit breaker to open after 429 responses, recorded states: %v", metrics.circuitBreakerStates)
 	}
 }
 

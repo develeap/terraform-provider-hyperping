@@ -132,8 +132,9 @@ func (d *MonitorDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				Computed:            true,
 			},
 			"alerts_wait": schema.Int64Attribute{
-				MarkdownDescription: "Seconds to wait before sending alerts after an outage is detected.",
-				Computed:            true,
+				MarkdownDescription: "Minutes to wait before sending alerts after an outage is detected. " +
+					"One of: `-1` (disabled), `0`, `1`, `2`, `3`, `5`, `10`, `30`, `60`.",
+				Computed: true,
 			},
 			"escalation_policy": schema.StringAttribute{
 				MarkdownDescription: "UUID of the escalation policy linked to this monitor.",

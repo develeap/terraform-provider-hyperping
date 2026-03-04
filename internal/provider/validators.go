@@ -430,6 +430,45 @@ func EmailFormat() validator.String {
 	return emailFormatValidator{}
 }
 
+// validAlertsWaitValues is the set of values the Hyperping API accepts for alerts_wait (in minutes).
+var validAlertsWaitValues = map[int64]bool{
+	-1: true, 0: true, 1: true, 2: true, 3: true,
+	5: true, 10: true, 30: true, 60: true,
+}
+
+// alertsWaitValidator validates that alerts_wait is one of the enumerated values
+// accepted by the Hyperping API.
+type alertsWaitValidator struct{}
+
+func (v alertsWaitValidator) Description(_ context.Context) string {
+	return "value must be one of: -1, 0, 1, 2, 3, 5, 10, 30, 60 (minutes)"
+}
+
+func (v alertsWaitValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v alertsWaitValidator) ValidateInt64(_ context.Context, req validator.Int64Request, resp *validator.Int64Response) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+
+	value := req.ConfigValue.ValueInt64()
+	if !validAlertsWaitValues[value] {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Alerts Wait Value",
+			fmt.Sprintf("The value %d is not valid for alerts_wait. "+
+				"Must be one of: -1, 0, 1, 2, 3, 5, 10, 30, 60 (minutes).", value),
+		)
+	}
+}
+
+// AlertsWait returns a validator that checks alerts_wait is a valid enumerated value.
+func AlertsWait() validator.Int64 {
+	return alertsWaitValidator{}
+}
+
 // statusCodePattern matches valid expected_status_code values:
 // - Specific code: "200", "404", "503" (3-digit, 100-599)
 // - Single wildcard: "2xx", "5xx" (digit 1-5 followed by "xx")

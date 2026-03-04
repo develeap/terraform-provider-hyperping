@@ -66,13 +66,29 @@ This guide documents API call counts per Terraform operation and strategies for 
 
 ### Hyperping API Limits
 
-| Limit Type | Value | Reset Period |
-|------------|-------|--------------|
-| Requests per minute | 60 | 1 minute |
-| Requests per hour | 1000 | 1 hour |
-| Concurrent requests | 10 | N/A |
+| Limit Type | Value | Details |
+|------------|-------|---------|
+| Requests per hour | 800 (default) | Rolling 1-hour window |
+| Scope | Per project | Each project has its own quota |
+| Identification | API token | Falls back to IP if no token |
 
-*Note: Contact Hyperping support for enterprise rate limit increases.*
+*Paid plans can request higher limits from Hyperping support.*
+
+### Rate Limit Headers
+
+API responses include rate limit information:
+
+```
+ratelimit: "800-in-1hr"; r=792; t=3481
+```
+
+| Field | Meaning |
+|-------|---------|
+| `"800-in-1hr"` | Your rate limit |
+| `r=792` | Remaining requests in current window |
+| `t=3481` | Seconds until reset |
+
+When exceeded, the API returns `429 Too Many Requests` with a `retry-after` header.
 
 ### Provider Retry Behavior
 
@@ -354,12 +370,12 @@ Error: context deadline exceeded
 
 ## Quick Reference
 
-| Deployment Size | Resources | Parallelism | Daily API Budget |
-|-----------------|-----------|-------------|------------------|
+| Deployment Size | Resources | Parallelism | Hourly Budget (800/hr) |
+|-----------------|-----------|-------------|------------------------|
 | Small | < 50 | 10 (default) | ~100 calls |
 | Medium | 50-200 | 5 | ~400 calls |
-| Large | 200-500 | 2-3 | ~1000 calls |
-| Enterprise | 500+ | 1-2 | Contact Hyperping |
+| Large | 200-500 | 2-3 | ~800 calls |
+| Enterprise | 500+ | 1-2 | Request increase |
 
 ## Getting Help
 

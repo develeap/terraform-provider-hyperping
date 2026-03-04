@@ -948,6 +948,97 @@ func TestEmailFormat_Description(t *testing.T) {
 	}
 }
 
+func TestAlertsWaitValidator(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		value     int64
+		wantError bool
+	}{
+		{"valid -1 (disabled)", -1, false},
+		{"valid 0 (immediate)", 0, false},
+		{"valid 1 minute", 1, false},
+		{"valid 2 minutes", 2, false},
+		{"valid 3 minutes", 3, false},
+		{"valid 5 minutes", 5, false},
+		{"valid 10 minutes", 10, false},
+		{"valid 30 minutes", 30, false},
+		{"valid 60 minutes", 60, false},
+		{"invalid 300 (original bug)", 300, true},
+		{"invalid -2", -2, true},
+		{"invalid 100", 100, true},
+		{"invalid 7", 7, true},
+		{"invalid 4", 4, true},
+		{"invalid 15", 15, true},
+		{"invalid 120", 120, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := AlertsWait()
+			req := validator.Int64Request{
+				Path:        path.Root("alerts_wait"),
+				ConfigValue: types.Int64Value(tt.value),
+			}
+			resp := &validator.Int64Response{}
+			v.ValidateInt64(context.Background(), req, resp)
+
+			hasError := resp.Diagnostics.HasError()
+			if hasError != tt.wantError {
+				t.Errorf("AlertsWait(%d): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			}
+		})
+	}
+}
+
+func TestAlertsWait_Null(t *testing.T) {
+	v := AlertsWait()
+	req := validator.Int64Request{
+		Path:        path.Root("alerts_wait"),
+		ConfigValue: types.Int64Null(),
+	}
+	resp := &validator.Int64Response{}
+	v.ValidateInt64(context.Background(), req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Errorf("AlertsWait(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
+	}
+}
+
+func TestAlertsWait_Unknown(t *testing.T) {
+	v := AlertsWait()
+	req := validator.Int64Request{
+		Path:        path.Root("alerts_wait"),
+		ConfigValue: types.Int64Unknown(),
+	}
+	resp := &validator.Int64Response{}
+	v.ValidateInt64(context.Background(), req, resp)
+
+	if resp.Diagnostics.HasError() {
+		t.Errorf("AlertsWait(unknown): unexpected error: %v", resp.Diagnostics.Errors())
+	}
+}
+
+func TestAlertsWait_Description(t *testing.T) {
+	v := AlertsWait()
+	ctx := context.Background()
+
+	desc := v.Description(ctx)
+	if desc == "" {
+		t.Error("expected non-empty description")
+	}
+
+	mdDesc := v.MarkdownDescription(ctx)
+	if mdDesc == "" {
+		t.Error("expected non-empty markdown description")
+	}
+
+	if desc != mdDesc {
+		t.Error("description and markdown description should match")
+	}
+}
+
 func TestStatusCodePatternValidator(t *testing.T) {
 	t.Parallel()
 

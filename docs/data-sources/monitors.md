@@ -81,7 +81,7 @@ Optional:
 
 Read-Only:
 
-- `alerts_wait` (Number) Seconds to wait before sending alerts after an outage is detected.
+- `alerts_wait` (Number) Minutes to wait before sending alerts after an outage is detected. One of: `-1` (disabled), `0`, `1`, `2`, `3`, `5`, `10`, `30`, `60`.
 - `check_frequency` (Number) Check frequency in seconds.
 - `dns_record_type` (String) DNS record type for DNS-protocol monitors.
 - `escalation_policy` (String) UUID of the escalation policy linked to this monitor.
