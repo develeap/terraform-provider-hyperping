@@ -193,8 +193,12 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"alerts_wait": schema.Int64Attribute{
-				MarkdownDescription: "Seconds to wait before sending alerts after an outage is detected. Allows time for transient issues to resolve.",
-				Optional:            true,
+				MarkdownDescription: "Minutes to wait before sending alerts after an outage is detected. " +
+					"Must be one of: `-1` (disabled), `0`, `1`, `2`, `3`, `5`, `10`, `30`, `60`.",
+				Optional: true,
+				Validators: []validator.Int64{
+					AlertsWait(),
+				},
 			},
 			"escalation_policy": schema.StringAttribute{
 				MarkdownDescription: "UUID of the escalation policy to link to this monitor.",

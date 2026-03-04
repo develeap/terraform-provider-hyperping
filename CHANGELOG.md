@@ -10,6 +10,23 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Circuit breaker**: Client errors (400, 404, 422) no longer trip the circuit breaker.
+  Previously, validation errors on multiple monitors would cause the breaker to open, masking
+  the real error with "circuit breaker is open". Only 429 and 5xx now count as failures.
+
+### Added
+
+- **`hyperping_monitor`**: Plan-time validator for `alerts_wait` — catches invalid values
+  before they reach the API. Must be one of: -1, 0, 1, 2, 3, 5, 10, 30, 60 (minutes).
+
+### Changed
+
+- **`hyperping_monitor`**: Fixed `alerts_wait` description — field accepts minutes (not seconds).
+- **Rate limit docs**: Updated to match Hyperping's actual limits (800 req/hr per project,
+  rolling window, with rate limit header format documentation).
+
 ## [1.4.2] - 2026-03-03
 
 ### Fixed

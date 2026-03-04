@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -134,6 +135,19 @@ func NewClient(apiKey string, opts ...Option) *Client {
 		MaxRequests: 3,                // Max concurrent requests in half-open state
 		Interval:    60 * time.Second, // Rolling window for failure counting
 		Timeout:     30 * time.Second, // Time to wait before attempting recovery (half-open)
+		IsSuccessful: func(err error) bool {
+			if err == nil {
+				return true
+			}
+			var apiErr *APIError
+			if errors.As(err, &apiErr) {
+				// Client errors (4xx except 429) mean the server is healthy —
+				// the request was just invalid. Don't count them as failures.
+				return apiErr.StatusCode >= 400 && apiErr.StatusCode < 500 && apiErr.StatusCode != 429
+			}
+			// Transport errors (DNS, timeout, TLS) are real failures.
+			return false
+		},
 		ReadyToTrip: func(counts gobreaker.Counts) bool {
 			// Early return before division to prevent divide-by-zero if Requests is 0 (VULN-020)
 			if counts.Requests < 3 {
