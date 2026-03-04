@@ -326,6 +326,7 @@ func (d *StatusPageDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 // mapStatusPageToModel maps API response to data source model.
 func (d *StatusPageDataSource) mapStatusPageToModel(sp *client.StatusPage, model *StatusPageDataSourceModel, resp *datasource.ReadResponse) {
+	warnUnresolvedNumericUUIDs(sp, &resp.Diagnostics)
 	commonFields := MapStatusPageCommonFields(sp, &resp.Diagnostics)
 	model.ID = commonFields.ID
 	model.Name = commonFields.Name

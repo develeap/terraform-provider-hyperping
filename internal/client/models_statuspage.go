@@ -73,9 +73,9 @@ type StatusPageSection struct {
 //   - an integer (e.g. 117122) when set via v1 admin UI or numeric ID workaround
 //   - absent entirely for group header entries (which have no top-level monitor)
 //
-// The provider sends mon_xxx UUIDs directly. Legacy data from older provider
-// versions (< 1.5.0) may still have numeric IDs, which are translated back to
-// UUIDs on read via buildMonitorIDToUUIDMap.
+// The provider sends mon_xxx UUIDs directly and stores raw API response values
+// in state. If the API returns numeric IDs (legacy drift), the plan engine
+// detects the diff against the config's mon_xxx UUIDs and triggers an apply.
 type StatusPageService struct {
 	ID                interface{}         `json:"id,omitempty"`
 	UUID              string              `json:"uuid,omitempty"`
