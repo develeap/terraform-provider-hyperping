@@ -252,13 +252,21 @@ func (m *mockStatusPageServer) handleSubscriberRequest(w http.ResponseWriter, r 
 }
 
 // listMonitors returns a mock monitor list for UUID-to-numeric-ID translation.
+// Includes all UUIDs used across status page acceptance tests so the write-path
+// translation (mon_xxx -> numeric) can resolve every reference.
 func (m *mockStatusPageServer) listMonitors(w http.ResponseWriter) {
 	monitors := []map[string]interface{}{
 		{"id": 115746, "uuid": "mon_abc123", "name": "Test Monitor 1", "url": "https://example1.com", "protocol": "http"},
 		{"id": 115747, "uuid": "mon_def456", "name": "Test Monitor 2", "url": "https://example2.com", "protocol": "http"},
 		{"id": 115748, "uuid": "mon_ghi789", "name": "Test Monitor 3", "url": "https://example3.com", "protocol": "http"},
+		{"id": 115749, "uuid": "mon_child_1", "name": "Child Monitor 1", "url": "https://child1.com", "protocol": "http"},
+		{"id": 115750, "uuid": "mon_child_2", "name": "Child Monitor 2", "url": "https://child2.com", "protocol": "http"},
+		{"id": 115751, "uuid": "mon_flat_01", "name": "Flat Monitor", "url": "https://flat.com", "protocol": "http"},
+		{"id": 115752, "uuid": "mon_nested_01", "name": "Nested Monitor", "url": "https://nested.com", "protocol": "http"},
+		{"id": 115753, "uuid": "mon_test001a", "name": "Test Monitor A", "url": "https://testa.com", "protocol": "http"},
+		{"id": 115754, "uuid": "mon_test002", "name": "Test Monitor B", "url": "https://testb.com", "protocol": "http"},
 	}
-	json.NewEncoder(w).Encode(monitors)
+	json.NewEncoder(w).Encode(monitors) //nolint:errcheck // test helper
 }
 
 func (m *mockStatusPageServer) listStatusPages(w http.ResponseWriter, _ *http.Request) {
