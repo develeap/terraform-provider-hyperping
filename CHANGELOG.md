@@ -10,6 +10,8 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-03-04
+
 ### Fixed
 
 - **`hyperping_statuspage`**: Fixed critical UUID drift bug where status page services had their
