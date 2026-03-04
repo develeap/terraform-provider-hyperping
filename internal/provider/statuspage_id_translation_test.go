@@ -4,106 +4,50 @@
 package provider
 
 import (
+	"context"
+	"fmt"
+	"strings"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
-func TestTranslateSectionsToNumericIDs_TopLevelService(t *testing.T) {
-	uuid := "mon_abc123"
-	uuidToID := map[string]int{"mon_abc123": 115746}
-
-	sections := []client.CreateStatusPageSection{
-		{
-			Name: "API",
-			Services: []client.CreateStatusPageService{
-				{MonitorUUID: &uuid},
-			},
-		},
-	}
-
-	result := translateSectionsToNumericIDs(sections, uuidToID)
-
-	if result[0].Services[0].MonitorUUID == nil {
-		t.Fatal("expected MonitorUUID to be set")
-	}
-	if *result[0].Services[0].MonitorUUID != "115746" {
-		t.Errorf("expected '115746', got %q", *result[0].Services[0].MonitorUUID)
-	}
-
-	// Verify original was not mutated
-	if *sections[0].Services[0].MonitorUUID != "mon_abc123" {
-		t.Error("original section was mutated")
-	}
+// mockMonitorAPI implements client.MonitorAPI for testing buildMonitorIDToUUIDMap.
+type mockMonitorAPI struct {
+	listMonitorsFunc func(ctx context.Context) ([]client.Monitor, error)
 }
 
-func TestTranslateSectionsToNumericIDs_NestedService(t *testing.T) {
-	uuid := "mon_def456"
-	isGroup := true
-	uuidToID := map[string]int{"mon_def456": 115747}
-
-	sections := []client.CreateStatusPageSection{
-		{
-			Name: "Group",
-			Services: []client.CreateStatusPageService{
-				{
-					IsGroup: &isGroup,
-					Services: []client.CreateStatusPageService{
-						{UUID: &uuid},
-					},
-				},
-			},
-		},
+func (m *mockMonitorAPI) ListMonitors(ctx context.Context) ([]client.Monitor, error) {
+	if m.listMonitorsFunc != nil {
+		return m.listMonitorsFunc(ctx)
 	}
-
-	result := translateSectionsToNumericIDs(sections, uuidToID)
-
-	nested := result[0].Services[0].Services[0]
-	if nested.UUID == nil {
-		t.Fatal("expected UUID to be set on nested service")
-	}
-	if *nested.UUID != "115747" {
-		t.Errorf("expected '115747', got %q", *nested.UUID)
-	}
+	return nil, nil
 }
 
-func TestTranslateSectionsToNumericIDs_UnknownUUID(t *testing.T) {
-	unknownUUID := "mon_unknown"
-	uuidToID := map[string]int{"mon_abc123": 115746}
-
-	sections := []client.CreateStatusPageSection{
-		{
-			Name: "API",
-			Services: []client.CreateStatusPageService{
-				{MonitorUUID: &unknownUUID},
-			},
-		},
-	}
-
-	result := translateSectionsToNumericIDs(sections, uuidToID)
-
-	if *result[0].Services[0].MonitorUUID != "mon_unknown" {
-		t.Errorf("expected unknown UUID to pass through, got %q", *result[0].Services[0].MonitorUUID)
-	}
+func (m *mockMonitorAPI) GetMonitor(ctx context.Context, uuid string) (*client.Monitor, error) {
+	return nil, nil
 }
 
-func TestTranslateSectionsToNumericIDs_EmptyMap(t *testing.T) {
-	uuid := "mon_abc123"
-	sections := []client.CreateStatusPageSection{
-		{
-			Name: "API",
-			Services: []client.CreateStatusPageService{
-				{MonitorUUID: &uuid},
-			},
-		},
-	}
+func (m *mockMonitorAPI) CreateMonitor(ctx context.Context, req client.CreateMonitorRequest) (*client.Monitor, error) {
+	return nil, nil
+}
 
-	result := translateSectionsToNumericIDs(sections, map[string]int{})
+func (m *mockMonitorAPI) UpdateMonitor(ctx context.Context, uuid string, req client.UpdateMonitorRequest) (*client.Monitor, error) {
+	return nil, nil
+}
 
-	// Should return original sections unchanged
-	if *result[0].Services[0].MonitorUUID != "mon_abc123" {
-		t.Errorf("expected UUID unchanged, got %q", *result[0].Services[0].MonitorUUID)
-	}
+func (m *mockMonitorAPI) DeleteMonitor(ctx context.Context, uuid string) error {
+	return nil
+}
+
+func (m *mockMonitorAPI) PauseMonitor(ctx context.Context, uuid string) (*client.Monitor, error) {
+	return nil, nil
+}
+
+func (m *mockMonitorAPI) ResumeMonitor(ctx context.Context, uuid string) (*client.Monitor, error) {
+	return nil, nil
 }
 
 func TestTranslateStatusPageToUUIDs_NumericString(t *testing.T) {
@@ -191,34 +135,14 @@ func TestTranslateStatusPageToUUIDs_EmptyMap(t *testing.T) {
 	}
 }
 
-func TestTranslateRoundTrip(t *testing.T) {
-	uuid := "mon_abc123"
-	uuidToID := map[string]int{"mon_abc123": 115746}
+func TestTranslateStatusPageToUUIDs_AlreadyUUID(t *testing.T) {
 	idToUUID := map[string]string{"115746": "mon_abc123"}
 
-	// Forward: UUID -> numeric ID
-	sections := []client.CreateStatusPageSection{
-		{
-			Name: "API",
-			Services: []client.CreateStatusPageService{
-				{MonitorUUID: &uuid},
-			},
-		},
-	}
-
-	translated := translateSectionsToNumericIDs(sections, uuidToID)
-	numericID := *translated[0].Services[0].MonitorUUID
-
-	if numericID != "115746" {
-		t.Fatalf("forward translation failed: expected '115746', got %q", numericID)
-	}
-
-	// Reverse: numeric ID -> UUID
 	sp := &client.StatusPage{
 		Sections: []client.StatusPageSection{
 			{
 				Services: []client.StatusPageService{
-					{UUID: numericID, ID: numericID},
+					{UUID: "mon_xyz789"},
 				},
 			},
 		},
@@ -226,8 +150,9 @@ func TestTranslateRoundTrip(t *testing.T) {
 
 	translateStatusPageToUUIDs(sp, idToUUID)
 
-	if sp.Sections[0].Services[0].UUID != "mon_abc123" {
-		t.Errorf("round-trip failed: expected 'mon_abc123', got %q", sp.Sections[0].Services[0].UUID)
+	// Should remain unchanged — already a valid UUID
+	if sp.Sections[0].Services[0].UUID != "mon_xyz789" {
+		t.Errorf("expected 'mon_xyz789', got %q", sp.Sections[0].Services[0].UUID)
 	}
 }
 
@@ -249,6 +174,173 @@ func TestServiceIDToNumericString(t *testing.T) {
 			got := serviceIDToNumericString(tt.id)
 			if got != tt.want {
 				t.Errorf("serviceIDToNumericString(%v) = %q, want %q", tt.id, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWarnUnresolvedNumericUUIDs_DetectsDrift(t *testing.T) {
+	sp := &client.StatusPage{
+		Sections: []client.StatusPageSection{
+			{
+				Services: []client.StatusPageService{
+					{UUID: "117896"}, // drifted
+					{UUID: "mon_abc123"},
+					{UUID: "118001"}, // drifted
+				},
+			},
+		},
+	}
+
+	var diags diag.Diagnostics
+	warnUnresolvedNumericUUIDs(sp, &diags)
+
+	if diags.WarningsCount() != 1 {
+		t.Fatalf("expected 1 warning, got %d", diags.WarningsCount())
+	}
+
+	detail := diags[0].Detail()
+	if !strings.Contains(detail, "117896") || !strings.Contains(detail, "118001") {
+		t.Errorf("expected warning to list both drifted UUIDs, got: %s", detail)
+	}
+	if !strings.Contains(detail, "2 service(s)") {
+		t.Errorf("expected count of 2, got: %s", detail)
+	}
+}
+
+func TestWarnUnresolvedNumericUUIDs_NoWarningWhenClean(t *testing.T) {
+	sp := &client.StatusPage{
+		Sections: []client.StatusPageSection{
+			{
+				Services: []client.StatusPageService{
+					{UUID: "mon_abc123"},
+					{UUID: "mon_def456"},
+				},
+			},
+		},
+	}
+
+	var diags diag.Diagnostics
+	warnUnresolvedNumericUUIDs(sp, &diags)
+
+	if diags.WarningsCount() > 0 {
+		t.Errorf("expected no warnings, got %d", diags.WarningsCount())
+	}
+}
+
+func TestWarnUnresolvedNumericUUIDs_NestedDrift(t *testing.T) {
+	sp := &client.StatusPage{
+		Sections: []client.StatusPageSection{
+			{
+				Services: []client.StatusPageService{
+					{
+						IsGroup: true,
+						UUID:    "",
+						Services: []client.StatusPageService{
+							{UUID: "117896"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var diags diag.Diagnostics
+	warnUnresolvedNumericUUIDs(sp, &diags)
+
+	if diags.WarningsCount() != 1 {
+		t.Errorf("expected 1 warning, got %d", diags.WarningsCount())
+	}
+}
+
+func TestWarnUnresolvedNumericUUIDs_NilStatusPage(t *testing.T) {
+	var diags diag.Diagnostics
+	warnUnresolvedNumericUUIDs(nil, &diags)
+
+	if diags.WarningsCount() > 0 {
+		t.Errorf("expected no warnings for nil status page, got %d", diags.WarningsCount())
+	}
+}
+
+func TestWarnUnresolvedNumericUUIDs_EmptyUUIDSkipped(t *testing.T) {
+	sp := &client.StatusPage{
+		Sections: []client.StatusPageSection{
+			{
+				Services: []client.StatusPageService{
+					{UUID: "", IsGroup: true}, // group header, no UUID
+					{UUID: "mon_abc123"},
+				},
+			},
+		},
+	}
+
+	var diags diag.Diagnostics
+	warnUnresolvedNumericUUIDs(sp, &diags)
+
+	if diags.WarningsCount() > 0 {
+		t.Errorf("expected no warnings, got %d", diags.WarningsCount())
+	}
+}
+
+func TestBuildMonitorIDToUUIDMap_Success(t *testing.T) {
+	mock := &mockMonitorAPI{
+		listMonitorsFunc: func(ctx context.Context) ([]client.Monitor, error) {
+			return []client.Monitor{
+				{UUID: "mon_abc123", ID: 115746},
+				{UUID: "mon_def456", ID: 115747},
+			}, nil
+		},
+	}
+
+	var diags diag.Diagnostics
+	result := buildMonitorIDToUUIDMap(context.Background(), mock, &diags)
+
+	if diags.HasError() || diags.WarningsCount() > 0 {
+		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+	if result["115746"] != "mon_abc123" {
+		t.Errorf("expected mon_abc123 for 115746, got %q", result["115746"])
+	}
+	if result["115747"] != "mon_def456" {
+		t.Errorf("expected mon_def456 for 115747, got %q", result["115747"])
+	}
+}
+
+func TestBuildMonitorIDToUUIDMap_ErrorReturnsEmpty(t *testing.T) {
+	mock := &mockMonitorAPI{
+		listMonitorsFunc: func(ctx context.Context) ([]client.Monitor, error) {
+			return nil, fmt.Errorf("connection refused")
+		},
+	}
+
+	var diags diag.Diagnostics
+	result := buildMonitorIDToUUIDMap(context.Background(), mock, &diags)
+
+	if len(result) != 0 {
+		t.Errorf("expected empty map on error, got %d entries", len(result))
+	}
+	if diags.WarningsCount() != 1 {
+		t.Errorf("expected 1 warning, got %d", diags.WarningsCount())
+	}
+}
+
+func TestIsNumericString(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"115746", true},
+		{"0", true},
+		{"mon_abc123", false},
+		{"", false},
+		{"12abc", false},
+		{"sp_xyz", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := isNumericString(tt.input); got != tt.want {
+				t.Errorf("isNumericString(%q) = %v, want %v", tt.input, got, tt.want)
 			}
 		})
 	}

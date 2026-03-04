@@ -7,108 +7,36 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
-// buildMonitorIDMaps fetches all monitors and builds bidirectional lookup maps
-// between UUID strings (e.g. "mon_abc123") and v1 numeric IDs (e.g. 115746).
-// On error, adds a warning diagnostic and returns empty maps (graceful fallback).
-func buildMonitorIDMaps(ctx context.Context, apiClient client.HyperpingAPI, diags *diag.Diagnostics) (uuidToID map[string]int, idToUUID map[string]string) {
-	uuidToID = make(map[string]int)
-	idToUUID = make(map[string]string)
+// buildMonitorIDToUUIDMap fetches all monitors and builds a lookup map from
+// v1 numeric IDs (e.g. "115746") to UUID strings (e.g. "mon_abc123").
+// Used on the read path to translate numeric IDs in API responses back to UUIDs.
+// On error, adds a warning diagnostic and returns an empty map (graceful fallback).
+func buildMonitorIDToUUIDMap(ctx context.Context, apiClient client.MonitorAPI, diags *diag.Diagnostics) map[string]string {
+	idToUUID := make(map[string]string)
 
 	monitors, err := apiClient.ListMonitors(ctx)
 	if err != nil {
 		diags.AddWarning(
 			"Unable to fetch monitor list for ID translation",
-			fmt.Sprintf("Status page services will use UUIDs as-is (renderer may not resolve status): %s", err),
+			fmt.Sprintf("Status page services may show numeric IDs instead of UUIDs: %s", err),
 		)
-		return uuidToID, idToUUID
+		return idToUUID
 	}
 
 	for _, mon := range monitors {
 		if mon.UUID != "" && mon.ID != 0 {
-			uuidToID[mon.UUID] = mon.ID
 			idToUUID[strconv.Itoa(mon.ID)] = mon.UUID
 		}
 	}
 
-	return uuidToID, idToUUID
-}
-
-// translateSectionsToNumericIDs walks sections and replaces UUID strings with
-// numeric ID strings for renderer compatibility. Creates new slices (immutable).
-// Unknown UUIDs are left as-is (graceful fallback).
-func translateSectionsToNumericIDs(sections []client.CreateStatusPageSection, uuidToID map[string]int) []client.CreateStatusPageSection {
-	if len(uuidToID) == 0 {
-		return sections
-	}
-
-	translated := make([]client.CreateStatusPageSection, len(sections))
-	for i, section := range sections {
-		translated[i] = client.CreateStatusPageSection{
-			Name:     section.Name,
-			IsSplit:  section.IsSplit,
-			Services: translateServicesToNumericIDs(section.Services, uuidToID),
-		}
-	}
-
-	return translated
-}
-
-// translateServicesToNumericIDs translates service UUIDs to numeric IDs.
-func translateServicesToNumericIDs(services []client.CreateStatusPageService, uuidToID map[string]int) []client.CreateStatusPageService {
-	if len(services) == 0 {
-		return services
-	}
-
-	translated := make([]client.CreateStatusPageService, len(services))
-	for i, svc := range services {
-		translated[i] = translateServiceToNumericID(svc, uuidToID)
-	}
-
-	return translated
-}
-
-// translateServiceToNumericID translates a single service's UUID to numeric ID.
-func translateServiceToNumericID(svc client.CreateStatusPageService, uuidToID map[string]int) client.CreateStatusPageService {
-	result := client.CreateStatusPageService{
-		NameShown:         svc.NameShown,
-		Name:              svc.Name,
-		ShowUptime:        svc.ShowUptime,
-		ShowResponseTimes: svc.ShowResponseTimes,
-		IsGroup:           svc.IsGroup,
-	}
-
-	// Top-level services use MonitorUUID
-	if svc.MonitorUUID != nil {
-		if numID, ok := uuidToID[*svc.MonitorUUID]; ok {
-			idStr := strconv.Itoa(numID)
-			result.MonitorUUID = &idStr
-		} else {
-			result.MonitorUUID = svc.MonitorUUID
-		}
-	}
-
-	// Nested services use UUID
-	if svc.UUID != nil {
-		if numID, ok := uuidToID[*svc.UUID]; ok {
-			idStr := strconv.Itoa(numID)
-			result.UUID = &idStr
-		} else {
-			result.UUID = svc.UUID
-		}
-	}
-
-	// Recurse into nested services for groups
-	if len(svc.Services) > 0 {
-		result.Services = translateServicesToNumericIDs(svc.Services, uuidToID)
-	}
-
-	return result
+	return idToUUID
 }
 
 // translateStatusPageToUUIDs walks the StatusPage response and replaces numeric
@@ -162,4 +90,49 @@ func serviceIDToNumericString(id interface{}) string {
 		}
 	}
 	return ""
+}
+
+// warnUnresolvedNumericUUIDs checks for services that still have numeric UUIDs
+// after translation (i.e., the API returned a numeric ID that couldn't be mapped
+// to a mon_xxx UUID). This indicates legacy drift from older provider versions
+// that translated UUIDs to numeric IDs on write. The next terraform apply will
+// fix these by sending the correct mon_xxx UUIDs from the config.
+func warnUnresolvedNumericUUIDs(sp *client.StatusPage, diags *diag.Diagnostics) {
+	if sp == nil {
+		return
+	}
+
+	var drifted []string
+	for _, section := range sp.Sections {
+		collectDriftedUUIDs(section.Services, &drifted)
+	}
+
+	if len(drifted) > 0 {
+		diags.AddWarning(
+			"Status page services have numeric UUIDs (legacy drift detected)",
+			fmt.Sprintf(
+				"Found %d service(s) with numeric UUIDs instead of mon_xxx format: %s. "+
+					"This was caused by an older provider version that translated UUIDs to numeric IDs. "+
+					"Run 'terraform apply' to fix — the provider will send the correct UUIDs from your config.",
+				len(drifted), strings.Join(drifted, ", ")),
+		)
+	}
+}
+
+// collectDriftedUUIDs recursively collects service UUIDs that are still numeric strings.
+func collectDriftedUUIDs(services []client.StatusPageService, drifted *[]string) {
+	for _, svc := range services {
+		if svc.UUID != "" && isNumericString(svc.UUID) {
+			*drifted = append(*drifted, svc.UUID)
+		}
+		if len(svc.Services) > 0 {
+			collectDriftedUUIDs(svc.Services, drifted)
+		}
+	}
+}
+
+// isNumericString returns true if s contains only digits.
+func isNumericString(s string) bool {
+	_, err := strconv.Atoi(s)
+	return err == nil
 }
