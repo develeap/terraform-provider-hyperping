@@ -10,7 +10,7 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
-## [1.4.6] - 2026-03-04
+## [1.4.7] - 2026-03-04
 
 ### Fixed
 
@@ -18,6 +18,15 @@ Published releases start from v1.0.3.
   services. The uptime renderer requires numeric monitor IDs -- v1.4.4+v1.4.5 incorrectly removed
   the translation, breaking uptime display. Now: `mon_xxx` -> numeric on write (hard error if
   unresolvable), numeric -> `mon_xxx` on read (warning if unresolvable).
+- **`hyperping_statuspage`**: Removed duplicate warning diagnostic when unresolvable numeric IDs
+  are encountered during read.
+
+## [1.4.6] - 2026-03-04
+
+### Fixed
+
+- **`hyperping_statuspage`**: (Superseded by v1.4.7) Initial bidirectional translation restore,
+  but the Registry binary was missing the duplicate warning fix.
 
 ## [1.4.5] - 2026-03-04
 
@@ -730,7 +739,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.6...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.7...HEAD
+[1.4.7]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.3...v1.4.4
