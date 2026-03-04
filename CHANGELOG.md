@@ -12,13 +12,10 @@ Published releases start from v1.0.3.
 
 ### Fixed
 
-- **`hyperping_statuspage`**: Removed read-path reverse translation that masked UUID drift.
-  The provider previously translated numeric IDs back to `mon_xxx` UUIDs during state refresh,
-  making `terraform plan` report "No changes" even when the API had broken numeric IDs.
-  State now stores raw API values, so plan correctly detects drift and triggers an apply to fix it.
-  Note: `show_uptime` and `show_response_times` may also drift on affected pages until the UUID
-  drift is fixed by apply (the boolean preservation keys on UUID, which won't match until fixed).
-- **`hyperping_statuspage`**: Data sources now also warn when services have numeric UUID drift.
+- **`hyperping_statuspage`**: Restored bidirectional UUID/numeric ID translation for status page
+  services. The uptime renderer requires numeric monitor IDs -- v1.4.4+v1.4.5 incorrectly removed
+  the translation, breaking uptime display. Now: `mon_xxx` -> numeric on write (hard error if
+  unresolvable), numeric -> `mon_xxx` on read (warning if unresolvable).
 
 ## [1.4.4] - 2026-03-04
 

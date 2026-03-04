@@ -389,12 +389,28 @@ func (r *StatusPageResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	// Translate mon_xxx -> numeric IDs for the uptime renderer
+	maps, err := buildMonitorIDMaps(ctx, r.client.ListMonitors)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to fetch monitors for ID translation", err.Error())
+		return
+	}
+	if createReq.Sections != nil {
+		translateSectionsUUIDsToNumericIDs(createReq.Sections, maps.uuidToNumericID, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	// Create status page via API
 	statusPage, err := r.client.CreateStatusPage(ctx, *createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating status page", err.Error())
 		return
 	}
+
+	// Translate numeric IDs back to mon_xxx for state
+	translateResponseNumericIDsToUUIDs(statusPage, maps.numericIDToUUID, &resp.Diagnostics)
 
 	// Map response to state
 	r.mapStatusPageToModel(ctx, statusPage, &plan, &resp.Diagnostics)
@@ -427,6 +443,14 @@ func (r *StatusPageResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
+	// Translate numeric IDs to mon_xxx for state
+	maps, mapErr := buildMonitorIDMaps(ctx, r.client.ListMonitors)
+	if mapErr != nil {
+		resp.Diagnostics.AddError("Failed to fetch monitors for ID translation", mapErr.Error())
+		return
+	}
+	translateResponseNumericIDsToUUIDs(statusPage, maps.numericIDToUUID, &resp.Diagnostics)
+
 	// Map response to state
 	r.mapStatusPageToModel(ctx, statusPage, &state, &resp.Diagnostics)
 
@@ -457,12 +481,28 @@ func (r *StatusPageResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
+	// Translate mon_xxx -> numeric IDs for the uptime renderer
+	maps, err := buildMonitorIDMaps(ctx, r.client.ListMonitors)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to fetch monitors for ID translation", err.Error())
+		return
+	}
+	if updateReq.Sections != nil {
+		translateSectionsUUIDsToNumericIDs(updateReq.Sections, maps.uuidToNumericID, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
 	// Update status page via API
 	statusPage, err := r.client.UpdateStatusPage(ctx, state.ID.ValueString(), *updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating status page", err.Error())
 		return
 	}
+
+	// Translate numeric IDs back to mon_xxx for state
+	translateResponseNumericIDsToUUIDs(statusPage, maps.numericIDToUUID, &resp.Diagnostics)
 
 	// Map response to state
 	r.mapStatusPageToModel(ctx, statusPage, &plan, &resp.Diagnostics)

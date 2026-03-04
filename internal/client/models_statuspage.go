@@ -73,9 +73,9 @@ type StatusPageSection struct {
 //   - an integer (e.g. 117122) when set via v1 admin UI or numeric ID workaround
 //   - absent entirely for group header entries (which have no top-level monitor)
 //
-// The provider sends mon_xxx UUIDs directly and stores raw API response values
-// in state. If the API returns numeric IDs (legacy drift), the plan engine
-// detects the diff against the config's mon_xxx UUIDs and triggers an apply.
+// The provider translates mon_xxx UUIDs to numeric IDs on write (the uptime
+// renderer requires numeric IDs) and translates back to mon_xxx on read so
+// that Terraform state matches config. See statuspage_id_translation.go.
 type StatusPageService struct {
 	ID                interface{}         `json:"id,omitempty"`
 	UUID              string              `json:"uuid,omitempty"`
