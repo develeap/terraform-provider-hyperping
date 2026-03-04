@@ -312,7 +312,7 @@ func TestAccMonitorResource_nullVsEmptyString(t *testing.T) {
 // =============================================================================
 
 // TestAccMonitorResource_alertsWait tests the alerts_wait field.
-// Tests different alert wait times: 60 (1 min), 300 (5 min).
+// Tests different alert wait times using valid enumerated values (minutes).
 // Note: alerts_wait=0 is treated as null/unset by the provider mapping logic.
 func TestAccMonitorResource_alertsWait(t *testing.T) {
 	server := newMockHyperpingServer(t)
@@ -321,25 +321,25 @@ func TestAccMonitorResource_alertsWait(t *testing.T) {
 	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
-			// Create with 60 second wait
+			// Create with 5 minutes wait
 			{
-				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 60),
+				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 5),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "60"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "5"),
 				),
 			},
-			// Update to 300 seconds (5 minutes)
+			// Update to 30 minutes
 			{
-				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 300),
+				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 30),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "300"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "30"),
 				),
 			},
-			// Update to 120 seconds (2 minutes)
+			// Update to 10 minutes
 			{
-				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 120),
+				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 10),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "120"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "10"),
 				),
 			},
 			// Clear alerts_wait (null)

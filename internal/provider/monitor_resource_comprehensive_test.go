@@ -14,9 +14,9 @@ import (
 // =============================================================================
 
 // TestAccMonitorResource_alertsWaitExtremeValues tests alerts_wait with
-// extreme values like 3600 (1 hour) and 7200 (2 hours).
-// Note: alerts_wait=0 is treated as null by provider mapping logic (see monitor_resource_edge_cases_test.go).
-// This test focuses on high values that represent very long alert delays.
+// the full range of valid enumerated values, including edge cases.
+// Valid values: -1 (disabled), 0, 1, 2, 3, 5, 10, 30, 60 (minutes).
+// Note: alerts_wait=0 is treated as null by provider mapping logic.
 func TestAccMonitorResource_alertsWaitExtremeValues(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
@@ -24,32 +24,32 @@ func TestAccMonitorResource_alertsWaitExtremeValues(t *testing.T) {
 	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
-			// Test with alerts_wait=60 (baseline: 1 minute)
+			// Test with alerts_wait=1 (1 minute, smallest positive)
+			{
+				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 1),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "1"),
+				),
+			},
+			// Test with alerts_wait=60 (1 hour, largest valid value)
 			{
 				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 60),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "60"),
 				),
 			},
-			// Test with alerts_wait=3600 (1 hour, very long delay)
+			// Test with alerts_wait=-1 (disabled)
 			{
-				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 3600),
+				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, -1),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "3600"),
-				),
-			},
-			// Test with alerts_wait=7200 (2 hours, extreme delay)
-			{
-				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 7200),
-				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "7200"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "-1"),
 				),
 			},
 			// Back to moderate value
 			{
-				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 600),
+				Config: testAccMonitorResourceConfigWithAlertsWait(server.URL, 5),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "600"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "alerts_wait", "5"),
 				),
 			},
 		},
