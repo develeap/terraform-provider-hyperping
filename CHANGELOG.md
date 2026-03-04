@@ -10,12 +10,21 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.4.6] - 2026-03-04
+
 ### Fixed
 
 - **`hyperping_statuspage`**: Restored bidirectional UUID/numeric ID translation for status page
   services. The uptime renderer requires numeric monitor IDs -- v1.4.4+v1.4.5 incorrectly removed
   the translation, breaking uptime display. Now: `mon_xxx` -> numeric on write (hard error if
   unresolvable), numeric -> `mon_xxx` on read (warning if unresolvable).
+
+## [1.4.5] - 2026-03-04
+
+### Fixed
+
+- **`hyperping_statuspage`**: Removed read-path reverse translation that masked UUID drift.
+  (Superseded by v1.4.6 which restores proper bidirectional translation.)
 
 ## [1.4.4] - 2026-03-04
 
@@ -721,7 +730,10 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.3...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.6...HEAD
+[1.4.6]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.5...v1.4.6
+[1.4.5]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.4...v1.4.5
+[1.4.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.2...v1.4.3
 [1.4.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.9...v1.4.0
 [1.3.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.8...v1.3.9
