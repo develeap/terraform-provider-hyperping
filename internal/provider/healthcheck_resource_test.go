@@ -12,66 +12,6 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
-// mockHealthcheckAPI implements client.HealthcheckAPI for testing
-type mockHealthcheckAPI struct {
-	getHealthcheckFunc    func(ctx context.Context, uuid string) (*client.Healthcheck, error)
-	listHealthchecksFunc  func(ctx context.Context) ([]client.Healthcheck, error)
-	createHealthcheckFunc func(ctx context.Context, req client.CreateHealthcheckRequest) (*client.Healthcheck, error)
-	updateHealthcheckFunc func(ctx context.Context, uuid string, req client.UpdateHealthcheckRequest) (*client.Healthcheck, error)
-	deleteHealthcheckFunc func(ctx context.Context, uuid string) error
-	pauseHealthcheckFunc  func(ctx context.Context, uuid string) (*client.HealthcheckAction, error)
-	resumeHealthcheckFunc func(ctx context.Context, uuid string) (*client.HealthcheckAction, error)
-}
-
-func (m *mockHealthcheckAPI) GetHealthcheck(ctx context.Context, uuid string) (*client.Healthcheck, error) {
-	if m.getHealthcheckFunc != nil {
-		return m.getHealthcheckFunc(ctx, uuid)
-	}
-	return nil, nil
-}
-
-func (m *mockHealthcheckAPI) ListHealthchecks(ctx context.Context) ([]client.Healthcheck, error) {
-	if m.listHealthchecksFunc != nil {
-		return m.listHealthchecksFunc(ctx)
-	}
-	return nil, nil
-}
-
-func (m *mockHealthcheckAPI) CreateHealthcheck(ctx context.Context, req client.CreateHealthcheckRequest) (*client.Healthcheck, error) {
-	if m.createHealthcheckFunc != nil {
-		return m.createHealthcheckFunc(ctx, req)
-	}
-	return nil, nil
-}
-
-func (m *mockHealthcheckAPI) UpdateHealthcheck(ctx context.Context, uuid string, req client.UpdateHealthcheckRequest) (*client.Healthcheck, error) {
-	if m.updateHealthcheckFunc != nil {
-		return m.updateHealthcheckFunc(ctx, uuid, req)
-	}
-	return nil, nil
-}
-
-func (m *mockHealthcheckAPI) DeleteHealthcheck(ctx context.Context, uuid string) error {
-	if m.deleteHealthcheckFunc != nil {
-		return m.deleteHealthcheckFunc(ctx, uuid)
-	}
-	return nil
-}
-
-func (m *mockHealthcheckAPI) PauseHealthcheck(ctx context.Context, uuid string) (*client.HealthcheckAction, error) {
-	if m.pauseHealthcheckFunc != nil {
-		return m.pauseHealthcheckFunc(ctx, uuid)
-	}
-	return &client.HealthcheckAction{Message: "paused", UUID: uuid}, nil
-}
-
-func (m *mockHealthcheckAPI) ResumeHealthcheck(ctx context.Context, uuid string) (*client.HealthcheckAction, error) {
-	if m.resumeHealthcheckFunc != nil {
-		return m.resumeHealthcheckFunc(ctx, uuid)
-	}
-	return &client.HealthcheckAction{Message: "resumed", UUID: uuid}, nil
-}
-
 func TestNewHealthcheckResource(t *testing.T) {
 	r := NewHealthcheckResource()
 	if r == nil {

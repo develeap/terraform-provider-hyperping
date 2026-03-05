@@ -278,19 +278,6 @@ resource "hyperping_monitor" "test" {
 `
 }
 
-func testAccMonitorResourceConfigSwitchToPort(baseURL string, port int) string {
-	return testAccProviderConfig(baseURL) + `
-resource "hyperping_monitor" "test" {
-  name                 = "switch-protocol-test"
-  url                  = "https://api.example.com/health"
-  protocol             = "port"
-  port                 = ` + tfInt(port) + `
-  http_method          = "POST"
-  expected_status_code = "201"
-}
-`
-}
-
 func testAccMonitorResourceConfigSwitchBackToHTTP(baseURL string) string {
 	return testAccProviderConfig(baseURL) + `
 resource "hyperping_monitor" "test" {

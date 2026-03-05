@@ -373,22 +373,3 @@ func validateOutageStructure(t *testing.T, outage *Outage) {
 	// Monitor reference (can be empty for manual outages)
 	t.Logf("Monitor.UUID: %s", outage.Monitor.UUID)
 }
-
-// validateOutageAction validates an outage action response.
-func validateOutageAction(t *testing.T, action *OutageAction) {
-	t.Helper()
-
-	if action == nil {
-		t.Fatal("action is nil")
-	}
-
-	if action.Message == "" {
-		t.Error("action.Message should not be empty")
-	}
-
-	if action.UUID == "" {
-		t.Error("action.UUID should not be empty")
-	}
-
-	t.Logf("Action: Message=%q, UUID=%s", action.Message, action.UUID)
-}
