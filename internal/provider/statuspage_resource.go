@@ -78,8 +78,10 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 				Computed:            true,
 			},
 			"hosted_subdomain": schema.StringAttribute{
-				MarkdownDescription: "Hyperping-hosted subdomain (e.g., 'status' for status.hyperping.app)",
-				Required:            true,
+				MarkdownDescription: "Hyperping-hosted subdomain (e.g., 'status' for status.hyperping.app). " +
+					"Optional when a custom `hostname` is set.",
+				Optional: true,
+				Computed: true,
 			},
 			"url": schema.StringAttribute{
 				MarkdownDescription: "Public URL of the status page (computed)",
@@ -650,8 +652,7 @@ func (r *StatusPageResource) buildCreateRequest(ctx context.Context, plan *Statu
 		Name: plan.Name.ValueString(),
 	}
 
-	subdomain := plan.HostedSubdomain.ValueString()
-	req.Subdomain = &subdomain
+	req.Subdomain = tfStringToPtr(plan.HostedSubdomain)
 
 	req.Hostname = extractOptionalStringPtr(plan.Hostname)
 	req.Password = extractOptionalStringPtr(plan.Password)
