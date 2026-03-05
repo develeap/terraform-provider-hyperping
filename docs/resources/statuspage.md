@@ -166,12 +166,12 @@ output "status_page_id" {
 
 ### Required
 
-- `hosted_subdomain` (String) Hyperping-hosted subdomain (e.g., 'status' for status.hyperping.app)
 - `name` (String) Display name for the status page
 - `settings` (Attributes) Status page appearance and behavior settings (see [below for nested schema](#nestedatt--settings))
 
 ### Optional
 
+- `hosted_subdomain` (String) Hyperping-hosted subdomain (e.g., 'status' for status.hyperping.app). Optional when a custom `hostname` is set.
 - `hostname` (String) Custom domain for the status page (optional). If not provided, uses hosted subdomain.
 - `password` (String, Sensitive) Password for password-protected status pages. Set this along with `settings.authentication.password_protection = true` to require visitors to enter a password.
 - `sections` (Attributes List) Status page sections containing monitors/services (see [below for nested schema](#nestedatt--sections))

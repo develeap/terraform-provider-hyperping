@@ -66,15 +66,17 @@ func MapStatusPageCommonFieldsWithFilter(sp *client.StatusPage, configuredLangs 
 		}
 	}
 
-	// Normalize subdomain by stripping .hyperping.app suffix
-	// This ensures state matches the user's configuration
-	normalizedSubdomain := normalizeSubdomain(sp.HostedSubdomain)
-
 	result := StatusPageCommonFields{
-		ID:              types.StringValue(sp.UUID),
-		Name:            types.StringValue(sp.Name),
-		HostedSubdomain: types.StringValue(normalizedSubdomain),
-		URL:             types.StringValue(sp.URL),
+		ID:   types.StringValue(sp.UUID),
+		Name: types.StringValue(sp.Name),
+		URL:  types.StringValue(sp.URL),
+	}
+
+	// Handle optional hosted subdomain — null when empty (custom hostname only)
+	if sp.HostedSubdomain != "" {
+		result.HostedSubdomain = types.StringValue(normalizeSubdomain(sp.HostedSubdomain))
+	} else {
+		result.HostedSubdomain = types.StringNull()
 	}
 
 	// Handle optional hostname
