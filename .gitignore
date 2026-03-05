@@ -49,3 +49,6 @@ coverage_report_*.md
 
 # Development archive (historical, not versioned)
 docs/development-archive/
+
+# HashiCorp-internal scaffolding metadata (not used by Terraform or Registry)
+META.d/
