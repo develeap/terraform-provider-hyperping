@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -76,6 +77,9 @@ func (r *IncidentResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"text": schema.StringAttribute{
 				MarkdownDescription: "The description text of the incident (English).",
 				Required:            true,
+				Validators: []validator.String{
+					StringLength(1, 10000),
+				},
 			},
 			"type": schema.StringAttribute{
 				MarkdownDescription: "The type of incident. Valid values: `outage`, `incident`. Defaults to `incident`.",
@@ -90,15 +94,24 @@ func (r *IncidentResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "List of component UUIDs affected by this incident.",
 				Optional:            true,
 				ElementType:         types.StringType,
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(UUIDFormat()),
+				},
 			},
 			"status_pages": schema.ListAttribute{
 				MarkdownDescription: "List of status page UUIDs to display this incident on. Required.",
 				Required:            true,
 				ElementType:         types.StringType,
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(UUIDFormat()),
+				},
 			},
 			"date": schema.StringAttribute{
 				MarkdownDescription: "The date of the incident in ISO 8601 format (read-only).",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -163,9 +176,13 @@ func (r *IncidentResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
+	// Write the ID to state immediately to prevent orphaned resources if read-back fails.
+	plan.ID = types.StringValue(createResp.UUID)
+
 	// Read full incident details (create response only contains UUID)
 	incident, err := r.client.GetIncident(ctx, createResp.UUID)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.Append(newReadAfterCreateError("Incident", createResp.UUID, err))
 		return
 	}

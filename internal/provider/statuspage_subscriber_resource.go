@@ -72,6 +72,9 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 			"statuspage_uuid": schema.StringAttribute{
 				MarkdownDescription: "UUID of the status page",
 				Required:            true,
+				Validators: []validator.String{
+					UUIDFormat(),
+				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -111,6 +114,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 			"teams_webhook_url": schema.StringAttribute{
 				MarkdownDescription: "Microsoft Teams webhook URL (required when type=teams)",
 				Optional:            true,
+				Sensitive:           true,
 				Validators: []validator.String{
 					RequiredWhenValueIs(path.Root("type"), "teams", "type"),
 				},
@@ -133,10 +137,16 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 			"created_at": schema.StringAttribute{
 				MarkdownDescription: "Creation timestamp (computed)",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"value": schema.StringAttribute{
 				MarkdownDescription: "Display value (computed)",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -209,26 +219,35 @@ func (r *StatusPageSubscriberResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	// List subscribers to find this one (API doesn't have GetSubscriber endpoint)
+	// List subscribers to find this one (API doesn't have GetSubscriber endpoint).
+	// Paginate through all pages to handle status pages with many subscribers.
 	subscriberID := int(state.ID.ValueInt64())
-	paginatedResp, err := r.client.ListSubscribers(ctx, state.StatusPageUUID.ValueString(), nil, nil)
-	if err != nil {
-		if client.IsNotFound(err) {
-			// Status page was deleted
-			resp.State.RemoveResource(ctx)
+	var foundSubscriber *client.StatusPageSubscriber
+	page := 1
+	for {
+		pageNum := page
+		paginatedResp, err := r.client.ListSubscribers(ctx, state.StatusPageUUID.ValueString(), &pageNum, nil)
+		if err != nil {
+			if client.IsNotFound(err) {
+				// Status page was deleted
+				resp.State.RemoveResource(ctx)
+				return
+			}
+			resp.Diagnostics.AddError("Error reading subscriber", err.Error())
 			return
 		}
-		resp.Diagnostics.AddError("Error reading subscriber", err.Error())
-		return
-	}
 
-	// Find the subscriber by ID
-	var foundSubscriber *client.StatusPageSubscriber
-	for _, sub := range paginatedResp.Subscribers {
-		if sub.ID == subscriberID {
-			foundSubscriber = &sub
+		for _, sub := range paginatedResp.Subscribers {
+			if sub.ID == subscriberID {
+				foundSubscriber = &sub
+				break
+			}
+		}
+
+		if foundSubscriber != nil || !paginatedResp.HasNextPage {
 			break
 		}
+		page++
 	}
 
 	if foundSubscriber == nil {

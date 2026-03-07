@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -141,9 +140,6 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"is_down": schema.BoolAttribute{
 				MarkdownDescription: "Whether the healthcheck is currently in a failure state (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"period": schema.Int64Attribute{
 				MarkdownDescription: "Calculated period in seconds (read-only).",
@@ -156,9 +152,6 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"last_ping": schema.StringAttribute{
 				MarkdownDescription: "Timestamp of the last ping received in ISO 8601 format (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"created_at": schema.StringAttribute{
 				MarkdownDescription: "Creation timestamp in ISO 8601 format (read-only).",
@@ -402,9 +395,14 @@ func (r *HealthcheckResource) Update(ctx context.Context, req resource.UpdateReq
 	// Read back final state
 	healthcheck, err := r.client.GetHealthcheck(ctx, state.ID.ValueString())
 	if err != nil {
+		// Write plan values to state as best-effort fallback so state reflects
+		// the update that was already applied to the API.
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.AddError(
 			"Error reading updated healthcheck",
-			fmt.Sprintf("Could not read healthcheck %s: %s", state.ID.ValueString(), err),
+			fmt.Sprintf("Could not read healthcheck %s: %s. "+
+				"State has been updated with plan values. "+
+				"Run 'terraform apply' again to refresh.", state.ID.ValueString(), err),
 		)
 		return
 	}

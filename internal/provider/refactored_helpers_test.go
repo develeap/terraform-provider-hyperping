@@ -97,7 +97,7 @@ func TestBuildMaintenanceUpdateRequest_changedTitleIncluded(t *testing.T) {
 	}
 }
 
-func TestBuildMaintenanceUpdateRequest_nullTitleOmitted(t *testing.T) {
+func TestBuildMaintenanceUpdateRequest_nullTitleClearsField(t *testing.T) {
 	ctx := context.Background()
 	var diags diag.Diagnostics
 
@@ -117,9 +117,11 @@ func TestBuildMaintenanceUpdateRequest_nullTitleOmitted(t *testing.T) {
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
 	}
-	// Title changed to null: condition is !plan.Title.IsNull() so it should be omitted
-	if req.Title != nil {
-		t.Errorf("expected Title to be nil when plan title is null, got=%v", req.Title)
+	// Title changed to null: should be included to clear the field via API
+	if req.Title == nil {
+		t.Errorf("expected Title to be set (empty) when plan title is null, got nil")
+	} else if req.Title.En != "" {
+		t.Errorf("expected Title.En to be empty when clearing, got=%q", req.Title.En)
 	}
 }
 

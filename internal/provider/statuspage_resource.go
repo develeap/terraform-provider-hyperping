@@ -506,8 +506,17 @@ func (r *StatusPageResource) Update(ctx context.Context, req resource.UpdateRequ
 	// Translate numeric IDs back to mon_xxx for state
 	translateResponseNumericIDsToUUIDs(statusPage, maps.numericIDToUUID, &resp.Diagnostics)
 
+	// Preserve password from plan before mapping (write-only field, API never returns it)
+	planPassword := plan.Password
+
 	// Map response to state
 	r.mapStatusPageToModel(ctx, statusPage, &plan, &resp.Diagnostics)
+
+	// Restore password: API never returns this field, so preserve plan value
+	// to prevent perpetual drift on every plan/apply cycle.
+	if !planPassword.IsNull() {
+		plan.Password = planPassword
+	}
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

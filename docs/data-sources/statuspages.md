@@ -123,8 +123,8 @@ Read-Only:
 - `hostname` (String) Custom domain
 - `id` (String) Status page UUID
 - `name` (String) Display name
-- `sections` (Attributes List) (see [below for nested schema](#nestedatt--statuspages--sections))
-- `settings` (Attributes) Settings (see [below for nested schema](#nestedatt--statuspages--settings))
+- `sections` (Attributes List) Status page sections (see [below for nested schema](#nestedatt--statuspages--sections))
+- `settings` (Attributes) Status page appearance and behavior settings (see [below for nested schema](#nestedatt--statuspages--settings))
 - `url` (String) Public URL
 
 <a id="nestedatt--statuspages--sections"></a>
@@ -132,34 +132,34 @@ Read-Only:
 
 Read-Only:
 
-- `is_split` (Boolean)
-- `name` (Map of String)
-- `services` (Attributes List) (see [below for nested schema](#nestedatt--statuspages--sections--services))
+- `is_split` (Boolean) Split services into separate rows
+- `name` (Map of String) Localized section name
+- `services` (Attributes List) Services/monitors in this section (see [below for nested schema](#nestedatt--statuspages--sections--services))
 
 <a id="nestedatt--statuspages--sections--services"></a>
 ### Nested Schema for `statuspages.sections.services`
 
 Read-Only:
 
-- `id` (String)
-- `is_group` (Boolean)
-- `name` (Map of String)
-- `services` (Attributes List) (see [below for nested schema](#nestedatt--statuspages--sections--services--services))
-- `show_response_times` (Boolean)
-- `show_uptime` (Boolean)
-- `uuid` (String)
+- `id` (String) Service ID
+- `is_group` (Boolean) Whether this is a group
+- `name` (Map of String) Localized service name
+- `services` (Attributes List) Nested services within group (see [below for nested schema](#nestedatt--statuspages--sections--services--services))
+- `show_response_times` (Boolean) Show response times
+- `show_uptime` (Boolean) Show uptime percentage
+- `uuid` (String) Monitor UUID
 
 <a id="nestedatt--statuspages--sections--services--services"></a>
 ### Nested Schema for `statuspages.sections.services.services`
 
 Read-Only:
 
-- `id` (String)
-- `is_group` (Boolean)
-- `name` (Map of String)
-- `show_response_times` (Boolean)
-- `show_uptime` (Boolean)
-- `uuid` (String)
+- `id` (String) Service ID
+- `is_group` (Boolean) Whether this is a group
+- `name` (Map of String) Localized service name
+- `show_response_times` (Boolean) Show response times
+- `show_uptime` (Boolean) Show uptime percentage
+- `uuid` (String) Monitor UUID
 
 
 
@@ -169,34 +169,34 @@ Read-Only:
 
 Read-Only:
 
-- `accent_color` (String)
-- `authentication` (Attributes) (see [below for nested schema](#nestedatt--statuspages--settings--authentication))
-- `auto_refresh` (Boolean)
-- `banner_header` (Boolean)
-- `default_language` (String)
-- `description` (String)
-- `favicon` (String)
-- `font` (String)
-- `google_analytics` (String)
-- `hide_from_search_engines` (Boolean)
-- `hide_powered_by` (Boolean)
-- `languages` (List of String)
-- `logo` (String)
-- `logo_height` (String)
-- `name` (String)
-- `subscribe` (Attributes) (see [below for nested schema](#nestedatt--statuspages--settings--subscribe))
-- `theme` (String)
-- `website` (String)
+- `accent_color` (String) Accent color (hex)
+- `authentication` (Attributes) Access control settings (see [below for nested schema](#nestedatt--statuspages--settings--authentication))
+- `auto_refresh` (Boolean) Auto-refresh enabled
+- `banner_header` (Boolean) Banner header shown
+- `default_language` (String) Default language code
+- `description` (String) Status page description
+- `favicon` (String) Favicon URL
+- `font` (String) Font family
+- `google_analytics` (String) Google Analytics ID
+- `hide_from_search_engines` (Boolean) Hide from search engines
+- `hide_powered_by` (Boolean) Hide powered by footer
+- `languages` (List of String) Supported language codes
+- `logo` (String) Logo URL
+- `logo_height` (String) Logo height
+- `name` (String) Internal settings name
+- `subscribe` (Attributes) Subscription settings (see [below for nested schema](#nestedatt--statuspages--settings--subscribe))
+- `theme` (String) Color theme
+- `website` (String) Link to main website
 
 <a id="nestedatt--statuspages--settings--authentication"></a>
 ### Nested Schema for `statuspages.settings.authentication`
 
 Read-Only:
 
-- `allowed_domains` (List of String)
-- `google_sso` (Boolean)
-- `password_protection` (Boolean)
-- `saml_sso` (Boolean)
+- `allowed_domains` (List of String) Allowed domains for SSO
+- `google_sso` (Boolean) Google SSO enabled
+- `password_protection` (Boolean) Password protection enabled
+- `saml_sso` (Boolean) SAML SSO enabled
 
 
 <a id="nestedatt--statuspages--settings--subscribe"></a>
@@ -204,8 +204,8 @@ Read-Only:
 
 Read-Only:
 
-- `email` (Boolean)
-- `enabled` (Boolean)
-- `slack` (Boolean)
-- `sms` (Boolean)
-- `teams` (Boolean)
+- `email` (Boolean) Email subscriptions allowed
+- `enabled` (Boolean) Subscriptions enabled
+- `slack` (Boolean) Slack subscriptions allowed
+- `sms` (Boolean) SMS subscriptions allowed
+- `teams` (Boolean) Teams subscriptions allowed

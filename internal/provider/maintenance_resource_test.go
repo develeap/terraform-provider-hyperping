@@ -237,7 +237,7 @@ resource "hyperping_maintenance" "test" {
   monitors   = ["mon_123"]
 }
 `,
-				ExpectError: regexp.MustCompile("Invalid Start Date"),
+				ExpectError: regexp.MustCompile("Invalid ISO 8601 Format"),
 			},
 		},
 	})

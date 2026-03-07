@@ -145,18 +145,8 @@ func (v uuidFormatValidator) ValidateString(_ context.Context, req validator.Str
 	}
 
 	value := req.ConfigValue.ValueString()
-	// Simple UUID format check: 8-4-4-4-12 hexadecimal characters with dashes
-	// Or provider-specific formats like "mon_", "tok_", "out_" prefixes
-	if len(value) < 8 {
-		resp.Diagnostics.AddAttributeError(
-			req.Path,
-			"Invalid UUID Format",
-			fmt.Sprintf("The value %q is too short to be a valid UUID or resource ID.", value),
-		)
-		return
-	}
-
-	// Accept standard UUIDs (with dashes) or Hyperping resource IDs (with underscores)
+	// Accept standard UUIDs (with dashes) or Hyperping resource IDs (prefix_xxx).
+	// Hyperping IDs use short prefixes: mon_, sp_, out_, tok_, inc_, etc.
 	hasDashes := strings.Contains(value, "-")
 	hasUnderscores := strings.Contains(value, "_")
 
