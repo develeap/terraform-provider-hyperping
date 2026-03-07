@@ -10,6 +10,36 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.4.9] - 2026-03-07
+
+### Fixed
+
+- **Go**: Upgraded from Go 1.24.0 to 1.26.1, fixing 5 stdlib CVEs (GO-2026-4599 through GO-2026-4603).
+- **`hyperping_monitor`**: Added partial state save on Create to prevent orphaned resources.
+- **`hyperping_incident`**: Added partial state save on Create, `UseStateForUnknown` on `date`, validators on `text`, `affected_components`, `status_pages`.
+- **`hyperping_outage`**: Added partial state save on Create.
+- **`hyperping_maintenance`**: Added partial state save on Create, `ISO8601()` validators on date fields, `StringLength` and `UUIDFormat` validators.
+- **`hyperping_incident_update`**: Fixed Create race condition (match by type+text instead of last element), added delete warning diagnostic.
+- **`hyperping_healthcheck`**: Removed incorrect `UseStateForUnknown` on `period`, `grace_period`, `is_down`, `last_ping` — these are server-computed fields that change.
+- **`hyperping_statuspage`**: Preserved password from plan during Update read-back.
+- **`hyperping_statuspage_subscriber`**: Fixed Read pagination (iterate all pages), marked `teams_webhook_url` as Sensitive, added `UUIDFormat` validator on `statuspage_uuid`.
+- **Validators**: Removed overly strict UUID length check that rejected short Hyperping IDs (`mon_123`, `sp_001`).
+- **Client**: Replaced request body debug logging with `body_length` to prevent secret leakage.
+- **CI**: Added timeout and `continue-on-error` to gosec SARIF upload to prevent hanging.
+
+### Changed
+
+- **Refactor**: Split `statuspage_resource.go` (844 → 516 + 325 lines) and `statuspage_mapping.go` (865 → 720 + 157 lines).
+- **Refactor**: Removed 9 unused helper functions from `tf_helpers.go` and dead test infrastructure across 6 test files.
+- **Cleanup**: Removed `docs/development-archive/` and `META.d/` scaffolding metadata.
+- **CI**: Updated lefthook `govulncheck` to treat exit code 3 as warning.
+
+## [1.4.8] - 2026-03-04
+
+### Fixed
+
+- **`hyperping_statuspage`**: Made `hosted_subdomain` optional when a custom `hostname` is set.
+
 ## [1.4.7] - 2026-03-04
 
 ### Fixed
