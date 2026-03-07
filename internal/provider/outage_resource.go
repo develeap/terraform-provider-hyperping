@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -143,23 +142,14 @@ func (r *OutageResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"is_resolved": schema.BoolAttribute{
 				MarkdownDescription: "Whether the outage is resolved (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"duration_ms": schema.Int64Attribute{
 				MarkdownDescription: "Duration of the outage in milliseconds (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
 			},
 			"detected_location": schema.StringAttribute{
 				MarkdownDescription: "The location that detected the outage (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"monitor": schema.SingleNestedAttribute{
 				MarkdownDescription: "The monitor associated with this outage (read-only).",

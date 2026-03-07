@@ -816,7 +816,10 @@ func (m *mockStatusPageServer) deleteSubscriber(w http.ResponseWriter, r *http.R
 	}
 
 	var subID int
-	fmt.Sscanf(subIDStr, "%d", &subID)
+	if _, err := fmt.Sscanf(subIDStr, "%d", &subID); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	newSubs := make([]map[string]interface{}, 0)
 	for _, sub := range subs {
