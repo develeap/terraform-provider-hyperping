@@ -12,8 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -142,30 +140,18 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"is_down": schema.BoolAttribute{
 				MarkdownDescription: "Whether the healthcheck is currently in a failure state (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.Bool{
-					boolplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"period": schema.Int64Attribute{
 				MarkdownDescription: "Calculated period in seconds (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
 			},
 			"grace_period": schema.Int64Attribute{
 				MarkdownDescription: "Calculated grace period in seconds (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
 			},
 			"last_ping": schema.StringAttribute{
 				MarkdownDescription: "Timestamp of the last ping received in ISO 8601 format (read-only).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"created_at": schema.StringAttribute{
 				MarkdownDescription: "Creation timestamp in ISO 8601 format (read-only).",
