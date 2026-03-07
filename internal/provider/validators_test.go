@@ -140,7 +140,9 @@ func TestUUIDFormat(t *testing.T) {
 		{"token ID", "tok_xyz789abc", false},
 		{"outage ID", "out_incident123", false},
 		{"incident ID", "inc_test123", false},
-		{"invalid - too short", "short", true},
+		{"short monitor ID", "mon_123", false},
+		{"short statuspage ID", "sp_001", false},
+		{"invalid - no separators", "short", true},
 		{"invalid - no separators", "nodashesorunderscores", true},
 		{"invalid - empty", "", true},
 	}
