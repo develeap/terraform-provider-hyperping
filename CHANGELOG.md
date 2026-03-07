@@ -10,6 +10,16 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.4.10] - 2026-03-07
+
+### Fixed
+
+- **`hyperping_monitor`**: Removed incorrect `UseStateForUnknown` from `dns_record_type`, `status`, `ssl_expiration` — these are mutable server-computed fields that change between applies.
+- **`hyperping_outage`**: Removed incorrect `UseStateForUnknown` from `is_resolved`, `duration_ms`, `detected_location` — same pattern as monitor fix.
+- **Client**: Added guard against `rand.IntN(0)` panic when `retryWaitMin` is zero.
+- **CHANGELOG**: Fixed missing comparison links for v1.4.8, v1.4.9, v1.4.2.
+- **Tests**: Added `fmt.Sscanf` error check in mock subscriber delete handler.
+
 ## [1.4.9] - 2026-03-07
 
 ### Fixed
@@ -769,7 +779,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.9...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.10...HEAD
+[1.4.10]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.9...v1.4.10
 [1.4.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.8...v1.4.9
 [1.4.8]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.6...v1.4.7
