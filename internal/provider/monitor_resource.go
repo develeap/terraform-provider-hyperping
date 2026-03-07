@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -210,9 +209,6 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"dns_record_type": schema.StringAttribute{
 				MarkdownDescription: "DNS record type for DNS-protocol monitors (read-only, set by the API).",
 				Computed:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"required_keyword": schema.StringAttribute{
 				MarkdownDescription: "A keyword that must appear in the response body for the check to pass.",
@@ -221,16 +217,10 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"status": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Current monitor status. Either `up` or `down`.",
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 			"ssl_expiration": schema.Int64Attribute{
 				Computed:            true,
 				MarkdownDescription: "Days until the SSL certificate expires.",
-				PlanModifiers: []planmodifier.Int64{
-					int64planmodifier.UseStateForUnknown(),
-				},
 			},
 			"project_uuid": schema.StringAttribute{
 				Optional:            true,

@@ -769,12 +769,16 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.7...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.9...HEAD
+[1.4.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.8...v1.4.9
+[1.4.8]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.7...v1.4.8
 [1.4.7]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.6...v1.4.7
 [1.4.6]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.5...v1.4.6
 [1.4.5]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.3...v1.4.4
 [1.4.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.2...v1.4.3
+[1.4.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.1...v1.4.2
+[1.4.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.9...v1.4.0
 [1.3.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.8...v1.3.9
 [1.3.8]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.3.7...v1.3.8

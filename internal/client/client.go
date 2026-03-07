@@ -632,7 +632,11 @@ func (c *Client) calculateBackoff(attempt int, retryAfter int) time.Duration {
 	}
 
 	// Add ±25% jitter to prevent timing-based information leakage (VULN-006)
-	jitter := time.Duration(rand.IntN(int(wait/2))) - wait/4 // #nosec G404 -- Non-cryptographic jitter for backoff timing
+	half := int(wait / 2)
+	if half <= 0 {
+		return wait
+	}
+	jitter := time.Duration(rand.IntN(half)) - wait/4 // #nosec G404 -- Non-cryptographic jitter for backoff timing
 	wait += jitter
 	if wait < c.retryWaitMin {
 		wait = c.retryWaitMin
