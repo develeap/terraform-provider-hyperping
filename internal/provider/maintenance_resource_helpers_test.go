@@ -223,22 +223,6 @@ func newSimpleMaintenanceServer(fixture *maintenanceTestFixture) *httptest.Serve
 	return httptest.NewServer(mock.handler())
 }
 
-// newMaintenanceServerWithCustomCreate creates a server with custom create handling
-func newMaintenanceServerWithCustomCreate(fixture *maintenanceTestFixture, createFn func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
-	mock := newMaintenanceMockServer()
-	mock.addFixture(fixture)
-	mock.createHandler = createFn
-	return httptest.NewServer(mock.handler())
-}
-
-// newMaintenanceServerWithCustomUpdate creates a server with custom update handling
-func newMaintenanceServerWithCustomUpdate(fixture *maintenanceTestFixture, updateFn func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
-	mock := newMaintenanceMockServer()
-	mock.addFixture(fixture)
-	mock.updateHandler = updateFn
-	return httptest.NewServer(mock.handler())
-}
-
 // generateMaintenanceConfig generates Terraform config for maintenance resource
 func generateMaintenanceConfig(serverURL, name, title, text, startDate, endDate string, monitors []string) string {
 	config := fmt.Sprintf(`

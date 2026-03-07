@@ -112,6 +112,8 @@ jobs:
         if: always() && hashFiles('gosec-results.sarif') != ''
         with:
           sarif_file: gosec-results.sarif
+        timeout-minutes: 5
+        continue-on-error: true
 
   # Run ALL tests: unit, contract, and acceptance tests
   # Optimized with parallel execution and smart caching

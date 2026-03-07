@@ -160,21 +160,6 @@ resource "hyperping_incident_update" "test" {
 `, baseURL)
 }
 
-func testAccIncidentUpdateResourceConfig_withType(baseURL, updateType string) string {
-	return fmt.Sprintf(`
-provider "hyperping" {
-  api_key  = "test_api_key"
-  base_url = %[1]q
-}
-
-resource "hyperping_incident_update" "test" {
-  incident_id = "inci_types"
-  text        = "Update of type %[2]s"
-  type        = %[2]q
-}
-`, baseURL, updateType)
-}
-
 func testAccIncidentUpdateResourceConfig_withTypeAndIncident(baseURL, incidentID, updateType string) string {
 	return fmt.Sprintf(`
 provider "hyperping" {

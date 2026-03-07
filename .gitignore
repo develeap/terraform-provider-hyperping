@@ -39,6 +39,16 @@ terraform-provider-hyperping
 import-generator
 .env*
 
-# Scraper binaries and generated reports
+# Scraper binaries, generated reports, and caches
 tools/cmd/scraper/scraper
+tools/cmd/scraper/docs_scraped/
 coverage_report_*.md
+
+# Generated reports
+.reports/
+
+# Development archive (historical, not versioned)
+docs/development-archive/
+
+# HashiCorp-internal scaffolding metadata (not used by Terraform or Registry)
+META.d/
