@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -81,23 +82,38 @@ func (r *MaintenanceResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"title": schema.StringAttribute{
 				MarkdownDescription: "The public title of the maintenance window (English).",
 				Optional:            true,
+				Validators: []validator.String{
+					StringLength(1, 255),
+				},
 			},
 			"text": schema.StringAttribute{
 				MarkdownDescription: "The description text of the maintenance (English).",
 				Optional:            true,
+				Validators: []validator.String{
+					StringLength(1, 10000),
+				},
 			},
 			"start_date": schema.StringAttribute{
 				MarkdownDescription: "The scheduled start time in ISO 8601 format (e.g., `2026-01-20T02:00:00.000Z`).",
 				Required:            true,
+				Validators: []validator.String{
+					ISO8601(),
+				},
 			},
 			"end_date": schema.StringAttribute{
 				MarkdownDescription: "The scheduled end time in ISO 8601 format (e.g., `2026-01-20T04:00:00.000Z`).",
 				Required:            true,
+				Validators: []validator.String{
+					ISO8601(),
+				},
 			},
 			"monitors": schema.ListAttribute{
 				MarkdownDescription: "List of monitor UUIDs affected by this maintenance window.",
 				Required:            true,
 				ElementType:         types.StringType,
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(UUIDFormat()),
+				},
 			},
 			"status_pages": schema.ListAttribute{
 				MarkdownDescription: "List of status page UUIDs to display this maintenance on.",
@@ -210,9 +226,13 @@ func (r *MaintenanceResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// Write the ID to state immediately to prevent orphaned resources if read-back fails.
+	plan.ID = types.StringValue(createResp.UUID)
+
 	// Read full maintenance details (create response only contains UUID)
 	maintenance, err := r.client.GetMaintenance(ctx, createResp.UUID)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.Append(newReadAfterCreateError("Maintenance Window", createResp.UUID, err))
 		return
 	}
@@ -263,12 +283,12 @@ func buildMaintenanceUpdateRequest(ctx context.Context, plan *MaintenanceResourc
 		updateReq.Name = &name
 	}
 
-	if !plan.Title.Equal(state.Title) && !plan.Title.IsNull() {
+	if !plan.Title.Equal(state.Title) {
 		title := client.LocalizedText{En: plan.Title.ValueString()}
 		updateReq.Title = &title
 	}
 
-	if !plan.Text.Equal(state.Text) && !plan.Text.IsNull() {
+	if !plan.Text.Equal(state.Text) {
 		text := client.LocalizedText{En: plan.Text.ValueString()}
 		updateReq.Text = &text
 	}

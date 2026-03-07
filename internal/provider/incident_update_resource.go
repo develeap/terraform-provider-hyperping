@@ -73,6 +73,9 @@ func (r *IncidentUpdateResource) Schema(_ context.Context, _ resource.SchemaRequ
 			"text": schema.StringAttribute{
 				MarkdownDescription: "The text content of the update (English).",
 				Required:            true,
+				Validators: []validator.String{
+					StringLength(1, 10000),
+				},
 			},
 			"type": schema.StringAttribute{
 				MarkdownDescription: "The type of update. Valid values: `investigating`, `identified`, `update`, `monitoring`, `resolved`.",
@@ -85,6 +88,9 @@ func (r *IncidentUpdateResource) Schema(_ context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "The date of the update in ISO 8601 format. If not provided, the current time is used.",
 				Optional:            true,
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -138,11 +144,20 @@ func (r *IncidentUpdateResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	// Find the update we just added (it should be the last one or match by type/text)
+	// Find the update we just added by matching type and text content.
+	// Iterating in reverse since the newest update is most likely at the end.
 	var updateUUID string
 	var updateDate string
-	if len(incident.Updates) > 0 {
-		// Take the last update as the one we just created
+	for i := len(incident.Updates) - 1; i >= 0; i-- {
+		u := incident.Updates[i]
+		if u.Type == addReq.Type && u.Text.En == addReq.Text.En {
+			updateUUID = u.UUID
+			updateDate = u.Date
+			break
+		}
+	}
+	// Fallback to last update if no match found (e.g., API normalizes text)
+	if updateUUID == "" && len(incident.Updates) > 0 {
 		lastUpdate := incident.Updates[len(incident.Updates)-1]
 		updateUUID = lastUpdate.UUID
 		updateDate = lastUpdate.Date
@@ -268,12 +283,16 @@ func (r *IncidentUpdateResource) Delete(ctx context.Context, req resource.Delete
 		return
 	}
 
-	// Note: The Hyperping API has DELETE /v3/incidents/{uuid}/updates but it's unclear
-	// if it deletes all updates or specific ones. For safety, we'll just remove from state
-	// without making an API call. This is a common pattern for resources that can't be
-	// individually deleted.
-
-	// Resource will be removed from state automatically
+	// The Hyperping API does not support deleting individual incident updates.
+	// The resource is removed from Terraform state only — the update will persist
+	// in Hyperping's incident timeline as a permanent audit record.
+	resp.Diagnostics.AddWarning(
+		"Incident Update Not Deleted From Hyperping",
+		fmt.Sprintf("The incident update %s has been removed from Terraform state, "+
+			"but it still exists in Hyperping's incident timeline for incident %s. "+
+			"Incident updates are permanent audit records and cannot be deleted via the API.",
+			state.ID.ValueString(), incidentID),
+	)
 }
 
 // ImportState imports an existing resource into Terraform.

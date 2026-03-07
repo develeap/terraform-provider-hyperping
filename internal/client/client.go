@@ -494,10 +494,10 @@ func (c *Client) doRequestWithRetry(ctx context.Context, method, path string, bo
 		}
 
 		c.logDebug(ctx, "sending API request", map[string]interface{}{
-			"method":  method,
-			"path":    path,
-			"attempt": attempt + 1,
-			"body":    string(jsonBody),
+			"method":      method,
+			"path":        path,
+			"attempt":     attempt + 1,
+			"body_length": len(jsonBody),
 		})
 
 		startTime := time.Now()

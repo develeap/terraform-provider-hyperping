@@ -101,7 +101,7 @@ resource "hyperping_statuspage" "production" {
 - `email` (String) Email address (required when type=email)
 - `language` (String) Preferred language code (default: en)
 - `phone` (String) Phone number (required when type=sms)
-- `teams_webhook_url` (String) Microsoft Teams webhook URL (required when type=teams)
+- `teams_webhook_url` (String, Sensitive) Microsoft Teams webhook URL (required when type=teams)
 
 ### Read-Only
 

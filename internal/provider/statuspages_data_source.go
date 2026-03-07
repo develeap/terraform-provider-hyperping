@@ -91,138 +91,174 @@ func (d *StatusPagesDataSource) Schema(ctx context.Context, req datasource.Schem
 							Computed:            true,
 						},
 						"settings": schema.SingleNestedAttribute{
-							MarkdownDescription: "Settings",
+							MarkdownDescription: "Status page appearance and behavior settings",
 							Computed:            true,
 							Attributes: map[string]schema.Attribute{
 								"name": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Internal settings name",
+									Computed:            true,
 								},
 								"website": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Link to main website",
+									Computed:            true,
 								},
 								"description": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Status page description",
+									Computed:            true,
 								},
 								"languages": schema.ListAttribute{
-									ElementType: types.StringType,
-									Computed:    true,
+									MarkdownDescription: "Supported language codes",
+									ElementType:         types.StringType,
+									Computed:            true,
 								},
 								"default_language": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Default language code",
+									Computed:            true,
 								},
 								"theme": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Color theme",
+									Computed:            true,
 								},
 								"font": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Font family",
+									Computed:            true,
 								},
 								"accent_color": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Accent color (hex)",
+									Computed:            true,
 								},
 								"auto_refresh": schema.BoolAttribute{
-									Computed: true,
+									MarkdownDescription: "Auto-refresh enabled",
+									Computed:            true,
 								},
 								"banner_header": schema.BoolAttribute{
-									Computed: true,
+									MarkdownDescription: "Banner header shown",
+									Computed:            true,
 								},
 								"logo": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Logo URL",
+									Computed:            true,
 								},
 								"logo_height": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Logo height",
+									Computed:            true,
 								},
 								"favicon": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Favicon URL",
+									Computed:            true,
 								},
 								"hide_powered_by": schema.BoolAttribute{
-									Computed: true,
+									MarkdownDescription: "Hide powered by footer",
+									Computed:            true,
 								},
 								"hide_from_search_engines": schema.BoolAttribute{
-									Computed: true,
+									MarkdownDescription: "Hide from search engines",
+									Computed:            true,
 								},
 								"google_analytics": schema.StringAttribute{
-									Computed: true,
+									MarkdownDescription: "Google Analytics ID",
+									Computed:            true,
 								},
 								"subscribe": schema.SingleNestedAttribute{
-									Computed: true,
+									MarkdownDescription: "Subscription settings",
+									Computed:            true,
 									Attributes: map[string]schema.Attribute{
-										"enabled": schema.BoolAttribute{Computed: true},
-										"email":   schema.BoolAttribute{Computed: true},
-										"sms":     schema.BoolAttribute{Computed: true},
-										"slack":   schema.BoolAttribute{Computed: true},
-										"teams":   schema.BoolAttribute{Computed: true},
+										"enabled": schema.BoolAttribute{MarkdownDescription: "Subscriptions enabled", Computed: true},
+										"email":   schema.BoolAttribute{MarkdownDescription: "Email subscriptions allowed", Computed: true},
+										"sms":     schema.BoolAttribute{MarkdownDescription: "SMS subscriptions allowed", Computed: true},
+										"slack":   schema.BoolAttribute{MarkdownDescription: "Slack subscriptions allowed", Computed: true},
+										"teams":   schema.BoolAttribute{MarkdownDescription: "Teams subscriptions allowed", Computed: true},
 									},
 								},
 								"authentication": schema.SingleNestedAttribute{
-									Computed: true,
+									MarkdownDescription: "Access control settings",
+									Computed:            true,
 									Attributes: map[string]schema.Attribute{
-										"password_protection": schema.BoolAttribute{Computed: true},
-										"google_sso":          schema.BoolAttribute{Computed: true},
-										"saml_sso":            schema.BoolAttribute{Computed: true},
+										"password_protection": schema.BoolAttribute{MarkdownDescription: "Password protection enabled", Computed: true},
+										"google_sso":          schema.BoolAttribute{MarkdownDescription: "Google SSO enabled", Computed: true},
+										"saml_sso":            schema.BoolAttribute{MarkdownDescription: "SAML SSO enabled", Computed: true},
 										"allowed_domains": schema.ListAttribute{
-											ElementType: types.StringType,
-											Computed:    true,
+											MarkdownDescription: "Allowed domains for SSO",
+											ElementType:         types.StringType,
+											Computed:            true,
 										},
 									},
 								},
 							},
 						},
 						"sections": schema.ListNestedAttribute{
-							Computed: true,
+							MarkdownDescription: "Status page sections",
+							Computed:            true,
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"name": schema.MapAttribute{
-										ElementType: types.StringType,
-										Computed:    true,
+										MarkdownDescription: "Localized section name",
+										ElementType:         types.StringType,
+										Computed:            true,
 									},
 									"is_split": schema.BoolAttribute{
-										Computed: true,
+										MarkdownDescription: "Split services into separate rows",
+										Computed:            true,
 									},
 									"services": schema.ListNestedAttribute{
-										Computed: true,
+										MarkdownDescription: "Services/monitors in this section",
+										Computed:            true,
 										NestedObject: schema.NestedAttributeObject{
 											Attributes: map[string]schema.Attribute{
 												"id": schema.StringAttribute{
-													Computed: true,
+													MarkdownDescription: "Service ID",
+													Computed:            true,
 												},
 												"uuid": schema.StringAttribute{
-													Computed: true,
+													MarkdownDescription: "Monitor UUID",
+													Computed:            true,
 												},
 												"name": schema.MapAttribute{
-													ElementType: types.StringType,
-													Computed:    true,
+													MarkdownDescription: "Localized service name",
+													ElementType:         types.StringType,
+													Computed:            true,
 												},
 												"is_group": schema.BoolAttribute{
-													Computed: true,
+													MarkdownDescription: "Whether this is a group",
+													Computed:            true,
 												},
 												"show_uptime": schema.BoolAttribute{
-													Computed: true,
+													MarkdownDescription: "Show uptime percentage",
+													Computed:            true,
 												},
 												"show_response_times": schema.BoolAttribute{
-													Computed: true,
+													MarkdownDescription: "Show response times",
+													Computed:            true,
 												},
 												"services": schema.ListNestedAttribute{
-													Computed: true,
+													MarkdownDescription: "Nested services within group",
+													Computed:            true,
 													NestedObject: schema.NestedAttributeObject{
 														Attributes: map[string]schema.Attribute{
 															"id": schema.StringAttribute{
-																Computed: true,
+																MarkdownDescription: "Service ID",
+																Computed:            true,
 															},
 															"uuid": schema.StringAttribute{
-																Computed: true,
+																MarkdownDescription: "Monitor UUID",
+																Computed:            true,
 															},
 															"name": schema.MapAttribute{
-																ElementType: types.StringType,
-																Computed:    true,
+																MarkdownDescription: "Localized service name",
+																ElementType:         types.StringType,
+																Computed:            true,
 															},
 															"is_group": schema.BoolAttribute{
-																Computed: true,
+																MarkdownDescription: "Whether this is a group",
+																Computed:            true,
 															},
 															"show_uptime": schema.BoolAttribute{
-																Computed: true,
+																MarkdownDescription: "Show uptime percentage",
+																Computed:            true,
 															},
 															"show_response_times": schema.BoolAttribute{
-																Computed: true,
+																MarkdownDescription: "Show response times",
+																Computed:            true,
 															},
 														},
 													},

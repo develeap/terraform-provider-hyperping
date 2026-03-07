@@ -18,44 +18,55 @@ Status pages provide a public or private view of your service health, allowing y
 ```terraform
 # Basic status page example
 resource "hyperping_statuspage" "basic" {
-  name      = "My Status Page"
-  subdomain = "status"
+  name             = "My Status Page"
+  hosted_subdomain = "status"
+
+  settings = {
+    name      = "My Status Page"
+    languages = ["en"]
+  }
 }
 
 # Advanced status page with all features
 resource "hyperping_statuspage" "production" {
-  name      = "Production Status"
-  subdomain = "prod-status"
+  name             = "Production Status"
+  hosted_subdomain = "prod-status"
 
-  # Optional: Use custom domain
+  # Optional: Use custom domain instead of hosted subdomain
   # hostname = "status.example.com"
 
-  # Theme and branding
-  theme        = "dark"           # Options: system, light, dark
-  font         = "Inter"          # Options: Inter, Roboto, Poppins, Lato
-  accent_color = "#0066cc"        # Brand color
-  languages    = ["en", "fr"]     # Supported languages
+  # Optional: Password protect the page
+  # password = "secret"
 
-  # Multi-language content
-  description = {
-    en = "Production system status and uptime"
-    fr = "État et disponibilité du système de production"
-  }
+  settings = {
+    name             = "Production Status"
+    website          = "https://example.com"
+    languages        = ["en", "fr"]
+    default_language = "en"
 
-  # Subscription settings
-  subscribe = {
-    enabled = true
-    email   = true
-    sms     = true
-    slack   = false  # Configured via Hyperping OAuth
-    teams   = true
-  }
+    # Theme and branding
+    theme        = "dark"     # Options: system, light, dark
+    font         = "Inter"    # Options: Inter, Roboto, Poppins, Lato, etc.
+    accent_color = "#0066cc"  # Brand color (hex)
 
-  # Authentication settings
-  authentication = {
-    password_protection = false
-    google_sso          = true
-    allowed_domains     = ["example.com", "partner.com"]
+    # Multi-language description
+    description = "Production system status and uptime"
+
+    # Subscription settings
+    subscribe = {
+      enabled = true
+      email   = true
+      sms     = true
+      slack   = false # Configured via Hyperping OAuth
+      teams   = true
+    }
+
+    # Authentication settings
+    authentication = {
+      password_protection = false
+      google_sso          = true
+      allowed_domains     = ["example.com", "partner.com"]
+    }
   }
 
   # Status page sections with monitors
@@ -65,17 +76,21 @@ resource "hyperping_statuspage" "production" {
         en = "Core API Services"
         fr = "Services API principaux"
       }
-      is_split = true  # Show individual service status
+      is_split = true # Show individual service status
       services = [
         {
-          monitor_uuid        = hyperping_monitor.api.id
-          name_shown          = "Main API"
+          uuid = hyperping_monitor.api.id
+          name = {
+            en = "Main API"
+          }
           show_uptime         = true
           show_response_times = true
         },
         {
-          monitor_uuid        = hyperping_monitor.auth.id
-          name_shown          = "Authentication API"
+          uuid = hyperping_monitor.auth.id
+          name = {
+            en = "Authentication API"
+          }
           show_uptime         = true
           show_response_times = false
         }
@@ -86,19 +101,26 @@ resource "hyperping_statuspage" "production" {
         en = "Infrastructure"
         fr = "Infrastructure"
       }
-      is_split = false  # Show aggregated status
+      is_split = false # Show aggregated status
       services = [
         {
-          monitor_uuid = hyperping_monitor.database.id
-          is_group     = true
+          uuid     = hyperping_monitor.database.id
+          is_group = true
+          name = {
+            en = "Database Cluster"
+          }
           services = [
             {
-              monitor_uuid = hyperping_monitor.db_primary.id
-              name_shown   = "Primary DB"
+              uuid = hyperping_monitor.db_primary.id
+              name = {
+                en = "Primary DB"
+              }
             },
             {
-              monitor_uuid = hyperping_monitor.db_replica.id
-              name_shown   = "Replica DB"
+              uuid = hyperping_monitor.db_replica.id
+              name = {
+                en = "Replica DB"
+              }
             }
           ]
         }
@@ -109,43 +131,43 @@ resource "hyperping_statuspage" "production" {
 
 # Example monitors (referenced in status page)
 resource "hyperping_monitor" "api" {
-  name             = "Production API"
-  url              = "https://api.example.com/health"
-  protocol         = "http"
-  http_method      = "GET"
-  check_frequency  = 60
+  name                 = "Production API"
+  url                  = "https://api.example.com/health"
+  protocol             = "http"
+  http_method          = "GET"
+  check_frequency      = 60
   expected_status_code = "2xx"
 }
 
 resource "hyperping_monitor" "auth" {
-  name             = "Auth Service"
-  url              = "https://auth.example.com/health"
-  protocol         = "http"
-  http_method      = "GET"
-  check_frequency  = 60
+  name            = "Auth Service"
+  url             = "https://auth.example.com/health"
+  protocol        = "http"
+  http_method     = "GET"
+  check_frequency = 60
 }
 
 resource "hyperping_monitor" "database" {
-  name             = "Database Health"
-  url              = "https://db.example.com/health"
-  protocol         = "http"
-  http_method      = "GET"
-  check_frequency  = 300
+  name            = "Database Health"
+  url             = "https://db.example.com/health"
+  protocol        = "http"
+  http_method     = "GET"
+  check_frequency = 300
 }
 
 resource "hyperping_monitor" "db_primary" {
-  name        = "DB Primary"
-  url         = "tcp://db-primary.example.com:5432"
-  protocol    = "port"
-  port        = 5432
+  name            = "DB Primary"
+  url             = "tcp://db-primary.example.com:5432"
+  protocol        = "port"
+  port            = 5432
   check_frequency = 60
 }
 
 resource "hyperping_monitor" "db_replica" {
-  name        = "DB Replica"
-  url         = "tcp://db-replica.example.com:5432"
-  protocol    = "port"
-  port        = 5432
+  name            = "DB Replica"
+  url             = "tcp://db-replica.example.com:5432"
+  protocol        = "port"
+  port            = 5432
   check_frequency = 60
 }
 

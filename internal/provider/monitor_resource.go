@@ -203,6 +203,9 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"escalation_policy": schema.StringAttribute{
 				MarkdownDescription: "UUID of the escalation policy to link to this monitor.",
 				Optional:            true,
+				Validators: []validator.String{
+					UUIDFormat(),
+				},
 			},
 			"dns_record_type": schema.StringAttribute{
 				MarkdownDescription: "DNS record type for DNS-protocol monitors (read-only, set by the API).",
@@ -281,9 +284,13 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
+	// Write the ID to state immediately to prevent orphaned resources if read-back fails.
+	plan.ID = types.StringValue(createResp.UUID)
+
 	// Read full monitor details (create response may be incomplete)
 	monitor, err := r.client.GetMonitor(ctx, createResp.UUID)
 	if err != nil {
+		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		resp.Diagnostics.Append(newReadAfterCreateError("Monitor", createResp.UUID, err))
 		return
 	}
