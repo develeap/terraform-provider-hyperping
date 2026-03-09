@@ -18,8 +18,10 @@ import (
 
 // Result contains the outcome of comparing two OpenAPI specs.
 type Result struct {
-	// HasChanges is true when any diff was detected.
+	// HasChanges is true when any diff was detected (including metadata-only).
 	HasChanges bool
+	// HasPathChanges is true when endpoint-level changes exist (added/deleted/modified paths).
+	HasPathChanges bool
 	// Breaking is true when at least one breaking change is detected.
 	Breaking bool
 	// Summary is a human-readable markdown description of the changes.
@@ -54,10 +56,14 @@ func Compare(basePath, currPath string) (*Result, error) {
 
 	changes := checker.CheckBackwardCompatibility(checker.NewConfig(checker.GetAllChecks()), d, sources)
 
+	hasPathChanges := d.PathsDiff != nil &&
+		(len(d.PathsDiff.Added) > 0 || len(d.PathsDiff.Deleted) > 0 || len(d.PathsDiff.Modified) > 0)
+
 	return &Result{
-		HasChanges: true,
-		Breaking:   changes.HasLevelOrHigher(checker.ERR),
-		Summary:    FormatMarkdown(d),
+		HasChanges:     true,
+		HasPathChanges: hasPathChanges,
+		Breaking:       changes.HasLevelOrHigher(checker.ERR),
+		Summary:        FormatMarkdown(d),
 	}, nil
 }
 

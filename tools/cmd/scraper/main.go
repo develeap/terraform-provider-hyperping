@@ -185,7 +185,11 @@ func runScrape(ctx context.Context) int {
 		} else if result.HasChanges {
 			log.Println("\n📝 API changes detected:")
 			fmt.Println(result.Summary)
-			notifyAPIChange(result)
+			if result.HasPathChanges {
+				notifyAPIChange(result)
+			} else {
+				log.Println("   ⏭️  Metadata-only changes — skipping GitHub issue creation")
+			}
 		} else {
 			log.Println("\n✅ No API changes detected")
 		}
