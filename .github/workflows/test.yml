@@ -262,16 +262,17 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Restore scraper snapshots
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      - name: Restore scraper snapshots (read-only)
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             tools/cmd/scraper/.scraper_cache.json
             tools/cmd/scraper/snapshots/
             tools/cmd/scraper/docs_scraped/
-          key: scraper-data-${{ hashFiles('tools/cmd/scraper/snapshots/**') }}
+          key: scraper-data-sync-${{ github.sha }}
           restore-keys: |
             scraper-data-
+            scraper-snapshots-
 
       - name: Build scraper
         working-directory: tools/cmd/scraper
