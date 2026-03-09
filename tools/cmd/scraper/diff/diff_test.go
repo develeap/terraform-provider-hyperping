@@ -4,6 +4,7 @@
 package diff
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -442,4 +443,118 @@ func TestFormatMarkdown_MultiplePathsSorted(t *testing.T) {
 	if !(idx1 < idx2 && idx2 < idx3) {
 		t.Errorf("expected paths in alphabetical order, got indices: healthchecks=%d, monitors=%d, monitors/{uuid}=%d", idx1, idx2, idx3)
 	}
+}
+
+// TestCompare_MetadataOnlyChange verifies that HasPathChanges is false when
+// diffs are metadata-only (e.g. info/description changed, no path changes).
+// This was the root cause of false positive "API Change Detected" issues.
+func TestCompare_MetadataOnlyChange(t *testing.T) {
+	base := t.TempDir() + "/base.yaml"
+	curr := t.TempDir() + "/curr.yaml"
+
+	baseSpec := `openapi: "3.0.0"
+info:
+  title: "Test API"
+  version: "1.0.0"
+  description: "Original description"
+paths:
+  /monitors:
+    get:
+      summary: "List monitors"
+      responses:
+        "200":
+          description: "OK"
+`
+	// Only the info description changed — no path changes.
+	currSpec := `openapi: "3.0.0"
+info:
+  title: "Test API"
+  version: "1.0.1"
+  description: "Updated description"
+paths:
+  /monitors:
+    get:
+      summary: "List monitors"
+      responses:
+        "200":
+          description: "OK"
+`
+	if err := writeFile(base, baseSpec); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFile(curr, currSpec); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := Compare(base, curr)
+	if err != nil {
+		t.Fatalf("Compare failed: %v", err)
+	}
+
+	if !result.HasChanges {
+		t.Error("expected HasChanges=true for metadata diff")
+	}
+	if result.HasPathChanges {
+		t.Error("expected HasPathChanges=false for metadata-only diff")
+	}
+}
+
+// TestCompare_PathLevelChange verifies HasPathChanges is true when endpoints change.
+func TestCompare_PathLevelChange(t *testing.T) {
+	base := t.TempDir() + "/base.yaml"
+	curr := t.TempDir() + "/curr.yaml"
+
+	baseSpec := `openapi: "3.0.0"
+info:
+  title: "Test API"
+  version: "1.0.0"
+paths:
+  /monitors:
+    get:
+      summary: "List monitors"
+      responses:
+        "200":
+          description: "OK"
+`
+	// Added a new endpoint.
+	currSpec := `openapi: "3.0.0"
+info:
+  title: "Test API"
+  version: "1.0.0"
+paths:
+  /monitors:
+    get:
+      summary: "List monitors"
+      responses:
+        "200":
+          description: "OK"
+  /healthchecks:
+    get:
+      summary: "List healthchecks"
+      responses:
+        "200":
+          description: "OK"
+`
+	if err := writeFile(base, baseSpec); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFile(curr, currSpec); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := Compare(base, curr)
+	if err != nil {
+		t.Fatalf("Compare failed: %v", err)
+	}
+
+	if !result.HasChanges {
+		t.Error("expected HasChanges=true")
+	}
+	if !result.HasPathChanges {
+		t.Error("expected HasPathChanges=true for added endpoint")
+	}
+}
+
+func writeFile(path, content string) error {
+	return os.WriteFile(path, []byte(content), 0600)
 }
