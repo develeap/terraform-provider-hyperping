@@ -52,8 +52,13 @@ func TestMapRegions(t *testing.T) {
 		},
 		{
 			name:     "all regions",
-			input:    []string{"us", "us-west", "eu", "eu-central", "asia", "ap-northeast", "au", "sa"},
-			expected: []string{"virginia", "oregon", "london", "frankfurt", "singapore", "tokyo", "sydney", "saopaulo"},
+			input:    []string{"us", "us-west", "eu", "eu-central", "asia", "ap-northeast", "au", "sa", "me"},
+			expected: []string{"virginia", "oregon", "london", "frankfurt", "singapore", "tokyo", "sydney", "saopaulo", "bahrain"},
+		},
+		{
+			name:     "middle east aliases",
+			input:    []string{"me", "me-south", "me-south-1"},
+			expected: []string{"bahrain"},
 		},
 		{
 			name:     "whitespace trimmed",

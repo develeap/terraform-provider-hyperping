@@ -448,5 +448,3 @@ func TestConverter_ConvertHeartbeats_Batch(t *testing.T) {
 	assert.Equal(t, "heartbeat_2", converted[1].ResourceName)
 	assert.Empty(t, issues)
 }
-
-// TestAbs is now covered by pkg/migrate/frequency_test.go

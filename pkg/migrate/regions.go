@@ -5,12 +5,6 @@ package migrate
 
 import "strings"
 
-// HyperpingRegions lists all regions supported by Hyperping.
-var HyperpingRegions = []string{
-	"london", "virginia", "singapore", "sydney",
-	"frankfurt", "tokyo", "saopaulo", "oregon",
-}
-
 // DefaultRegions returns the default set of regions used when no mapping is available.
 func DefaultRegions() []string {
 	return []string{"london", "virginia", "singapore"}
@@ -37,6 +31,9 @@ var RegionAliases = map[string]string{
 	"au-southeast":   "sydney",
 	"sa":             "saopaulo",
 	"sa-east-1":      "saopaulo",
+	"me":             "bahrain",
+	"me-south":       "bahrain",
+	"me-south-1":     "bahrain",
 }
 
 // MapRegions converts a list of source region identifiers to Hyperping region names.

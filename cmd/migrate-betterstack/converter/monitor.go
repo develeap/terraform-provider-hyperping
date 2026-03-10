@@ -12,8 +12,8 @@ import (
 
 // Converter handles conversion from Better Stack to Hyperping format.
 type Converter struct {
-	// frequencyMap provides exact mappings for known BetterStack frequencies.
-	// Values not in this map fall back to nearest-match via migrate.MapFrequency.
+	// frequencyMap provides BetterStack-specific overrides where the desired
+	// mapping differs from migrate.MapFrequency's nearest-match behavior.
 	frequencyMap map[int]int
 	protocolMap  map[string]string
 }
@@ -22,24 +22,8 @@ type Converter struct {
 func New() *Converter {
 	return &Converter{
 		frequencyMap: map[int]int{
-			10:    10,
-			20:    20,
-			30:    30,
-			45:    60, // Round 45s to 60s
-			60:    60,
-			90:    60, // Round 90s to 60s
-			120:   120,
-			180:   180,
-			240:   300, // Round 4min to 5min
-			300:   300,
-			600:   600,
-			900:   600, // Round 15min to 10min
-			1800:  1800,
-			3600:  3600,
-			7200:  3600, // Round 2hr to 1hr
-			21600: 21600,
-			43200: 43200,
-			86400: 86400,
+			45:  60,  // BetterStack rounds up to 60s (MapFrequency would pick 30s)
+			240: 300, // BetterStack rounds up to 5min (MapFrequency would pick 3min)
 		},
 		protocolMap: map[string]string{
 			"status":    "http",
