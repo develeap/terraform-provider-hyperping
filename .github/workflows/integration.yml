@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: 'Test scenario to run (small/medium/large/all)'
+        description: 'Test scenario to run'
         required: false
         default: 'small'
         type: choice
@@ -25,7 +25,6 @@ on:
           - small
           - medium
           - large
-          - all
 
 permissions:
   contents: read
@@ -77,7 +76,6 @@ jobs:
             small)  TEST_PATTERN="SmallScenario" ;;
             medium) TEST_PATTERN="MediumScenario" ;;
             large)  TEST_PATTERN="LargeScenario" ;;
-            all)    TEST_PATTERN="." ;;
             "")     ;; # keep default SmallScenario
             *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
           esac
@@ -138,7 +136,6 @@ jobs:
             small)  TEST_PATTERN="SmallScenario" ;;
             medium) TEST_PATTERN="MediumScenario" ;;
             large)  TEST_PATTERN="LargeScenario" ;;
-            all)    TEST_PATTERN="." ;;
             "")     ;; # keep default SmallScenario
             *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
           esac
@@ -199,7 +196,6 @@ jobs:
             small)  TEST_PATTERN="SmallScenario" ;;
             medium) TEST_PATTERN="MediumScenario" ;;
             large)  TEST_PATTERN="LargeScenario" ;;
-            all)    TEST_PATTERN="." ;;
             "")     ;; # keep default SmallScenario
             *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
           esac
