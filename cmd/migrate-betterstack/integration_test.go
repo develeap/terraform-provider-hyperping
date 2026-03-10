@@ -105,7 +105,7 @@ func TestBetterStackMigration_DryRun(t *testing.T) {
 
 	// Run migration in dry-run mode
 	cmd := exec.CommandContext(ctx,
-		"go", "run", "./cmd/migrate-betterstack",
+		"go", "run", ".",
 		"--betterstack-token", creds.BetterstackToken,
 		"--hyperping-api-key", creds.HyperpingAPIKey,
 		"--output", filepath.Join(tempDir, "migrated-resources.tf"),
@@ -150,7 +150,7 @@ func TestBetterStackMigration_InvalidCredentials(t *testing.T) {
 
 	// Run with invalid credentials
 	cmd := exec.CommandContext(ctx,
-		"go", "run", "./cmd/migrate-betterstack",
+		"go", "run", ".",
 		"--betterstack-token", "invalid_token_12345",
 		"--hyperping-api-key", "invalid_key_67890",
 		"--output", filepath.Join(tempDir, "migrated-resources.tf"),
@@ -187,7 +187,7 @@ func runBetterStackMigrationTest(t *testing.T, creds integration.TestCredentials
 	t.Log("Step 1: Testing API connection to Better Stack")
 	err := integration.RunWithRetry(ctx, t, "Better Stack API connection", func() error {
 		cmd := exec.CommandContext(ctx,
-			"go", "run", "./cmd/migrate-betterstack",
+			"go", "run", ".",
 			"--betterstack-token", creds.BetterstackToken,
 			"--hyperping-api-key", creds.HyperpingAPIKey,
 			"--dry-run",
@@ -209,7 +209,7 @@ func runBetterStackMigrationTest(t *testing.T, creds integration.TestCredentials
 	t.Logf("Step 2: Executing migration tool for scenario: %s", scenario.Name)
 	err = integration.RunWithRetry(ctx, t, "migration execution", func() error {
 		cmd := exec.CommandContext(ctx,
-			"go", "run", "./cmd/migrate-betterstack",
+			"go", "run", ".",
 			"--betterstack-token", creds.BetterstackToken,
 			"--hyperping-api-key", creds.HyperpingAPIKey,
 			"--output", outputFile,

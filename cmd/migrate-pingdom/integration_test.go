@@ -115,7 +115,7 @@ func TestPingdomMigration_CheckTypes(t *testing.T) {
 	// Run migration to get all checks
 	err := integration.RunWithRetry(ctx, t, "migration execution", func() error {
 		cmd := exec.CommandContext(ctx,
-			"go", "run", "./cmd/migrate-pingdom",
+			"go", "run", ".",
 			"--pingdom-api-key", creds.PingdomAPIKey,
 			"--hyperping-api-key", creds.HyperpingAPIKey,
 			"--output", outputDir,
@@ -158,7 +158,7 @@ func TestPingdomMigration_DryRun(t *testing.T) {
 
 	// Run migration in dry-run mode
 	cmd := exec.CommandContext(ctx,
-		"go", "run", "./cmd/migrate-pingdom",
+		"go", "run", ".",
 		"--pingdom-api-key", creds.PingdomAPIKey,
 		"--hyperping-api-key", creds.HyperpingAPIKey,
 		"--output", outputDir,
@@ -206,7 +206,7 @@ func TestPingdomMigration_WithPrefix(t *testing.T) {
 
 	// Run migration with prefix
 	cmd := exec.CommandContext(ctx,
-		"go", "run", "./cmd/migrate-pingdom",
+		"go", "run", ".",
 		"--pingdom-api-key", creds.PingdomAPIKey,
 		"--hyperping-api-key", creds.HyperpingAPIKey,
 		"--output", outputDir,
@@ -247,7 +247,7 @@ func TestPingdomMigration_InvalidCredentials(t *testing.T) {
 
 	// Run with invalid credentials
 	cmd := exec.CommandContext(ctx,
-		"go", "run", "./cmd/migrate-pingdom",
+		"go", "run", ".",
 		"--pingdom-api-key", "invalid_token_12345",
 		"--hyperping-api-key", "invalid_key_67890",
 		"--output", outputDir,
@@ -279,7 +279,7 @@ func runPingdomMigrationTest(t *testing.T, creds integration.TestCredentials, sc
 	t.Log("Step 1: Testing API connection to Pingdom")
 	err := integration.RunWithRetry(ctx, t, "Pingdom API connection", func() error {
 		cmd := exec.CommandContext(ctx,
-			"go", "run", "./cmd/migrate-pingdom",
+			"go", "run", ".",
 			"--pingdom-api-key", creds.PingdomAPIKey,
 			"--hyperping-api-key", creds.HyperpingAPIKey,
 			"--output", filepath.Join(tempDir, "test-connection"),
@@ -301,7 +301,7 @@ func runPingdomMigrationTest(t *testing.T, creds integration.TestCredentials, sc
 	t.Logf("Step 2: Executing migration tool for scenario: %s", scenario.Name)
 	err = integration.RunWithRetry(ctx, t, "migration execution", func() error {
 		cmd := exec.CommandContext(ctx,
-			"go", "run", "./cmd/migrate-pingdom",
+			"go", "run", ".",
 			"--pingdom-api-key", creds.PingdomAPIKey,
 			"--hyperping-api-key", creds.HyperpingAPIKey,
 			"--output", outputDir,

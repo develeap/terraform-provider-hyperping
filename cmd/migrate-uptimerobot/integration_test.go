@@ -121,7 +121,7 @@ func TestUptimeRobotMigration_MonitorTypes(t *testing.T) {
 
 	err := integration.RunWithRetry(ctx, t, "migration execution", func() error {
 		cmd := exec.CommandContext(ctx,
-			"go", "run", "./cmd/migrate-uptimerobot",
+			"go", "run", ".",
 			"--uptimerobot-api-key", creds.UptimeRobotAPIKey,
 			"--hyperping-api-key", creds.HyperpingAPIKey,
 			"--output", outputFile,
@@ -158,7 +158,7 @@ func TestUptimeRobotMigration_ValidateMode(t *testing.T) {
 
 	// Run in validate mode (no Hyperping API key needed)
 	cmd := exec.CommandContext(ctx,
-		"go", "run", "./cmd/migrate-uptimerobot",
+		"go", "run", ".",
 		"--uptimerobot-api-key", creds.UptimeRobotAPIKey,
 		"--validate",
 	)
@@ -187,7 +187,7 @@ func TestUptimeRobotMigration_DryRun(t *testing.T) {
 
 	// Run migration in dry-run mode
 	cmd := exec.CommandContext(ctx,
-		"go", "run", "./cmd/migrate-uptimerobot",
+		"go", "run", ".",
 		"--uptimerobot-api-key", creds.UptimeRobotAPIKey,
 		"--hyperping-api-key", creds.HyperpingAPIKey,
 		"--output", filepath.Join(tempDir, "hyperping.tf"),
@@ -224,7 +224,7 @@ func TestUptimeRobotMigration_InvalidCredentials(t *testing.T) {
 
 	// Run with invalid credentials
 	cmd := exec.CommandContext(ctx,
-		"go", "run", "./cmd/migrate-uptimerobot",
+		"go", "run", ".",
 		"--uptimerobot-api-key", "u1234567-invalid-key",
 		"--validate",
 	)
@@ -259,7 +259,7 @@ func runUptimeRobotMigrationTest(t *testing.T, creds integration.TestCredentials
 	t.Log("Step 1: Testing API connection to UptimeRobot")
 	err := integration.RunWithRetry(ctx, t, "UptimeRobot API connection", func() error {
 		cmd := exec.CommandContext(ctx,
-			"go", "run", "./cmd/migrate-uptimerobot",
+			"go", "run", ".",
 			"--uptimerobot-api-key", creds.UptimeRobotAPIKey,
 			"--validate",
 		)
@@ -279,7 +279,7 @@ func runUptimeRobotMigrationTest(t *testing.T, creds integration.TestCredentials
 	t.Logf("Step 2: Executing migration tool for scenario: %s", scenario.Name)
 	err = integration.RunWithRetry(ctx, t, "migration execution", func() error {
 		cmd := exec.CommandContext(ctx,
-			"go", "run", "./cmd/migrate-uptimerobot",
+			"go", "run", ".",
 			"--uptimerobot-api-key", creds.UptimeRobotAPIKey,
 			"--hyperping-api-key", creds.HyperpingAPIKey,
 			"--output", outputFile,
