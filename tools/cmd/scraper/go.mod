@@ -9,7 +9,7 @@ require (
 	github.com/google/go-github/v68 v68.0.0
 	github.com/hashicorp/terraform-json v0.27.2
 	github.com/tufin/oasdiff v1.10.29
-	golang.org/x/oauth2 v0.35.0
+	golang.org/x/oauth2 v0.36.0
 	golang.org/x/time v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
 )
