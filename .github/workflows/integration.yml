@@ -71,12 +71,14 @@ jobs:
           echo "Running Better Stack integration tests..."
 
           # Validate and map scenario to test pattern (prevents shell injection)
-          TEST_PATTERN="."
+          # Default to SmallScenario for PRs (limited test account data)
+          TEST_PATTERN="SmallScenario"
           case "$SCENARIO_INPUT" in
             small)  TEST_PATTERN="SmallScenario" ;;
             medium) TEST_PATTERN="MediumScenario" ;;
             large)  TEST_PATTERN="LargeScenario" ;;
-            all|"") ;;
+            all)    TEST_PATTERN="." ;;
+            "")     ;; # keep default SmallScenario
             *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
           esac
 
@@ -130,12 +132,14 @@ jobs:
           echo "Running UptimeRobot integration tests..."
 
           # Validate and map scenario to test pattern (prevents shell injection)
-          TEST_PATTERN="."
+          # Default to SmallScenario for PRs (limited test account data)
+          TEST_PATTERN="SmallScenario"
           case "$SCENARIO_INPUT" in
             small)  TEST_PATTERN="SmallScenario" ;;
             medium) TEST_PATTERN="MediumScenario" ;;
             large)  TEST_PATTERN="LargeScenario" ;;
-            all|"") ;;
+            all)    TEST_PATTERN="." ;;
+            "")     ;; # keep default SmallScenario
             *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
           esac
 
@@ -189,12 +193,14 @@ jobs:
           echo "Running Pingdom integration tests..."
 
           # Validate and map scenario to test pattern (prevents shell injection)
-          TEST_PATTERN="."
+          # Default to SmallScenario for PRs (limited test account data)
+          TEST_PATTERN="SmallScenario"
           case "$SCENARIO_INPUT" in
             small)  TEST_PATTERN="SmallScenario" ;;
             medium) TEST_PATTERN="MediumScenario" ;;
             large)  TEST_PATTERN="LargeScenario" ;;
-            all|"") ;;
+            all)    TEST_PATTERN="." ;;
+            "")     ;; # keep default SmallScenario
             *) echo "Invalid scenario: $SCENARIO_INPUT"; exit 1 ;;
           esac
 
