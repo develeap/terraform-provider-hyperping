@@ -8,6 +8,7 @@ import (
 
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // ConversionResult represents the result of converting a Pingdom check.
@@ -240,22 +241,7 @@ func (c *CheckConverter) convertIMAPCheck(check pingdom.Check) *client.CreateMon
 // ConvertFrequency converts Pingdom resolution (minutes) to Hyperping frequency (seconds).
 func ConvertFrequency(resolutionMinutes int) int {
 	seconds := resolutionMinutes * 60
-
-	// Round to nearest allowed frequency
-	allowed := []int{60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400}
-
-	closest := allowed[0]
-	minDiff := abs(seconds - allowed[0])
-
-	for _, freq := range allowed {
-		diff := abs(seconds - freq)
-		if diff < minDiff {
-			minDiff = diff
-			closest = freq
-		}
-	}
-
-	return closest
+	return migrate.MapFrequency(seconds)
 }
 
 // ConvertRegions converts Pingdom probe filters to Hyperping regions.
@@ -291,13 +277,6 @@ func ConvertRegions(probeFilters []string) []string {
 	}
 
 	return regions
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 func boolPtr(b bool) *bool {

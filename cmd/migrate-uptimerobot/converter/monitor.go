@@ -5,9 +5,9 @@ package converter
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot/uptimerobot"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // HyperpingMonitor represents a Hyperping monitor configuration.
@@ -302,21 +302,7 @@ func convertHTTPMethod(method *uptimerobot.FlexibleInt) string {
 
 // mapFrequency maps UptimeRobot interval to nearest Hyperping check_frequency.
 func mapFrequency(interval int) int {
-	allowedFrequencies := []int{10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400}
-
-	// Find closest allowed value
-	closest := allowedFrequencies[0]
-	minDiff := abs(interval - closest)
-
-	for _, freq := range allowedFrequencies {
-		diff := abs(interval - freq)
-		if diff < minDiff {
-			minDiff = diff
-			closest = freq
-		}
-	}
-
-	return closest
+	return migrate.MapFrequency(interval)
 }
 
 // mapSubTypeToPort maps UptimeRobot port sub-type to default port number.
@@ -338,64 +324,20 @@ func mapSubTypeToPort(subType int) int {
 }
 
 // terraformName converts a string to a valid Terraform resource name.
+// Uses "r_" prefix for digit-leading names (UptimeRobot convention).
 func terraformName(name string) string {
-	// Convert to lowercase
-	name = strings.ToLower(name)
-
-	// Replace non-alphanumeric characters with underscores
-	var result strings.Builder
-	for _, ch := range name {
-		if (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') {
-			result.WriteRune(ch)
-		} else {
-			result.WriteRune('_')
-		}
-	}
-
-	// Remove consecutive underscores
-	s := result.String()
-	for strings.Contains(s, "__") {
-		s = strings.ReplaceAll(s, "__", "_")
-	}
-
-	// Trim underscores
-	s = strings.Trim(s, "_")
-
-	// Ensure it starts with a letter
-	if s != "" && s[0] >= '0' && s[0] <= '9' {
-		s = "r_" + s
-	}
-
-	// Fallback for empty names
-	if s == "" {
-		s = "monitor"
-	}
-
-	return s
+	return migrate.SanitizeResourceNameWith(name, migrate.SanitizeOpts{
+		DigitPrefix:   "r",
+		EmptyFallback: "monitor",
+	})
 }
 
 // ensureURLScheme prepends "https://" if the URL has no scheme.
-// The Hyperping provider requires all URLs to have an HTTP/HTTPS scheme.
 func ensureURLScheme(rawURL string) string {
-	if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
-		return rawURL
-	}
-	return "https://" + rawURL
+	return migrate.EnsureURLScheme(rawURL)
 }
 
 // deduplicateResourceName appends a numeric suffix when a name has already been used.
 func deduplicateResourceName(name string, seen map[string]int) string {
-	seen[name]++
-	if seen[name] == 1 {
-		return name
-	}
-	return fmt.Sprintf("%s_%d", name, seen[name])
-}
-
-// abs returns the absolute value of an integer.
-func abs(n int) int {
-	if n < 0 {
-		return -n
-	}
-	return n
+	return migrate.DeduplicateResourceName(name, seen)
 }

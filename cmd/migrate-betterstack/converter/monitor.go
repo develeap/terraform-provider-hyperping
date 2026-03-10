@@ -5,15 +5,15 @@ package converter
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-betterstack/betterstack"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // Converter handles conversion from Better Stack to Hyperping format.
 type Converter struct {
-	regionMap    map[string]string
+	// frequencyMap provides BetterStack-specific overrides where the desired
+	// mapping differs from migrate.MapFrequency's nearest-match behavior.
 	frequencyMap map[int]int
 	protocolMap  map[string]string
 }
@@ -21,46 +21,9 @@ type Converter struct {
 // New creates a new converter with default mappings.
 func New() *Converter {
 	return &Converter{
-		regionMap: map[string]string{
-			"us":             "virginia",
-			"us-east":        "virginia",
-			"us-east-1":      "virginia",
-			"us-west":        "oregon",
-			"us-west-1":      "oregon",
-			"eu":             "london",
-			"eu-west":        "london",
-			"eu-west-1":      "london",
-			"eu-central":     "frankfurt",
-			"eu-central-1":   "frankfurt",
-			"asia":           "singapore",
-			"ap-southeast":   "singapore",
-			"ap-southeast-1": "singapore",
-			"ap-northeast":   "tokyo",
-			"ap-northeast-1": "tokyo",
-			"au":             "sydney",
-			"au-southeast":   "sydney",
-			"sa":             "saopaulo",
-			"sa-east-1":      "saopaulo",
-		},
 		frequencyMap: map[int]int{
-			10:    10,
-			20:    20,
-			30:    30,
-			45:    60, // Round 45s to 60s
-			60:    60,
-			90:    60, // Round 90s to 60s
-			120:   120,
-			180:   180,
-			240:   300, // Round 4min to 5min
-			300:   300,
-			600:   600,
-			900:   600, // Round 15min to 10min
-			1800:  1800,
-			3600:  3600,
-			7200:  3600, // Round 2hr to 1hr
-			21600: 21600,
-			43200: 43200,
-			86400: 86400,
+			45:  60,  // BetterStack rounds up to 60s (MapFrequency would pick 30s)
+			240: 300, // BetterStack rounds up to 5min (MapFrequency would pick 3min)
 		},
 		protocolMap: map[string]string{
 			"status":    "http",
@@ -169,7 +132,7 @@ func (c *Converter) convertMonitor(m betterstack.Monitor) (ConvertedMonitor, []C
 	}
 
 	// Map regions
-	regions := c.mapRegions(attrs.Regions)
+	regions := migrate.MapRegions(attrs.Regions)
 	if len(regions) == 0 {
 		regions = []string{"london", "virginia", "singapore"} // Default regions
 		issues = append(issues, ConversionIssue{
@@ -286,80 +249,23 @@ func (c *Converter) mapProtocol(bsType string) string {
 	return ""
 }
 
+func (c *Converter) mapRegions(bsRegions []string) []string {
+	return migrate.MapRegions(bsRegions)
+}
+
 func (c *Converter) mapFrequency(frequency int) int {
 	if mapped, ok := c.frequencyMap[frequency]; ok {
 		return mapped
 	}
-
-	// Find closest supported frequency
-	supported := []int{10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400}
-	closest := supported[0]
-	minDiff := abs(frequency - closest)
-
-	for _, f := range supported {
-		diff := abs(frequency - f)
-		if diff < minDiff {
-			minDiff = diff
-			closest = f
-		}
-	}
-
-	return closest
-}
-
-func (c *Converter) mapRegions(bsRegions []string) []string {
-	var regions []string
-	seen := make(map[string]bool)
-
-	for _, region := range bsRegions {
-		normalized := strings.ToLower(strings.TrimSpace(region))
-		if mapped, ok := c.regionMap[normalized]; ok {
-			if !seen[mapped] {
-				regions = append(regions, mapped)
-				seen[mapped] = true
-			}
-		}
-	}
-
-	return regions
+	return migrate.MapFrequency(frequency)
 }
 
 func sanitizeResourceName(name string) string {
-	// Convert to lowercase
-	safe := strings.ToLower(name)
-
-	// Replace special characters with underscores
-	reg := regexp.MustCompile(`[^a-z0-9_]+`)
-	safe = reg.ReplaceAllString(safe, "_")
-
-	// Remove leading/trailing underscores
-	safe = strings.Trim(safe, "_")
-
-	// Collapse multiple underscores
-	reg = regexp.MustCompile(`_+`)
-	safe = reg.ReplaceAllString(safe, "_")
-
-	// Ensure it doesn't start with a digit
-	if safe != "" && safe[0] >= '0' && safe[0] <= '9' {
-		safe = "monitor_" + safe
-	}
-
-	// Ensure it's not empty
-	if safe == "" {
-		safe = "unnamed_monitor"
-	}
-
-	return safe
+	return migrate.SanitizeResourceName(name)
 }
 
-// deduplicateResourceName appends a numeric suffix when a name has already been used.
-// For example, "example_com" becomes "example_com_2" on the second occurrence.
 func deduplicateResourceName(name string, seen map[string]int) string {
-	seen[name]++
-	if seen[name] == 1 {
-		return name
-	}
-	return fmt.Sprintf("%s_%d", name, seen[name])
+	return migrate.DeduplicateResourceName(name, seen)
 }
 
 func extractIssueMessages(issues []ConversionIssue) []string {
@@ -368,11 +274,4 @@ func extractIssueMessages(issues []ConversionIssue) []string {
 		messages = append(messages, issue.Message)
 	}
 	return messages
-}
-
-func abs(n int) int {
-	if n < 0 {
-		return -n
-	}
-	return n
 }
