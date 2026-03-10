@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-betterstack/converter"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // Generator generates Terraform HCL and import scripts.
@@ -175,12 +176,7 @@ func (g *Generator) generateHealthcheckBlock(h converter.ConvertedHealthcheck) s
 }
 
 func quoteString(s string) string {
-	escaped := strings.ReplaceAll(s, "\\", "\\\\")
-	escaped = strings.ReplaceAll(escaped, "\"", "\\\"")
-	escaped = strings.ReplaceAll(escaped, "\n", "\\n")
-	escaped = strings.ReplaceAll(escaped, "\r", "\\r")
-	escaped = strings.ReplaceAll(escaped, "\t", "\\t")
-	return fmt.Sprintf("\"%s\"", escaped)
+	return migrate.QuoteHCL(s)
 }
 
 func periodToCron(periodSeconds int) string {

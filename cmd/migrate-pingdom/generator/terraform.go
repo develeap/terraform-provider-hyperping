@@ -11,6 +11,7 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/converter"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // TerraformGenerator generates Terraform HCL configuration.
@@ -210,12 +211,7 @@ func (g *TerraformGenerator) terraformName(name string) string {
 
 // escapeHCL escapes a string for HCL output.
 func escapeHCL(s string) string {
-	s = strings.ReplaceAll(s, "\\", "\\\\")
-	s = strings.ReplaceAll(s, "\"", "\\\"")
-	s = strings.ReplaceAll(s, "\n", "\\n")
-	s = strings.ReplaceAll(s, "\r", "\\r")
-	s = strings.ReplaceAll(s, "\t", "\\t")
-	return s
+	return migrate.EscapeHCL(s)
 }
 
 // formatStringList formats a Go string slice as an HCL list.

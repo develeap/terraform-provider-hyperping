@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot/converter"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // GenerateImportScript generates a shell script for importing existing Hyperping resources.
@@ -130,9 +131,5 @@ func GenerateImportScript(result *converter.ConversionResult) string {
 
 // escapeShellString escapes a string for use in shell scripts.
 func escapeShellString(s string) string {
-	s = strings.ReplaceAll(s, "\\", "\\\\")
-	s = strings.ReplaceAll(s, "\"", "\\\"")
-	s = strings.ReplaceAll(s, "$", "\\$")
-	s = strings.ReplaceAll(s, "`", "\\`")
-	return s
+	return migrate.EscapeShell(s)
 }

@@ -449,20 +449,4 @@ func TestConverter_ConvertHeartbeats_Batch(t *testing.T) {
 	assert.Empty(t, issues)
 }
 
-func TestAbs(t *testing.T) {
-	tests := []struct {
-		input    int
-		expected int
-	}{
-		{5, 5},
-		{-5, 5},
-		{0, 0},
-		{100, 100},
-		{-100, 100},
-	}
-
-	for _, tt := range tests {
-		result := abs(tt.input)
-		assert.Equal(t, tt.expected, result)
-	}
-}
+// TestAbs is now covered by pkg/migrate/frequency_test.go

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-uptimerobot/converter"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // GenerateTerraform generates Terraform HCL configuration from conversion results.
@@ -182,8 +183,5 @@ func generateHealthcheckResource(sb *strings.Builder, h converter.HyperpingHealt
 
 // escapeString escapes a string for use in Terraform configuration.
 func escapeString(s string) string {
-	s = strings.ReplaceAll(s, "\\", "\\\\")
-	s = strings.ReplaceAll(s, "\"", "\\\"")
-	s = strings.ReplaceAll(s, "\n", "\\n")
-	return s
+	return migrate.EscapeHCL(s)
 }
