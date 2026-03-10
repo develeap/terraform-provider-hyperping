@@ -227,6 +227,14 @@ TF_ACC=1 go test ./cmd/migrate-betterstack -tags=integration
 
 Three CLI tools migrate monitoring from competitors to Hyperping:
 
+**Shared Utilities (`pkg/migrate/`):**
+- `MapFrequency` — nearest-match frequency rounding (13 allowed values)
+- `SanitizeResourceName` / `SanitizeResourceNameWith` — Terraform-safe names with configurable prefix/fallback
+- `EscapeHCL` / `EscapeShell` / `QuoteHCL` — string escaping for generated output
+- `MapRegions` — cloud provider region to Hyperping region mapping (21 aliases)
+- `EnsureURLScheme` — URL normalization
+- `DeduplicateResourceName` — suffix-based deduplication
+
 **Features (all tools):**
 - Interactive wizard mode (zero-config UX)
 - Dry-run with compatibility scoring
@@ -236,9 +244,14 @@ Three CLI tools migrate monitoring from competitors to Hyperping:
 - Enhanced error messages
 
 **Tool-Specific:**
-- `migrate-betterstack`: Heartbeat → cron conversion, monitors + heartbeats
-- `migrate-uptimerobot`: 5 monitor types, contact alerts
-- `migrate-pingdom`: Tag-based naming, 6 check types
+- `migrate-betterstack`: Heartbeat → cron conversion, monitors + heartbeats, BetterStack-specific frequency overrides (45→60, 240→300)
+- `migrate-uptimerobot`: 5 monitor types, contact alerts, `r_` prefix for digit-leading names
+- `migrate-pingdom`: Tag-based naming, 6 check types, probe-filter region mapping (not shared — Pingdom uses `region:NA`/`region:EU` filters)
+
+**Integration Test Accounts:**
+- UptimeRobot: 26 resources (9 HTTP, 4 Keyword, 4 Ping, 4 Port, 5 Heartbeat)
+- BetterStack: 10 monitors (free tier limit, no heartbeats)
+- Pingdom: No API key configured (tests skipped in CI)
 
 **Usage Pattern:**
 ```bash

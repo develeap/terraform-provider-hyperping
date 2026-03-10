@@ -377,16 +377,16 @@ curl -fsS --retry 3 "$PING_URL"
 
 ### Check Frequencies
 
-UptimeRobot intervals are mapped to nearest allowed Hyperping values:
+UptimeRobot intervals are mapped to nearest allowed Hyperping values using `pkg/migrate.MapFrequency`:
 
 | UptimeRobot | Hyperping | Notes |
 |-------------|-----------|-------|
 | 60s | 60s | Direct match |
 | 120s | 120s | Direct match |
 | 300s | 300s | Direct match |
-| 45s | 60s | Rounded up |
-| 90s | 60s | Rounded down |
-| 150s | 180s | Rounded up |
+| 45s | 30s | Nearest match |
+| 90s | 60s | Nearest match |
+| 150s | 120s | Nearest match |
 
 Allowed Hyperping values: `10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400`
 

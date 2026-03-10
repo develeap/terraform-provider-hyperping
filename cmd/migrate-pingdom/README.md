@@ -332,7 +332,7 @@ Pingdom uses minutes, Hyperping uses seconds. The tool rounds to nearest allowed
 | 30 | 1800 |
 | 60 | 3600 |
 
-Allowed Hyperping frequencies: `60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400`
+Allowed Hyperping frequencies (via `pkg/migrate.MapFrequency`): `10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400`
 
 ## Region Conversion
 

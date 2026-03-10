@@ -120,6 +120,7 @@ migrate-pingdom --pingdom-api-key $PINGDOM_KEY --hyperping-api-key $HYPERPING_KE
 - ✅ Intelligent resource conversion
 - ✅ Production-ready Terraform generation
 - ✅ Validation and compatibility checks
+- ✅ Shared utilities (`pkg/migrate/`) for frequency mapping, region translation, name sanitization
 - ✅ 85-90% time savings vs. manual migration
 
 **Guides:**

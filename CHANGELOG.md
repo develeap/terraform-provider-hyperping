@@ -10,6 +10,17 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Changed
+
+- **Migration Tools**: Extracted shared utilities into `pkg/migrate/` package, eliminating ~224 lines of duplicated code across Better Stack, UptimeRobot, and Pingdom migration tools. Shared functions: `MapFrequency`, `SanitizeResourceName`, `EscapeHCL`, `EscapeShell`, `MapRegions`, `EnsureURLScheme`, `DeduplicateResourceName`.
+- **Migration Tools**: Added `bahrain` region aliases (`me`, `me-south`, `me-south-1`) to shared region mapping.
+- **Integration Tests**: Populated BetterStack and UptimeRobot test accounts with diverse monitor types for meaningful Medium/Large scenario testing. Updated scenario expectations to match actual account data (UptimeRobot: 26 resources across 5 types, BetterStack: 10 monitors at free tier limit).
+
+### Added
+
+- **`pkg/migrate/`**: New shared package with 83+ test cases covering frequency mapping, resource name sanitization, HCL/shell escaping, URL scheme normalization, and cloud region mapping.
+- **`cmd/migrate-uptimerobot/uptimerobot/client_test.go`**: Added `FlexibleInt` JSON unmarshaling tests (14 cases covering numeric, string, empty, null, and struct embedding).
+
 ## [1.4.10] - 2026-03-07
 
 ### Fixed

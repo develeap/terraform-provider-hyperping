@@ -32,7 +32,7 @@ go run ./cmd/migrate-betterstack [options]
 
 ## Prerequisites
 
-- Go 1.24 or later
+- Go 1.26 or later
 - Better Stack API token
 - Hyperping API key
 - Terraform 1.8+ (for validation)
@@ -175,27 +175,32 @@ Documentation of:
 
 ### Region Mapping
 
+Region mapping is provided by the shared `pkg/migrate` package.
+
 | Better Stack | Hyperping |
 |--------------|-----------|
-| `us`, `us-east-1` | `virginia` |
-| `us-west-1` | `oregon` |
-| `eu`, `eu-west-1` | `london` |
-| `eu-central-1` | `frankfurt` |
-| `ap-southeast-1` | `singapore` |
-| `ap-northeast-1` | `tokyo` |
-| `au-southeast` | `sydney` |
-| `sa-east-1` | `saopaulo` |
+| `us`, `us-east`, `us-east-1` | `virginia` |
+| `us-west`, `us-west-1` | `oregon` |
+| `eu`, `eu-west`, `eu-west-1` | `london` |
+| `eu-central`, `eu-central-1` | `frankfurt` |
+| `asia`, `ap-southeast`, `ap-southeast-1` | `singapore` |
+| `ap-northeast`, `ap-northeast-1` | `tokyo` |
+| `au`, `au-southeast` | `sydney` |
+| `sa`, `sa-east-1` | `saopaulo` |
+| `me`, `me-south`, `me-south-1` | `bahrain` |
 
 ### Frequency Normalization
 
-Unsupported frequencies are rounded to the nearest supported value:
+Unsupported frequencies are rounded to the nearest supported value using `pkg/migrate.MapFrequency`. Better Stack has two additional overrides where rounding up is preferred over nearest-match:
 
 **Supported values**: 10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400 seconds
 
-Examples:
-- 45s → 60s
+**Better Stack overrides** (round up instead of nearest):
+- 45s → 60s (nearest would be 30s)
+- 240s → 300s (nearest would be 180s)
+
+**Standard nearest-match** (via shared `MapFrequency`):
 - 90s → 60s
-- 240s → 300s
 - 7200s → 3600s
 
 ### Request Headers
@@ -401,10 +406,10 @@ Warning: No regions specified, using default regions
 
 ### Custom Region Mapping
 
-Modify `converter/monitor.go` to add custom region mappings:
+Region aliases are defined in `pkg/migrate/regions.go`. Add new entries to the `RegionAliases` map:
 
 ```go
-regionMap: map[string]string{
+var RegionAliases = map[string]string{
     "custom-region": "virginia",
     // ... other mappings
 }
@@ -412,14 +417,16 @@ regionMap: map[string]string{
 
 ### Custom Frequency Mapping
 
-Modify `converter/monitor.go` to add custom frequency mappings:
+Better Stack-specific frequency overrides are in `converter/monitor.go`. For cases where `MapFrequency`'s nearest-match is not desired:
 
 ```go
 frequencyMap: map[int]int{
-    45: 60,  // Round 45s to 60s
-    // ... other mappings
+    45:  60,  // BetterStack rounds up (MapFrequency would pick 30s)
+    240: 300, // BetterStack rounds up (MapFrequency would pick 180s)
 }
 ```
+
+For all other values, `pkg/migrate.MapFrequency` provides nearest-match rounding automatically.
 
 ## Best Practices
 
