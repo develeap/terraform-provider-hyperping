@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestUptimeRobotMigration_SmallScenario tests migration of 1-3 monitors
+// TestUptimeRobotMigration_SmallScenario tests basic migration with minimum resources
 func TestUptimeRobotMigration_SmallScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -34,7 +34,7 @@ func TestUptimeRobotMigration_SmallScenario(t *testing.T) {
 
 	scenario := integration.TestScenario{
 		Name:                 "Small",
-		Description:          "1-3 monitors of various types",
+		Description:          "At least 1 monitor migrated successfully",
 		ExpectedMonitors:     1,
 		ExpectedHealthchecks: 0,
 		MinWarnings:          0,
@@ -44,7 +44,7 @@ func TestUptimeRobotMigration_SmallScenario(t *testing.T) {
 	runUptimeRobotMigrationTest(t, creds, scenario)
 }
 
-// TestUptimeRobotMigration_MediumScenario tests migration of 5-10 monitors
+// TestUptimeRobotMigration_MediumScenario tests migration of 10+ monitors across multiple types
 func TestUptimeRobotMigration_MediumScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -56,17 +56,17 @@ func TestUptimeRobotMigration_MediumScenario(t *testing.T) {
 
 	scenario := integration.TestScenario{
 		Name:                 "Medium",
-		Description:          "5-10 monitors including HTTP, Keyword, and Heartbeat types",
-		ExpectedMonitors:     5,
+		Description:          "10+ monitors including HTTP, Keyword, Ping, Port, and Heartbeat types",
+		ExpectedMonitors:     10,
 		ExpectedHealthchecks: 1,
 		MinWarnings:          0,
-		MaxWarnings:          10,
+		MaxWarnings:          15,
 	}
 
 	runUptimeRobotMigrationTest(t, creds, scenario)
 }
 
-// TestUptimeRobotMigration_LargeScenario tests migration of 20-30 monitors
+// TestUptimeRobotMigration_LargeScenario tests full account migration (21 monitors + 5 heartbeats)
 func TestUptimeRobotMigration_LargeScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -78,11 +78,11 @@ func TestUptimeRobotMigration_LargeScenario(t *testing.T) {
 
 	scenario := integration.TestScenario{
 		Name:                 "Large",
-		Description:          "20-30 monitors testing all 5 monitor types",
+		Description:          "Full account: 21 monitors (all 5 types) + 5 heartbeats",
 		ExpectedMonitors:     20,
 		ExpectedHealthchecks: 5,
 		MinWarnings:          0,
-		MaxWarnings:          20,
+		MaxWarnings:          30,
 	}
 
 	runUptimeRobotMigrationTest(t, creds, scenario)

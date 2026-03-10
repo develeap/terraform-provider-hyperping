@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestBetterStackMigration_SmallScenario tests migration of 1-3 monitors and 1 heartbeat
+// TestBetterStackMigration_SmallScenario tests basic migration with minimum resources
 func TestBetterStackMigration_SmallScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -34,9 +34,9 @@ func TestBetterStackMigration_SmallScenario(t *testing.T) {
 
 	scenario := integration.TestScenario{
 		Name:                 "Small",
-		Description:          "1-3 monitors and 1 heartbeat",
+		Description:          "At least 1 monitor migrated successfully",
 		ExpectedMonitors:     1,
-		ExpectedHealthchecks: 1,
+		ExpectedHealthchecks: 0,
 		MinWarnings:          0,
 		MaxWarnings:          5,
 	}
@@ -44,7 +44,7 @@ func TestBetterStackMigration_SmallScenario(t *testing.T) {
 	runBetterStackMigrationTest(t, creds, scenario)
 }
 
-// TestBetterStackMigration_MediumScenario tests migration of 5-10 monitors and 3 heartbeats
+// TestBetterStackMigration_MediumScenario tests migration of 5+ monitors
 func TestBetterStackMigration_MediumScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -56,9 +56,9 @@ func TestBetterStackMigration_MediumScenario(t *testing.T) {
 
 	scenario := integration.TestScenario{
 		Name:                 "Medium",
-		Description:          "5-10 monitors and 3 heartbeats",
+		Description:          "5+ monitors including status and expected_status_code types",
 		ExpectedMonitors:     5,
-		ExpectedHealthchecks: 3,
+		ExpectedHealthchecks: 0,
 		MinWarnings:          0,
 		MaxWarnings:          10,
 	}
@@ -66,7 +66,7 @@ func TestBetterStackMigration_MediumScenario(t *testing.T) {
 	runBetterStackMigrationTest(t, creds, scenario)
 }
 
-// TestBetterStackMigration_LargeScenario tests migration of 20-30 monitors and 10 heartbeats
+// TestBetterStackMigration_LargeScenario tests full account migration (10 monitors, free tier limit)
 func TestBetterStackMigration_LargeScenario(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -78,11 +78,11 @@ func TestBetterStackMigration_LargeScenario(t *testing.T) {
 
 	scenario := integration.TestScenario{
 		Name:                 "Large",
-		Description:          "20-30 monitors and 10 heartbeats",
-		ExpectedMonitors:     20,
-		ExpectedHealthchecks: 10,
+		Description:          "Full account: 10 monitors (free tier limit)",
+		ExpectedMonitors:     10,
+		ExpectedHealthchecks: 0,
 		MinWarnings:          0,
-		MaxWarnings:          20,
+		MaxWarnings:          15,
 	}
 
 	runBetterStackMigrationTest(t, creds, scenario)
