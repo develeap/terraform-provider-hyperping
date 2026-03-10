@@ -78,26 +78,32 @@ func (c *Converter) Convert(monitors []uptimerobot.Monitor, alertContacts []upti
 	}
 
 	// Convert each monitor
+	seen := make(map[string]int)
 	for _, m := range monitors {
 		switch m.Type {
 		case 1: // HTTP/HTTPS
 			monitor := c.convertHTTPMonitor(m)
+			monitor.ResourceName = deduplicateResourceName(monitor.ResourceName, seen)
 			result.Monitors = append(result.Monitors, monitor)
 
 		case 2: // Keyword
 			monitor := c.convertKeywordMonitor(m)
+			monitor.ResourceName = deduplicateResourceName(monitor.ResourceName, seen)
 			result.Monitors = append(result.Monitors, monitor)
 
 		case 3: // Ping (ICMP)
 			monitor := c.convertPingMonitor(m)
+			monitor.ResourceName = deduplicateResourceName(monitor.ResourceName, seen)
 			result.Monitors = append(result.Monitors, monitor)
 
 		case 4: // Port
 			monitor := c.convertPortMonitor(m)
+			monitor.ResourceName = deduplicateResourceName(monitor.ResourceName, seen)
 			result.Monitors = append(result.Monitors, monitor)
 
 		case 5: // Heartbeat
 			healthcheck := c.convertHeartbeatMonitor(m)
+			healthcheck.ResourceName = deduplicateResourceName(healthcheck.ResourceName, seen)
 			result.Healthchecks = append(result.Healthchecks, healthcheck)
 
 		default:
@@ -157,7 +163,7 @@ func (c *Converter) convertKeywordMonitor(m uptimerobot.Monitor) HyperpingMonito
 
 	// Handle keyword
 	if m.KeywordValue != nil && *m.KeywordValue != "" {
-		if m.KeywordType != nil && *m.KeywordType == 2 {
+		if m.KeywordType != nil && int(*m.KeywordType) == 2 {
 			// Keyword "not exists" - not supported by Hyperping
 			monitor.Warnings = append(monitor.Warnings,
 				"Keyword check 'must not exist' is not supported by Hyperping. Consider using status code checks instead.")
@@ -182,7 +188,7 @@ func (c *Converter) convertPingMonitor(m uptimerobot.Monitor) HyperpingMonitor {
 	monitor := HyperpingMonitor{
 		ResourceName:   terraformName(m.FriendlyName),
 		Name:           m.FriendlyName,
-		URL:            m.URL,
+		URL:            ensureURLScheme(m.URL),
 		Protocol:       "icmp",
 		CheckFrequency: mapFrequency(m.Interval),
 		Regions:        []string{"london", "virginia"},
@@ -205,7 +211,7 @@ func (c *Converter) convertPortMonitor(m uptimerobot.Monitor) HyperpingMonitor {
 	monitor := HyperpingMonitor{
 		ResourceName:   terraformName(m.FriendlyName),
 		Name:           m.FriendlyName,
-		URL:            m.URL,
+		URL:            ensureURLScheme(m.URL),
 		Protocol:       "port",
 		CheckFrequency: mapFrequency(m.Interval),
 		Regions:        []string{"virginia"},
@@ -215,10 +221,10 @@ func (c *Converter) convertPortMonitor(m uptimerobot.Monitor) HyperpingMonitor {
 
 	// Set port from monitor configuration
 	if m.Port != nil {
-		monitor.Port = *m.Port
+		monitor.Port = int(*m.Port)
 	} else if m.SubType != nil {
 		// Map sub-type to default port
-		monitor.Port = mapSubTypeToPort(*m.SubType)
+		monitor.Port = mapSubTypeToPort(int(*m.SubType))
 	} else {
 		monitor.Port = 80 // Default
 	}
@@ -271,12 +277,12 @@ func (c *Converter) convertHeartbeatMonitor(m uptimerobot.Monitor) HyperpingHeal
 }
 
 // convertHTTPMethod converts UptimeRobot HTTP method to string.
-func convertHTTPMethod(method *int) string {
+func convertHTTPMethod(method *uptimerobot.FlexibleInt) string {
 	if method == nil {
 		return "GET"
 	}
 
-	switch *method {
+	switch int(*method) {
 	case 1:
 		return "GET"
 	case 2:
@@ -366,6 +372,24 @@ func terraformName(name string) string {
 	}
 
 	return s
+}
+
+// ensureURLScheme prepends "https://" if the URL has no scheme.
+// The Hyperping provider requires all URLs to have an HTTP/HTTPS scheme.
+func ensureURLScheme(rawURL string) string {
+	if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
+		return rawURL
+	}
+	return "https://" + rawURL
+}
+
+// deduplicateResourceName appends a numeric suffix when a name has already been used.
+func deduplicateResourceName(name string, seen map[string]int) string {
+	seen[name]++
+	if seen[name] == 1 {
+		return name
+	}
+	return fmt.Sprintf("%s_%d", name, seen[name])
 }
 
 // abs returns the absolute value of an integer.

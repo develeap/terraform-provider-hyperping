@@ -118,9 +118,11 @@ type ConversionIssue struct {
 func (c *Converter) ConvertMonitors(monitors []betterstack.Monitor) ([]ConvertedMonitor, []ConversionIssue) {
 	var converted []ConvertedMonitor
 	var issues []ConversionIssue
+	seen := make(map[string]int)
 
 	for _, m := range monitors {
 		cm, monitorIssues := c.convertMonitor(m)
+		cm.ResourceName = deduplicateResourceName(cm.ResourceName, seen)
 		converted = append(converted, cm)
 		issues = append(issues, monitorIssues...)
 	}
@@ -229,9 +231,11 @@ func (c *Converter) convertMonitor(m betterstack.Monitor) (ConvertedMonitor, []C
 func (c *Converter) ConvertHeartbeats(heartbeats []betterstack.Heartbeat) ([]ConvertedHealthcheck, []ConversionIssue) {
 	var converted []ConvertedHealthcheck
 	var issues []ConversionIssue
+	seen := make(map[string]int)
 
 	for _, h := range heartbeats {
 		ch, heartbeatIssues := c.convertHeartbeat(h)
+		ch.ResourceName = deduplicateResourceName(ch.ResourceName, seen)
 		converted = append(converted, ch)
 		issues = append(issues, heartbeatIssues...)
 	}
@@ -346,6 +350,16 @@ func sanitizeResourceName(name string) string {
 	}
 
 	return safe
+}
+
+// deduplicateResourceName appends a numeric suffix when a name has already been used.
+// For example, "example_com" becomes "example_com_2" on the second occurrence.
+func deduplicateResourceName(name string, seen map[string]int) string {
+	seen[name]++
+	if seen[name] == 1 {
+		return name
+	}
+	return fmt.Sprintf("%s_%d", name, seen[name])
 }
 
 func extractIssueMessages(issues []ConversionIssue) []string {
