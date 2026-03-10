@@ -13,7 +13,7 @@ import (
 func TestConverterHTTPMonitor(t *testing.T) {
 	conv := converter.NewConverter()
 
-	httpMethod := 1 // GET
+	httpMethod := uptimerobot.FlexibleInt(1) // GET
 	monitors := []uptimerobot.Monitor{
 		{
 			ID:           12345,
@@ -53,7 +53,7 @@ func TestConverterHTTPMonitor(t *testing.T) {
 func TestConverterKeywordMonitor(t *testing.T) {
 	conv := converter.NewConverter()
 
-	keywordType := 1 // exists
+	keywordType := uptimerobot.FlexibleInt(1) // exists
 	keywordValue := "healthy"
 	monitors := []uptimerobot.Monitor{
 		{
@@ -87,7 +87,7 @@ func TestConverterKeywordMonitor(t *testing.T) {
 func TestConverterKeywordNotExists(t *testing.T) {
 	conv := converter.NewConverter()
 
-	keywordType := 2 // not exists
+	keywordType := uptimerobot.FlexibleInt(2) // not exists
 	keywordValue := "error"
 	monitors := []uptimerobot.Monitor{
 		{
@@ -139,15 +139,15 @@ func TestConverterPingMonitor(t *testing.T) {
 		t.Errorf("Expected protocol 'icmp', got '%s'", m.Protocol)
 	}
 
-	if m.URL != "192.168.1.100" {
-		t.Errorf("Expected URL '192.168.1.100', got '%s'", m.URL)
+	if m.URL != "https://192.168.1.100" {
+		t.Errorf("Expected URL 'https://192.168.1.100', got '%s'", m.URL)
 	}
 }
 
 func TestConverterPortMonitor(t *testing.T) {
 	conv := converter.NewConverter()
 
-	port := 5432
+	port := uptimerobot.FlexibleInt(5432)
 	monitors := []uptimerobot.Monitor{
 		{
 			ID:           12349,
@@ -299,9 +299,9 @@ func TestTerraformNameGeneration(t *testing.T) {
 func TestConverterMultipleMonitors(t *testing.T) {
 	conv := converter.NewConverter()
 
-	httpMethod := 1
-	port := 443
-	keywordType := 1
+	httpMethod := uptimerobot.FlexibleInt(1)
+	port := uptimerobot.FlexibleInt(443)
+	keywordType := uptimerobot.FlexibleInt(1)
 	keywordValue := "ok"
 
 	monitors := []uptimerobot.Monitor{

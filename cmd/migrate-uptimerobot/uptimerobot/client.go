@@ -10,8 +10,38 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 )
+
+// FlexibleInt handles JSON fields that may be encoded as either a number or a string.
+// The UptimeRobot API returns some integer fields (e.g. sub_type) as strings.
+type FlexibleInt int
+
+// UnmarshalJSON implements json.Unmarshaler for FlexibleInt.
+func (fi *FlexibleInt) UnmarshalJSON(data []byte) error {
+	// Try number first
+	var n int
+	if err := json.Unmarshal(data, &n); err == nil {
+		*fi = FlexibleInt(n)
+		return nil
+	}
+	// Try string (UptimeRobot API sometimes returns numeric fields as strings)
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		if s == "" {
+			*fi = 0
+			return nil
+		}
+		parsed, err := strconv.Atoi(s)
+		if err != nil {
+			return fmt.Errorf("FlexibleInt: cannot parse %q as int: %w", s, err)
+		}
+		*fi = FlexibleInt(parsed)
+		return nil
+	}
+	return fmt.Errorf("FlexibleInt: cannot unmarshal %s", string(data))
+}
 
 const (
 	baseURL = "https://api.uptimerobot.com/v2"
@@ -39,11 +69,11 @@ type Monitor struct {
 	FriendlyName  string            `json:"friendly_name"`
 	URL           string            `json:"url"`
 	Type          int               `json:"type"` // 1=HTTP, 2=Keyword, 3=Ping, 4=Port, 5=Heartbeat
-	SubType       *int              `json:"sub_type,omitempty"`
-	KeywordType   *int              `json:"keyword_type,omitempty"` // 1=exists, 2=not exists
+	SubType       *FlexibleInt      `json:"sub_type,omitempty"`
+	KeywordType   *FlexibleInt      `json:"keyword_type,omitempty"` // 1=exists, 2=not exists
 	KeywordValue  *string           `json:"keyword_value,omitempty"`
-	HTTPMethod    *int              `json:"http_method,omitempty"` // 1=GET, 2=POST, 3=PUT, 4=PATCH, 5=DELETE, 6=HEAD
-	Port          *int              `json:"port,omitempty"`
+	HTTPMethod    *FlexibleInt      `json:"http_method,omitempty"` // 1=GET, 2=POST, 3=PUT, 4=PATCH, 5=DELETE, 6=HEAD
+	Port          *FlexibleInt      `json:"port,omitempty"`
 	Interval      int               `json:"interval"` // Check interval in seconds
 	Timeout       *int              `json:"timeout,omitempty"`
 	Status        int               `json:"status"` // 0=paused, 1=not checked yet, 2=up, 8=seems down, 9=down

@@ -242,7 +242,29 @@ func convertResources(
 	logger.Info("Converting heartbeats to Hyperping format...")
 	convertedHealthchecks, healthcheckIssues := convertHeartbeatList(heartbeats, conv, state, logger)
 
+	// Deduplicate resource names across all converted resources
+	deduplicateConvertedNames(convertedMonitors, convertedHealthchecks)
+
 	return convertedMonitors, convertedHealthchecks, monitorIssues, healthcheckIssues
+}
+
+// deduplicateConvertedNames ensures resource names are unique across monitors and healthchecks.
+func deduplicateConvertedNames(monitors []converter.ConvertedMonitor, healthchecks []converter.ConvertedHealthcheck) {
+	seen := make(map[string]int)
+	for i := range monitors {
+		name := monitors[i].ResourceName
+		seen[name]++
+		if seen[name] > 1 {
+			monitors[i].ResourceName = fmt.Sprintf("%s_%d", name, seen[name])
+		}
+	}
+	for i := range healthchecks {
+		name := healthchecks[i].ResourceName
+		seen[name]++
+		if seen[name] > 1 {
+			healthchecks[i].ResourceName = fmt.Sprintf("%s_%d", name, seen[name])
+		}
+	}
 }
 
 // convertMonitorList converts a slice of monitors, updating state as it goes.
