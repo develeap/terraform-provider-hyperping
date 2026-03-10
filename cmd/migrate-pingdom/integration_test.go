@@ -11,11 +11,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/develeap/terraform-provider-hyperping/test/integration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// rateLimitCooldown is a brief pause between tests to avoid API rate limiting
+// when running all scenarios sequentially (workflow_dispatch "all" mode).
+const rateLimitCooldown = 10 * time.Second
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -49,6 +54,9 @@ func TestPingdomMigration_MediumScenario(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
+	t.Logf("Waiting %s for API rate limit cooldown...", rateLimitCooldown)
+	time.Sleep(rateLimitCooldown)
+
 	creds := integration.GetTestCredentials(t)
 	integration.SkipIfCredentialsMissing(t, "PINGDOM_API_KEY", creds.PingdomAPIKey)
 	integration.SkipIfCredentialsMissing(t, "HYPERPING_API_KEY", creds.HyperpingAPIKey)
@@ -70,6 +78,9 @@ func TestPingdomMigration_LargeScenario(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
+	t.Logf("Waiting %s for API rate limit cooldown...", rateLimitCooldown)
+	time.Sleep(rateLimitCooldown)
+
 	creds := integration.GetTestCredentials(t)
 	integration.SkipIfCredentialsMissing(t, "PINGDOM_API_KEY", creds.PingdomAPIKey)
 	integration.SkipIfCredentialsMissing(t, "HYPERPING_API_KEY", creds.HyperpingAPIKey)
@@ -90,6 +101,9 @@ func TestPingdomMigration_CheckTypes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+
+	t.Logf("Waiting %s for API rate limit cooldown...", rateLimitCooldown)
+	time.Sleep(rateLimitCooldown)
 
 	creds := integration.GetTestCredentials(t)
 	integration.SkipIfCredentialsMissing(t, "PINGDOM_API_KEY", creds.PingdomAPIKey)
@@ -146,6 +160,9 @@ func TestPingdomMigration_DryRun(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
+	t.Logf("Waiting %s for API rate limit cooldown...", rateLimitCooldown)
+	time.Sleep(rateLimitCooldown)
+
 	creds := integration.GetTestCredentials(t)
 	integration.SkipIfCredentialsMissing(t, "PINGDOM_API_KEY", creds.PingdomAPIKey)
 	integration.SkipIfCredentialsMissing(t, "HYPERPING_API_KEY", creds.HyperpingAPIKey)
@@ -193,6 +210,9 @@ func TestPingdomMigration_WithPrefix(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
+
+	t.Logf("Waiting %s for API rate limit cooldown...", rateLimitCooldown)
+	time.Sleep(rateLimitCooldown)
 
 	creds := integration.GetTestCredentials(t)
 	integration.SkipIfCredentialsMissing(t, "PINGDOM_API_KEY", creds.PingdomAPIKey)
