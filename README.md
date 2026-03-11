@@ -131,6 +131,7 @@ migrate-pingdom --pingdom-api-key $PINGDOM_KEY --hyperping-api-key $HYPERPING_KE
 
 ## Documentation
 
+- **[Wiki](https://github.com/develeap/terraform-provider-hyperping/wiki)** - Complete guide with all resources, examples, migration tools, and architecture docs
 - **[Terraform Registry](https://registry.terraform.io/providers/develeap/hyperping/latest/docs)** - Complete resource/data source reference
 - **[Examples](./examples/)** - Real-world usage examples
 - **[Changelog](./CHANGELOG.md)** - Version history and release notes

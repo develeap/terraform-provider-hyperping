@@ -2,6 +2,8 @@
 
 Thank you for your interest in contributing! This document provides guidelines for contributing to this Terraform provider.
 
+If you're new to the project, the **[Wiki](https://github.com/develeap/terraform-provider-hyperping/wiki)** is the best starting point — it covers all resources, guides, architecture, and testing docs in one place.
+
 ## How Can I Contribute?
 
 ### Reporting Bugs
