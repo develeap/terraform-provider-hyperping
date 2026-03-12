@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Develeap
 // SPDX-License-Identifier: MPL-2.0
 
-// Package diff wraps tufin/oasdiff to detect semantic changes between two OpenAPI specs.
+// Package diff wraps oasdiff/oasdiff to detect semantic changes between two OpenAPI specs.
 // It replaces the custom differ.go (363 lines) with a thin adapter (~80 lines).
 package diff
 
@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/tufin/oasdiff/checker"
-	"github.com/tufin/oasdiff/diff"
-	"github.com/tufin/oasdiff/load"
+	"github.com/oasdiff/oasdiff/checker"
+	"github.com/oasdiff/oasdiff/diff"
+	"github.com/oasdiff/oasdiff/load"
 )
 
 // Result contains the outcome of comparing two OpenAPI specs.

@@ -8,8 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tufin/oasdiff/diff"
-	"github.com/tufin/oasdiff/utils"
+	"github.com/oasdiff/oasdiff/diff"
 )
 
 func TestFormatMarkdown_NilDiff(t *testing.T) {
@@ -30,7 +29,7 @@ func TestFormatMarkdown_EmptyDiff(t *testing.T) {
 func TestFormatMarkdown_AddedEndpoints(t *testing.T) {
 	d := &diff.Diff{
 		PathsDiff: &diff.PathsDiff{
-			Added: utils.StringList{"/v1/new-endpoint"},
+			Added: []string{"/v1/new-endpoint"},
 		},
 	}
 
@@ -47,7 +46,7 @@ func TestFormatMarkdown_AddedEndpoints(t *testing.T) {
 func TestFormatMarkdown_DeletedEndpoints(t *testing.T) {
 	d := &diff.Diff{
 		PathsDiff: &diff.PathsDiff{
-			Deleted: utils.StringList{"/v1/removed-endpoint"},
+			Deleted: []string{"/v1/removed-endpoint"},
 		},
 	}
 
@@ -124,8 +123,8 @@ func TestFormatMarkdown_ModifiedWithAddedAndDeletedProperties(t *testing.T) {
 											"application/json": {
 												SchemaDiff: &diff.SchemaDiff{
 													PropertiesDiff: &diff.SchemasDiff{
-														Added:   utils.StringList{"new_field"},
-														Deleted: utils.StringList{"old_field"},
+														Added:   []string{"new_field"},
+														Deleted: []string{"old_field"},
 													},
 												},
 											},
@@ -169,8 +168,8 @@ func TestFormatMarkdown_ModifiedWithTypeChange(t *testing.T) {
 																Modified: map[string]*diff.SchemaDiff{
 																	"count": {
 																		TypeDiff: &diff.StringsDiff{
-																			Added:   utils.StringList{"integer"},
-																			Deleted: utils.StringList{"string"},
+																			Added:   []string{"integer"},
+																			Deleted: []string{"string"},
 																		},
 																	},
 																},
@@ -206,7 +205,7 @@ func TestFormatMarkdown_OperationMetadataOnly(t *testing.T) {
 						Modified: map[string]*diff.MethodDiff{
 							"get": {
 								TagsDiff: &diff.StringsDiff{
-									Added: utils.StringList{"new-tag"},
+									Added: []string{"new-tag"},
 								},
 							},
 						},
@@ -226,8 +225,8 @@ func TestFormatMarkdown_OperationMetadataOnly(t *testing.T) {
 func TestFormatMarkdown_AllSections(t *testing.T) {
 	d := &diff.Diff{
 		PathsDiff: &diff.PathsDiff{
-			Added:   utils.StringList{"/v1/new"},
-			Deleted: utils.StringList{"/v1/removed"},
+			Added:   []string{"/v1/new"},
+			Deleted: []string{"/v1/removed"},
 			Modified: map[string]*diff.PathDiff{
 				"/v1/monitors": {
 					OperationsDiff: &diff.OperationsDiff{
@@ -364,8 +363,8 @@ func TestFormatPathDiff_AddedAndDeletedOperations(t *testing.T) {
 			Modified: map[string]*diff.PathDiff{
 				"/v1/monitors/{uuid}": {
 					OperationsDiff: &diff.OperationsDiff{
-						Added:   utils.StringList{"delete"},
-						Deleted: utils.StringList{"patch"},
+						Added:   []string{"delete"},
+						Deleted: []string{"patch"},
 					},
 				},
 			},
@@ -392,10 +391,10 @@ func TestFormatMethodDiff_ParameterChanges(t *testing.T) {
 							"get": {
 								ParametersDiff: &diff.ParametersDiffByLocation{
 									Added: diff.ParamNamesByLocation{
-										"query": utils.StringList{"page", "per_page"},
+										"query": []string{"page", "per_page"},
 									},
 									Deleted: diff.ParamNamesByLocation{
-										"query": utils.StringList{"offset"},
+										"query": []string{"offset"},
 									},
 								},
 							},
