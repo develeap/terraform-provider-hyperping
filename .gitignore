@@ -37,6 +37,7 @@ website/vendor
 *.winfile eol=crlf
 terraform-provider-hyperping
 import-generator
+/hyperping-exporter
 .env*
 
 # Scraper binaries, generated reports, and caches
