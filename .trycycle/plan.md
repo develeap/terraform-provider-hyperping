@@ -19,12 +19,12 @@ Make the Hyperping Terraform provider follow IaC best practices so that plan-tim
 **File**: `internal/provider/monitor_resource.go`
 
 **Changes**:
-1. Add `_ resource.ResourceWithValidateConfig = &MonitorResource{}` to the interface assertion block.
+1. Add `_ resource.ResourceWithValidateConfig = &MonitorResource{}` to the interface assertion block (line 30-33).
 2. The `ValidateConfig` method itself lives in `monitor_validate_config.go` (see below).
 
 **File**: `internal/provider/monitor_validate_config.go` (new, ~120 lines)
 
-Extracted to its own file because `monitor_resource.go` is already 787 lines.
+Extracted to its own file because `monitor_resource.go` is already 786 lines (near the 800-line limit).
 
 **ValidateConfig implementation**:
 - Read `protocol` from `req.Config` (raw user config, before defaults). If unknown/null, skip (module-composed values cannot be validated at plan time).
@@ -71,17 +71,21 @@ All error messages include the field name, the invalid protocol, and what protoc
 **Changes**:
 
 **File**: `internal/provider/maintenance_resource.go`
-- Add `stringvalidator.OneOf(client.AllowedNotificationOptions...)` to `notification_option` attribute's Validators list.
-- Add `"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"` to imports (`stringvalidator` is not currently imported in this file; the file imports `listvalidator` and `int64validator` but not `stringvalidator`).
+- Add `stringvalidator.OneOf(client.AllowedNotificationOptions...)` to `notification_option` attribute's Validators list. The attribute currently has no `Validators` slice, so one must be added.
+- Add `"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"` to imports. This file currently imports `listvalidator` and `int64validator` but NOT `stringvalidator`.
 
 **File**: `internal/provider/statuspage_resource_schema.go`
 - `languages`: Add `listvalidator.ValueStringsAre(stringvalidator.OneOf(client.AllowedLanguages...))` to Validators list.
 - `default_language`: Add `stringvalidator.OneOf(client.AllowedLanguages...)` to Validators list.
-- Add `"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"` to imports (not currently imported in this file; `stringvalidator` IS already imported).
+- Add TWO new imports:
+  - `"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"` (not currently imported)
+  - `"github.com/develeap/terraform-provider-hyperping/internal/client"` (not currently imported; needed for `client.AllowedLanguages`)
 
 ### 3. Improved Error Diagnostics with Valid Value Lists
 
-**Problem**: When the API returns a 422 validation error, the provider's error messages include generic troubleshooting steps. The existing `buildValidationErrorSteps` in `error_helpers.go` already adds some resource-specific guidance (e.g., valid frequencies for Monitor), but the guidance is incomplete and only appears in the `WithContext` error variants. The simpler `newCreateError`/`newUpdateError` functions (which most resources use) lack this specificity.
+**Problem**: When the API returns a 422 validation error, the provider's error messages include generic troubleshooting steps. The existing `buildValidationErrorSteps` in `error_helpers.go` already adds some resource-specific guidance (e.g., valid frequencies for Monitor), but that guidance only appears in the `WithContext` error variants. The simpler `newCreateError`/`newUpdateError` functions (used by Monitor, Incident, and Maintenance resources) lack this specificity.
+
+**Scope note**: Only 3 of 8 resource types use `newCreateError`/`newUpdateError` (Monitor, Incident, Maintenance). The other resources (Healthcheck, Outage, StatusPage, StatusPageSubscriber, IncidentUpdate) use inline `resp.Diagnostics.AddError()` calls. Migrating those resources to the helper functions would change CRUD logic, which is out of scope per the constraints ("Do NOT change existing resource CRUD logic"). The 3 resources that benefit are the most complex and most likely to produce 422 errors, so the improvement is still high-value.
 
 **Solution**: Upgrade the simpler `newCreateError` and `newUpdateError` functions to include resource-specific valid value reference tables. This avoids fragile error-body parsing; instead, for each resource type, we unconditionally append a "Quick Reference" section listing all enum/constrained fields and their valid values. This is simple, robust, and directly useful when a user hits a 422.
 
@@ -97,12 +101,17 @@ Example output appended to a Monitor create error:
 ```
 Quick Reference (valid values):
   protocol:             http, port, icmp
-  http_method:          GET, POST, PUT, PATCH, DELETE, HEAD
+  http_method:          GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
   check_frequency:      10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400
   expected_status_code: Specific code (200), wildcard (2xx), or range (1xx-3xx)
   regions:              london, frankfurt, singapore, sydney, tokyo, virginia, saopaulo, bahrain
   alerts_wait:          -1, 0, 1, 2, 3, 5, 10, 30, 60
 ```
+
+Resource types covered by `ValidValueReference`:
+- `"Monitor"` -- protocol, http_method, check_frequency, expected_status_code, regions, alerts_wait
+- `"Maintenance Window"` -- notification_option (note: resource CRUD uses "Maintenance Window" as the resource type string, matching `newCreateError("Maintenance Window", err)` on line 225 of maintenance_resource.go)
+- `"Incident"` -- type
 
 **File**: `internal/provider/error_helpers.go`
 
@@ -123,31 +132,26 @@ No changes to `NewCreateErrorWithContext`/`NewUpdateErrorWithContext` -- they al
 **Files changed** (description-only updates, no logic changes):
 
 **`internal/provider/monitor_resource.go`** -- Schema section:
-- `name`: Add length constraint and example. Current: "The name of the monitor." Proposed: "The display name of the monitor. Must be 1-255 characters."
-- `url`: Add scheme note. Current: "The URL to monitor." Proposed: "The URL to monitor. Must include protocol scheme (e.g., `https://api.example.com/health`)."
-- `regions`: Add reference to new data source. Current: "List of regions to check from. Valid values: ..." Proposed: "List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`."
-- `request_headers`: Add protocol note. Current: "Custom HTTP headers to send with the request." Proposed: "Custom HTTP headers to send with the request. Only valid when protocol is `http`."
-- `request_body`: Add protocol and method note. Current: "Request body for POST/PUT/PATCH requests." Proposed: "HTTP request body. Only valid when protocol is `http` and http_method is `POST`, `PUT`, or `PATCH`."
-- `follow_redirects`: Add protocol note. Current: "Whether to follow HTTP redirects. Defaults to `true`." Proposed: "Whether to follow HTTP redirects. Only applies to `http` protocol monitors. Defaults to `true`."
-- `port`: Add examples. Current: "Port number to check. Required when `protocol` is `port`." Proposed: "TCP port number (1-65535). Required when protocol is `port`. Examples: `443` (HTTPS), `5432` (PostgreSQL), `6379` (Redis)."
-- `required_keyword`: Add protocol note. Current: "A keyword that must appear in the response body for the check to pass." Proposed: "A keyword that must appear in the HTTP response body for the check to pass. Only valid when protocol is `http`."
+- `name`: Add length constraint note. Current: `"The name of the monitor."` Proposed: `"The display name of the monitor. Must be 1-255 characters."`
+- `url`: Add scheme note. Current: `"The URL to monitor."` Proposed: `"The URL to monitor. Must include protocol scheme (e.g., \x60https://api.example.com/health\x60)."`
+- `regions`: Add reference to new data source. Current: `"List of regions to check from. Valid values: ..."` Proposed: `"List of monitoring regions. Use the \x60hyperping_monitoring_locations\x60 data source to discover available locations. Valid values: \x60london\x60, \x60frankfurt\x60, \x60singapore\x60, \x60sydney\x60, \x60tokyo\x60, \x60virginia\x60, \x60saopaulo\x60, \x60bahrain\x60."`
+- `request_headers`: Add protocol note. Current: `"Custom HTTP headers to send with the request."` Proposed: `"Custom HTTP headers to send with the request. Only valid when protocol is \x60http\x60."`
+- `request_body`: Add protocol and method note. Current: `"Request body for POST/PUT/PATCH requests."` Proposed: `"HTTP request body. Only valid when protocol is \x60http\x60 and http_method is \x60POST\x60, \x60PUT\x60, or \x60PATCH\x60."`
+- `follow_redirects`: Add protocol note. Current: `"Whether to follow HTTP redirects. Defaults to \x60true\x60."` Proposed: `"Whether to follow HTTP redirects. Only applies to \x60http\x60 protocol monitors. Defaults to \x60true\x60."`
+- `port`: Add examples. Current: `"Port number to check. Required when \x60protocol\x60 is \x60port\x60."` Proposed: `"TCP port number (1-65535). Required when protocol is \x60port\x60. Examples: \x60443\x60 (HTTPS), \x605432\x60 (PostgreSQL), \x606379\x60 (Redis)."`
+- `required_keyword`: Add protocol note. Current: `"A keyword that must appear in the response body for the check to pass."` Proposed: `"A keyword that must appear in the HTTP response body for the check to pass. Only valid when protocol is \x60http\x60."`
 - `protocol`, `http_method`, `check_frequency`, `expected_status_code`, `alerts_wait`, `escalation_policy`, `project_uuid`: Already good, keep as-is.
 
 **`internal/provider/healthcheck_resource.go`** -- Schema section:
-- `cron`: Already good ("Cron expression defining the schedule... Mutually exclusive with `period_value`/`period_type`."). Keep as-is.
-- `timezone`: Already good ("Timezone for the cron expression... Required when `cron` is set."). Keep as-is.
-- `grace_period_value`: Add practical example. Current: likely terse. Proposed: Include example combining value + type.
-- `grace_period_type`: Already has OneOf. Keep as-is.
-
-**`internal/provider/maintenance_resource.go`** -- Schema section:
-- `notification_option`: Already good ("When to notify subscribers. Valid values: `scheduled`, `immediate`. Defaults to `scheduled`."). Keep as-is.
-- `notification_minutes`: Already good. Keep as-is.
+- `grace_period_value`: Current (verified): `"Numeric value for the grace period buffer before alerting."` Proposed: `"Numeric value for the grace period buffer before alerting. For example, set \x60grace_period_value = 5\x60 with \x60grace_period_type = \"minutes\"\x60 to allow a 5-minute window."` This helps new users understand how the value/type pair works together.
+- `cron`, `timezone`, `grace_period_type`: Already good. Keep as-is.
 
 **`internal/provider/incident_resource.go`** -- Schema section:
-- `affected_components`: Add context. Current: "List of component UUIDs affected by this incident." Proposed: "List of monitor UUIDs representing components affected by this incident. Displayed on the associated status pages."
+- `affected_components`: Add context. Current: `"List of component UUIDs affected by this incident."` Proposed: `"List of monitor UUIDs representing components affected by this incident. Displayed on the associated status pages."`
 
-**`internal/provider/outage_resource.go`** -- Schema section:
-- `monitor_uuid`: Already good. Keep as-is.
+**Resources with no description changes needed** (verified adequate):
+- `internal/provider/maintenance_resource.go` -- `notification_option` and `notification_minutes` descriptions already include valid values, defaults, and usage context.
+- `internal/provider/outage_resource.go` -- `monitor_uuid` description already adequate.
 
 ### 5. Sensible Defaults Where Safe
 
@@ -247,31 +251,38 @@ Acceptance test:
 - Add schema attributes:
   - `count`: `schema.Int64Attribute{Computed: true, MarkdownDescription: "Total number of monitors returned (after filtering)."}`
   - `ids`: `schema.ListAttribute{Computed: true, ElementType: types.StringType, MarkdownDescription: "List of monitor UUIDs. Convenient for for_each patterns."}`
-- In `Read()`, after mapping monitors, set `config.Count = types.Int64Value(int64(len(filteredMonitors)))` and build `config.IDs` from the monitor UUIDs using `types.ListValueFrom`.
+- In `Read()`, after the mapping loop (after line 253), collect UUIDs from `filteredMonitors` into a `[]string`, then set `config.Count = types.Int64Value(int64(len(filteredMonitors)))` and build `config.IDs` from the UUIDs using `types.ListValueFrom`.
+- Test file: `monitors_data_source_test.go` -- add assertions for `count` and `ids` in existing test functions.
 
 **`internal/provider/incidents_data_source.go`**:
 - Same pattern: add `Count` and `IDs` to model, schema, and Read.
-- IDs extracted from `incident.UUID` for each filtered incident.
+- IDs extracted from `incident.UUID` for each filtered incident (check the field name in the `client.Incident` struct).
+- Test file: `incidents_data_source_test.go` -- add assertions in existing test functions.
 
 **`internal/provider/healthchecks_data_source.go`**:
 - Same pattern: add `Count` and `IDs`.
-- IDs extracted from healthcheck UUIDs.
+- IDs extracted from healthcheck UUIDs. In the Read method, collect UUIDs during the `for i, hc := range filteredHealthchecks` loop (line 201-208).
+- Test file: `healthchecks_data_source_test.go` -- add assertions in existing test functions.
 
 **`internal/provider/maintenance_windows_data_source.go`**:
 - Same pattern: add `Count` and `IDs`.
 - IDs extracted from maintenance UUIDs.
+- Test file: `maintenance_windows_data_source_test.go` -- add assertions in existing test functions.
 
 **`internal/provider/outages_data_source.go`**:
 - Same pattern: add `Count` and `IDs`.
 - IDs extracted from outage UUIDs.
+- Test file: `outages_data_source_test.go` -- add assertions in existing test functions.
 
 **`internal/provider/statuspages_data_source.go`**:
 - Already has `Total types.Int64` (from API pagination). Add `IDs types.List \`tfsdk:"ids"\`` only. The `total` field serves as `count`.
-- **Implementation note**: This data source uses `types.List` for `StatusPages` (not a Go slice), so IDs must be extracted during the mapping loop (before converting to `types.ListValueFrom`). Collect UUIDs into a `[]string` during the `for i, sp := range filteredStatusPages` loop, then convert to `types.ListValueFrom` after the loop.
+- **Implementation note**: This data source uses `types.List` for `StatusPages` (not a Go slice), so IDs must be extracted during the mapping loop (before converting to `types.ListValueFrom`). Collect UUIDs into a `[]string` during the `for i, sp := range filteredStatusPages` loop (line 379-382), then convert to `types.ListValueFrom` after the loop.
+- Test file: `statuspages_data_source_test.go` -- add assertions in existing test functions.
 
 **`internal/provider/statuspage_subscribers_data_source.go`**:
 - Already has `Total types.Int64` (from API pagination). Add `IDs types.List \`tfsdk:"ids"\`` only (subscriber IDs as strings).
 - **Implementation note**: Same approach as statuspages -- collect IDs during the existing mapping loop.
+- Test file: `statuspage_subscribers_data_source_test.go` -- add assertions in existing test functions.
 
 ---
 
@@ -292,9 +303,9 @@ Acceptance test:
 |------|-----------------|
 | `internal/provider/monitor_resource.go` | Add ValidateConfig interface assertion, update MarkdownDescriptions |
 | `internal/provider/maintenance_resource.go` | Add notification_option validator + stringvalidator import |
-| `internal/provider/incident_resource.go` | Update MarkdownDescriptions |
-| `internal/provider/healthcheck_resource.go` | Update MarkdownDescriptions |
-| `internal/provider/statuspage_resource_schema.go` | Add languages + default_language validators + listvalidator import |
+| `internal/provider/incident_resource.go` | Update affected_components MarkdownDescription |
+| `internal/provider/healthcheck_resource.go` | Update grace_period_value MarkdownDescription |
+| `internal/provider/statuspage_resource_schema.go` | Add languages + default_language validators + listvalidator + client imports |
 | `internal/provider/provider.go` | Register MonitoringLocationsDataSource |
 | `internal/provider/error_helpers.go` | Integrate ValidValueReference in newCreateError/newUpdateError |
 | `internal/provider/monitors_data_source.go` | Add count + ids attributes |
@@ -321,7 +332,8 @@ Acceptance test:
 
 2. **Error diagnostics** (`error_diagnostics_test.go`):
    - Test `ValidValueReference("Monitor")` returns all monitor enum fields.
-   - Test `ValidValueReference("Maintenance")` returns maintenance-specific fields.
+   - Test `ValidValueReference("Maintenance Window")` returns maintenance-specific fields (note: uses "Maintenance Window" to match the string passed to `newCreateError`).
+   - Test `ValidValueReference("Incident")` returns incident-specific fields.
    - Test `ValidValueReference("UnknownType")` returns empty string (graceful fallback).
 
 3. **Monitoring locations** (`monitoring_locations_data_source_test.go`):
@@ -340,7 +352,14 @@ Acceptance test:
    - `TestAccMonitoringLocationsDataSource_basic`: Read data source, verify count and structure. No API key needed.
 
 3. **Bulk data source count/ids**:
-   - Existing list data source tests already verify Read works. Add assertions for `count` and `ids` attributes in existing test functions.
+   - Add `count` and `ids` assertions to existing test functions in:
+     - `monitors_data_source_test.go`
+     - `incidents_data_source_test.go`
+     - `healthchecks_data_source_test.go`
+     - `maintenance_windows_data_source_test.go`
+     - `outages_data_source_test.go`
+     - `statuspages_data_source_test.go`
+     - `statuspage_subscribers_data_source_test.go`
 
 ---
 
