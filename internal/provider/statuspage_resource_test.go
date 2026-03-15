@@ -4,6 +4,8 @@
 package provider
 
 import (
+	"fmt"
+	"regexp"
 	"testing"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -136,4 +138,108 @@ func TestAccStatusPageResource_disappears(t *testing.T) {
 			},
 		},
 	})
+}
+
+// T19: StatusPage languages rejects invalid language code
+func TestAccStatusPageResource_invalidLanguageCode(t *testing.T) {
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config:      testAccStatusPageConfig_invalidLanguage("http://localhost:9999"),
+				ExpectError: regexp.MustCompile(`(?i)value must be one of`),
+			},
+		},
+	})
+}
+
+// T20: StatusPage default_language rejects invalid value
+func TestAccStatusPageResource_invalidDefaultLanguage(t *testing.T) {
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config:      testAccStatusPageConfig_invalidDefaultLanguage("http://localhost:9999"),
+				ExpectError: regexp.MustCompile(`(?i)value must be one of`),
+			},
+		},
+	})
+}
+
+// T21: StatusPage languages accepts all valid language codes
+func TestAccStatusPageResource_validLanguageCodes(t *testing.T) {
+	server := newMockStatusPageServer(t)
+	defer server.Close()
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config: testAccStatusPageConfig_multipleValidLanguages(server.URL),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.languages.#", "3"),
+				),
+			},
+		},
+	})
+}
+
+// Config helpers for language validation tests
+
+func testAccStatusPageConfig_invalidLanguage(baseURL string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "test_api_key"
+  base_url = %[1]q
+}
+
+resource "hyperping_statuspage" "test" {
+  name             = "Language Test"
+  hosted_subdomain = "lang-test"
+
+  settings = {
+    name      = "Language Test"
+    languages = ["en", "xx"]
+  }
+}
+`, baseURL)
+}
+
+func testAccStatusPageConfig_invalidDefaultLanguage(baseURL string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "test_api_key"
+  base_url = %[1]q
+}
+
+resource "hyperping_statuspage" "test" {
+  name             = "Default Language Test"
+  hosted_subdomain = "default-lang-test"
+
+  settings = {
+    name             = "Default Language Test"
+    languages        = ["en"]
+    default_language = "xx"
+  }
+}
+`, baseURL)
+}
+
+func testAccStatusPageConfig_multipleValidLanguages(baseURL string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "test_api_key"
+  base_url = %[1]q
+}
+
+resource "hyperping_statuspage" "test" {
+  name             = "Multi Language Test"
+  hosted_subdomain = "multi-lang-test"
+
+  settings = {
+    name      = "Multi Language Test"
+    languages = ["en", "fr", "de"]
+  }
+}
+`, baseURL)
 }

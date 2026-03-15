@@ -167,9 +167,9 @@ func TestMonitorsDataSource_Schema(t *testing.T) {
 		t.Error("Schema missing 'monitors' attribute")
 	}
 
-	// T44: Verify count and ids attributes exist
+	// T44: Verify total and ids attributes exist
 	if _, ok := resp.Schema.Attributes["total"]; !ok {
-		t.Error("Schema missing 'count' attribute")
+		t.Error("Schema missing 'total' attribute")
 	}
 	if _, ok := resp.Schema.Attributes["ids"]; !ok {
 		t.Error("Schema missing 'ids' attribute")

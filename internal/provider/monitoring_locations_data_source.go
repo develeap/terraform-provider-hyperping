@@ -5,9 +5,11 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
@@ -113,7 +115,14 @@ func (d *MonitoringLocationsDataSource) Read(ctx context.Context, _ datasource.R
 	ids := make([]string, len(client.AllowedRegions))
 
 	for i, regionID := range client.AllowedRegions {
-		meta := monitoringLocations[regionID]
+		meta, ok := monitoringLocations[regionID]
+		if !ok {
+			resp.Diagnostics.Append(diag.NewWarningDiagnostic(
+				"Missing Region Metadata",
+				fmt.Sprintf("Region %q from client.AllowedRegions has no metadata entry. "+
+					"It will appear with empty name, continent, and cloud_region.", regionID),
+			))
+		}
 		model.Locations[i] = MonitoringLocationModel{
 			ID:          types.StringValue(regionID),
 			Name:        types.StringValue(meta.Name),
