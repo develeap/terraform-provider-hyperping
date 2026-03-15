@@ -56,7 +56,7 @@ output "backup_ping_url" {
 ### Required
 
 - `grace_period_type` (String) Unit for `grace_period_value`. Valid values: `seconds`, `minutes`, `hours`, `days`.
-- `grace_period_value` (Number) Numeric value for the grace period buffer before alerting.
+- `grace_period_value` (Number) Numeric value for the grace period buffer before alerting. For example, set `grace_period_value = 5` with `grace_period_type = "minutes"` to allow a 5-minute window.
 - `name` (String) The name of the healthcheck.
 
 ### Optional

@@ -21,7 +21,9 @@ Fetches the list of all Hyperping maintenance windows.
 
 ### Read-Only
 
+- `ids` (List of String) List of maintenance window UUIDs. Convenient for `for_each` patterns.
 - `maintenance_windows` (Attributes List) List of maintenance windows. (see [below for nested schema](#nestedatt--maintenance_windows))
+- `total` (Number) Total number of maintenance windows returned (after filtering).
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

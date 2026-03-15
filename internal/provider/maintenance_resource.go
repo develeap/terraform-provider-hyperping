@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -125,6 +126,9 @@ func (r *MaintenanceResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("scheduled"),
+				Validators: []validator.String{
+					stringvalidator.OneOf(client.AllowedNotificationOptions...),
+				},
 			},
 			"notification_minutes": schema.Int64Attribute{
 				MarkdownDescription: "Number of minutes before the maintenance to notify subscribers. Defaults to `60`. Only used when notification_option is `scheduled`. Must be at least 1.",

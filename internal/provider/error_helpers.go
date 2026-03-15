@@ -17,14 +17,20 @@ import (
 
 // newCreateError creates a standardized error for Create operations
 func newCreateError(resourceType string, err error) diag.Diagnostic {
+	detail := fmt.Sprintf("Unable to create %s, got error: %s\n\n"+
+		"Troubleshooting:\n"+
+		"- Verify your API key has create permissions\n"+
+		"- Check that all required fields are provided\n"+
+		"- Review the Hyperping dashboard: https://app.hyperping.io",
+		resourceType, err)
+
+	if ref := ValidValueReference(resourceType); ref != "" {
+		detail += ref
+	}
+
 	return diag.NewErrorDiagnostic(
 		fmt.Sprintf("Failed to Create %s", resourceType),
-		fmt.Sprintf("Unable to create %s, got error: %s\n\n"+
-			"Troubleshooting:\n"+
-			"- Verify your API key has create permissions\n"+
-			"- Check that all required fields are provided\n"+
-			"- Review the Hyperping dashboard: https://app.hyperping.io",
-			resourceType, err),
+		detail,
 	)
 }
 
@@ -44,15 +50,21 @@ func newReadError(resourceType, resourceID string, err error) diag.Diagnostic {
 
 // newUpdateError creates a standardized error for Update operations
 func newUpdateError(resourceType, resourceID string, err error) diag.Diagnostic {
+	detail := fmt.Sprintf("Unable to update %s (ID: %s), got error: %s\n\n"+
+		"Troubleshooting:\n"+
+		"- Verify the resource still exists in Hyperping\n"+
+		"- Check your API key has update permissions\n"+
+		"- Verify the update values are valid\n"+
+		"- Review the Hyperping dashboard: https://app.hyperping.io",
+		resourceType, resourceID, err)
+
+	if ref := ValidValueReference(resourceType); ref != "" {
+		detail += ref
+	}
+
 	return diag.NewErrorDiagnostic(
 		fmt.Sprintf("Failed to Update %s", resourceType),
-		fmt.Sprintf("Unable to update %s (ID: %s), got error: %s\n\n"+
-			"Troubleshooting:\n"+
-			"- Verify the resource still exists in Hyperping\n"+
-			"- Check your API key has update permissions\n"+
-			"- Verify the update values are valid\n"+
-			"- Review the Hyperping dashboard: https://app.hyperping.io",
-			resourceType, resourceID, err),
+		detail,
 	)
 }
 

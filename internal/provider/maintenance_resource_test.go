@@ -548,3 +548,75 @@ func TestAccMaintenanceResource_deleteNotFound(t *testing.T) {
 		},
 	})
 }
+
+// T17: Maintenance with invalid notification_option produces plan-time error
+func TestAccMaintenanceResource_invalidNotificationOption(t *testing.T) {
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
+		},
+		Steps: []tfresource.TestStep{
+			{
+				Config: generateMaintenanceConfigFull(
+					"http://localhost:9999",
+					"Invalid Notification",
+					"Invalid Notification Title",
+					"Testing invalid notification_option",
+					startStr, endStr,
+					[]string{"mon_123"},
+					nil,
+					"invalid_option",
+					60,
+				),
+				ExpectError: regexp.MustCompile(`(?i)notification_option.*value must be one of`),
+			},
+		},
+	})
+}
+
+// T18: Maintenance with valid notification_option "immediate" succeeds
+func TestAccMaintenanceResource_validNotificationOptionImmediate(t *testing.T) {
+	startStr, endStr := generateMaintenanceTimeRange(24, 2)
+
+	fixture := &maintenanceTestFixture{
+		UUID:                "mw_notif_imm_123",
+		Name:                "Immediate Notification",
+		Title:               "Immediate Notification Title",
+		Text:                "Testing immediate notification_option",
+		StartDate:           startStr,
+		EndDate:             endStr,
+		Monitors:            []string{"mon_123"},
+		NotificationOption:  "immediate",
+		NotificationMinutes: 60,
+	}
+
+	server := newSimpleMaintenanceServer(fixture)
+	defer server.Close()
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
+			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
+		},
+		Steps: []tfresource.TestStep{
+			{
+				Config: generateMaintenanceConfigFull(
+					server.URL,
+					fixture.Name,
+					fixture.Title,
+					fixture.Text,
+					startStr, endStr,
+					fixture.Monitors,
+					nil,
+					"immediate",
+					60,
+				),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_option", "immediate"),
+					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "id", "mw_notif_imm_123"),
+				),
+			},
+		},
+	})
+}

@@ -35,6 +35,8 @@ type MaintenanceWindowsDataSource struct {
 type MaintenanceWindowsDataSourceModel struct {
 	MaintenanceWindows []MaintenanceWindowDataModel `tfsdk:"maintenance_windows"`
 	Filter             *MaintenanceFilterModel      `tfsdk:"filter"`
+	Total              types.Int64                  `tfsdk:"total"`
+	IDs                types.List                   `tfsdk:"ids"`
 }
 
 // MaintenanceWindowDataModel describes a single maintenance window in the data source.
@@ -63,6 +65,15 @@ func (d *MaintenanceWindowsDataSource) Schema(_ context.Context, _ datasource.Sc
 
 		Attributes: map[string]schema.Attribute{
 			"filter": MaintenanceFilterSchema(),
+			"total": schema.Int64Attribute{
+				MarkdownDescription: "Total number of maintenance windows returned (after filtering).",
+				Computed:            true,
+			},
+			"ids": schema.ListAttribute{
+				MarkdownDescription: "List of maintenance window UUIDs. Convenient for `for_each` patterns.",
+				Computed:            true,
+				ElementType:         types.StringType,
+			},
 			"maintenance_windows": schema.ListNestedAttribute{
 				MarkdownDescription: "List of maintenance windows.",
 				Computed:            true,
@@ -172,12 +183,23 @@ func (d *MaintenanceWindowsDataSource) Read(ctx context.Context, req datasource.
 
 	// Map response to model
 	config.MaintenanceWindows = make([]MaintenanceWindowDataModel, len(filteredMaintenances))
+	maintenanceIDs := make([]string, len(filteredMaintenances))
 	for i, maint := range filteredMaintenances {
 		d.mapMaintenanceToDataModel(&maint, &config.MaintenanceWindows[i], &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
+		maintenanceIDs[i] = maint.UUID
 	}
+
+	// Set count and ids
+	config.Total = types.Int64Value(int64(len(filteredMaintenances)))
+	idsList, diags := types.ListValueFrom(ctx, types.StringType, maintenanceIDs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	config.IDs = idsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

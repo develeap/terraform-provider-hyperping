@@ -48,6 +48,14 @@ func TestIncidentsDataSource_Schema(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["incidents"]; !ok {
 		t.Error("Schema missing 'incidents' attribute")
 	}
+
+	// Verify total and ids attributes exist
+	if _, ok := resp.Schema.Attributes["total"]; !ok {
+		t.Error("Schema missing 'total' attribute")
+	}
+	if _, ok := resp.Schema.Attributes["ids"]; !ok {
+		t.Error("Schema missing 'ids' attribute")
+	}
 }
 
 func TestIncidentsDataSource_Configure(t *testing.T) {

@@ -34,7 +34,9 @@ func TestAccMonitorsDataSource_basic(t *testing.T) {
 				Config: testAccMonitorsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_monitors.all", "monitors.#", "2"),
-					// Don't check specific order since map iteration is not deterministic
+					// T35: count and ids
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.all", "total", "2"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.all", "ids.#", "2"),
 				),
 			},
 		},
@@ -54,6 +56,9 @@ func TestAccMonitorsDataSource_empty(t *testing.T) {
 				Config: testAccMonitorsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_monitors.all", "monitors.#", "0"),
+					// T36: empty count and ids
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.all", "total", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.all", "ids.#", "0"),
 				),
 			},
 		},
@@ -160,6 +165,14 @@ func TestMonitorsDataSource_Schema(t *testing.T) {
 	// Verify monitors attribute exists
 	if _, ok := resp.Schema.Attributes["monitors"]; !ok {
 		t.Error("Schema missing 'monitors' attribute")
+	}
+
+	// T44: Verify total and ids attributes exist
+	if _, ok := resp.Schema.Attributes["total"]; !ok {
+		t.Error("Schema missing 'total' attribute")
+	}
+	if _, ok := resp.Schema.Attributes["ids"]; !ok {
+		t.Error("Schema missing 'ids' attribute")
 	}
 }
 
@@ -396,6 +409,9 @@ func TestAccMonitorsDataSource_filterByStatus(t *testing.T) {
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.#", "2"),
 					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "monitors.0.status", "up"),
+					// T43: count and ids with filter
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "total", "2"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitors.filtered", "ids.#", "2"),
 				),
 			},
 		},
