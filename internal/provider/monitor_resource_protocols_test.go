@@ -5,6 +5,7 @@ package provider
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -85,8 +86,8 @@ func TestAccMonitorResource_icmpProtocol(t *testing.T) {
 	})
 }
 
-// TestAccMonitorResource_icmpWithHTTPFields tests ICMP monitor with explicitly set HTTP fields.
-// Verifies that HTTP fields specified in config are preserved even for ICMP monitors.
+// TestAccMonitorResource_icmpWithHTTPFields tests that ICMP monitor rejects HTTP-only fields.
+// ValidateConfig catches this at plan time with a clear error message.
 func TestAccMonitorResource_icmpWithHTTPFields(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
@@ -94,28 +95,18 @@ func TestAccMonitorResource_icmpWithHTTPFields(t *testing.T) {
 	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
-			// Create ICMP monitor with HTTP fields explicitly set
+			// ICMP monitor with HTTP fields should produce plan-time error
 			{
-				Config: testAccMonitorResourceConfigICMPWithHTTPFields(server.URL),
-				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "protocol", "icmp"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "http_method", "POST"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "expected_status_code", "201"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "follow_redirects", "false"),
-				),
-			},
-			// Verify fields persist after refresh
-			{
-				ResourceName:      "hyperping_monitor.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				Config:      testAccMonitorResourceConfigICMPWithHTTPFields(server.URL),
+				ExpectError: regexp.MustCompile(`http_method is only valid for HTTP monitors`),
 			},
 		},
 	})
 }
 
 // TestAccMonitorResource_protocolSwitch tests switching between protocols.
-// Critical regression test for v1.0.8: verifies protocol changes don't cause state drift.
+// When switching from HTTP to ICMP, HTTP-only fields must be removed from config.
+// When switching back, they can be re-added.
 func TestAccMonitorResource_protocolSwitch(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
@@ -134,15 +125,11 @@ func TestAccMonitorResource_protocolSwitch(t *testing.T) {
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_body", `{"key":"value"}`),
 				),
 			},
-			// Switch to ICMP - HTTP fields remain in state
+			// Switch to ICMP - must remove HTTP-only fields from config
 			{
-				Config: testAccMonitorResourceConfigSwitchToICMP(server.URL),
+				Config: testAccMonitorResourceConfigICMP(server.URL, "switch-protocol-test"),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "protocol", "icmp"),
-					// HTTP fields should preserve configured values
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "http_method", "POST"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "expected_status_code", "201"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "follow_redirects", "false"),
 				),
 			},
 			// Import state to verify no drift
@@ -164,9 +151,8 @@ func TestAccMonitorResource_protocolSwitch(t *testing.T) {
 	})
 }
 
-// TestAccMonitorResource_portWithoutPortField tests validation when port field is missing.
-// This test verifies that port monitors work even without explicit port field
-// (API may provide a default or accept the URL's port).
+// TestAccMonitorResource_portWithoutPortField tests that port protocol requires the port field.
+// ValidateConfig catches this at plan time with a clear error message.
 func TestAccMonitorResource_portWithoutPortField(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
@@ -174,20 +160,17 @@ func TestAccMonitorResource_portWithoutPortField(t *testing.T) {
 	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
-			// Create port monitor without explicit port field
+			// Port monitor without port field should produce plan-time error
 			{
-				Config: testAccMonitorResourceConfigPortNoPort(server.URL),
-				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "protocol", "port"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "url", "https://example.com:8443"),
-				),
+				Config:      testAccMonitorResourceConfigPortNoPort(server.URL),
+				ExpectError: regexp.MustCompile(`port is required when protocol is "port"`),
 			},
 		},
 	})
 }
 
-// TestAccMonitorResource_requiredKeywordNonHTTP tests required_keyword on non-HTTP protocols.
-// Verifies that required_keyword field works correctly for port/ICMP monitors.
+// TestAccMonitorResource_requiredKeywordNonHTTP tests that required_keyword is rejected for non-HTTP protocols.
+// ValidateConfig catches this at plan time with a clear error message.
 func TestAccMonitorResource_requiredKeywordNonHTTP(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
@@ -195,19 +178,10 @@ func TestAccMonitorResource_requiredKeywordNonHTTP(t *testing.T) {
 	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
-			// Create port monitor with required_keyword (may not be applicable, but should not error)
+			// Port monitor with required_keyword should produce plan-time error
 			{
-				Config: testAccMonitorResourceConfigPortWithKeyword(server.URL, "HEALTHY"),
-				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "protocol", "port"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "required_keyword", "HEALTHY"),
-				),
-			},
-			// Verify persistence through import
-			{
-				ResourceName:      "hyperping_monitor.test",
-				ImportState:       true,
-				ImportStateVerify: true,
+				Config:      testAccMonitorResourceConfigPortWithKeyword(server.URL, "HEALTHY"),
+				ExpectError: regexp.MustCompile(`required_keyword is only valid for HTTP monitors`),
 			},
 		},
 	})
@@ -261,19 +235,6 @@ resource "hyperping_monitor" "test" {
   request_body         = jsonencode({
     key = "value"
   })
-}
-`
-}
-
-func testAccMonitorResourceConfigSwitchToICMP(baseURL string) string {
-	return testAccProviderConfig(baseURL) + `
-resource "hyperping_monitor" "test" {
-  name                 = "switch-protocol-test"
-  url                  = "https://api.example.com/health"
-  protocol             = "icmp"
-  http_method          = "POST"
-  expected_status_code = "201"
-  follow_redirects     = false
 }
 `
 }
