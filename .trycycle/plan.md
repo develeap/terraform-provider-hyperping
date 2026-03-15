@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make the Hyperping Terraform provider follow IaC best practices so that plan-time validation catches configuration errors before any API call is made, schema descriptions guide users without external docs, and sensible defaults reduce boilerplate. Six priority items, delivered as a single cutover.
+Make the Hyperping Terraform provider follow IaC best practices so that plan-time validation catches configuration errors before any API call is made, schema descriptions guide users without external docs, and sensible defaults reduce boilerplate. Seven areas evaluated; six require changes, one (defaults) is already complete.
 
 ---
 
@@ -20,37 +20,40 @@ Make the Hyperping Terraform provider follow IaC best practices so that plan-tim
 
 **Changes**:
 1. Add `_ resource.ResourceWithValidateConfig = &MonitorResource{}` to the interface assertion block.
-2. Implement `ValidateConfig(ctx, req, resp)` method on `MonitorResource`:
-   - Read `protocol` from config. If unknown/null, skip (module-composed values cannot be validated at plan time).
-   - When `protocol` is `"icmp"`:
-     - Error if `http_method` is set (not null/unknown).
-     - Error if `expected_status_code` is set.
-     - Error if `follow_redirects` is explicitly set.
-     - Error if `request_headers` is set.
-     - Error if `request_body` is set.
-     - Error if `required_keyword` is set.
-     - Error if `port` is set.
-   - When `protocol` is `"port"`:
-     - Error if `http_method` is set.
-     - Error if `expected_status_code` is set.
-     - Error if `follow_redirects` is explicitly set.
-     - Error if `request_headers` is set.
-     - Error if `request_body` is set.
-     - Error if `required_keyword` is set.
-     - Error if `port` is NOT set (required for port protocol). This replaces the existing `RequiredWhenProtocolPort` validator on the `port` attribute. The schema-level validator on `port` will be kept as belt-and-suspenders, but the primary cross-field check moves into `ValidateConfig`.
-   - When `protocol` is `"http"`:
-     - Error if `port` is set (not used for HTTP monitors; the URL contains the port).
-3. All error messages include the field name, the invalid protocol, and what protocols the field applies to. Example: `"http_method is only valid for HTTP monitors. When protocol is \"icmp\", remove http_method or change protocol to \"http\"."`.
+2. The `ValidateConfig` method itself lives in `monitor_validate_config.go` (see below).
 
 **File**: `internal/provider/monitor_validate_config.go` (new, ~120 lines)
 
 Extracted to its own file because `monitor_resource.go` is already 787 lines.
 
-**Decision -- keep existing default values for HTTP fields**: The current defaults (`http_method = "GET"`, `expected_status_code = "2xx"`, `follow_redirects = true`) apply even when protocol is `icmp` or `port`, because the schema `Default` runs before `ValidateConfig`. The `ValidateConfig` check must therefore treat `Computed` + `Default` values as "not explicitly set by the user." The correct approach: only flag a field as conflicting if `config.GetAttribute` returns a non-null, non-unknown value AND the user actually specified it (i.e., it is present in `req.Config`). The framework's `req.Config` only contains user-supplied values, so default-filled values will appear as `null` or `unknown` in the config object. This means `req.Config.GetAttribute(ctx, path.Root("http_method"), &httpMethod)` will give us the raw config value before defaults. If it is null, the user did not set it, and we should not error.
+**ValidateConfig implementation**:
+- Read `protocol` from `req.Config` (raw user config, before defaults). If unknown/null, skip (module-composed values cannot be validated at plan time).
+- When `protocol` is `"icmp"`:
+  - Error if `http_method` is set (not null/unknown).
+  - Error if `expected_status_code` is set.
+  - Error if `follow_redirects` is explicitly set.
+  - Error if `request_headers` is set.
+  - Error if `request_body` is set.
+  - Error if `required_keyword` is set.
+  - Error if `port` is set.
+- When `protocol` is `"port"`:
+  - Error if `http_method` is set.
+  - Error if `expected_status_code` is set.
+  - Error if `follow_redirects` is explicitly set.
+  - Error if `request_headers` is set.
+  - Error if `request_body` is set.
+  - Error if `required_keyword` is set.
+  - Error if `port` is NOT set (required for port protocol). Note: the `port` attribute currently only has a `PortRange()` validator (1-65535 range check); there is no existing `RequiredWhenProtocolPort` validator applied to it in the schema. The `RequiredWhenProtocolPort` function exists in `validators_conditional.go` but is unused. The `ValidateConfig` approach supersedes it and is the sole location for this cross-field check.
+- When `protocol` is `"http"`:
+  - Error if `port` is set (not used for HTTP monitors; the URL contains the port).
+
+All error messages include the field name, the invalid protocol, and what protocols the field applies to. Example: `"http_method is only valid for HTTP monitors. When protocol is \"icmp\", remove http_method or change protocol to \"http\"."`.
+
+**Decision -- handling default values for HTTP fields**: The current defaults (`http_method = "GET"`, `expected_status_code = "2xx"`, `follow_redirects = true`) are set via schema `Default` which runs before `ValidateConfig`. However, `ValidateConfig` reads from `req.Config`, which contains only user-supplied values (raw config, before defaults are applied). Default-filled values appear as `null` in `req.Config`. Therefore, `req.Config.GetAttribute(ctx, path.Root("http_method"), &httpMethod)` returns null when the user did not explicitly set the field, and we do NOT flag it as conflicting. Only explicit user-provided values are flagged.
 
 ### 2. Schema-Level Validators for Known Enum Values
 
-**Problem**: Some fields that accept enumerated values lack validators (or have incomplete ones).
+**Problem**: Some fields that accept enumerated values lack validators. Users discover invalid values only when the API rejects them (422 error).
 
 **Current state after codebase audit**:
 - `protocol` -- already has `stringvalidator.OneOf(client.AllowedProtocols...)` (good)
@@ -61,96 +64,90 @@ Extracted to its own file because `monitor_resource.go` is already 787 lines.
 - `alerts_wait` -- already has `AlertsWait()` validator (good)
 - `notification_option` on maintenance -- **MISSING validator**. Currently accepts any string; should be `stringvalidator.OneOf(client.AllowedNotificationOptions...)`.
 - `type` on incident -- already has `stringvalidator.OneOf(client.AllowedIncidentTypes...)` (good)
-- `type` on incident_update -- needs verification.
+- `type` on incident_update -- already has `stringvalidator.OneOf(client.AllowedIncidentUpdateTypes...)` (good). No change needed.
+- `languages` on statuspage -- **MISSING validator**. Currently accepts any string list.
+- `default_language` on statuspage -- **MISSING validator**. Currently accepts any string.
 
 **Changes**:
 
 **File**: `internal/provider/maintenance_resource.go`
 - Add `stringvalidator.OneOf(client.AllowedNotificationOptions...)` to `notification_option` attribute's Validators list.
-- Import `"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"` (add to imports).
-
-**File**: `internal/provider/incident_update_resource.go`
-- **Already has** `stringvalidator.OneOf(client.AllowedIncidentUpdateTypes...)` on `type`. No change needed.
+- Add `"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"` to imports (`stringvalidator` is not currently imported in this file; the file imports `listvalidator` and `int64validator` but not `stringvalidator`).
 
 **File**: `internal/provider/statuspage_resource_schema.go`
-- `theme` -- already has `stringvalidator.OneOf("light", "dark", "system")` (good).
-- `font` -- already has `stringvalidator.OneOf(...)` with all 13 font values (good).
-- `languages` -- **MISSING validator**. Currently accepts any string list. Add `listvalidator.ValueStringsAre(stringvalidator.OneOf(client.AllowedLanguages...))`.
-- `default_language` -- **MISSING validator**. Currently accepts any string. Add `stringvalidator.OneOf(client.AllowedLanguages...)`.
-- Import `listvalidator` if not already present (it is not imported in this file).
+- `languages`: Add `listvalidator.ValueStringsAre(stringvalidator.OneOf(client.AllowedLanguages...))` to Validators list.
+- `default_language`: Add `stringvalidator.OneOf(client.AllowedLanguages...)` to Validators list.
+- Add `"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"` to imports (not currently imported in this file; `stringvalidator` IS already imported).
 
 ### 3. Improved Error Diagnostics with Valid Value Lists
 
-**Problem**: When the API returns 422, the raw error message is opaque. The provider already has `BuildTroubleshootingSteps` for error context, but the validation error path only adds generic guidance. We need field-specific error messages that include valid value lists.
+**Problem**: When the API returns a 422 validation error, the provider's error messages include generic troubleshooting steps. The existing `buildValidationErrorSteps` in `error_helpers.go` already adds some resource-specific guidance (e.g., valid frequencies for Monitor), but the guidance is incomplete and only appears in the `WithContext` error variants. The simpler `newCreateError`/`newUpdateError` functions (which most resources use) lack this specificity.
 
-**Solution**: Enhance the `buildValidationErrorSteps` function in `error_helpers.go` to parse the API error body for field names and append the known valid values for that field. Additionally, create an `apiErrorEnhancer` that wraps API errors and enriches them with field-specific guidance before they reach the diagnostic layer.
+**Solution**: Upgrade the simpler `newCreateError` and `newUpdateError` functions to include resource-specific valid value reference tables. This avoids fragile error-body parsing; instead, for each resource type, we unconditionally append a "Quick Reference" section listing all enum/constrained fields and their valid values. This is simple, robust, and directly useful when a user hits a 422.
 
-**File**: `internal/provider/error_diagnostics.go` (new, ~150 lines)
+**Decision -- unconditional reference vs. error-body parsing**: Parsing API error strings for field names is fragile (error format may change, field names in errors may not match schema names). An unconditional reference table is always correct and costs only a few extra lines in the error output. Users scanning the error will immediately see the valid values they need.
 
-This file introduces `EnhanceAPIError(resourceType string, err error) string` which:
-1. Checks if the error contains common field names (frequency, regions, protocol, status_code, etc.).
-2. For each matched field, appends the valid values from `client.Allowed*` constants.
-3. Returns an enhanced error string with specific guidance.
+**Decision -- enhance at diagnostic layer, not client layer**: The user specification says "Do NOT change the client package API surface." Enhancing errors in the provider package respects this boundary.
 
-Example output:
+**File**: `internal/provider/error_diagnostics.go` (new, ~100 lines)
+
+This file introduces `ValidValueReference(resourceType string) string` which returns a formatted reference table of valid values for the given resource type. It reads from `client.Allowed*` constants to stay in sync.
+
+Example output appended to a Monitor create error:
 ```
-API error: Unprocessable Entity - field "check_frequency" is invalid.
-
-Valid values for check_frequency: 10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400 (seconds).
+Quick Reference (valid values):
+  protocol:             http, port, icmp
+  http_method:          GET, POST, PUT, PATCH, DELETE, HEAD
+  check_frequency:      10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400
+  expected_status_code: Specific code (200), wildcard (2xx), or range (1xx-3xx)
+  regions:              london, frankfurt, singapore, sydney, tokyo, virginia, saopaulo, bahrain
+  alerts_wait:          -1, 0, 1, 2, 3, 5, 10, 30, 60
 ```
 
 **File**: `internal/provider/error_helpers.go`
 
 Changes to existing functions:
-- `newCreateError`, `newUpdateError`: Call `EnhanceAPIError` on the error before formatting the diagnostic message.
-- `buildValidationErrorSteps`: Make the Monitor-specific block more detailed, adding valid values for all enum fields inline.
+- `newCreateError`: After the existing troubleshooting block, append `ValidValueReference(resourceType)`.
+- `newUpdateError`: Same treatment.
 
-**Decision -- enhance at diagnostic layer, not client layer**: The user specification says "Do NOT change the client package API surface." Enhancing errors in the provider package respects this boundary. The client returns raw errors; the provider adds IaC-specific guidance.
+No changes to `NewCreateErrorWithContext`/`NewUpdateErrorWithContext` -- they already call `BuildTroubleshootingSteps` which provides detailed guidance. The quick reference supplements the simpler functions.
 
 ### 4. Better MarkdownDescriptions with Examples and Constraints
 
-**Problem**: Descriptions like "The name of the monitor" are not actionable. Users need to know what values are valid, what the defaults are, and see examples.
+**Problem**: Some descriptions are terse (e.g., "The name of the monitor") and don't tell users about protocol-specific applicability, value constraints, or provide examples. Users must refer to external docs.
 
-**Solution**: Update MarkdownDescription strings across all resource schemas to include constraints, defaults, and examples. This is a mechanical change to string literals only.
+**Solution**: Update MarkdownDescription strings to include constraints, protocol applicability, and examples. This is a mechanical change to string literals only -- no logic changes.
+
+**Principle**: Only update descriptions that are genuinely insufficient. Descriptions that already include valid values, defaults, and constraints are left as-is. Protocol-specific fields get explicit "Only valid when protocol is X" notes to reinforce the cross-field validators from Item 1.
 
 **Files changed** (description-only updates, no logic changes):
 
 **`internal/provider/monitor_resource.go`** -- Schema section:
-- `name`: `"The display name of the monitor. Must be 1-255 characters. Example: \"Production API\""`
-- `url`: `"The URL to monitor. Must include protocol (http:// or https://). Example: \"https://api.example.com/health\""`
-- `protocol`: Already good, keep as-is.
-- `http_method`: Already good, keep as-is.
-- `check_frequency`: Already good, keep as-is.
-- `regions`: `"List of monitoring regions. Use the ` + "`hyperping_monitoring_locations`" + ` data source to discover available locations. Valid values: ` + "`london`" + `, ` + "`frankfurt`" + `, ` + "`singapore`" + `, ` + "`sydney`" + `, ` + "`tokyo`" + `, ` + "`virginia`" + `, ` + "`saopaulo`" + `, ` + "`bahrain`" + `."`
-- `request_headers`: Add note "Only valid when protocol is `http`."
-- `request_body`: `"HTTP request body for POST/PUT/PATCH requests. Only valid when protocol is ` + "`http`" + ` and http_method is POST, PUT, or PATCH."`
-- `expected_status_code`: Already good.
-- `follow_redirects`: Add "Only applies to HTTP monitors."
-- `port`: `"TCP port number (1-65535). Required when protocol is ` + "`port`" + `. Example: ` + "`443`" + ` for HTTPS, ` + "`5432`" + ` for PostgreSQL."`
-- `alerts_wait`: Already good.
-- `required_keyword`: `"A string that must appear in the HTTP response body for the check to pass. Only valid when protocol is ` + "`http`" + `. Example: ` + "`\"OK\"`" + `."`
-- `escalation_policy`: Already good.
-- `project_uuid`: Already good.
+- `name`: Add length constraint and example. Current: "The name of the monitor." Proposed: "The display name of the monitor. Must be 1-255 characters."
+- `url`: Add scheme note. Current: "The URL to monitor." Proposed: "The URL to monitor. Must include protocol scheme (e.g., `https://api.example.com/health`)."
+- `regions`: Add reference to new data source. Current: "List of regions to check from. Valid values: ..." Proposed: "List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`."
+- `request_headers`: Add protocol note. Current: "Custom HTTP headers to send with the request." Proposed: "Custom HTTP headers to send with the request. Only valid when protocol is `http`."
+- `request_body`: Add protocol and method note. Current: "Request body for POST/PUT/PATCH requests." Proposed: "HTTP request body. Only valid when protocol is `http` and http_method is `POST`, `PUT`, or `PATCH`."
+- `follow_redirects`: Add protocol note. Current: "Whether to follow HTTP redirects. Defaults to `true`." Proposed: "Whether to follow HTTP redirects. Only applies to `http` protocol monitors. Defaults to `true`."
+- `port`: Add examples. Current: "Port number to check. Required when `protocol` is `port`." Proposed: "TCP port number (1-65535). Required when protocol is `port`. Examples: `443` (HTTPS), `5432` (PostgreSQL), `6379` (Redis)."
+- `required_keyword`: Add protocol note. Current: "A keyword that must appear in the response body for the check to pass." Proposed: "A keyword that must appear in the HTTP response body for the check to pass. Only valid when protocol is `http`."
+- `protocol`, `http_method`, `check_frequency`, `expected_status_code`, `alerts_wait`, `escalation_policy`, `project_uuid`: Already good, keep as-is.
 
 **`internal/provider/healthcheck_resource.go`** -- Schema section:
-- `cron`: `"Cron expression defining the expected schedule. Mutually exclusive with period_value/period_type. Example: ` + "`\"0 */6 * * *\"`" + ` (every 6 hours). Requires timezone to be set."`
-- `timezone`: `"IANA timezone for the cron expression. Required when cron is set. Example: ` + "`\"America/New_York\"`" + `, ` + "`\"UTC\"`" + `."`
-- `grace_period_value`: `"Buffer time before alerting after a missed ping. Combined with grace_period_type. Example: ` + "`5`" + ` with grace_period_type ` + "`\"minutes\"`" + ` means alert after 5 minutes of silence."`
-- `grace_period_type`: Already has OneOf. Add example.
+- `cron`: Already good ("Cron expression defining the schedule... Mutually exclusive with `period_value`/`period_type`."). Keep as-is.
+- `timezone`: Already good ("Timezone for the cron expression... Required when `cron` is set."). Keep as-is.
+- `grace_period_value`: Add practical example. Current: likely terse. Proposed: Include example combining value + type.
+- `grace_period_type`: Already has OneOf. Keep as-is.
 
 **`internal/provider/maintenance_resource.go`** -- Schema section:
-- `start_date`: Already good.
-- `end_date`: Already good.
-- `notification_option`: `"When to notify subscribers about this maintenance. Valid values: ` + "`scheduled`" + ` (notify notification_minutes before start), ` + "`immediate`" + ` (notify right away). Defaults to ` + "`scheduled`" + `."`
-- `notification_minutes`: `"Minutes before the maintenance window starts to send notifications. Only used when notification_option is ` + "`scheduled`" + `. Must be at least 1. Defaults to ` + "`60`" + `."`
+- `notification_option`: Already good ("When to notify subscribers. Valid values: `scheduled`, `immediate`. Defaults to `scheduled`."). Keep as-is.
+- `notification_minutes`: Already good. Keep as-is.
 
 **`internal/provider/incident_resource.go`** -- Schema section:
-- `type`: Already good.
-- `affected_components`: `"List of monitor UUIDs representing components affected by this incident. These are shown on the status page."`
+- `affected_components`: Add context. Current: "List of component UUIDs affected by this incident." Proposed: "List of monitor UUIDs representing components affected by this incident. Displayed on the associated status pages."
 
 **`internal/provider/outage_resource.go`** -- Schema section:
-- `monitor_uuid`: `"The UUID of the monitor this outage is associated with. Must reference an existing monitor."`
-- `status_code`: Add valid range info.
+- `monitor_uuid`: Already good. Keep as-is.
 
 ### 5. Sensible Defaults Where Safe
 
@@ -177,6 +174,8 @@ Changes to existing functions:
 **Solution**: Create a `hyperping_monitoring_locations` data source that returns the known set of monitoring regions as a structured list. Since the Hyperping API does not have a dedicated `/locations` endpoint, this data source returns the statically known regions from `client.AllowedRegions` enriched with metadata (display name, continent, cloud provider region).
 
 **Decision -- static vs. API-backed data source**: The Hyperping API has no `/locations` or `/regions` endpoint. The allowed regions are a fixed set (`client.AllowedRegions`). Making a static data source is the correct approach because: (a) it works offline during plan, (b) it never fails due to API issues, (c) the region list changes infrequently and is tied to provider releases anyway, (d) competitors with API-backed location data sources still hardcode the enrichment metadata (display names, coordinates). If Hyperping adds a locations API in the future, this data source can be upgraded to call it while maintaining backward compatibility.
+
+**Decision -- cloud_region field**: The `cloud_region` values (e.g., `eu-west-2`) are indicative AWS region identifiers based on the geographic mapping. They serve as a convenience for users operating in multi-cloud environments who want to co-locate monitoring probes with their infrastructure. These are approximate mappings, not authoritative infrastructure declarations.
 
 **New Files**:
 
@@ -205,7 +204,7 @@ Schema:
 
 Read implementation:
 - Returns a static list derived from a package-level `monitoringLocations` variable that maps each `client.AllowedRegions` entry to its metadata.
-- No API call needed.
+- No API call needed. No client field on the struct.
 
 Register in `provider.go` DataSources:
 - Add `NewMonitoringLocationsDataSource` to the `DataSources()` return list.
@@ -218,7 +217,7 @@ Unit test:
 - Verify known regions (london, frankfurt, etc.) are present.
 
 Acceptance test:
-- `TestAccMonitoringLocationsDataSource_basic`: Uses `terraform-plugin-testing` to verify the data source reads successfully and returns expected attributes.
+- `TestAccMonitoringLocationsDataSource_basic`: Uses `terraform-plugin-testing` to verify the data source reads successfully and returns expected attributes. No API key needed (static data).
 
 **Location metadata table** (defined as package-level var in the data source file):
 
@@ -239,62 +238,65 @@ Acceptance test:
 
 **Solution**: Add `count` (computed Int64) and `ids` (computed List of String) attributes to all list data sources.
 
+**Decision -- naming convention**: Using `count` and `ids` to match the convention from major providers (AWS, Azure, GCP all use these names on list data sources).
+
 **Files changed**:
 
 **`internal/provider/monitors_data_source.go`**:
-- Add `Count types.Int64` and `IDs types.List` to `MonitorsDataSourceModel`.
+- Add `Count types.Int64 \`tfsdk:"count"\`` and `IDs types.List \`tfsdk:"ids"\`` to `MonitorsDataSourceModel`.
 - Add schema attributes:
   - `count`: `schema.Int64Attribute{Computed: true, MarkdownDescription: "Total number of monitors returned (after filtering)."}`
   - `ids`: `schema.ListAttribute{Computed: true, ElementType: types.StringType, MarkdownDescription: "List of monitor UUIDs. Convenient for for_each patterns."}`
-- In `Read()`, after mapping monitors, set `config.Count = types.Int64Value(int64(len(filteredMonitors)))` and build `config.IDs` from the monitor UUIDs.
+- In `Read()`, after mapping monitors, set `config.Count = types.Int64Value(int64(len(filteredMonitors)))` and build `config.IDs` from the monitor UUIDs using `types.ListValueFrom`.
 
 **`internal/provider/incidents_data_source.go`**:
 - Same pattern: add `Count` and `IDs` to model, schema, and Read.
+- IDs extracted from `incident.UUID` for each filtered incident.
 
 **`internal/provider/healthchecks_data_source.go`**:
-- Same pattern.
+- Same pattern: add `Count` and `IDs`.
+- IDs extracted from healthcheck UUIDs.
 
 **`internal/provider/maintenance_windows_data_source.go`**:
-- Same pattern.
+- Same pattern: add `Count` and `IDs`.
+- IDs extracted from maintenance UUIDs.
 
 **`internal/provider/outages_data_source.go`**:
-- Same pattern.
+- Same pattern: add `Count` and `IDs`.
+- IDs extracted from outage UUIDs.
 
 **`internal/provider/statuspages_data_source.go`**:
-- Already has `Total types.Int64` (from API pagination). Add `IDs types.List` only. The `total` field serves as `count`.
-- In `Read()`, build IDs list from status page UUIDs after mapping.
+- Already has `Total types.Int64` (from API pagination). Add `IDs types.List \`tfsdk:"ids"\`` only. The `total` field serves as `count`.
+- **Implementation note**: This data source uses `types.List` for `StatusPages` (not a Go slice), so IDs must be extracted during the mapping loop (before converting to `types.ListValueFrom`). Collect UUIDs into a `[]string` during the `for i, sp := range filteredStatusPages` loop, then convert to `types.ListValueFrom` after the loop.
 
 **`internal/provider/statuspage_subscribers_data_source.go`**:
-- Already has `Total types.Int64` (from API pagination). Add `IDs types.List` only (subscriber IDs as strings).
-- In `Read()`, build IDs list from subscriber IDs after mapping.
-
-**Decision -- naming convention**: Using `count` and `ids` to match the convention from major providers (AWS, Azure, GCP all use these names on list data sources).
+- Already has `Total types.Int64` (from API pagination). Add `IDs types.List \`tfsdk:"ids"\`` only (subscriber IDs as strings).
+- **Implementation note**: Same approach as statuspages -- collect IDs during the existing mapping loop.
 
 ---
 
 ## File Change Summary
 
-### New Files (4 source + 3 test)
+### New Files (3 source + 3 test)
 | File | Lines (est.) | Purpose |
 |------|-------------|---------|
 | `internal/provider/monitor_validate_config.go` | ~120 | Cross-field validation for monitor protocol/field combos |
 | `internal/provider/monitoring_locations_data_source.go` | ~180 | Static data source for monitoring regions |
-| `internal/provider/error_diagnostics.go` | ~150 | API error enhancement with valid value lists |
+| `internal/provider/error_diagnostics.go` | ~100 | Resource-specific valid value reference tables |
 | `internal/provider/monitor_validate_config_test.go` | ~200 | Unit tests for cross-field validation |
 | `internal/provider/monitoring_locations_data_source_test.go` | ~80 | Unit + acceptance tests for locations data source |
-| `internal/provider/error_diagnostics_test.go` | ~100 | Unit tests for error enhancement |
+| `internal/provider/error_diagnostics_test.go` | ~80 | Unit tests for valid value references |
 
 ### Modified Files (~15)
 | File | Nature of Change |
 |------|-----------------|
 | `internal/provider/monitor_resource.go` | Add ValidateConfig interface assertion, update MarkdownDescriptions |
-| `internal/provider/maintenance_resource.go` | Add notification_option validator + stringvalidator import, update descriptions |
+| `internal/provider/maintenance_resource.go` | Add notification_option validator + stringvalidator import |
 | `internal/provider/incident_resource.go` | Update MarkdownDescriptions |
 | `internal/provider/healthcheck_resource.go` | Update MarkdownDescriptions |
-| `internal/provider/outage_resource.go` | Update MarkdownDescriptions |
 | `internal/provider/statuspage_resource_schema.go` | Add languages + default_language validators + listvalidator import |
 | `internal/provider/provider.go` | Register MonitoringLocationsDataSource |
-| `internal/provider/error_helpers.go` | Integrate EnhanceAPIError in error creation functions |
+| `internal/provider/error_helpers.go` | Integrate ValidValueReference in newCreateError/newUpdateError |
 | `internal/provider/monitors_data_source.go` | Add count + ids attributes |
 | `internal/provider/incidents_data_source.go` | Add count + ids attributes |
 | `internal/provider/healthchecks_data_source.go` | Add count + ids attributes |
@@ -314,18 +316,18 @@ Acceptance test:
    - Test Port protocol rejects http_method, expected_status_code, follow_redirects, request_headers, request_body, required_keyword; requires port.
    - Test HTTP protocol rejects port.
    - Test unknown/null protocol skips validation (module composition support).
-   - Test HTTP protocol accepts all HTTP fields.
-   - Test that defaults (computed values) do NOT trigger cross-field errors.
+   - Test HTTP protocol accepts all HTTP fields without error.
+   - Test that default values (null in raw config) do NOT trigger cross-field errors.
 
 2. **Error diagnostics** (`error_diagnostics_test.go`):
-   - Test `EnhanceAPIError` with various API error strings.
-   - Verify valid value lists appear in output.
-   - Test with unknown field names (no crash, graceful passthrough).
+   - Test `ValidValueReference("Monitor")` returns all monitor enum fields.
+   - Test `ValidValueReference("Maintenance")` returns maintenance-specific fields.
+   - Test `ValidValueReference("UnknownType")` returns empty string (graceful fallback).
 
 3. **Monitoring locations** (`monitoring_locations_data_source_test.go`):
    - Test all 8 regions returned.
-   - Test ids list matches.
-   - Test metadata correctness (names, continents).
+   - Test ids list matches location id fields.
+   - Test metadata correctness (names, continents, cloud regions).
 
 ### Acceptance Tests (TF_ACC=1, mock server)
 
@@ -335,7 +337,7 @@ Acceptance test:
    - `TestAccMonitorResource_httpRejectsPort`: Config with protocol=http and port=443, expect plan error.
 
 2. **Monitoring locations data source**:
-   - `TestAccMonitoringLocationsDataSource_basic`: Read data source, verify count and structure.
+   - `TestAccMonitoringLocationsDataSource_basic`: Read data source, verify count and structure. No API key needed.
 
 3. **Bulk data source count/ids**:
    - Existing list data source tests already verify Read works. Add assertions for `count` and `ids` attributes in existing test functions.
@@ -346,10 +348,10 @@ Acceptance test:
 
 All changes are independent at the code level and can be implemented in parallel. However, for a clean commit history:
 
-1. Create `error_diagnostics.go` + tests (foundation)
+1. Create `error_diagnostics.go` + tests (foundation, no dependencies)
 2. Create `monitor_validate_config.go` + update `monitor_resource.go` interface assertion + tests
-3. Update all MarkdownDescriptions across resources
-4. Add `notification_option` validator to maintenance
+3. Add missing enum validators (maintenance notification_option, statuspage languages/default_language)
+4. Update MarkdownDescriptions across resources
 5. Create `monitoring_locations_data_source.go` + tests + register in provider.go
 6. Add `count`/`ids` to all list data sources
 7. Run `make lint` and `make test` to verify
@@ -361,17 +363,18 @@ All changes are independent at the code level and can be implemented in parallel
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Cross-field validation breaks existing configs that pass HTTP fields for non-HTTP monitors | Medium | High | ValidateConfig only checks raw config (pre-default). Fields with schema defaults will be null in config, so they won't trigger errors. Only explicit user-provided values are flagged. |
-| Static monitoring locations become stale | Low | Low | Region changes are rare (last change was months ago). Provider releases update the list. MarkdownDescription notes "as of provider version X." |
-| count/ids on data sources change state shape | Low | Medium | These are new computed-only attributes. Existing configs that don't reference them are unaffected. No breaking change. |
-| Validator on notification_option rejects previously accepted invalid values | Low | Medium | Only affects configs with typos. This is the correct behavior -- catching errors early. |
+| Cross-field validation breaks existing configs that pass HTTP fields for non-HTTP monitors | Medium | High | ValidateConfig reads from `req.Config` (raw config, before defaults). Fields with schema defaults appear as `null` in raw config, so they do not trigger errors. Only explicit user-provided values are flagged. |
+| Static monitoring locations become stale | Low | Low | Region changes are rare. Provider releases update the list. MarkdownDescription notes the list is as of the current provider version. |
+| count/ids on data sources change state shape | Low | Medium | These are new computed-only attributes. Existing configs that do not reference them are unaffected. No breaking change. |
+| Validator on notification_option rejects previously accepted invalid values | Low | Medium | Only affects configs with typos or invalid values. This is the correct behavior -- catching errors at plan time instead of API time. |
+| Validator on languages/default_language rejects previously accepted values | Low | Medium | Only affects configs with invalid language codes. Same justification as above. |
 
 ---
 
 ## Non-Goals (Explicitly Out of Scope)
 
 - No changes to `internal/client/` package API surface
-- No changes to existing resource CRUD logic
+- No changes to existing resource CRUD logic (Create, Read, Update, Delete methods)
 - No new API calls for existing resources
 - No breaking changes to existing schemas (all additions are Optional/Computed or new data sources)
 - No changes to migration CLI tools
