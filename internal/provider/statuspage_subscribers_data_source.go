@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -37,6 +38,7 @@ type StatusPageSubscribersDataSourceModel struct {
 	Subscribers    types.List   `tfsdk:"subscribers"`
 	HasNextPage    types.Bool   `tfsdk:"has_next_page"`
 	Total          types.Int64  `tfsdk:"total"`
+	IDs            types.List   `tfsdk:"ids"`
 }
 
 func (d *StatusPageSubscribersDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -71,6 +73,11 @@ func (d *StatusPageSubscribersDataSource) Schema(ctx context.Context, req dataso
 			"total": schema.Int64Attribute{
 				MarkdownDescription: "Total number of subscribers",
 				Computed:            true,
+			},
+			"ids": schema.ListAttribute{
+				MarkdownDescription: "List of subscriber IDs (as strings). Convenient for `for_each` patterns.",
+				Computed:            true,
+				ElementType:         types.StringType,
 			},
 			"subscribers": schema.ListNestedAttribute{
 				MarkdownDescription: "List of subscribers",
@@ -175,11 +182,21 @@ func (d *StatusPageSubscribersDataSource) Read(ctx context.Context, req datasour
 	config.HasNextPage = types.BoolValue(paginatedResp.HasNextPage)
 	config.Total = types.Int64Value(int64(paginatedResp.Total))
 
-	// Map subscribers to list
+	// Map subscribers to list and collect IDs
 	subscribers := make([]SubscriberCommonFields, len(paginatedResp.Subscribers))
+	subscriberIDs := make([]string, len(paginatedResp.Subscribers))
 	for i, sub := range paginatedResp.Subscribers {
 		subscribers[i] = mapSubscriberToTF(&sub, &resp.Diagnostics)
+		subscriberIDs[i] = strconv.Itoa(sub.ID)
 	}
+
+	// Set ids
+	idsList, idsDiags := types.ListValueFrom(ctx, types.StringType, subscriberIDs)
+	resp.Diagnostics.Append(idsDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	config.IDs = idsList
 
 	// Convert to Terraform list
 	listValue, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: subscriberCommonFieldsAttrTypes()}, subscribers)

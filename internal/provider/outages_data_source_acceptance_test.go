@@ -37,6 +37,8 @@ func TestAccOutagesDataSource_basic(t *testing.T) {
 				Config: testAccOutagesDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_outages.all", "outages.#", "3"),
+					tfresource.TestCheckResourceAttr("data.hyperping_outages.all", "total", "3"),
+					tfresource.TestCheckResourceAttr("data.hyperping_outages.all", "ids.#", "3"),
 				),
 			},
 		},
@@ -54,6 +56,8 @@ func TestAccOutagesDataSource_empty(t *testing.T) {
 				Config: testAccOutagesDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_outages.all", "outages.#", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_outages.all", "total", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_outages.all", "ids.#", "0"),
 				),
 			},
 		},

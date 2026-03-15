@@ -33,6 +33,8 @@ func TestAccIncidentsDataSource_basic(t *testing.T) {
 				Config: testAccIncidentsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_incidents.all", "incidents.#", "3"),
+					tfresource.TestCheckResourceAttr("data.hyperping_incidents.all", "total", "3"),
+					tfresource.TestCheckResourceAttr("data.hyperping_incidents.all", "ids.#", "3"),
 				),
 			},
 		},
@@ -50,6 +52,8 @@ func TestAccIncidentsDataSource_empty(t *testing.T) {
 				Config: testAccIncidentsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_incidents.all", "incidents.#", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_incidents.all", "total", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_incidents.all", "ids.#", "0"),
 				),
 			},
 		},

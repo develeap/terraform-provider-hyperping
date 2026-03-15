@@ -35,6 +35,8 @@ type OutagesDataSource struct {
 type OutagesDataSourceModel struct {
 	Outages []OutageDataModel  `tfsdk:"outages"`
 	Filter  *OutageFilterModel `tfsdk:"filter"`
+	Total   types.Int64        `tfsdk:"total"`
+	IDs     types.List         `tfsdk:"ids"`
 }
 
 // OutageDataModel describes a single outage in the list data source.
@@ -65,6 +67,15 @@ func (d *OutagesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 
 		Attributes: map[string]schema.Attribute{
 			"filter": OutageFilterSchema(),
+			"total": schema.Int64Attribute{
+				MarkdownDescription: "Total number of outages returned (after filtering).",
+				Computed:            true,
+			},
+			"ids": schema.ListAttribute{
+				MarkdownDescription: "List of outage UUIDs. Convenient for `for_each` patterns.",
+				Computed:            true,
+				ElementType:         types.StringType,
+			},
 			"outages": schema.ListNestedAttribute{
 				MarkdownDescription: "List of outages.",
 				Computed:            true,
@@ -210,12 +221,23 @@ func (d *OutagesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	config.Outages = make([]OutageDataModel, len(filteredOutages))
+	outageIDs := make([]string, len(filteredOutages))
 	for i, outage := range filteredOutages {
 		d.mapOutageToDataModel(&outage, &config.Outages[i], &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
+		outageIDs[i] = outage.UUID
 	}
+
+	// Set count and ids
+	config.Total = types.Int64Value(int64(len(filteredOutages)))
+	idsList, diags := types.ListValueFrom(ctx, types.StringType, outageIDs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	config.IDs = idsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

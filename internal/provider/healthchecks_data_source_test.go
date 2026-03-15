@@ -48,6 +48,14 @@ func TestHealthchecksDataSource_Schema(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["healthchecks"]; !ok {
 		t.Error("Schema missing 'healthchecks' attribute")
 	}
+
+	// Verify count and ids attributes exist
+	if _, ok := resp.Schema.Attributes["total"]; !ok {
+		t.Error("Schema missing 'count' attribute")
+	}
+	if _, ok := resp.Schema.Attributes["ids"]; !ok {
+		t.Error("Schema missing 'ids' attribute")
+	}
 }
 
 func TestHealthchecksDataSource_Configure(t *testing.T) {

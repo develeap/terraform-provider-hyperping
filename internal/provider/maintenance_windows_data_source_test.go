@@ -48,6 +48,14 @@ func TestMaintenanceWindowsDataSource_Schema(t *testing.T) {
 	if _, ok := resp.Schema.Attributes["maintenance_windows"]; !ok {
 		t.Error("Schema missing 'maintenance_windows' attribute")
 	}
+
+	// Verify count and ids attributes exist
+	if _, ok := resp.Schema.Attributes["total"]; !ok {
+		t.Error("Schema missing 'count' attribute")
+	}
+	if _, ok := resp.Schema.Attributes["ids"]; !ok {
+		t.Error("Schema missing 'ids' attribute")
+	}
 }
 
 func TestMaintenanceWindowsDataSource_Configure(t *testing.T) {

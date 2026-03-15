@@ -62,8 +62,8 @@ resource "hyperping_monitor" "maintenance" {
 
 ### Required
 
-- `name` (String) The name of the monitor.
-- `url` (String) The URL to monitor.
+- `name` (String) The display name of the monitor. Must be 1-255 characters.
+- `url` (String) The URL to monitor. Must include protocol scheme (e.g., `https://api.example.com/health`).
 
 ### Optional
 
@@ -71,16 +71,16 @@ resource "hyperping_monitor" "maintenance" {
 - `check_frequency` (Number) Check frequency in seconds. Valid values: `10`, `20`, `30`, `60`, `120`, `180`, `300`, `600`, `1800`, `3600`, `21600`, `43200`, `86400`. Defaults to `60`.
 - `escalation_policy` (String) UUID of the escalation policy to link to this monitor.
 - `expected_status_code` (String) Expected HTTP status code pattern. Use a specific code like `200`, a wildcard like `2xx` (200-299), or a range like `1xx-3xx` (100-399). Defaults to `2xx`.
-- `follow_redirects` (Boolean) Whether to follow HTTP redirects. Defaults to `true`.
-- `http_method` (String) HTTP method to use. Valid values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`. Defaults to `GET`.
+- `follow_redirects` (Boolean) Whether to follow HTTP redirects. Only applies to `http` protocol monitors. Defaults to `true`.
+- `http_method` (String) HTTP method to use. Only valid when protocol is `http`. Valid values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`. Defaults to `GET`.
 - `paused` (Boolean) Whether the monitor is paused. Defaults to `false`.
-- `port` (Number) Port number to check. Required when `protocol` is `port`.
+- `port` (Number) TCP port number (1-65535). Required when protocol is `port`. Examples: `443` (HTTPS), `5432` (PostgreSQL), `6379` (Redis).
 - `project_uuid` (String) UUID of the Hyperping project this monitor belongs to.
 - `protocol` (String) The protocol type. Valid values: `http`, `port`, `icmp`. Defaults to `http`.
-- `regions` (List of String) List of regions to check from. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.
-- `request_body` (String) Request body for POST/PUT/PATCH requests.
-- `request_headers` (Attributes List) Custom HTTP headers to send with the request. (see [below for nested schema](#nestedatt--request_headers))
-- `required_keyword` (String) A keyword that must appear in the response body for the check to pass.
+- `regions` (List of String) List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.
+- `request_body` (String) HTTP request body. Only valid when protocol is `http` and http_method is `POST`, `PUT`, or `PATCH`.
+- `request_headers` (Attributes List) Custom HTTP headers to send with the request. Only valid when protocol is `http`. (see [below for nested schema](#nestedatt--request_headers))
+- `required_keyword` (String) A keyword that must appear in the HTTP response body for the check to pass. Only valid when protocol is `http`.
 
 ### Read-Only
 

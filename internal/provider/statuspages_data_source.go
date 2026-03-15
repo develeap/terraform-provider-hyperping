@@ -36,6 +36,7 @@ type StatusPagesDataSourceModel struct {
 	Filter      *StatusPageFilterModel `tfsdk:"filter"`
 	HasNextPage types.Bool             `tfsdk:"has_next_page"`
 	Total       types.Int64            `tfsdk:"total"`
+	IDs         types.List             `tfsdk:"ids"`
 }
 
 func (d *StatusPagesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -64,6 +65,11 @@ func (d *StatusPagesDataSource) Schema(ctx context.Context, req datasource.Schem
 			"total": schema.Int64Attribute{
 				MarkdownDescription: "Total number of status pages matching filters",
 				Computed:            true,
+			},
+			"ids": schema.ListAttribute{
+				MarkdownDescription: "List of status page UUIDs. Convenient for `for_each` patterns.",
+				Computed:            true,
+				ElementType:         types.StringType,
 			},
 			"statuspages": schema.ListNestedAttribute{
 				MarkdownDescription: "List of status pages",
@@ -374,12 +380,22 @@ func (d *StatusPagesDataSource) Read(ctx context.Context, req datasource.ReadReq
 		config.Total = types.Int64Value(int64(paginatedResp.Total))
 	}
 
-	// Map status pages to list
+	// Map status pages to list and collect IDs
 	statusPages := make([]StatusPageCommonFields, len(filteredStatusPages))
+	statusPageIDs := make([]string, len(filteredStatusPages))
 	for i, sp := range filteredStatusPages {
 		warnUnresolvedNumericUUIDs(&sp, &resp.Diagnostics)
 		statusPages[i] = MapStatusPageCommonFields(&sp, &resp.Diagnostics)
+		statusPageIDs[i] = sp.UUID
 	}
+
+	// Set ids
+	idsList, idsDiags := types.ListValueFrom(ctx, types.StringType, statusPageIDs)
+	resp.Diagnostics.Append(idsDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	config.IDs = idsList
 
 	// Convert to Terraform list
 	listValue, diags := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: statusPageCommonFieldsAttrTypes()}, statusPages)

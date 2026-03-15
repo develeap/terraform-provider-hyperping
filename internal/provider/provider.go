@@ -161,6 +161,7 @@ func (p *HyperpingProvider) DataSources(_ context.Context) []func() datasource.D
 		NewStatusPageDataSource,
 		NewStatusPagesDataSource,
 		NewStatusPageSubscribersDataSource,
+		NewMonitoringLocationsDataSource,
 	}
 }
 

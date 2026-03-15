@@ -102,6 +102,7 @@ output "status_page_urls" {
 ### Read-Only
 
 - `has_next_page` (Boolean) Whether there are more pages available
+- `ids` (List of String) List of status page UUIDs. Convenient for `for_each` patterns.
 - `statuspages` (Attributes List) List of status pages (see [below for nested schema](#nestedatt--statuspages))
 - `total` (Number) Total number of status pages matching filters
 
