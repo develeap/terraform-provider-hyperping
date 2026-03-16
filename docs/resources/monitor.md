@@ -63,12 +63,15 @@ resource "hyperping_monitor" "maintenance" {
 ### Required
 
 - `name` (String) The display name of the monitor. Must be 1-255 characters.
-- `url` (String) The URL to monitor. Must include protocol scheme (e.g., `https://api.example.com/health`).
+- `url` (String) The URL to monitor. For HTTP/ICMP/port protocols, must include scheme (e.g., `https://api.example.com/health`). For DNS protocol, use a bare domain (e.g., `example.com`).
 
 ### Optional
 
 - `alerts_wait` (Number) Minutes to wait before sending alerts after an outage is detected. Must be one of: `-1` (disabled), `0`, `1`, `2`, `3`, `5`, `10`, `30`, `60`.
 - `check_frequency` (Number) Check frequency in seconds. Valid values: `10`, `20`, `30`, `60`, `120`, `180`, `300`, `600`, `1800`, `3600`, `21600`, `43200`, `86400`. Defaults to `60`.
+- `dns_expected_answer` (String) Expected DNS answer to validate against. Only valid when protocol is `dns`. Monitor fails if the resolved value does not contain this string.
+- `dns_nameserver` (String) Nameserver to query against (e.g., `8.8.8.8`). Only valid when protocol is `dns`. Leave empty to use default resolvers.
+- `dns_record_type` (String) DNS record type to check. Only valid when protocol is `dns`. Valid values: `A`, `AAAA`, `CNAME`, `MX`, `NS`, `TXT`, `SOA`, `SRV`, `CAA`, `PTR`. Defaults to `A` (set by the API if omitted).
 - `escalation_policy` (String) UUID of the escalation policy to link to this monitor.
 - `expected_status_code` (String) Expected HTTP status code pattern. Use a specific code like `200`, a wildcard like `2xx` (200-299), or a range like `1xx-3xx` (100-399). Defaults to `2xx`.
 - `follow_redirects` (Boolean) Whether to follow HTTP redirects. Only applies to `http` protocol monitors. Defaults to `true`.
@@ -76,7 +79,7 @@ resource "hyperping_monitor" "maintenance" {
 - `paused` (Boolean) Whether the monitor is paused. Defaults to `false`.
 - `port` (Number) TCP port number (1-65535). Required when protocol is `port`. Examples: `443` (HTTPS), `5432` (PostgreSQL), `6379` (Redis).
 - `project_uuid` (String) UUID of the Hyperping project this monitor belongs to.
-- `protocol` (String) The protocol type. Valid values: `http`, `port`, `icmp`. Defaults to `http`.
+- `protocol` (String) The protocol type. Valid values: `http`, `port`, `icmp`, `dns`. Defaults to `http`.
 - `regions` (List of String) List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.
 - `request_body` (String) HTTP request body. Only valid when protocol is `http` and http_method is `POST`, `PUT`, or `PATCH`.
 - `request_headers` (Attributes List) Custom HTTP headers to send with the request. Only valid when protocol is `http`. (see [below for nested schema](#nestedatt--request_headers))
@@ -84,7 +87,6 @@ resource "hyperping_monitor" "maintenance" {
 
 ### Read-Only
 
-- `dns_record_type` (String) DNS record type for DNS-protocol monitors (read-only, set by the API).
 - `id` (String) The unique identifier (UUID) of the monitor.
 - `ssl_expiration` (Number) Days until the SSL certificate expires.
 - `status` (String) Current monitor status. Either `up` or `down`.

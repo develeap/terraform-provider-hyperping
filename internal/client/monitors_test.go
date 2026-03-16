@@ -1229,21 +1229,16 @@ func TestUpdateMonitorRequest_JSONMarshaling_OmitsNilFields(t *testing.T) {
 		t.Error("check_frequency should not be present when nil")
 	}
 
-	// dns_record_type should be omitted when nil (omitempty). The workaround
-	// that injects "A" is applied in UpdateMonitor(), not at the struct level.
+	// dns_record_type should be omitted when nil (omitempty).
 	if _, exists := decoded["dns_record_type"]; exists {
 		t.Error("dns_record_type should not be present when nil (omitempty)")
 	}
 }
 
-// TestUpdateMonitor_DNSRecordType_WorkaroundApplied captures the real PUT request
-// body at the HTTP layer and confirms UpdateMonitor injects dns_record_type:"A".
-//
-// The Hyperping API PUT endpoint requires dns_record_type to be a valid enum
-// value in every request, even for non-DNS monitors. Omitted, null, and ""
-// values are all rejected with 422. Sending "A" passes validation without
-// affecting monitor behavior (the API ignores it for non-DNS protocols).
-func TestUpdateMonitor_DNSRecordType_WorkaroundApplied(t *testing.T) {
+// TestUpdateMonitor_DNSRecordType_NotInjected verifies that UpdateMonitor does NOT
+// inject dns_record_type into the PUT body for non-DNS monitors. The Hyperping API
+// previously required this workaround (v1.3.7-v1.5.0) but the bug has been fixed.
+func TestUpdateMonitor_DNSRecordType_NotInjected(t *testing.T) {
 	t.Parallel()
 
 	var capturedBody string
@@ -1274,24 +1269,14 @@ func TestUpdateMonitor_DNSRecordType_WorkaroundApplied(t *testing.T) {
 		t.Fatalf("UpdateMonitor failed: %v", err)
 	}
 
-	t.Logf("=== PUT body captured from HTTP server ===")
-	t.Logf("CURRENT (v1.3.8): %s", capturedBody)
-	t.Logf("v1.3.7 (broken):  {\"name\":\"Updated\",\"dns_record_type\":null} → API rejects null → 422")
-	t.Logf("v1.3.6 (broken):  {\"name\":\"Updated\"} — field absent, API validates stored \"\" → 422")
-	t.Logf("==========================================")
-
 	var decoded map[string]interface{}
 	if err := json.Unmarshal([]byte(capturedBody), &decoded); err != nil {
 		t.Fatalf("failed to parse captured body: %v", err)
 	}
 
-	// dns_record_type must be "A" — the workaround value injected by UpdateMonitor
-	val, exists := decoded["dns_record_type"]
-	if !exists {
-		t.Error("dns_record_type must be present in PUT body (workaround for API validation bug)")
-	}
-	if val != "A" {
-		t.Errorf("dns_record_type must be \"A\" (workaround), got %v", val)
+	// dns_record_type must NOT be present when not explicitly set (workaround removed)
+	if _, exists := decoded["dns_record_type"]; exists {
+		t.Error("dns_record_type must NOT be present in PUT body — the API workaround has been removed")
 	}
 
 	// Sanity: intentionally-set fields still present
@@ -1299,10 +1284,11 @@ func TestUpdateMonitor_DNSRecordType_WorkaroundApplied(t *testing.T) {
 		t.Errorf("name field missing or wrong: %v", decoded["name"])
 	}
 
-	// Sanity: omitempty fields still absent when nil (except dns_record_type which is injected)
+	// Sanity: omitempty fields still absent when nil
 	for _, absent := range []string{"url", "protocol", "http_method", "check_frequency",
 		"regions", "request_headers", "follow_redirects", "paused", "port",
-		"alerts_wait", "escalation_policy", "required_keyword"} {
+		"alerts_wait", "escalation_policy", "required_keyword",
+		"dns_record_type", "dns_nameserver", "dns_expected_answer"} {
 		if _, exists := decoded[absent]; exists {
 			t.Errorf("field %q should be absent (omitempty, nil), but was present", absent)
 		}
@@ -1380,5 +1366,200 @@ func TestMonitor_NumericID_Deserialization(t *testing.T) {
 	}
 	if monitors[1].UUID != "mon_def456" {
 		t.Errorf("expected UUID 'mon_def456', got %q", monitors[1].UUID)
+	}
+}
+
+// TestMonitor_DNSFields_Deserialization verifies DNS fields are correctly parsed
+// from a JSON API response.
+func TestMonitor_DNSFields_Deserialization(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"uuid": "mon_dns1",
+			"name": "DNS Monitor",
+			"url": "example.com",
+			"protocol": "dns",
+			"check_frequency": 60,
+			"dns_record_type": "CNAME",
+			"dns_nameserver": "8.8.8.8",
+			"dns_expected_answer": "www.example.com",
+			"status": "up"
+		}`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+	monitor, err := c.GetMonitor(context.Background(), "mon_dns1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if monitor.Protocol != "dns" {
+		t.Errorf("expected protocol 'dns', got %q", monitor.Protocol)
+	}
+	if monitor.DNSRecordType == nil || *monitor.DNSRecordType != "CNAME" {
+		t.Errorf("expected dns_record_type 'CNAME', got %v", monitor.DNSRecordType)
+	}
+	if monitor.DNSNameserver == nil || *monitor.DNSNameserver != "8.8.8.8" {
+		t.Errorf("expected dns_nameserver '8.8.8.8', got %v", monitor.DNSNameserver)
+	}
+	if monitor.DNSExpectedAnswer == nil || *monitor.DNSExpectedAnswer != "www.example.com" {
+		t.Errorf("expected dns_expected_answer 'www.example.com', got %v", monitor.DNSExpectedAnswer)
+	}
+}
+
+// TestMonitor_DNSFields_NilWhenAbsent verifies DNS fields are nil when the API
+// response omits them (e.g. for HTTP monitors).
+func TestMonitor_DNSFields_NilWhenAbsent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"uuid": "mon_http1",
+			"name": "HTTP Monitor",
+			"url": "https://example.com",
+			"protocol": "http",
+			"check_frequency": 60,
+			"status": "up"
+		}`))
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+	monitor, err := c.GetMonitor(context.Background(), "mon_http1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if monitor.DNSRecordType != nil {
+		t.Errorf("expected dns_record_type nil for HTTP monitor, got %q", *monitor.DNSRecordType)
+	}
+	if monitor.DNSNameserver != nil {
+		t.Errorf("expected dns_nameserver nil for HTTP monitor, got %q", *monitor.DNSNameserver)
+	}
+	if monitor.DNSExpectedAnswer != nil {
+		t.Errorf("expected dns_expected_answer nil for HTTP monitor, got %q", *monitor.DNSExpectedAnswer)
+	}
+}
+
+// TestCreateMonitorRequest_DNSFields_JSONMarshaling verifies DNS fields are correctly
+// included in the JSON body when creating a DNS monitor.
+func TestCreateMonitorRequest_DNSFields_JSONMarshaling(t *testing.T) {
+	drt := "MX"
+	ns := "1.1.1.1"
+	ea := "mail.example.com"
+
+	req := CreateMonitorRequest{
+		Name:              "DNS Test",
+		URL:               "example.com",
+		Protocol:          "dns",
+		DNSRecordType:     &drt,
+		DNSNameserver:     &ns,
+		DNSExpectedAnswer: &ea,
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if decoded["protocol"] != "dns" {
+		t.Errorf("protocol = %v, expected 'dns'", decoded["protocol"])
+	}
+	if decoded["dns_record_type"] != "MX" {
+		t.Errorf("dns_record_type = %v, expected 'MX'", decoded["dns_record_type"])
+	}
+	if decoded["dns_nameserver"] != "1.1.1.1" {
+		t.Errorf("dns_nameserver = %v, expected '1.1.1.1'", decoded["dns_nameserver"])
+	}
+	if decoded["dns_expected_answer"] != "mail.example.com" {
+		t.Errorf("dns_expected_answer = %v, expected 'mail.example.com'", decoded["dns_expected_answer"])
+	}
+}
+
+// TestUpdateMonitorRequest_DNSFields_JSONMarshaling verifies DNS fields in update requests.
+func TestUpdateMonitorRequest_DNSFields_JSONMarshaling(t *testing.T) {
+	drt := "AAAA"
+	ns := "8.8.4.4"
+	ea := "::1"
+
+	req := UpdateMonitorRequest{
+		DNSRecordType:     &drt,
+		DNSNameserver:     &ns,
+		DNSExpectedAnswer: &ea,
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+
+	if decoded["dns_record_type"] != "AAAA" {
+		t.Errorf("dns_record_type = %v, expected 'AAAA'", decoded["dns_record_type"])
+	}
+	if decoded["dns_nameserver"] != "8.8.4.4" {
+		t.Errorf("dns_nameserver = %v, expected '8.8.4.4'", decoded["dns_nameserver"])
+	}
+	if decoded["dns_expected_answer"] != "::1" {
+		t.Errorf("dns_expected_answer = %v, expected '::1'", decoded["dns_expected_answer"])
+	}
+
+	// Other fields must be absent (omitempty)
+	if _, exists := decoded["name"]; exists {
+		t.Error("name should not be present when nil")
+	}
+}
+
+// TestUpdateMonitor_DNSFields_SentInPUTBody captures the actual PUT body and verifies
+// DNS fields are passed through to the API when explicitly set.
+func TestUpdateMonitor_DNSFields_SentInPUTBody(t *testing.T) {
+	t.Parallel()
+
+	var capturedBody string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, _ := io.ReadAll(r.Body)
+		capturedBody = string(bodyBytes)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(Monitor{UUID: "mon_dns", Protocol: "dns"})
+	}))
+	defer server.Close()
+
+	c := NewClient("test_key", WithBaseURL(server.URL), WithMaxRetries(0))
+
+	drt := "TXT"
+	ns := "ns1.example.com"
+	ea := "v=spf1 include:example.com"
+	_, err := c.UpdateMonitor(context.Background(), "mon_dns", UpdateMonitorRequest{
+		DNSRecordType:     &drt,
+		DNSNameserver:     &ns,
+		DNSExpectedAnswer: &ea,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMonitor failed: %v", err)
+	}
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal([]byte(capturedBody), &decoded); err != nil {
+		t.Fatalf("failed to parse captured body: %v", err)
+	}
+
+	if decoded["dns_record_type"] != "TXT" {
+		t.Errorf("dns_record_type = %v, expected 'TXT'", decoded["dns_record_type"])
+	}
+	if decoded["dns_nameserver"] != "ns1.example.com" {
+		t.Errorf("dns_nameserver = %v, expected 'ns1.example.com'", decoded["dns_nameserver"])
+	}
+	if decoded["dns_expected_answer"] != "v=spf1 include:example.com" {
+		t.Errorf("dns_expected_answer = %v, expected SPF record", decoded["dns_expected_answer"])
 	}
 }

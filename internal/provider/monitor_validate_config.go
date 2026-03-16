@@ -6,6 +6,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -31,24 +33,54 @@ func (r *MonitorResource) ValidateConfig(ctx context.Context, req resource.Valid
 
 	switch protocolValue {
 	case "icmp":
+		validateURLIsHTTP(ctx, req, resp)
 		validateNonHTTPProtocol(ctx, req, resp, "icmp")
 		validatePortNotSet(ctx, req, resp, "icmp")
+		validateDNSFieldsNotSet(ctx, req, resp, "icmp")
 	case "port":
+		validateURLIsHTTP(ctx, req, resp)
 		validateNonHTTPProtocol(ctx, req, resp, "port")
 		validatePortRequired(ctx, req, resp)
+		validateDNSFieldsNotSet(ctx, req, resp, "port")
 	case "http":
+		validateURLIsHTTP(ctx, req, resp)
 		validateHTTPProtocol(ctx, req, resp)
+		validateDNSFieldsNotSet(ctx, req, resp, "http")
+	case "dns":
+		validateNonHTTPProtocol(ctx, req, resp, "dns")
+		validatePortNotSet(ctx, req, resp, "dns")
+	}
+}
+
+// validateURLIsHTTP checks that the url attribute is a valid HTTP or HTTPS URL.
+// This applies to http, port, and icmp protocols. DNS monitors use bare domains instead.
+func validateURLIsHTTP(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var urlVal types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("url"), &urlVal)...)
+	if resp.Diagnostics.HasError() || urlVal.IsNull() || urlVal.IsUnknown() {
+		return
+	}
+
+	value := urlVal.ValueString()
+	u, err := url.Parse(value)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("url"),
+			"Invalid URL Format",
+			fmt.Sprintf("The value %q must be a valid HTTP or HTTPS URL (e.g., \"https://example.com\"). "+
+				"For DNS monitors, bare domain names are accepted.", value),
+		)
 	}
 }
 
 // validateNonHTTPProtocol checks that HTTP-only fields are not set for non-HTTP protocols.
 func validateNonHTTPProtocol(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse, protocol string) {
-	checkStringNotSet(ctx, req, resp, "http_method", protocol)
-	checkStringNotSet(ctx, req, resp, "expected_status_code", protocol)
+	checkStringNotSet(ctx, req, resp, "http_method", protocol, "http")
+	checkStringNotSet(ctx, req, resp, "expected_status_code", protocol, "http")
 	checkBoolNotSet(ctx, req, resp, "follow_redirects", protocol)
 	checkListNotSet(ctx, req, resp, "request_headers", protocol)
-	checkStringNotSet(ctx, req, resp, "request_body", protocol)
-	checkStringNotSet(ctx, req, resp, "required_keyword", protocol)
+	checkStringNotSet(ctx, req, resp, "request_body", protocol, "http")
+	checkStringNotSet(ctx, req, resp, "required_keyword", protocol, "http")
 }
 
 // validatePortRequired checks that port is set when protocol is "port".
@@ -100,8 +132,16 @@ func checkPortNotSet(ctx context.Context, req resource.ValidateConfigRequest, re
 	}
 }
 
+// validateDNSFieldsNotSet checks that DNS-only fields are not set for non-DNS protocols.
+func validateDNSFieldsNotSet(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse, protocol string) {
+	checkStringNotSet(ctx, req, resp, "dns_record_type", protocol, "dns")
+	checkStringNotSet(ctx, req, resp, "dns_nameserver", protocol, "dns")
+	checkStringNotSet(ctx, req, resp, "dns_expected_answer", protocol, "dns")
+}
+
 // checkStringNotSet adds a diagnostic error if a string attribute is explicitly set.
-func checkStringNotSet(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse, attrName, protocol string) {
+// ownerProtocol is the protocol that owns this field (e.g. "http", "dns").
+func checkStringNotSet(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse, attrName, protocol, ownerProtocol string) {
 	var val types.String
 	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root(attrName), &val)...)
 	if resp.Diagnostics.HasError() {
@@ -112,8 +152,8 @@ func checkStringNotSet(ctx context.Context, req resource.ValidateConfigRequest, 
 		resp.Diagnostics.AddAttributeError(
 			path.Root(attrName),
 			"Invalid Attribute Combination",
-			fmt.Sprintf("%s is only valid for HTTP monitors. When protocol is %q, remove %s or change protocol to \"http\".",
-				attrName, protocol, attrName),
+			fmt.Sprintf("%s is only valid for %s monitors. When protocol is %q, remove %s or change protocol to %q.",
+				attrName, strings.ToUpper(ownerProtocol), protocol, attrName, ownerProtocol),
 		)
 	}
 }

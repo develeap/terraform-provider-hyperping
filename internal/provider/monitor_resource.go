@@ -61,6 +61,8 @@ type MonitorResourceModel struct {
 	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
 	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
 	DNSRecordType      types.String `tfsdk:"dns_record_type"`
+	DNSNameserver      types.String `tfsdk:"dns_nameserver"`
+	DNSExpectedAnswer  types.String `tfsdk:"dns_expected_answer"`
 	RequiredKeyword    types.String `tfsdk:"required_keyword"`
 	Status             types.String `tfsdk:"status"`
 	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
@@ -93,14 +95,12 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"url": schema.StringAttribute{
-				MarkdownDescription: "The URL to monitor. Must include protocol scheme (e.g., `https://api.example.com/health`).",
-				Required:            true,
-				Validators: []validator.String{
-					URLFormat(),
-				},
+				MarkdownDescription: "The URL to monitor. For HTTP/ICMP/port protocols, must include scheme " +
+					"(e.g., `https://api.example.com/health`). For DNS protocol, use a bare domain (e.g., `example.com`).",
+				Required: true,
 			},
 			"protocol": schema.StringAttribute{
-				MarkdownDescription: "The protocol type. Valid values: `http`, `port`, `icmp`. Defaults to `http`.",
+				MarkdownDescription: "The protocol type. Valid values: `http`, `port`, `icmp`, `dns`. Defaults to `http`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("http"),
@@ -208,8 +208,24 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"dns_record_type": schema.StringAttribute{
-				MarkdownDescription: "DNS record type for DNS-protocol monitors (read-only, set by the API).",
-				Computed:            true,
+				MarkdownDescription: "DNS record type to check. Only valid when protocol is `dns`. " +
+					"Valid values: `A`, `AAAA`, `CNAME`, `MX`, `NS`, `TXT`, `SOA`, `SRV`, `CAA`, `PTR`. " +
+					"Defaults to `A` (set by the API if omitted).",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.String{
+					stringvalidator.OneOf(client.AllowedDNSRecordTypes...),
+				},
+			},
+			"dns_nameserver": schema.StringAttribute{
+				MarkdownDescription: "Nameserver to query against (e.g., `8.8.8.8`). " +
+					"Only valid when protocol is `dns`. Leave empty to use default resolvers.",
+				Optional: true,
+			},
+			"dns_expected_answer": schema.StringAttribute{
+				MarkdownDescription: "Expected DNS answer to validate against. " +
+					"Only valid when protocol is `dns`. Monitor fails if the resolved value does not contain this string.",
+				Optional: true,
 			},
 			"required_keyword": schema.StringAttribute{
 				MarkdownDescription: "A keyword that must appear in the HTTP response body for the check to pass. Only valid when protocol is `http`.",
@@ -550,11 +566,21 @@ func (r *MonitorResource) mapMonitorToModel(monitor *client.Monitor, model *Moni
 		model.EscalationPolicy = types.StringNull()
 	}
 
-	// Handle dns_record_type (DNS-protocol monitors only)
+	// Handle DNS-protocol fields
 	if monitor.DNSRecordType != nil && *monitor.DNSRecordType != "" {
 		model.DNSRecordType = types.StringValue(*monitor.DNSRecordType)
 	} else {
 		model.DNSRecordType = types.StringNull()
+	}
+	if monitor.DNSNameserver != nil && *monitor.DNSNameserver != "" {
+		model.DNSNameserver = types.StringValue(*monitor.DNSNameserver)
+	} else {
+		model.DNSNameserver = types.StringNull()
+	}
+	if monitor.DNSExpectedAnswer != nil && *monitor.DNSExpectedAnswer != "" {
+		model.DNSExpectedAnswer = types.StringValue(*monitor.DNSExpectedAnswer)
+	} else {
+		model.DNSExpectedAnswer = types.StringNull()
 	}
 
 	// Handle required_keyword
@@ -625,6 +651,11 @@ func (r *MonitorResource) buildCreateRequest(ctx context.Context, plan *MonitorR
 
 	// Handle optional required_keyword
 	createReq.RequiredKeyword = tfStringToPtr(plan.RequiredKeyword)
+
+	// Handle optional DNS fields
+	createReq.DNSRecordType = tfStringToPtr(plan.DNSRecordType)
+	createReq.DNSNameserver = tfStringToPtr(plan.DNSNameserver)
+	createReq.DNSExpectedAnswer = tfStringToPtr(plan.DNSExpectedAnswer)
 
 	// Handle optional project_uuid
 	createReq.ProjectUUID = plan.ProjectUUID.ValueString()
@@ -776,6 +807,27 @@ func applyMonitoringFieldChanges(ctx context.Context, plan *MonitorResourceModel
 	// Handle port
 	if !plan.Port.Equal(state.Port) {
 		updateReq.Port = tfIntToPtr(plan.Port)
+	}
+
+	// Handle DNS fields
+	if !plan.DNSRecordType.Equal(state.DNSRecordType) {
+		updateReq.DNSRecordType = tfStringToPtr(plan.DNSRecordType)
+	}
+	if !plan.DNSNameserver.Equal(state.DNSNameserver) {
+		if plan.DNSNameserver.IsNull() {
+			empty := ""
+			updateReq.DNSNameserver = &empty
+		} else {
+			updateReq.DNSNameserver = tfStringToPtr(plan.DNSNameserver)
+		}
+	}
+	if !plan.DNSExpectedAnswer.Equal(state.DNSExpectedAnswer) {
+		if plan.DNSExpectedAnswer.IsNull() {
+			empty := ""
+			updateReq.DNSExpectedAnswer = &empty
+		} else {
+			updateReq.DNSExpectedAnswer = tfStringToPtr(plan.DNSExpectedAnswer)
+		}
 	}
 }
 

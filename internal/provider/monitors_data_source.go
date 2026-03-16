@@ -58,6 +58,8 @@ type MonitorDataModel struct {
 	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
 	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
 	DNSRecordType      types.String `tfsdk:"dns_record_type"`
+	DNSNameserver      types.String `tfsdk:"dns_nameserver"`
+	DNSExpectedAnswer  types.String `tfsdk:"dns_expected_answer"`
 	RequiredKeyword    types.String `tfsdk:"required_keyword"`
 	Status             types.String `tfsdk:"status"`
 	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
@@ -103,7 +105,7 @@ func (d *MonitorsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 							Computed:            true,
 						},
 						"protocol": schema.StringAttribute{
-							MarkdownDescription: "The protocol used for monitoring (http, icmp, tcp, udp).",
+							MarkdownDescription: "The protocol used for monitoring (http, port, icmp, dns).",
 							Computed:            true,
 						},
 						"http_method": schema.StringAttribute{
@@ -166,6 +168,14 @@ func (d *MonitorsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 						},
 						"dns_record_type": schema.StringAttribute{
 							MarkdownDescription: "DNS record type for DNS-protocol monitors.",
+							Computed:            true,
+						},
+						"dns_nameserver": schema.StringAttribute{
+							MarkdownDescription: "Nameserver used for DNS queries.",
+							Computed:            true,
+						},
+						"dns_expected_answer": schema.StringAttribute{
+							MarkdownDescription: "Expected DNS answer to validate against.",
 							Computed:            true,
 						},
 						"required_keyword": schema.StringAttribute{
@@ -362,6 +372,8 @@ func (d *MonitorsDataSource) mapMonitorToDataModel(monitor *client.Monitor, mode
 	model.AlertsWait = fields.AlertsWait
 	model.EscalationPolicy = fields.EscalationPolicy
 	model.DNSRecordType = fields.DNSRecordType
+	model.DNSNameserver = fields.DNSNameserver
+	model.DNSExpectedAnswer = fields.DNSExpectedAnswer
 	model.RequiredKeyword = fields.RequiredKeyword
 	model.Status = types.StringValue(monitor.Status)
 	model.SSLExpiration = func() types.Int64 {
