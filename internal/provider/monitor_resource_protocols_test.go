@@ -4,7 +4,6 @@
 package provider
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 
@@ -271,19 +270,4 @@ resource "hyperping_monitor" "test" {
   required_keyword = "` + keyword + `"
 }
 `
-}
-
-// Helper functions
-
-func testAccProviderConfig(baseURL string) string {
-	return `
-provider "hyperping" {
-  api_key  = "test_api_key"
-  base_url = "` + baseURL + `"
-}
-`
-}
-
-func tfInt(val int) string {
-	return fmt.Sprintf("%d", val)
 }

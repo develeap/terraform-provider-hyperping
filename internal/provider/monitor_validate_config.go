@@ -70,23 +70,21 @@ func validatePortRequired(ctx context.Context, req resource.ValidateConfigReques
 
 // validatePortNotSet checks that port is not set for protocols that do not use it.
 func validatePortNotSet(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse, protocol string) {
-	var port types.Int64
-	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("port"), &port)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if !port.IsNull() && !port.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("port"),
-			"Invalid Attribute Combination",
-			fmt.Sprintf("port is not valid when protocol is %q. Remove port or change protocol to \"port\".", protocol),
-		)
-	}
+	checkPortNotSet(ctx, req, resp,
+		fmt.Sprintf("port is not valid when protocol is %q. Remove port or change protocol to \"port\".", protocol),
+	)
 }
 
 // validateHTTPProtocol checks that port is not set for HTTP monitors.
 func validateHTTPProtocol(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	checkPortNotSet(ctx, req, resp,
+		"port is not valid when protocol is \"http\". The URL contains the port for HTTP monitors. Remove port or change protocol to \"port\".",
+	)
+}
+
+// checkPortNotSet reads the port attribute and adds an error if it is explicitly set.
+// errorDetail is the full human-readable detail message to use in the diagnostic.
+func checkPortNotSet(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse, errorDetail string) {
 	var port types.Int64
 	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("port"), &port)...)
 	if resp.Diagnostics.HasError() {
@@ -97,7 +95,7 @@ func validateHTTPProtocol(ctx context.Context, req resource.ValidateConfigReques
 		resp.Diagnostics.AddAttributeError(
 			path.Root("port"),
 			"Invalid Attribute Combination",
-			"port is not valid when protocol is \"http\". The URL contains the port for HTTP monitors. Remove port or change protocol to \"port\".",
+			errorDetail,
 		)
 	}
 }

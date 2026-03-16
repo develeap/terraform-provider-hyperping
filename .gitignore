@@ -56,3 +56,7 @@ META.d/
 
 # Trycycle worktrees
 .worktrees/
+
+# Trycycle process artifacts
+.trycycle/
+docs/plans/
