@@ -2,7 +2,7 @@
 
 ## Goal
 
-Address three categories of code-review findings on the `feat/hyperping-exporter` branch that were raised after the IaC usability improvements were merged:
+Address three categories of code-review findings on the `feat/hyperping-exporter` branch (worktree: `fix-pr82-review`) that were raised after the IaC usability improvements were committed:
 
 1. Delete process-artifact files that were accidentally committed.
 2. Move `testAccProviderConfig` to the canonical shared test helpers file.
@@ -21,23 +21,27 @@ Two files were committed that are trycycle planning/testing artifacts, not code 
 | File | Reason |
 |------|--------|
 | `.trycycle/plan.md` | Trycycle planning artifact; not source code |
-| `.trycycle/2026-03-16-iac-usability-test-plan.md` | Trycycle test-plan artifact; not source code |
+| `docs/plans/2026-03-16-iac-usability-test-plan.md` | Trycycle test-plan artifact; not source code |
 
 ### Verification
 
-Confirmed by `ls /home/.../fix-pr82-review/.trycycle/`:
+Confirmed by `git ls-files .trycycle/ docs/plans/`:
 ```
-plan.md
-2026-03-16-iac-usability-test-plan.md
+.trycycle/plan.md
+docs/plans/2026-03-16-iac-usability-test-plan.md
 ```
 
 Both files are present and are purely process artifacts with no bearing on compilation, tests, or documentation.
+
+The `.trycycle/` directory contains only `plan.md`. The test-plan artifact lives under `docs/plans/`, not under `.trycycle/`.
 
 ### Action
 
 `git rm` both files. This removes them from the index and working tree simultaneously, producing a clean deletion commit entry.
 
-**Decision — do NOT delete `.trycycle/` from `.gitignore`**: The `.trycycle/` directory is not mentioned in the current `.gitignore`. The correct fix is to delete the two committed files and (optionally) add `.trycycle/` to `.gitignore` to prevent future accidents. Since the review specifically asks only to delete these two files, adding to `.gitignore` is included in this plan as a preventive measure — it is the right thing to do, eliminates the root cause, and is a trivially safe change.
+**Decision — add `.trycycle/` to `.gitignore`**: The `.trycycle/` directory is not mentioned in the current `.gitignore`. The correct fix is to delete the committed file and add `.trycycle/` to `.gitignore` to prevent future accidents. This eliminates the root cause and is trivially safe.
+
+**Decision — add `docs/plans/` to `.gitignore`**: Similarly, `docs/plans/` is a trycycle process-artifact directory (not part of the provider's user-facing docs). Adding it to `.gitignore` prevents recurrence for this location too. The provider's generated docs live in `docs/resources/`, `docs/data-sources/`, etc. — not in `docs/plans/`.
 
 ---
 
@@ -75,15 +79,17 @@ Moving `testAccProviderConfig` there follows the established pattern exactly. `p
 
 **Note on `"fmt"` import**: After removing `tfInt`, the `fmt` package is no longer used in `monitor_resource_protocols_test.go`. The import must be removed to avoid a compile error. `monitor_resource_test_helpers.go` already imports `"fmt"` so no new import is needed there.
 
+**Note on file size**: `monitor_resource_test_helpers.go` is currently 673 lines. Adding `testAccProviderConfig` (7 lines) and `tfInt` (3 lines) brings it to ~683 lines, well within the 800-line limit.
+
 ---
 
 ## Item 3 — DRY Up `validateHTTPProtocol` and `validatePortNotSet`
 
 ### Current state (`internal/provider/monitor_validate_config.go`)
 
-`validatePortNotSet` (line 72-86):
+`validatePortNotSet` (lines 72-86):
 ```go
-func validatePortNotSet(..., protocol string) {
+func validatePortNotSet(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse, protocol string) {
     var port types.Int64
     resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("port"), &port)...)
     if resp.Diagnostics.HasError() { return }
@@ -97,9 +103,9 @@ func validatePortNotSet(..., protocol string) {
 }
 ```
 
-`validateHTTPProtocol` (line 88-103):
+`validateHTTPProtocol` (lines 88-103):
 ```go
-func validateHTTPProtocol(...) {
+func validateHTTPProtocol(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
     var port types.Int64
     resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("port"), &port)...)
     if resp.Diagnostics.HasError() { return }
@@ -113,7 +119,7 @@ func validateHTTPProtocol(...) {
 }
 ```
 
-The two functions are structurally identical — read `port`, check null/unknown, emit `AddAttributeError` — and differ only in the error message string. `validateHTTPProtocol` is called for `protocol = "http"`, `validatePortNotSet` for `protocol = "icmp"` (in the icmp case the protocol is already the `protocol` parameter).
+The two functions are structurally identical — read `port`, check null/unknown, emit `AddAttributeError` — and differ only in the error message string. `validateHTTPProtocol` is called for `protocol = "http"`, `validatePortNotSet` for `protocol = "icmp"` (passing the protocol name as the parameter).
 
 ### Solution
 
@@ -161,12 +167,14 @@ func validateHTTPProtocol(ctx context.Context, req resource.ValidateConfigReques
 
 **Decision — do not change error messages**: Both error messages are tested by existing tests (`TestAccMonitorResource_icmpRejectsPort` matches `port.*not valid.*icmp`, `TestAccMonitorResource_httpRejectsPort` matches `port.*not valid.*http`). The refactor preserves these messages verbatim.
 
+**Note — consistent with existing `check*NotSet` helpers**: The file already uses this pattern for `checkStringNotSet`, `checkBoolNotSet`, and `checkListNotSet`. Adding `checkPortNotSet` is idiomatic within the file's own structure.
+
 ---
 
 ## Execution Order
 
-1. `git rm .trycycle/plan.md .trycycle/2026-03-16-iac-usability-test-plan.md`
-2. Add `.trycycle/` to `.gitignore`
+1. `git rm .trycycle/plan.md docs/plans/2026-03-16-iac-usability-test-plan.md`
+2. Add `.trycycle/` and `docs/plans/` to `.gitignore`
 3. Move `testAccProviderConfig` and `tfInt` from `monitor_resource_protocols_test.go` to `monitor_resource_test_helpers.go`
 4. Remove `"fmt"` import from `monitor_resource_protocols_test.go`
 5. Add `checkPortNotSet` helper to `monitor_validate_config.go`; refactor `validatePortNotSet` and `validateHTTPProtocol` to use it
@@ -180,8 +188,8 @@ func validateHTTPProtocol(ctx context.Context, req resource.ValidateConfigReques
 | File | Change |
 |------|--------|
 | `.trycycle/plan.md` | DELETE (git rm) |
-| `.trycycle/2026-03-16-iac-usability-test-plan.md` | DELETE (git rm) |
-| `.gitignore` | Add `.trycycle/` entry |
+| `docs/plans/2026-03-16-iac-usability-test-plan.md` | DELETE (git rm) |
+| `.gitignore` | Add `.trycycle/` and `docs/plans/` entries |
 | `internal/provider/monitor_resource_test_helpers.go` | Add `testAccProviderConfig` and `tfInt` at end of file |
 | `internal/provider/monitor_resource_protocols_test.go` | Remove `testAccProviderConfig`, `tfInt`, and unused `"fmt"` import |
 | `internal/provider/monitor_validate_config.go` | Add `checkPortNotSet` helper; refactor `validatePortNotSet` and `validateHTTPProtocol` |
@@ -195,6 +203,7 @@ func validateHTTPProtocol(ctx context.Context, req resource.ValidateConfigReques
 | Compile error from orphaned `"fmt"` import | Low | Plan explicitly calls out removing the import; `make test` will catch it immediately |
 | Test behavior changed by refactor | None | Error messages are preserved verbatim; only the internal structure of the validate functions changes |
 | Future `.trycycle/` files accidentally committed | Low after fix | `.gitignore` entry prevents recurrence |
+| Future `docs/plans/` files accidentally committed | Low after fix | `.gitignore` entry prevents recurrence |
 | `testAccProviderConfig` redefinition if another file adds it | None after move | Single definition in `monitor_resource_test_helpers.go`; Go compile-time duplicate detection covers any future accidents |
 
 ---
