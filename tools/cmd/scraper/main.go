@@ -170,7 +170,11 @@ func runScrape(ctx context.Context) int {
 
 	// Save OAS YAML snapshots.
 	snapshotMgr := NewSnapshotManager(snapshotDir)
-	oldSpecPath, newSpecPath, compareErr := snapshotMgr.CompareSnapshots()
+
+	// Identify previous snapshot BEFORE saving the new one so we compare
+	// the freshly generated spec against the most recent cached snapshot.
+	prevSpecPath, prevErr := snapshotMgr.GetLatestSnapshot()
+
 	if err := snapshotMgr.SaveSnapshot(time.Now(), spec); err != nil {
 		log.Printf("⚠️  Snapshot save failed: %v\n", err)
 	}
@@ -178,9 +182,10 @@ func runScrape(ctx context.Context) int {
 		log.Printf("⚠️  Failed to save latest OAS: %v\n", err)
 	}
 
-	// Diff against previous snapshot.
-	if compareErr == nil {
-		if result, err := diff.Compare(oldSpecPath, newSpecPath); err != nil {
+	// Diff the freshly saved snapshot against the previous one.
+	newSpecPath, newErr := snapshotMgr.GetLatestSnapshot()
+	if prevErr == nil && newErr == nil && prevSpecPath != newSpecPath {
+		if result, err := diff.Compare(prevSpecPath, newSpecPath); err != nil {
 			log.Printf("⚠️  Diff failed: %v\n", err)
 		} else if result.HasChanges {
 			log.Println("\n📝 API changes detected:")
@@ -193,6 +198,8 @@ func runScrape(ctx context.Context) int {
 		} else {
 			log.Println("\n✅ No API changes detected")
 		}
+	} else if prevErr != nil {
+		log.Println("   ℹ️  No previous snapshot found — skipping diff (first run?)")
 	}
 
 	// Contract validation (optional).

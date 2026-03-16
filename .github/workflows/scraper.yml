@@ -71,8 +71,8 @@ jobs:
         working-directory: tools/cmd/scraper
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_OWNER: ${{ github.repository_owner }}
-          GITHUB_REPO: ${{ github.event.repository.name }}
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO_NAME: ${{ github.event.repository.name }}
           LOG_FORMAT: json
           LOG_LEVEL: ${{ inputs.log_level || 'info' }}
           CHROME_BIN: google-chrome-stable   # use pre-installed Chrome on ubuntu-latest
@@ -224,8 +224,8 @@ jobs:
         working-directory: tools/cmd/scraper
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_OWNER: ${{ github.repository_owner }}
-          GITHUB_REPO: ${{ github.event.repository.name }}
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO_NAME: ${{ github.event.repository.name }}
           LOG_LEVEL: ${{ inputs.log_level || 'info' }}
         run: |
           if [ "${SCHEMA_AVAILABLE}" = "true" ]; then
