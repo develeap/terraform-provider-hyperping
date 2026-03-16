@@ -145,7 +145,10 @@ var (
 	AllowedTimeouts = []int{5, 10, 15, 20}
 
 	// AllowedProtocols contains valid monitor protocols.
-	AllowedProtocols = []string{"http", "port", "icmp"}
+	AllowedProtocols = []string{"http", "port", "icmp", "dns"}
+
+	// AllowedDNSRecordTypes contains valid DNS record types for DNS-protocol monitors.
+	AllowedDNSRecordTypes = []string{"A", "AAAA", "CNAME", "MX", "NS", "TXT", "SOA", "SRV", "CAA", "PTR"}
 
 	// AllowedMethods contains valid HTTP methods for monitors.
 	AllowedMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}

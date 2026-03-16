@@ -37,6 +37,7 @@ func buildMonitorReference() string {
 	fmt.Fprintf(&b, "  check_frequency:      %s\n", formatIntSlice(client.AllowedFrequencies))
 	b.WriteString("  expected_status_code: Specific code (200), wildcard (2xx), or range (1xx-3xx)\n")
 	fmt.Fprintf(&b, "  regions:              %s\n", strings.Join(client.AllowedRegions, ", "))
+	fmt.Fprintf(&b, "  dns_record_type:      %s\n", strings.Join(client.AllowedDNSRecordTypes, ", "))
 	fmt.Fprintf(&b, "  alerts_wait:          %s\n", formatAlertsWaitValues())
 	return b.String()
 }

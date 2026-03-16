@@ -446,8 +446,23 @@ func (m *mockHyperpingServer) createMonitor(w http.ResponseWriter, r *http.Reque
 		monitor["required_keyword"] = requiredKeyword
 	}
 
-	// dns_record_type is intentionally NOT stored — the real API ignores it
-	// for non-DNS monitors and returns null. See dnsRecordTypeWorkaround in monitors.go.
+	// Handle DNS fields — only store for DNS protocol monitors
+	protocol := getOrDefault(req, "protocol", "http")
+	if protocol == "dns" {
+		if drt, ok := req["dns_record_type"].(string); ok && drt != "" {
+			monitor["dns_record_type"] = drt
+		} else {
+			monitor["dns_record_type"] = "A" // API default
+		}
+		if ns, ok := req["dns_nameserver"].(string); ok {
+			monitor["dns_nameserver"] = ns
+		}
+		if ea, ok := req["dns_expected_answer"].(string); ok {
+			monitor["dns_expected_answer"] = ea
+		}
+	}
+	// For non-DNS monitors, dns_record_type is intentionally NOT stored —
+	// the real API ignores it and returns null.
 
 	m.monitors[id] = monitor
 
@@ -533,6 +548,11 @@ var monitorStringFields = map[string]bool{
 	"status":           true, "projectUuid": true,
 }
 
+// dnsStringFields are DNS-specific fields that should only be stored for DNS monitors.
+var dnsStringFields = map[string]bool{
+	"dns_record_type": true, "dns_nameserver": true, "dns_expected_answer": true,
+}
+
 // intFields are monitor fields that map from JSON numbers.
 var monitorIntFields = map[string]bool{
 	"check_frequency": true, "port": true, "alerts_wait": true, "ssl_expiration": true,
@@ -552,6 +572,12 @@ func applyMonitorField(monitor map[string]interface{}, key string, value interfa
 		applyIntField(monitor, key, value)
 	case monitorBoolFields[key]:
 		applyBoolField(monitor, key, value)
+	case dnsStringFields[key]:
+		// DNS fields are only stored for DNS monitors, matching real API behavior.
+		// The real API ignores dns_record_type on non-DNS monitors.
+		if protocol, ok := monitor["protocol"].(string); ok && protocol == "dns" {
+			applyStringField(monitor, key, value)
+		}
 	case key == "regions":
 		applyRegionsField(monitor, key, value)
 	case key == "request_headers":
@@ -591,8 +617,23 @@ func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Apply protocol first so DNS field logic in applyMonitorField sees the new protocol.
+	if proto, ok := req["protocol"]; ok {
+		applyMonitorField(monitor, "protocol", proto)
+	}
+
 	for key, value := range req {
+		if key == "protocol" {
+			continue // already applied above
+		}
 		applyMonitorField(monitor, key, value)
+	}
+
+	// When protocol changes away from DNS, clear DNS-specific fields (matches real API behavior).
+	if newProtocol, ok := req["protocol"].(string); ok && newProtocol != "dns" {
+		delete(monitor, "dns_record_type")
+		delete(monitor, "dns_nameserver")
+		delete(monitor, "dns_expected_answer")
 	}
 
 	m.monitors[id] = monitor
@@ -686,4 +727,77 @@ provider "hyperping" {
 // tfInt formats an integer value for use in HCL configuration strings.
 func tfInt(val int) string {
 	return fmt.Sprintf("%d", val)
+}
+
+// DNS monitor test configs
+
+func testAccMonitorResourceConfigDNSBasic(baseURL string) string {
+	return testAccProviderConfig(baseURL) + `
+resource "hyperping_monitor" "test" {
+  name     = "dns-basic"
+  url      = "example.com"
+  protocol = "dns"
+}
+`
+}
+
+func testAccMonitorResourceConfigDNSFull(baseURL string) string {
+	return testAccProviderConfig(baseURL) + `
+resource "hyperping_monitor" "test" {
+  name                = "dns-full"
+  url                 = "example.com"
+  protocol            = "dns"
+  dns_record_type     = "CNAME"
+  dns_nameserver      = "8.8.8.8"
+  dns_expected_answer = "www.example.com"
+  check_frequency     = 300
+  regions             = ["london", "virginia"]
+}
+`
+}
+
+func testAccMonitorResourceConfigDNSUpdate(baseURL string) string {
+	return testAccProviderConfig(baseURL) + `
+resource "hyperping_monitor" "test" {
+  name                = "dns-updated"
+  url                 = "example.com"
+  protocol            = "dns"
+  dns_record_type     = "MX"
+  dns_nameserver      = "1.1.1.1"
+  dns_expected_answer = "mail.example.com"
+  check_frequency     = 600
+}
+`
+}
+
+func testAccMonitorResourceConfigDNSRecordTypeOnly(baseURL string) string {
+	return testAccProviderConfig(baseURL) + `
+resource "hyperping_monitor" "test" {
+  name            = "dns-record-type-only"
+  url             = "example.com"
+  protocol        = "dns"
+  dns_record_type = "AAAA"
+}
+`
+}
+
+func testAccMonitorResourceConfigDNSWithRecordType(baseURL, recordType string) string {
+	return testAccProviderConfig(baseURL) + fmt.Sprintf(`
+resource "hyperping_monitor" "test" {
+  name            = "dns-record-type-test"
+  url             = "example.com"
+  protocol        = "dns"
+  dns_record_type = %q
+}
+`, recordType)
+}
+
+func testAccMonitorResourceConfigSwitchDNSToHTTP(baseURL string) string {
+	return testAccProviderConfig(baseURL) + `
+resource "hyperping_monitor" "test" {
+  name     = "dns-switched-to-http"
+  url      = "https://example.com"
+  protocol = "http"
+}
+`
 }

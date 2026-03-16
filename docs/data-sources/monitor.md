@@ -57,6 +57,8 @@ resource "hyperping_incident" "outage" {
 
 - `alerts_wait` (Number) Minutes to wait before sending alerts after an outage is detected. One of: `-1` (disabled), `0`, `1`, `2`, `3`, `5`, `10`, `30`, `60`.
 - `check_frequency` (Number) Check frequency in seconds.
+- `dns_expected_answer` (String) Expected DNS answer to validate against.
+- `dns_nameserver` (String) Nameserver used for DNS queries.
 - `dns_record_type` (String) DNS record type for DNS-protocol monitors.
 - `escalation_policy` (String) UUID of the escalation policy linked to this monitor.
 - `expected_status_code` (String) Expected HTTP status code or pattern (e.g., `200`, `2xx`, `1xx-3xx`).
@@ -66,7 +68,7 @@ resource "hyperping_incident" "outage" {
 - `paused` (Boolean) Whether the monitor is paused.
 - `port` (Number) Port number for port protocol monitors.
 - `project_uuid` (String) UUID of the project this monitor belongs to.
-- `protocol` (String) The protocol used for monitoring (http, icmp, tcp, udp).
+- `protocol` (String) The protocol used for monitoring (http, port, icmp, dns).
 - `regions` (List of String) List of regions the monitor checks from.
 - `request_body` (String) Request body for POST/PUT/PATCH requests.
 - `request_headers` (Attributes List) Custom HTTP headers sent with requests. (see [below for nested schema](#nestedatt--request_headers))
