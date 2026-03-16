@@ -53,7 +53,7 @@ output "incident_date" {
 
 ### Optional
 
-- `affected_components` (List of String) List of component UUIDs affected by this incident.
+- `affected_components` (List of String) List of monitor UUIDs representing components affected by this incident. Displayed on the associated status pages.
 - `type` (String) The type of incident. Valid values: `outage`, `incident`. Defaults to `incident`.
 
 ### Read-Only

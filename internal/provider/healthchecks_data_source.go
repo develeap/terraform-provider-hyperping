@@ -35,6 +35,8 @@ type HealthchecksDataSource struct {
 type HealthchecksDataSourceModel struct {
 	Healthchecks []HealthcheckDataModel  `tfsdk:"healthchecks"`
 	Filter       *HealthcheckFilterModel `tfsdk:"filter"`
+	Total        types.Int64             `tfsdk:"total"`
+	IDs          types.List              `tfsdk:"ids"`
 }
 
 // HealthcheckDataModel describes a single healthcheck in the list data source.
@@ -69,6 +71,15 @@ func (d *HealthchecksDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 
 		Attributes: map[string]schema.Attribute{
 			"filter": HealthcheckFilterSchema(),
+			"total": schema.Int64Attribute{
+				MarkdownDescription: "Total number of healthchecks returned (after filtering).",
+				Computed:            true,
+			},
+			"ids": schema.ListAttribute{
+				MarkdownDescription: "List of healthcheck UUIDs. Convenient for `for_each` patterns.",
+				Computed:            true,
+				ElementType:         types.StringType,
+			},
 			"healthchecks": schema.ListNestedAttribute{
 				MarkdownDescription: "List of healthchecks.",
 				Computed:            true,
@@ -198,14 +209,23 @@ func (d *HealthchecksDataSource) Read(ctx context.Context, req datasource.ReadRe
 	}
 
 	config.Healthchecks = make([]HealthcheckDataModel, len(filteredHealthchecks))
+	healthcheckIDs := make([]string, len(filteredHealthchecks))
 	for i, hc := range filteredHealthchecks {
 		d.mapHealthcheckToDataModel(&hc, &config.Healthchecks[i])
-		// Currently mapHealthcheckToDataModel doesn't produce errors, but checking
-		// provides symmetry with outages data source and future-proofs against changes.
 		if resp.Diagnostics.HasError() {
 			return
 		}
+		healthcheckIDs[i] = hc.UUID
 	}
+
+	// Set count and ids
+	config.Total = types.Int64Value(int64(len(filteredHealthchecks)))
+	idsList, diags := types.ListValueFrom(ctx, types.StringType, healthcheckIDs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	config.IDs = idsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

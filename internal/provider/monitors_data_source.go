@@ -36,6 +36,8 @@ type MonitorsDataSource struct {
 type MonitorsDataSourceModel struct {
 	Monitors []MonitorDataModel  `tfsdk:"monitors"`
 	Filter   *MonitorFilterModel `tfsdk:"filter"`
+	Total    types.Int64         `tfsdk:"total"`
+	IDs      types.List          `tfsdk:"ids"`
 }
 
 // MonitorDataModel describes a single monitor in the data source.
@@ -74,6 +76,15 @@ func (d *MonitorsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 
 		Attributes: map[string]schema.Attribute{
 			"filter": MonitorFilterSchema(),
+			"total": schema.Int64Attribute{
+				MarkdownDescription: "Total number of monitors returned (after filtering).",
+				Computed:            true,
+			},
+			"ids": schema.ListAttribute{
+				MarkdownDescription: "List of monitor UUIDs. Convenient for `for_each` patterns.",
+				Computed:            true,
+				ElementType:         types.StringType,
+			},
 			"monitors": schema.ListNestedAttribute{
 				MarkdownDescription: "List of monitors.",
 				Computed:            true,
@@ -245,12 +256,23 @@ func (d *MonitorsDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 	// Map response to model
 	config.Monitors = make([]MonitorDataModel, len(filteredMonitors))
+	monitorIDs := make([]string, len(filteredMonitors))
 	for i, monitor := range filteredMonitors {
 		d.mapMonitorToDataModel(&monitor, &config.Monitors[i], &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
+		monitorIDs[i] = monitor.UUID
 	}
+
+	// Set count and ids
+	config.Total = types.Int64Value(int64(len(filteredMonitors)))
+	idsList, diags := types.ListValueFrom(ctx, types.StringType, monitorIDs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	config.IDs = idsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

@@ -671,3 +671,19 @@ resource "hyperping_monitor" "test" {
 }
 `, baseURL, keyword)
 }
+
+// testAccProviderConfig returns a provider configuration block pointing at the given baseURL.
+// Used by acceptance tests that spin up a mock Hyperping server.
+func testAccProviderConfig(baseURL string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "test_api_key"
+  base_url = %[1]q
+}
+`, baseURL)
+}
+
+// tfInt formats an integer value for use in HCL configuration strings.
+func tfInt(val int) string {
+	return fmt.Sprintf("%d", val)
+}

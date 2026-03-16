@@ -28,8 +28,9 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var (
-	_ resource.Resource                = &MonitorResource{}
-	_ resource.ResourceWithImportState = &MonitorResource{}
+	_ resource.Resource                   = &MonitorResource{}
+	_ resource.ResourceWithImportState    = &MonitorResource{}
+	_ resource.ResourceWithValidateConfig = &MonitorResource{}
 )
 
 // NewMonitorResource creates a new monitor resource.
@@ -85,14 +86,14 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"name": schema.StringAttribute{
-				MarkdownDescription: "The name of the monitor.",
+				MarkdownDescription: "The display name of the monitor. Must be 1-255 characters.",
 				Required:            true,
 				Validators: []validator.String{
 					StringLength(1, 255),
 				},
 			},
 			"url": schema.StringAttribute{
-				MarkdownDescription: "The URL to monitor.",
+				MarkdownDescription: "The URL to monitor. Must include protocol scheme (e.g., `https://api.example.com/health`).",
 				Required:            true,
 				Validators: []validator.String{
 					URLFormat(),
@@ -108,7 +109,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"http_method": schema.StringAttribute{
-				MarkdownDescription: "HTTP method to use. Valid values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`. Defaults to `GET`.",
+				MarkdownDescription: "HTTP method to use. Only valid when protocol is `http`. Valid values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`. Defaults to `GET`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("GET"),
@@ -126,7 +127,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"regions": schema.ListAttribute{
-				MarkdownDescription: "List of regions to check from. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.",
+				MarkdownDescription: "List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.",
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,
@@ -135,7 +136,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"request_headers": schema.ListNestedAttribute{
-				MarkdownDescription: "Custom HTTP headers to send with the request.",
+				MarkdownDescription: "Custom HTTP headers to send with the request. Only valid when protocol is `http`.",
 				Optional:            true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -158,7 +159,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"request_body": schema.StringAttribute{
-				MarkdownDescription: "Request body for POST/PUT/PATCH requests.",
+				MarkdownDescription: "HTTP request body. Only valid when protocol is `http` and http_method is `POST`, `PUT`, or `PATCH`.",
 				Optional:            true,
 			},
 			"expected_status_code": schema.StringAttribute{
@@ -173,7 +174,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"follow_redirects": schema.BoolAttribute{
-				MarkdownDescription: "Whether to follow HTTP redirects. Defaults to `true`.",
+				MarkdownDescription: "Whether to follow HTTP redirects. Only applies to `http` protocol monitors. Defaults to `true`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(true),
@@ -185,7 +186,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Default:             booldefault.StaticBool(false),
 			},
 			"port": schema.Int64Attribute{
-				MarkdownDescription: "Port number to check. Required when `protocol` is `port`.",
+				MarkdownDescription: "TCP port number (1-65535). Required when protocol is `port`. Examples: `443` (HTTPS), `5432` (PostgreSQL), `6379` (Redis).",
 				Optional:            true,
 				Validators: []validator.Int64{
 					PortRange(),
@@ -211,7 +212,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 			},
 			"required_keyword": schema.StringAttribute{
-				MarkdownDescription: "A keyword that must appear in the response body for the check to pass.",
+				MarkdownDescription: "A keyword that must appear in the HTTP response body for the check to pass. Only valid when protocol is `http`.",
 				Optional:            true,
 			},
 			"status": schema.StringAttribute{

@@ -41,6 +41,8 @@ func TestAccMaintenanceWindowsDataSource_basic(t *testing.T) {
 				Config: testAccMaintenanceWindowsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_maintenance_windows.all", "maintenance_windows.#", "2"),
+					tfresource.TestCheckResourceAttr("data.hyperping_maintenance_windows.all", "total", "2"),
+					tfresource.TestCheckResourceAttr("data.hyperping_maintenance_windows.all", "ids.#", "2"),
 				),
 			},
 		},
@@ -58,6 +60,8 @@ func TestAccMaintenanceWindowsDataSource_empty(t *testing.T) {
 				Config: testAccMaintenanceWindowsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_maintenance_windows.all", "maintenance_windows.#", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_maintenance_windows.all", "total", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_maintenance_windows.all", "ids.#", "0"),
 				),
 			},
 		},

@@ -53,6 +53,8 @@ output "healthcheck_ping_urls" {
 ### Read-Only
 
 - `healthchecks` (Attributes List) List of healthchecks. (see [below for nested schema](#nestedatt--healthchecks))
+- `ids` (List of String) List of healthcheck UUIDs. Convenient for `for_each` patterns.
+- `total` (Number) Total number of healthchecks returned (after filtering).
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

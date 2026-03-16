@@ -125,6 +125,7 @@ output "all_subscribers" {
 ### Read-Only
 
 - `has_next_page` (Boolean) Whether there are more pages available
+- `ids` (List of String) List of subscriber IDs (as strings). Convenient for `for_each` patterns.
 - `subscribers` (Attributes List) List of subscribers (see [below for nested schema](#nestedatt--subscribers))
 - `total` (Number) Total number of subscribers
 

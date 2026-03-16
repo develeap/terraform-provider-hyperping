@@ -91,7 +91,7 @@ func (r *IncidentResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"affected_components": schema.ListAttribute{
-				MarkdownDescription: "List of component UUIDs affected by this incident.",
+				MarkdownDescription: "List of monitor UUIDs representing components affected by this incident. Displayed on the associated status pages.",
 				Optional:            true,
 				ElementType:         types.StringType,
 				Validators: []validator.List{

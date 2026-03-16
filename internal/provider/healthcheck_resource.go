@@ -114,7 +114,7 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 				},
 			},
 			"grace_period_value": schema.Int64Attribute{
-				MarkdownDescription: "Numeric value for the grace period buffer before alerting.",
+				MarkdownDescription: "Numeric value for the grace period buffer before alerting. For example, set `grace_period_value = 5` with `grace_period_type = \"minutes\"` to allow a 5-minute window.",
 				Required:            true,
 			},
 			"grace_period_type": schema.StringAttribute{

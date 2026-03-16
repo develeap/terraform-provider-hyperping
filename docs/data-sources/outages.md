@@ -64,7 +64,9 @@ output "downtime_statistics" {
 
 ### Read-Only
 
+- `ids` (List of String) List of outage UUIDs. Convenient for `for_each` patterns.
 - `outages` (Attributes List) List of outages. (see [below for nested schema](#nestedatt--outages))
+- `total` (Number) Total number of outages returned (after filtering).
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

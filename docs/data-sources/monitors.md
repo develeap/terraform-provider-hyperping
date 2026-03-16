@@ -62,7 +62,9 @@ output "monitors_by_protocol" {
 
 ### Read-Only
 
+- `ids` (List of String) List of monitor UUIDs. Convenient for `for_each` patterns.
 - `monitors` (Attributes List) List of monitors. (see [below for nested schema](#nestedatt--monitors))
+- `total` (Number) Total number of monitors returned (after filtering).
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

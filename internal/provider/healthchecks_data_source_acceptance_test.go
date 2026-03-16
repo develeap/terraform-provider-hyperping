@@ -51,6 +51,8 @@ func TestAccHealthchecksDataSource_basic(t *testing.T) {
 				Config: testAccHealthchecksDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "healthchecks.#", "2"),
+					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "total", "2"),
+					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "ids.#", "2"),
 				),
 			},
 		},
@@ -70,6 +72,8 @@ func TestAccHealthchecksDataSource_empty(t *testing.T) {
 				Config: testAccHealthchecksDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "healthchecks.#", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "total", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "ids.#", "0"),
 				),
 			},
 		},
@@ -106,6 +110,8 @@ func TestAccHealthchecksDataSource_many(t *testing.T) {
 				Config: testAccHealthchecksDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "healthchecks.#", "5"),
+					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "total", "5"),
+					tfresource.TestCheckResourceAttr("data.hyperping_healthchecks.all", "ids.#", "5"),
 				),
 			},
 		},

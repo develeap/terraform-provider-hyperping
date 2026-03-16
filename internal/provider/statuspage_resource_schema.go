@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -14,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
 func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -83,12 +86,18 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 						MarkdownDescription: "Supported language codes (e.g., ['en', 'fr', 'de'])",
 						ElementType:         types.StringType,
 						Required:            true,
+						Validators: []validator.List{
+							listvalidator.ValueStringsAre(stringvalidator.OneOf(client.AllowedLanguages...)),
+						},
 					},
 					"default_language": schema.StringAttribute{
 						MarkdownDescription: "Default language code",
 						Optional:            true,
 						Computed:            true,
 						Default:             stringdefault.StaticString("en"),
+						Validators: []validator.String{
+							stringvalidator.OneOf(client.AllowedLanguages...),
+						},
 					},
 					"theme": schema.StringAttribute{
 						MarkdownDescription: "Color theme: light, dark, or system (default: system)",

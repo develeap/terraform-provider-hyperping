@@ -53,3 +53,10 @@ docs/development-archive/
 
 # HashiCorp-internal scaffolding metadata (not used by Terraform or Registry)
 META.d/
+
+# Trycycle worktrees
+.worktrees/
+
+# Trycycle process artifacts
+.trycycle/
+docs/plans/

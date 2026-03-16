@@ -21,7 +21,9 @@ Fetches the list of all Hyperping incidents.
 
 ### Read-Only
 
+- `ids` (List of String) List of incident UUIDs. Convenient for `for_each` patterns.
 - `incidents` (Attributes List) List of incidents. (see [below for nested schema](#nestedatt--incidents))
+- `total` (Number) Total number of incidents returned (after filtering).
 
 <a id="nestedatt--filter"></a>
 ### Nested Schema for `filter`

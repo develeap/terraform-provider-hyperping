@@ -36,6 +36,8 @@ type IncidentsDataSource struct {
 type IncidentsDataSourceModel struct {
 	Incidents []IncidentDataModel  `tfsdk:"incidents"`
 	Filter    *IncidentFilterModel `tfsdk:"filter"`
+	Total     types.Int64          `tfsdk:"total"`
+	IDs       types.List           `tfsdk:"ids"`
 }
 
 // IncidentDataModel describes a single incident in the data source.
@@ -72,6 +74,15 @@ func (d *IncidentsDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 
 		Attributes: map[string]schema.Attribute{
 			"filter": IncidentFilterSchema(),
+			"total": schema.Int64Attribute{
+				MarkdownDescription: "Total number of incidents returned (after filtering).",
+				Computed:            true,
+			},
+			"ids": schema.ListAttribute{
+				MarkdownDescription: "List of incident UUIDs. Convenient for `for_each` patterns.",
+				Computed:            true,
+				ElementType:         types.StringType,
+			},
 			"incidents": schema.ListNestedAttribute{
 				MarkdownDescription: "List of incidents.",
 				Computed:            true,
@@ -193,12 +204,23 @@ func (d *IncidentsDataSource) Read(ctx context.Context, req datasource.ReadReque
 
 	// Map response to model
 	config.Incidents = make([]IncidentDataModel, len(filteredIncidents))
+	incidentIDs := make([]string, len(filteredIncidents))
 	for i, incident := range filteredIncidents {
 		d.mapIncidentToDataModel(&incident, &config.Incidents[i], &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
 			return
 		}
+		incidentIDs[i] = incident.UUID
 	}
+
+	// Set count and ids
+	config.Total = types.Int64Value(int64(len(filteredIncidents)))
+	idsList, diags := types.ListValueFrom(ctx, types.StringType, incidentIDs)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	config.IDs = idsList
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

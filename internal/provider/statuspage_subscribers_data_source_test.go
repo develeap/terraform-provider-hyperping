@@ -23,6 +23,7 @@ func TestAccStatusPageSubscribersDataSource_listAll(t *testing.T) {
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_statuspage_subscribers.all", "subscribers.#", "4"),
 					tfresource.TestCheckResourceAttr("data.hyperping_statuspage_subscribers.all", "total", "4"),
+					tfresource.TestCheckResourceAttr("data.hyperping_statuspage_subscribers.all", "ids.#", "4"),
 				),
 			},
 		},
@@ -60,6 +61,7 @@ func TestAccStatusPageSubscribersDataSource_empty(t *testing.T) {
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("data.hyperping_statuspage_subscribers.empty", "subscribers.#", "0"),
 					tfresource.TestCheckResourceAttr("data.hyperping_statuspage_subscribers.empty", "total", "0"),
+					tfresource.TestCheckResourceAttr("data.hyperping_statuspage_subscribers.empty", "ids.#", "0"),
 				),
 			},
 		},
