@@ -245,20 +245,6 @@ func (r *StatusPageResource) ImportState(ctx context.Context, req resource.Impor
 // It extracts configured languages from the model's settings to filter API response localized fields,
 // preventing drift from API auto-population of all supported languages.
 func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
-	// Detect isProtected drift: the Hyperping admin UI can reset an internal
-	// isProtected flag to true via v1 writes, causing a "Sign In" wall even when
-	// password_protection is false. The top-level PasswordProtected field reflects
-	// the actual isProtected state; if it disagrees with the auth settings, warn.
-	if sp.PasswordProtected && !sp.Settings.Authentication.PasswordProtection {
-		diags.AddWarning(
-			"Status page isProtected drift detected",
-			fmt.Sprintf("Status page %q has password_protected=true at the API level but "+
-				"authentication.password_protection=false in settings. This typically happens "+
-				"when someone edits the page in the Hyperping admin UI, which resets an internal "+
-				"isProtected flag. Run 'terraform apply' to send a PUT that fixes this.", sp.UUID),
-		)
-	}
-
 	// Extract configured languages from the model's settings
 	// This is used to filter localized fields in the API response
 	configuredLangs := r.extractConfiguredLanguages(model.Settings, diags)
@@ -272,9 +258,6 @@ func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *client.
 			planSettingsName = name
 		}
 	}
-
-	// 2. Extract write-only booleans BEFORE API overwrites them
-	serviceMap, sectionIsSplit := extractWriteOnlyBooleans(model.Sections)
 
 	// Map with language filtering to prevent drift
 	commonFields := MapStatusPageCommonFieldsWithFilter(sp, configuredLangs, diags)
@@ -292,11 +275,6 @@ func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *client.
 
 	// Map sections from API
 	model.Sections = commonFields.Sections
-
-	// Apply write-only boolean values using UUID-based matching
-	if len(serviceMap) > 0 || len(sectionIsSplit) > 0 {
-		model.Sections = r.applyWriteOnlyBooleans(model.Sections, serviceMap, sectionIsSplit, diags)
-	}
 }
 
 // extractConfiguredLanguages extracts the list of configured languages from the settings object.
