@@ -5,161 +5,1373 @@ package provider
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/sony/gobreaker"
+
+	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
-func TestNewCreateError(t *testing.T) {
-	err := errors.New("invalid request")
-	diag := newCreateError("Monitor", err)
+// ---------------------------------------------------------------------------
+// DetectErrorContext
+// ---------------------------------------------------------------------------
 
-	if !strings.Contains(diag.Summary(), "Failed to Create Monitor") {
-		t.Errorf("Expected summary to contain 'Failed to Create Monitor', got: %s", diag.Summary())
+func TestDetectErrorContext(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		resourceType string
+		resourceID   string
+		operation    string
+		err          error
+		wantType     string
+		wantStatus   int
+		wantRetry    int
+		wantMessage  string
+	}{
+		{
+			name:         "not found 404",
+			resourceType: "Monitor",
+			resourceID:   "mon_123",
+			operation:    "read",
+			err:          client.NewAPIError(404, "resource not found"),
+			wantType:     "not_found",
+			wantStatus:   404,
+			wantMessage:  "404",
+		},
+		{
+			name:         "unauthorized 401",
+			resourceType: "Monitor",
+			resourceID:   "mon_123",
+			operation:    "read",
+			err:          client.NewAPIError(401, "invalid API key"),
+			wantType:     "auth_error",
+			wantStatus:   401,
+		},
+		{
+			name:         "forbidden 403",
+			resourceType: "Monitor",
+			resourceID:   "mon_123",
+			operation:    "update",
+			err:          client.NewAPIError(403, "access forbidden"),
+			wantType:     "auth_error",
+			wantStatus:   403,
+		},
+		{
+			name:         "rate limit 429",
+			resourceType: "Monitor",
+			resourceID:   "",
+			operation:    "create",
+			err:          client.NewRateLimitError(120),
+			wantType:     "rate_limit",
+			wantStatus:   429,
+			wantRetry:    120,
+		},
+		{
+			name:         "server error 500",
+			resourceType: "Incident",
+			resourceID:   "inc_123",
+			operation:    "delete",
+			err:          client.NewAPIError(500, "internal server error"),
+			wantType:     "server_error",
+			wantStatus:   500,
+		},
+		{
+			name:         "validation error 400",
+			resourceType: "Monitor",
+			resourceID:   "",
+			operation:    "create",
+			err: client.NewValidationError(400, "validation failed", []client.ValidationDetail{
+				{Field: "url", Message: "Invalid URL format"},
+			}),
+			wantType:   "validation",
+			wantStatus: 400,
+		},
+		{
+			name:         "unknown error",
+			resourceType: "Monitor",
+			resourceID:   "mon_123",
+			operation:    "read",
+			err:          errors.New("generic error"),
+			wantType:     "unknown",
+			wantStatus:   0,
+			wantMessage:  "generic error",
+		},
+		{
+			name:         "nil error",
+			resourceType: "Monitor",
+			resourceID:   "mon_123",
+			operation:    "read",
+			err:          nil,
+			wantType:     "unknown",
+			wantStatus:   0,
+		},
+		{
+			name:         "circuit breaker open",
+			resourceType: "Monitor",
+			resourceID:   "mon_123",
+			operation:    "read",
+			err:          gobreaker.ErrOpenState,
+			wantType:     "circuit_breaker",
+			wantStatus:   0,
+			wantMessage:  "circuit breaker is open",
+		},
+		{
+			name:         "empty resource ID for validation",
+			resourceType: "Monitor",
+			resourceID:   "",
+			operation:    "create",
+			err:          client.NewAPIError(400, "validation error"),
+			wantType:     "validation",
+			wantStatus:   400,
+		},
 	}
 
-	if !strings.Contains(diag.Detail(), "invalid request") {
-		t.Errorf("Expected detail to contain error message, got: %s", diag.Detail())
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := DetectErrorContext(tt.resourceType, tt.resourceID, tt.operation, tt.err)
 
-	if !strings.Contains(diag.Detail(), "Troubleshooting") {
-		t.Errorf("Expected detail to contain troubleshooting section, got: %s", diag.Detail())
+			if ctx.Type != tt.wantType {
+				t.Errorf("Type = %q, want %q", ctx.Type, tt.wantType)
+			}
+			if ctx.HTTPStatus != tt.wantStatus {
+				t.Errorf("HTTPStatus = %d, want %d", ctx.HTTPStatus, tt.wantStatus)
+			}
+			if ctx.ResourceType != tt.resourceType {
+				t.Errorf("ResourceType = %q, want %q", ctx.ResourceType, tt.resourceType)
+			}
+			if ctx.ResourceID != tt.resourceID {
+				t.Errorf("ResourceID = %q, want %q", ctx.ResourceID, tt.resourceID)
+			}
+			if ctx.Operation != tt.operation {
+				t.Errorf("Operation = %q, want %q", ctx.Operation, tt.operation)
+			}
+			if tt.wantRetry != 0 && ctx.RetryAfter != tt.wantRetry {
+				t.Errorf("RetryAfter = %d, want %d", ctx.RetryAfter, tt.wantRetry)
+			}
+			if tt.wantMessage != "" && !strings.Contains(ctx.Message, tt.wantMessage) {
+				t.Errorf("Message = %q, want it to contain %q", ctx.Message, tt.wantMessage)
+			}
+			if tt.err == nil && ctx.Message != "" {
+				t.Errorf("Message = %q for nil error, want empty", ctx.Message)
+			}
+		})
 	}
 }
 
+func TestDetectErrorContext_AllFields(t *testing.T) {
+	t.Parallel()
+
+	err := client.NewRateLimitError(90)
+	ctx := DetectErrorContext("Maintenance", "maint_456", "update", err)
+
+	if ctx.Type == "" {
+		t.Error("Type is empty")
+	}
+	if ctx.HTTPStatus == 0 {
+		t.Error("HTTPStatus is zero")
+	}
+	if ctx.RetryAfter == 0 {
+		t.Error("RetryAfter is zero")
+	}
+	if ctx.ResourceType == "" {
+		t.Error("ResourceType is empty")
+	}
+	if ctx.ResourceID == "" {
+		t.Error("ResourceID is empty")
+	}
+	if ctx.Operation == "" {
+		t.Error("Operation is empty")
+	}
+	if ctx.Message == "" {
+		t.Error("Message is empty")
+	}
+
+	if ctx.Type != "rate_limit" {
+		t.Errorf("Type = %q, want %q", ctx.Type, "rate_limit")
+	}
+	if ctx.HTTPStatus != 429 {
+		t.Errorf("HTTPStatus = %d, want 429", ctx.HTTPStatus)
+	}
+	if ctx.RetryAfter != 90 {
+		t.Errorf("RetryAfter = %d, want 90", ctx.RetryAfter)
+	}
+}
+
+func TestDetectErrorContext_DifferentOperations(t *testing.T) {
+	t.Parallel()
+
+	operations := []string{"create", "read", "update", "delete"}
+	err := client.NewAPIError(404, "not found")
+
+	for _, op := range operations {
+		t.Run(op, func(t *testing.T) {
+			t.Parallel()
+			ctx := DetectErrorContext("Monitor", "mon_123", op, err)
+			if ctx.Operation != op {
+				t.Errorf("Operation = %q, want %q", ctx.Operation, op)
+			}
+			if ctx.Type != "not_found" {
+				t.Errorf("Type = %q, want %q", ctx.Type, "not_found")
+			}
+		})
+	}
+}
+
+func TestDetectErrorContext_DifferentResources(t *testing.T) {
+	t.Parallel()
+
+	resources := []string{"Monitor", "Incident", "Maintenance", "Healthcheck", "Status Page"}
+	err := client.NewAPIError(401, "unauthorized")
+
+	for _, resource := range resources {
+		t.Run(resource, func(t *testing.T) {
+			t.Parallel()
+			ctx := DetectErrorContext(resource, "test_123", "read", err)
+			if ctx.ResourceType != resource {
+				t.Errorf("ResourceType = %q, want %q", ctx.ResourceType, resource)
+			}
+			if ctx.Type != "auth_error" {
+				t.Errorf("Type = %q, want %q", ctx.Type, "auth_error")
+			}
+		})
+	}
+}
+
+func TestDetectErrorContext_ServerErrorVariants(t *testing.T) {
+	t.Parallel()
+
+	codes := []int{500, 502, 503, 504}
+	for _, code := range codes {
+		t.Run(fmt.Sprintf("status_%d", code), func(t *testing.T) {
+			t.Parallel()
+			err := client.NewAPIError(code, fmt.Sprintf("server error %d", code))
+			ctx := DetectErrorContext("Monitor", "mon_123", "read", err)
+
+			if ctx.Type != "server_error" {
+				t.Errorf("Type = %q, want %q", ctx.Type, "server_error")
+			}
+			if ctx.HTTPStatus != code {
+				t.Errorf("HTTPStatus = %d, want %d", ctx.HTTPStatus, code)
+			}
+		})
+	}
+}
+
+func TestDetectErrorContext_ValidationErrorVariants(t *testing.T) {
+	t.Parallel()
+
+	codes := []int{400, 422}
+	for _, code := range codes {
+		t.Run(fmt.Sprintf("status_%d", code), func(t *testing.T) {
+			t.Parallel()
+			err := client.NewAPIError(code, fmt.Sprintf("validation %d", code))
+			ctx := DetectErrorContext("Monitor", "", "create", err)
+
+			if ctx.Type != "validation" {
+				t.Errorf("Type = %q, want %q", ctx.Type, "validation")
+			}
+			if ctx.HTTPStatus != code {
+				t.Errorf("HTTPStatus = %d, want %d", ctx.HTTPStatus, code)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ErrorContext.String
+// ---------------------------------------------------------------------------
+
+func TestErrorContext_String(t *testing.T) {
+	t.Parallel()
+
+	ctx := ErrorContext{
+		Type:         "not_found",
+		HTTPStatus:   404,
+		ResourceType: "Monitor",
+		ResourceID:   "mon_123",
+		Operation:    "read",
+	}
+
+	str := ctx.String()
+	for _, want := range []string{"not_found", "404", "Monitor", "mon_123", "read"} {
+		if !strings.Contains(str, want) {
+			t.Errorf("String() = %q, want it to contain %q", str, want)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// extractRetryAfter
+// ---------------------------------------------------------------------------
+
+func TestExtractRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		err      error
+		expected int
+	}{
+		// Pattern matches
+		{"60 seconds", errors.New("API error (status 429): rate limit exceeded - retry after 60 seconds"), 60},
+		{"120 seconds", errors.New("rate limit exceeded - retry after 120 seconds"), 120},
+		{"single second", errors.New("retry after 1 second"), 1},
+		{"300 seconds", errors.New("Please retry after 300 seconds"), 300},
+		{"uppercase", errors.New("RETRY AFTER 90 SECONDS"), 90},
+		{"mixed case", errors.New("Retry After 45 Seconds"), 45},
+		{"lowercase", errors.New("retry after 30 seconds"), 30},
+		{"large number", errors.New("retry after 3600 seconds"), 3600},
+		// Default cases
+		{"no retry pattern", errors.New("rate limit exceeded"), 60},
+		{"different format", errors.New("too many requests"), 60},
+		{"nil error", nil, 60},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := extractRetryAfter(tt.err)
+			if result != tt.expected {
+				t.Errorf("extractRetryAfter() = %d, want %d", result, tt.expected)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// extractStatusCode
+// ---------------------------------------------------------------------------
+
+func TestExtractStatusCode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		err         error
+		defaultCode int
+		expected    int
+	}{
+		// Successful extractions
+		{"500 status", errors.New("API error (status 500): internal server error"), 999, 500},
+		{"502 status", errors.New("status 502 bad gateway"), 999, 502},
+		{"503 status", errors.New("service unavailable status 503"), 999, 503},
+		{"400 status", errors.New("API error (status 400): bad request"), 999, 400},
+		// Default fallback
+		{"no status code", errors.New("generic error"), 500, 500},
+		{"nil error", nil, 400, 400},
+		{"invalid status pattern", errors.New("status code not found"), 503, 503},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := extractStatusCode(tt.err, tt.defaultCode)
+			if result != tt.expected {
+				t.Errorf("extractStatusCode() = %d, want %d", result, tt.expected)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newCreateError
+// ---------------------------------------------------------------------------
+
+func TestNewCreateError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		resourceType string
+		err          error
+		wantSummary  string
+		wantDetail   []string
+		notInDetail  []string
+	}{
+		{
+			name:         "basic create error",
+			resourceType: "Monitor",
+			err:          errors.New("invalid request"),
+			wantSummary:  "Failed to Create Monitor",
+			wantDetail:   []string{"invalid request", "Troubleshooting"},
+		},
+		{
+			name:         "monitor includes quick reference",
+			resourceType: "Monitor",
+			err:          errors.New("validation failed"),
+			wantSummary:  "Failed to Create Monitor",
+			wantDetail:   []string{"Quick Reference", "protocol"},
+		},
+		{
+			name:         "unknown type has no quick reference",
+			resourceType: "Outage",
+			err:          errors.New("server error"),
+			wantSummary:  "Failed to Create Outage",
+			wantDetail:   []string{"Troubleshooting"},
+			notInDetail:  []string{"Quick Reference"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			diag := newCreateError(tt.resourceType, tt.err)
+
+			if !strings.Contains(diag.Summary(), tt.wantSummary) {
+				t.Errorf("Summary = %q, want it to contain %q", diag.Summary(), tt.wantSummary)
+			}
+			for _, want := range tt.wantDetail {
+				if !strings.Contains(diag.Detail(), want) {
+					t.Errorf("Detail missing %q, got: %s", want, diag.Detail())
+				}
+			}
+			for _, notWant := range tt.notInDetail {
+				if strings.Contains(diag.Detail(), notWant) {
+					t.Errorf("Detail should not contain %q, got: %s", notWant, diag.Detail())
+				}
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newReadError
+// ---------------------------------------------------------------------------
+
 func TestNewReadError(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("not found")
 	diag := newReadError("StatusPage", "sp_123", err)
 
 	if !strings.Contains(diag.Summary(), "Failed to Read StatusPage") {
-		t.Errorf("Expected summary to contain 'Failed to Read StatusPage', got: %s", diag.Summary())
+		t.Errorf("Summary = %q, want it to contain 'Failed to Read StatusPage'", diag.Summary())
 	}
-
 	if !strings.Contains(diag.Detail(), "sp_123") {
-		t.Errorf("Expected detail to contain resource ID, got: %s", diag.Detail())
+		t.Errorf("Detail missing resource ID, got: %s", diag.Detail())
 	}
-
 	if !strings.Contains(diag.Detail(), "not found") {
-		t.Errorf("Expected detail to contain error message, got: %s", diag.Detail())
+		t.Errorf("Detail missing error message, got: %s", diag.Detail())
 	}
 }
+
+// ---------------------------------------------------------------------------
+// newUpdateError
+// ---------------------------------------------------------------------------
 
 func TestNewUpdateError(t *testing.T) {
-	err := errors.New("validation failed")
-	diag := newUpdateError("Incident", "inc_456", err)
+	t.Parallel()
 
-	if !strings.Contains(diag.Summary(), "Failed to Update Incident") {
-		t.Errorf("Expected summary to contain 'Failed to Update Incident', got: %s", diag.Summary())
+	tests := []struct {
+		name         string
+		resourceType string
+		resourceID   string
+		err          error
+		wantSummary  string
+		wantDetail   []string
+	}{
+		{
+			name:         "basic update error",
+			resourceType: "Incident",
+			resourceID:   "inc_456",
+			err:          errors.New("validation failed"),
+			wantSummary:  "Failed to Update Incident",
+			wantDetail:   []string{"inc_456"},
+		},
+		{
+			name:         "monitor includes quick reference",
+			resourceType: "Monitor",
+			resourceID:   "mon-123",
+			err:          errors.New("validation failed"),
+			wantSummary:  "Failed to Update Monitor",
+			wantDetail:   []string{"Quick Reference", "protocol"},
+		},
 	}
 
-	if !strings.Contains(diag.Detail(), "inc_456") {
-		t.Errorf("Expected detail to contain resource ID, got: %s", diag.Detail())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			diag := newUpdateError(tt.resourceType, tt.resourceID, tt.err)
+
+			if !strings.Contains(diag.Summary(), tt.wantSummary) {
+				t.Errorf("Summary = %q, want it to contain %q", diag.Summary(), tt.wantSummary)
+			}
+			for _, want := range tt.wantDetail {
+				if !strings.Contains(diag.Detail(), want) {
+					t.Errorf("Detail missing %q, got: %s", want, diag.Detail())
+				}
+			}
+		})
 	}
 }
 
+// ---------------------------------------------------------------------------
+// newDeleteError
+// ---------------------------------------------------------------------------
+
 func TestNewDeleteError(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("resource has dependencies")
 	diag := newDeleteError("Maintenance", "mw_789", err)
 
 	if !strings.Contains(diag.Summary(), "Failed to Delete Maintenance") {
-		t.Errorf("Expected summary to contain 'Failed to Delete Maintenance', got: %s", diag.Summary())
+		t.Errorf("Summary = %q, want it to contain 'Failed to Delete Maintenance'", diag.Summary())
 	}
-
 	if !strings.Contains(diag.Detail(), "dependencies") {
-		t.Errorf("Expected detail to contain troubleshooting hint about dependencies, got: %s", diag.Detail())
+		t.Errorf("Detail missing 'dependencies', got: %s", diag.Detail())
 	}
 }
 
+// ---------------------------------------------------------------------------
+// newListError
+// ---------------------------------------------------------------------------
+
 func TestNewListError(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("permission denied")
 	diag := newListError("Monitors", err)
 
 	if !strings.Contains(diag.Summary(), "Failed to List Monitors") {
-		t.Errorf("Expected summary to contain 'Failed to List Monitors', got: %s", diag.Summary())
+		t.Errorf("Summary = %q, want it to contain 'Failed to List Monitors'", diag.Summary())
 	}
-
 	if !strings.Contains(diag.Detail(), "permission denied") {
-		t.Errorf("Expected detail to contain error message, got: %s", diag.Detail())
+		t.Errorf("Detail missing error message, got: %s", diag.Detail())
 	}
 }
 
-func TestNewConfigError(t *testing.T) {
-	diag := newConfigError("Invalid frequency value")
-
-	if !strings.Contains(diag.Summary(), "Configuration Error") {
-		t.Errorf("Expected summary to contain 'Configuration Error', got: %s", diag.Summary())
-	}
-
-	if !strings.Contains(diag.Detail(), "Invalid frequency value") {
-		t.Errorf("Expected detail to contain error message, got: %s", diag.Detail())
-	}
-}
-
-func TestNewValidationError(t *testing.T) {
-	diag := newValidationError("URL", "URL must be a valid HTTP/HTTPS endpoint")
-
-	if !strings.Contains(diag.Summary(), "Invalid URL") {
-		t.Errorf("Expected summary to contain 'Invalid URL', got: %s", diag.Summary())
-	}
-
-	if !strings.Contains(diag.Detail(), "valid HTTP/HTTPS endpoint") {
-		t.Errorf("Expected detail to contain validation message, got: %s", diag.Detail())
-	}
-}
-
-func TestNewImportError(t *testing.T) {
-	err := errors.New("invalid format")
-	diag := newImportError("Monitor", err)
-
-	if !strings.Contains(diag.Summary(), "Import Failed") {
-		t.Errorf("Expected summary to contain 'Import Failed', got: %s", diag.Summary())
-	}
-
-	if !strings.Contains(diag.Detail(), "invalid format") {
-		t.Errorf("Expected detail to contain error message, got: %s", diag.Detail())
-	}
-}
-
-func TestNewDeleteWarning(t *testing.T) {
-	diag := newDeleteWarning("Monitor", "Resource not found in Hyperping")
-
-	if !strings.Contains(diag.Summary(), "Monitor Not Found") {
-		t.Errorf("Expected summary to contain 'Monitor Not Found', got: %s", diag.Summary())
-	}
-
-	if !strings.Contains(diag.Detail(), "already been deleted") {
-		t.Errorf("Expected detail to contain standard message, got: %s", diag.Detail())
-	}
-}
+// ---------------------------------------------------------------------------
+// newReadAfterCreateError
+// ---------------------------------------------------------------------------
 
 func TestNewReadAfterCreateError(t *testing.T) {
+	t.Parallel()
+
 	err := errors.New("resource not ready")
 	diag := newReadAfterCreateError("Monitor", "mon_123", err)
 
 	if !strings.Contains(diag.Summary(), "Created But Read Failed") {
-		t.Errorf("Expected summary to contain 'Created But Read Failed', got: %s", diag.Summary())
+		t.Errorf("Summary = %q, want it to contain 'Created But Read Failed'", diag.Summary())
 	}
-
 	if !strings.Contains(diag.Detail(), "mon_123") {
-		t.Errorf("Expected detail to contain resource ID, got: %s", diag.Detail())
+		t.Errorf("Detail missing resource ID, got: %s", diag.Detail())
 	}
-
 	if !strings.Contains(diag.Detail(), "terraform import") {
-		t.Errorf("Expected detail to contain import instructions, got: %s", diag.Detail())
+		t.Errorf("Detail missing import instructions, got: %s", diag.Detail())
 	}
 }
 
+// ---------------------------------------------------------------------------
+// newReadAfterUpdateError
+// ---------------------------------------------------------------------------
+
+func TestNewReadAfterUpdateError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		resourceType string
+		resourceID   string
+		err          error
+		wantSummary  string
+		wantDetail   []string
+	}{
+		{
+			name:         "incident update error",
+			resourceType: "Incident",
+			resourceID:   "inc_789",
+			err:          errors.New("connection timeout"),
+			wantSummary:  "Updated But Read Failed",
+			wantDetail:   []string{"inc_789", "connection timeout", "terraform refresh"},
+		},
+		{
+			name:         "monitor update error",
+			resourceType: "Monitor",
+			resourceID:   "mon_abc",
+			err:          errors.New("network error"),
+			wantSummary:  "Updated But Read Failed",
+			wantDetail:   []string{"mon_abc", "network error", "terraform refresh"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			diag := newReadAfterUpdateError(tt.resourceType, tt.resourceID, tt.err)
+
+			if !strings.Contains(diag.Summary(), tt.wantSummary) {
+				t.Errorf("Summary = %q, want it to contain %q", diag.Summary(), tt.wantSummary)
+			}
+			for _, want := range tt.wantDetail {
+				if !strings.Contains(diag.Detail(), want) {
+					t.Errorf("Detail missing %q, got: %s", want, diag.Detail())
+				}
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newConfigError
+// ---------------------------------------------------------------------------
+
+func TestNewConfigError(t *testing.T) {
+	t.Parallel()
+
+	diag := newConfigError("Invalid frequency value")
+
+	if !strings.Contains(diag.Summary(), "Configuration Error") {
+		t.Errorf("Summary = %q, want it to contain 'Configuration Error'", diag.Summary())
+	}
+	if !strings.Contains(diag.Detail(), "Invalid frequency value") {
+		t.Errorf("Detail missing error message, got: %s", diag.Detail())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newValidationError
+// ---------------------------------------------------------------------------
+
+func TestNewValidationError(t *testing.T) {
+	t.Parallel()
+
+	diag := newValidationError("URL", "URL must be a valid HTTP/HTTPS endpoint")
+
+	if !strings.Contains(diag.Summary(), "Invalid URL") {
+		t.Errorf("Summary = %q, want it to contain 'Invalid URL'", diag.Summary())
+	}
+	if !strings.Contains(diag.Detail(), "valid HTTP/HTTPS endpoint") {
+		t.Errorf("Detail missing validation message, got: %s", diag.Detail())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newImportError
+// ---------------------------------------------------------------------------
+
+func TestNewImportError(t *testing.T) {
+	t.Parallel()
+
+	err := errors.New("invalid format")
+	diag := newImportError("Monitor", err)
+
+	if !strings.Contains(diag.Summary(), "Import Failed") {
+		t.Errorf("Summary = %q, want it to contain 'Import Failed'", diag.Summary())
+	}
+	if !strings.Contains(diag.Detail(), "invalid format") {
+		t.Errorf("Detail missing error message, got: %s", diag.Detail())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newUnexpectedConfigTypeError
+// ---------------------------------------------------------------------------
+
 func TestNewUnexpectedConfigTypeError(t *testing.T) {
+	t.Parallel()
+
 	diag := newUnexpectedConfigTypeError("*provider.hyperpingClient", "string")
 
 	if !strings.Contains(diag.Summary(), "Unexpected Resource Configure Type") {
-		t.Errorf("Expected summary to contain 'Unexpected Resource Configure Type', got: %s", diag.Summary())
+		t.Errorf("Summary = %q, want it to contain 'Unexpected Resource Configure Type'", diag.Summary())
 	}
-
 	if !strings.Contains(diag.Detail(), "*provider.hyperpingClient") {
-		t.Errorf("Expected detail to contain expected type, got: %s", diag.Detail())
+		t.Errorf("Detail missing expected type, got: %s", diag.Detail())
+	}
+	if !strings.Contains(diag.Detail(), "provider bug") {
+		t.Errorf("Detail missing 'provider bug', got: %s", diag.Detail())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newDeleteWarning
+// ---------------------------------------------------------------------------
+
+func TestNewDeleteWarning(t *testing.T) {
+	t.Parallel()
+
+	diag := newDeleteWarning("Monitor", "Resource not found in Hyperping")
+
+	if !strings.Contains(diag.Summary(), "Monitor Not Found") {
+		t.Errorf("Summary = %q, want it to contain 'Monitor Not Found'", diag.Summary())
+	}
+	if !strings.Contains(diag.Detail(), "already been deleted") {
+		t.Errorf("Detail missing standard message, got: %s", diag.Detail())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestAllErrorHelpersReturnValidDiagnostics -- ensures every helper produces
+// non-empty Summary and Detail.
+// ---------------------------------------------------------------------------
+
+func TestAllErrorHelpersReturnValidDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	testErr := errors.New("test error")
+
+	tests := []struct {
+		name   string
+		create func() (string, string)
+	}{
+		{"newCreateError", func() (string, string) { d := newCreateError("Resource", testErr); return d.Summary(), d.Detail() }},
+		{"newReadError", func() (string, string) {
+			d := newReadError("Resource", "id_123", testErr)
+			return d.Summary(), d.Detail()
+		}},
+		{"newUpdateError", func() (string, string) {
+			d := newUpdateError("Resource", "id_456", testErr)
+			return d.Summary(), d.Detail()
+		}},
+		{"newDeleteError", func() (string, string) {
+			d := newDeleteError("Resource", "id_789", testErr)
+			return d.Summary(), d.Detail()
+		}},
+		{"newListError", func() (string, string) { d := newListError("Resources", testErr); return d.Summary(), d.Detail() }},
+		{"newReadAfterCreateError", func() (string, string) {
+			d := newReadAfterCreateError("Resource", "new_123", testErr)
+			return d.Summary(), d.Detail()
+		}},
+		{"newReadAfterUpdateError", func() (string, string) {
+			d := newReadAfterUpdateError("Resource", "upd_456", testErr)
+			return d.Summary(), d.Detail()
+		}},
+		{"newConfigError", func() (string, string) { d := newConfigError("Invalid configuration"); return d.Summary(), d.Detail() }},
+		{"newValidationError", func() (string, string) {
+			d := newValidationError("Field", "Invalid value")
+			return d.Summary(), d.Detail()
+		}},
+		{"newImportError", func() (string, string) { d := newImportError("Resource", testErr); return d.Summary(), d.Detail() }},
+		{"newUnexpectedConfigTypeError", func() (string, string) {
+			d := newUnexpectedConfigTypeError("*client.Client", 42)
+			return d.Summary(), d.Detail()
+		}},
+		{"newDeleteWarning", func() (string, string) {
+			d := newDeleteWarning("Resource", "Already deleted")
+			return d.Summary(), d.Detail()
+		}},
 	}
 
-	if !strings.Contains(diag.Detail(), "provider bug") {
-		t.Errorf("Expected detail to mention provider bug, got: %s", diag.Detail())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			summary, detail := tt.create()
+
+			if summary == "" {
+				t.Error("Summary is empty")
+			}
+			if detail == "" {
+				t.Error("Detail is empty")
+			}
+			if len(summary) < 5 {
+				t.Errorf("Summary too short: %s", summary)
+			}
+			if len(detail) < 10 {
+				t.Errorf("Detail too short: %s", detail)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ValidValueReference
+// ---------------------------------------------------------------------------
+
+func TestValidValueReference(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		resourceType string
+		wantEmpty    bool
+		wantContains []string
+	}{
+		{
+			name:         "Monitor",
+			resourceType: "Monitor",
+			wantContains: []string{
+				"protocol", "http_method", "check_frequency",
+				"expected_status_code", "regions", "alerts_wait",
+				// Verify actual values from client constants
+				"http", "port", "icmp", "GET", "POST", "london", "frankfurt",
+			},
+		},
+		{
+			name:         "Maintenance Window",
+			resourceType: "Maintenance Window",
+			wantContains: []string{"notification_option", "scheduled", "immediate"},
+		},
+		{
+			name:         "Incident",
+			resourceType: "Incident",
+			wantContains: []string{"type", "outage", "incident"},
+		},
+		{
+			name:         "unknown type returns empty",
+			resourceType: "UnknownType",
+			wantEmpty:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ref := ValidValueReference(tt.resourceType)
+
+			if tt.wantEmpty {
+				if ref != "" {
+					t.Errorf("Expected empty string, got: %s", ref)
+				}
+				return
+			}
+
+			if ref == "" {
+				t.Fatalf("Expected non-empty reference for %s", tt.resourceType)
+			}
+
+			for _, want := range tt.wantContains {
+				if !strings.Contains(ref, want) {
+					t.Errorf("Reference missing %q, got: %s", want, ref)
+				}
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// BuildTroubleshootingSteps
+// ---------------------------------------------------------------------------
+
+func TestBuildTroubleshootingSteps(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		ctx        ErrorContext
+		wantInText []string
+	}{
+		{
+			name: "not_found",
+			ctx: ErrorContext{
+				Type: "not_found", HTTPStatus: 404,
+				ResourceType: "Monitor", ResourceID: "mon_test123", Operation: "read",
+			},
+			wantInText: []string{
+				"Troubleshooting:", "Verify the Monitor still exists",
+				"https://app.hyperping.io/monitors", "mon_test123",
+				"terraform state show",
+			},
+		},
+		{
+			name: "auth_error 401",
+			ctx: ErrorContext{
+				Type: "auth_error", HTTPStatus: 401,
+				ResourceType: "Monitor", Operation: "create",
+			},
+			wantInText: []string{
+				"HYPERPING_API_KEY", "starts with 'sk_'", "curl",
+				"https://app.hyperping.io/settings/api",
+			},
+		},
+		{
+			name: "auth_error 403",
+			ctx: ErrorContext{
+				Type: "auth_error", HTTPStatus: 403,
+				ResourceType: "Incident", Operation: "delete",
+			},
+			wantInText: []string{"required permissions", "Incident resources"},
+		},
+		{
+			name: "rate_limit with retry",
+			ctx: ErrorContext{
+				Type: "rate_limit", HTTPStatus: 429,
+				RetryAfter: 120, Operation: "update",
+			},
+			wantInText: []string{
+				"Wait 120 seconds", "terraform apply -parallelism=1",
+				"rate-limits",
+			},
+		},
+		{
+			name: "rate_limit default wait",
+			ctx: ErrorContext{
+				Type: "rate_limit", HTTPStatus: 429,
+				RetryAfter: 0, Operation: "update",
+			},
+			wantInText: []string{"Wait 60 seconds"},
+		},
+		{
+			name: "server_error",
+			ctx: ErrorContext{
+				Type: "server_error", HTTPStatus: 500, Operation: "create",
+			},
+			wantInText: []string{"https://status.hyperping.app", "retry", "support"},
+		},
+		{
+			name: "validation generic",
+			ctx: ErrorContext{
+				Type: "validation", HTTPStatus: 400,
+				ResourceType: "Monitor", Operation: "create",
+			},
+			wantInText: []string{"required fields", "validation", "Monitor documentation"},
+		},
+		{
+			name: "validation Monitor specifics",
+			ctx: ErrorContext{
+				Type: "validation", HTTPStatus: 400,
+				ResourceType: "Monitor", Operation: "create",
+			},
+			wantInText: []string{
+				"Frequency must be one of",
+				"Timeout must be one of",
+				"valid Hyperping region codes",
+			},
+		},
+		{
+			name: "validation Incident specifics",
+			ctx: ErrorContext{
+				Type: "validation", HTTPStatus: 422,
+				ResourceType: "Incident", Operation: "create",
+			},
+			wantInText: []string{"Status must be one of", "Severity must be one of"},
+		},
+		{
+			name: "validation Maintenance specifics",
+			ctx: ErrorContext{
+				Type: "validation", HTTPStatus: 400,
+				ResourceType: "Maintenance", Operation: "create",
+			},
+			wantInText: []string{"ISO 8601", "scheduledEnd must be after scheduledStart"},
+		},
+		{
+			name: "unknown error type",
+			ctx: ErrorContext{
+				Type: "unknown", HTTPStatus: 0, Operation: "read",
+			},
+			wantInText: []string{"network connectivity", "service status", "provider maintainers"},
+		},
+		{
+			name: "not_found empty resource ID",
+			ctx: ErrorContext{
+				Type: "not_found", HTTPStatus: 404,
+				ResourceType: "Monitor", ResourceID: "", Operation: "read",
+			},
+			wantInText: []string{"Troubleshooting:"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			steps := BuildTroubleshootingSteps(tt.ctx)
+
+			for _, want := range tt.wantInText {
+				if !strings.Contains(steps, want) {
+					t.Errorf("Steps missing %q, got:\n%s", want, steps)
+				}
+			}
+		})
+	}
+}
+
+func TestBuildTroubleshootingSteps_ContainsDashboardLink(t *testing.T) {
+	t.Parallel()
+
+	resourceTypes := []string{"Monitor", "Incident", "Maintenance", "Statuspage"}
+	for _, resourceType := range resourceTypes {
+		t.Run(resourceType, func(t *testing.T) {
+			t.Parallel()
+			ctx := ErrorContext{
+				Type: "not_found", HTTPStatus: 404,
+				ResourceType: resourceType, ResourceID: "test_id", Operation: "read",
+			}
+
+			steps := BuildTroubleshootingSteps(ctx)
+			if !strings.Contains(steps, "app.hyperping.io") {
+				t.Errorf("Expected dashboard link for %s, got:\n%s", resourceType, steps)
+			}
+		})
+	}
+}
+
+func TestBuildTroubleshootingSteps_ContainsRetryTime(t *testing.T) {
+	t.Parallel()
+
+	retryTimes := []int{30, 60, 90, 120, 180}
+	for _, retryTime := range retryTimes {
+		t.Run(fmt.Sprintf("RetryAfter%d", retryTime), func(t *testing.T) {
+			t.Parallel()
+			ctx := ErrorContext{
+				Type: "rate_limit", HTTPStatus: 429,
+				RetryAfter: retryTime, Operation: "create",
+			}
+
+			steps := BuildTroubleshootingSteps(ctx)
+			expectedMsg := fmt.Sprintf("Wait %d seconds", retryTime)
+			if !strings.Contains(steps, expectedMsg) {
+				t.Errorf("Steps missing %q, got:\n%s", expectedMsg, steps)
+			}
+		})
+	}
+}
+
+func TestBuildTroubleshootingSteps_ResourceSpecific(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		resourceType string
+		errorType    string
+		expectedText string
+	}{
+		{"Monitor", "not_found", "monitors"},
+		{"Incident", "not_found", "incidents"},
+		{"Maintenance", "not_found", "maintenance"},
+		{"Monitor", "validation", "Frequency must be"},
+		{"Incident", "validation", "Status must be"},
+		{"Maintenance", "validation", "ISO 8601"},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s_%s", tt.resourceType, tt.errorType), func(t *testing.T) {
+			t.Parallel()
+			ctx := ErrorContext{
+				Type: tt.errorType, HTTPStatus: 400,
+				ResourceType: tt.resourceType, Operation: "create",
+			}
+
+			steps := BuildTroubleshootingSteps(ctx)
+			if !strings.Contains(strings.ToLower(steps), strings.ToLower(tt.expectedText)) {
+				t.Errorf("Steps missing resource-specific text %q for %s %s", tt.expectedText, tt.resourceType, tt.errorType)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// build*Steps internal helpers
+// ---------------------------------------------------------------------------
+
+func TestBuildNotFoundSteps_Content(t *testing.T) {
+	t.Parallel()
+
+	ctx := ErrorContext{
+		Type: "not_found", HTTPStatus: 404,
+		ResourceType: "Monitor", ResourceID: "mon_test", Operation: "read",
+	}
+
+	steps := buildNotFoundSteps(ctx)
+	if len(steps) < 4 {
+		t.Errorf("Expected at least 4 steps, got: %d", len(steps))
+	}
+
+	stepsText := strings.Join(steps, "\n")
+	for _, want := range []string{"dashboard", "deleted outside"} {
+		if !strings.Contains(stepsText, want) {
+			t.Errorf("Steps missing %q", want)
+		}
+	}
+}
+
+func TestBuildAuthErrorSteps_Content(t *testing.T) {
+	t.Parallel()
+
+	ctx := ErrorContext{
+		Type: "auth_error", HTTPStatus: 401, Operation: "read",
+	}
+
+	steps := buildAuthErrorSteps(ctx)
+	if len(steps) < 3 {
+		t.Errorf("Expected at least 3 steps, got: %d", len(steps))
+	}
+
+	stepsText := strings.Join(steps, "\n")
+	for _, want := range []string{"API key", "curl"} {
+		if !strings.Contains(stepsText, want) {
+			t.Errorf("Steps missing %q", want)
+		}
+	}
+}
+
+func TestBuildRateLimitSteps_Content(t *testing.T) {
+	t.Parallel()
+
+	ctx := ErrorContext{
+		Type: "rate_limit", HTTPStatus: 429, RetryAfter: 45, Operation: "create",
+	}
+
+	steps := buildRateLimitSteps(ctx)
+	if len(steps) < 3 {
+		t.Errorf("Expected at least 3 steps, got: %d", len(steps))
+	}
+
+	stepsText := strings.Join(steps, "\n")
+	for _, want := range []string{"45 seconds", "parallelism"} {
+		if !strings.Contains(stepsText, want) {
+			t.Errorf("Steps missing %q", want)
+		}
+	}
+}
+
+func TestBuildServerErrorSteps_Content(t *testing.T) {
+	t.Parallel()
+
+	ctx := ErrorContext{
+		Type: "server_error", HTTPStatus: 500, Operation: "update",
+	}
+
+	steps := buildServerErrorSteps(ctx)
+	if len(steps) < 3 {
+		t.Errorf("Expected at least 3 steps, got: %d", len(steps))
+	}
+
+	stepsText := strings.Join(steps, "\n")
+	for _, want := range []string{"status", "retry"} {
+		if !strings.Contains(stepsText, want) {
+			t.Errorf("Steps missing %q", want)
+		}
+	}
+}
+
+func TestBuildValidationErrorSteps_Content(t *testing.T) {
+	t.Parallel()
+
+	ctx := ErrorContext{
+		Type: "validation", HTTPStatus: 400,
+		ResourceType: "Monitor", Operation: "create",
+	}
+
+	steps := buildValidationErrorSteps(ctx)
+	if len(steps) < 4 {
+		t.Errorf("Expected at least 4 steps, got: %d", len(steps))
+	}
+
+	stepsText := strings.Join(steps, "\n")
+	for _, want := range []string{"required fields", "documentation"} {
+		if !strings.Contains(stepsText, want) {
+			t.Errorf("Steps missing %q", want)
+		}
+	}
+}
+
+func TestBuildValidationErrorSteps_UnknownResourceType(t *testing.T) {
+	t.Parallel()
+
+	ctx := ErrorContext{
+		Type: "validation", HTTPStatus: 400,
+		ResourceType: "UnknownResource", Operation: "create",
+	}
+
+	steps := buildValidationErrorSteps(ctx)
+	stepsText := strings.Join(steps, "\n")
+
+	if !strings.Contains(stepsText, "Check field types and value constraints") {
+		t.Error("Expected default validation guidance for unknown resource type")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// getDashboardURL
+// ---------------------------------------------------------------------------
+
+func TestGetDashboardURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		resourceType string
+		expectedURL  string
+	}{
+		{"Monitor", "https://app.hyperping.io/monitors"},
+		{"Incident", "https://app.hyperping.io/incidents"},
+		{"Maintenance", "https://app.hyperping.io/maintenance"},
+		{"Statuspage", "https://app.hyperping.io/statuspages"},
+		{"Healthcheck", "https://app.hyperping.io/healthchecks"},
+		{"Outage", "https://app.hyperping.io/outages"},
+		{"Unknown", "https://app.hyperping.io"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.resourceType, func(t *testing.T) {
+			t.Parallel()
+			url := getDashboardURL(tt.resourceType)
+			if url != tt.expectedURL {
+				t.Errorf("getDashboardURL(%q) = %q, want %q", tt.resourceType, url, tt.expectedURL)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// joinSteps
+// ---------------------------------------------------------------------------
+
+func TestJoinSteps(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		steps    []string
+		expected string
+	}{
+		{"multiple steps", []string{"Step 1", "Step 2", "Step 3"}, "Step 1\nStep 2\nStep 3\n"},
+		{"empty steps", []string{}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := joinSteps(tt.steps)
+			if result != tt.expected {
+				t.Errorf("joinSteps() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Enhanced error creation functions (New*ErrorWithContext)
+// ---------------------------------------------------------------------------
+
+func TestNewReadErrorWithContext(t *testing.T) {
+	t.Parallel()
+
+	err := client.NewAPIError(404, "monitor not found")
+	diag := NewReadErrorWithContext("Monitor", "mon_abc123", err)
+
+	if diag.Summary() != "Failed to Read Monitor" {
+		t.Errorf("Summary = %q, want 'Failed to Read Monitor'", diag.Summary())
+	}
+
+	detail := diag.Detail()
+	for _, want := range []string{"mon_abc123", "Troubleshooting:", "dashboard"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("Detail missing %q, got: %s", want, detail)
+		}
+	}
+}
+
+func TestNewCreateErrorWithContext(t *testing.T) {
+	t.Parallel()
+
+	err := client.NewAPIError(401, "unauthorized")
+	diag := NewCreateErrorWithContext("Incident", err)
+
+	if diag.Summary() != "Failed to Create Incident" {
+		t.Errorf("Summary = %q, want 'Failed to Create Incident'", diag.Summary())
+	}
+
+	detail := diag.Detail()
+	for _, want := range []string{"Troubleshooting:", "HYPERPING_API_KEY"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("Detail missing %q, got: %s", want, detail)
+		}
+	}
+}
+
+func TestNewUpdateErrorWithContext(t *testing.T) {
+	t.Parallel()
+
+	err := client.NewRateLimitError(90)
+	diag := NewUpdateErrorWithContext("Monitor", "mon_xyz789", err)
+
+	if diag.Summary() != "Failed to Update Monitor" {
+		t.Errorf("Summary = %q, want 'Failed to Update Monitor'", diag.Summary())
+	}
+
+	detail := diag.Detail()
+	for _, want := range []string{"mon_xyz789", "Wait 90 seconds", "parallelism"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("Detail missing %q, got: %s", want, detail)
+		}
+	}
+}
+
+func TestNewDeleteErrorWithContext(t *testing.T) {
+	t.Parallel()
+
+	err := client.NewAPIError(500, "internal server error")
+	diag := NewDeleteErrorWithContext("Maintenance", "maint_test", err)
+
+	if diag.Summary() != "Failed to Delete Maintenance" {
+		t.Errorf("Summary = %q, want 'Failed to Delete Maintenance'", diag.Summary())
+	}
+
+	detail := diag.Detail()
+	for _, want := range []string{"maint_test", "status.hyperping.app"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("Detail missing %q, got: %s", want, detail)
+		}
+	}
+}
+
+func TestNewReadErrorWithContext_CircuitBreaker(t *testing.T) {
+	t.Parallel()
+
+	err := gobreaker.ErrOpenState
+	d := NewReadErrorWithContext("Monitor", "mon_abc123", err)
+
+	if !strings.Contains(d.Summary(), "Failed to Read Monitor") {
+		t.Errorf("Summary = %q, want it to contain 'Failed to Read Monitor'", d.Summary())
+	}
+
+	detail := d.Detail()
+	for _, want := range []string{
+		"circuit breaker is open",
+		"Wait 30 seconds",
+		"-parallelism=1",
+		"status.hyperping.app",
+	} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("Detail missing %q, got: %s", want, detail)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Enhanced error message formatting
+// ---------------------------------------------------------------------------
+
+func TestEnhancedErrorMessage_Format(t *testing.T) {
+	t.Parallel()
+
+	err := errors.New("test error")
+	diag := NewReadErrorWithContext("Monitor", "mon_test", err)
+	detail := diag.Detail()
+
+	for _, want := range []string{"Unable to read", "got error:", "Troubleshooting:\n"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("Detail missing %q, got: %s", want, detail)
+		}
+	}
+}
+
+func TestEnhancedErrorMessage_AllOperations(t *testing.T) {
+	t.Parallel()
+
+	testErr := errors.New("test error")
+
+	tests := []struct {
+		op      string
+		summary string
+	}{
+		{"Read", NewReadErrorWithContext("Monitor", "mon_test", testErr).Summary()},
+		{"Create", NewCreateErrorWithContext("Monitor", testErr).Summary()},
+		{"Update", NewUpdateErrorWithContext("Monitor", "mon_test", testErr).Summary()},
+		{"Delete", NewDeleteErrorWithContext("Monitor", "mon_test", testErr).Summary()},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.op, func(t *testing.T) {
+			t.Parallel()
+			expected := fmt.Sprintf("Failed to %s Monitor", tt.op)
+			if tt.summary != expected {
+				t.Errorf("Summary = %q, want %q", tt.summary, expected)
+			}
+		})
 	}
 }

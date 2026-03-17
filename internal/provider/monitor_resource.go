@@ -302,10 +302,8 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// Preserve HTTP-specific plan values for non-HTTP monitors (ISS-ICMP-002)
-	planHTTPMethod := plan.HTTPMethod
-	planExpectedStatusCode := plan.ExpectedStatusCode
-	planFollowRedirects := plan.FollowRedirects
+	// Save and restore HTTP fields for non-HTTP monitors (ISS-ICMP-002)
+	saved := saveHTTPFields(&plan)
 
 	// Map API response to Terraform state
 	r.mapMonitorToModel(monitor, &plan, &resp.Diagnostics)
@@ -313,18 +311,7 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// Restore HTTP fields for non-HTTP monitors (API returns empty/null)
-	if monitor.Protocol != "http" {
-		if !planHTTPMethod.IsNull() {
-			plan.HTTPMethod = planHTTPMethod
-		}
-		if !planExpectedStatusCode.IsNull() {
-			plan.ExpectedStatusCode = planExpectedStatusCode
-		}
-		if !planFollowRedirects.IsNull() {
-			plan.FollowRedirects = planFollowRedirects
-		}
-	}
+	restoreHTTPFieldsForNonHTTP(monitor.Protocol, &plan, saved)
 
 	// Handle pause state via separate API call if needed
 	if wantPaused {
@@ -356,28 +343,15 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	// Preserve HTTP-specific state values for non-HTTP monitors (ISS-ICMP-002)
-	stateHTTPMethod := state.HTTPMethod
-	stateExpectedStatusCode := state.ExpectedStatusCode
-	stateFollowRedirects := state.FollowRedirects
+	// Save and restore HTTP fields for non-HTTP monitors (ISS-ICMP-002)
+	saved := saveHTTPFields(&state)
 
 	r.mapMonitorToModel(monitor, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Restore HTTP fields for non-HTTP monitors (API returns empty/null)
-	if monitor.Protocol != "http" {
-		if !stateHTTPMethod.IsNull() {
-			state.HTTPMethod = stateHTTPMethod
-		}
-		if !stateExpectedStatusCode.IsNull() {
-			state.ExpectedStatusCode = stateExpectedStatusCode
-		}
-		if !stateFollowRedirects.IsNull() {
-			state.FollowRedirects = stateFollowRedirects
-		}
-	}
+	restoreHTTPFieldsForNonHTTP(monitor.Protocol, &state, saved)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -406,10 +380,8 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	// Preserve HTTP-specific plan values for non-HTTP monitors (ISS-ICMP-002)
-	planHTTPMethod := plan.HTTPMethod
-	planExpectedStatusCode := plan.ExpectedStatusCode
-	planFollowRedirects := plan.FollowRedirects
+	// Save and restore HTTP fields for non-HTTP monitors (ISS-ICMP-002)
+	saved := saveHTTPFields(&plan)
 
 	// Map API response to Terraform state
 	r.mapMonitorToModel(monitor, &plan, &resp.Diagnostics)
@@ -417,18 +389,7 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	// Restore HTTP fields for non-HTTP monitors (API returns empty/null)
-	if monitor.Protocol != "http" {
-		if !planHTTPMethod.IsNull() {
-			plan.HTTPMethod = planHTTPMethod
-		}
-		if !planExpectedStatusCode.IsNull() {
-			plan.ExpectedStatusCode = planExpectedStatusCode
-		}
-		if !planFollowRedirects.IsNull() {
-			plan.FollowRedirects = planFollowRedirects
-		}
-	}
+	restoreHTTPFieldsForNonHTTP(monitor.Protocol, &plan, saved)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -461,6 +422,44 @@ func (r *MonitorResource) ImportState(ctx context.Context, req resource.ImportSt
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// savedHTTPFields holds HTTP-specific field values saved before mapMonitorToModel
+// so they can be restored for non-HTTP monitors (ISS-ICMP-002). The API returns
+// empty/null for these fields on non-HTTP monitors, but Terraform needs them
+// preserved to avoid unnecessary diffs.
+type savedHTTPFields struct {
+	httpMethod         types.String
+	expectedStatusCode types.String
+	followRedirects    types.Bool
+}
+
+// saveHTTPFields captures the HTTP-specific fields from a model before mapping.
+func saveHTTPFields(model *MonitorResourceModel) savedHTTPFields {
+	return savedHTTPFields{
+		httpMethod:         model.HTTPMethod,
+		expectedStatusCode: model.ExpectedStatusCode,
+		followRedirects:    model.FollowRedirects,
+	}
+}
+
+// restoreHTTPFieldsForNonHTTP restores saved HTTP-specific fields when the
+// monitor protocol is not "http". The API returns empty/null values for these
+// fields on non-HTTP monitors, so we restore the plan/state values to prevent
+// spurious Terraform diffs.
+func restoreHTTPFieldsForNonHTTP(protocol string, model *MonitorResourceModel, saved savedHTTPFields) {
+	if protocol == "http" {
+		return
+	}
+	if !saved.httpMethod.IsNull() {
+		model.HTTPMethod = saved.httpMethod
+	}
+	if !saved.expectedStatusCode.IsNull() {
+		model.ExpectedStatusCode = saved.expectedStatusCode
+	}
+	if !saved.followRedirects.IsNull() {
+		model.FollowRedirects = saved.followRedirects
+	}
 }
 
 // mapMonitorToModel maps a client.Monitor to the Terraform model.

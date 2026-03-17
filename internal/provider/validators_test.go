@@ -13,315 +13,161 @@ import (
 )
 
 func TestNoControlCharacters(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
-		input     string
+		input     types.String
 		wantError bool
 	}{
-		{"clean header name", "X-Custom-Header", false},
-		{"clean header value", "Bearer token123", false},
-		{"LF injection", "X-Injected\nEvil: payload", true},
-		{"CR injection", "X-Injected\rEvil: payload", true},
-		{"CRLF injection", "X-Injected\r\nEvil: payload", true},
-		{"NULL byte", "X-Null\x00Byte", true},
-		{"empty string", "", false},
+		{"clean header name", types.StringValue("X-Custom-Header"), false},
+		{"clean header value", types.StringValue("Bearer token123"), false},
+		{"LF injection", types.StringValue("X-Injected\nEvil: payload"), true},
+		{"CR injection", types.StringValue("X-Injected\rEvil: payload"), true},
+		{"CRLF injection", types.StringValue("X-Injected\r\nEvil: payload"), true},
+		{"NULL byte", types.StringValue("X-Null\x00Byte"), true},
+		{"empty string", types.StringValue(""), false},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := NoControlCharacters("test message")
 			req := validator.StringRequest{
 				Path:        path.Root("test"),
-				ConfigValue: types.StringValue(tt.input),
+				ConfigValue: tt.input,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("NoControlCharacters(%q): got error=%v, want error=%v", tt.input, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("NoControlCharacters(%v): got error=%v, want error=%v",
+					tt.input, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
 	}
 }
 
 func TestReservedHeaderName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
-		input     string
+		input     types.String
 		wantError bool
 	}{
-		{"Authorization blocked", "Authorization", true},
-		{"authorization lowercase blocked", "authorization", true},
-		{"AUTHORIZATION uppercase blocked", "AUTHORIZATION", true},
-		{"Host blocked", "Host", true},
-		{"Cookie blocked", "Cookie", true},
-		{"Set-Cookie blocked", "Set-Cookie", true},
-		{"Proxy-Authorize blocked", "Proxy-Authorize", true},
-		{"Transfer-Encoding blocked", "Transfer-Encoding", true},
-		{"custom header allowed", "X-Custom", false},
-		{"Accept allowed", "Accept", false},
-		{"Content-Type allowed", "Content-Type", false},
+		{"Authorization blocked", types.StringValue("Authorization"), true},
+		{"authorization lowercase blocked", types.StringValue("authorization"), true},
+		{"AUTHORIZATION uppercase blocked", types.StringValue("AUTHORIZATION"), true},
+		{"Host blocked", types.StringValue("Host"), true},
+		{"Cookie blocked", types.StringValue("Cookie"), true},
+		{"Set-Cookie blocked", types.StringValue("Set-Cookie"), true},
+		{"Proxy-Authorize blocked", types.StringValue("Proxy-Authorize"), true},
+		{"Transfer-Encoding blocked", types.StringValue("Transfer-Encoding"), true},
+		{"custom header allowed", types.StringValue("X-Custom"), false},
+		{"Accept allowed", types.StringValue("Accept"), false},
+		{"Content-Type allowed", types.StringValue("Content-Type"), false},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := ReservedHeaderName()
 			req := validator.StringRequest{
 				Path:        path.Root("name"),
-				ConfigValue: types.StringValue(tt.input),
+				ConfigValue: tt.input,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("ReservedHeaderName(%q): got error=%v, want error=%v", tt.input, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("ReservedHeaderName(%v): got error=%v, want error=%v",
+					tt.input, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
 	}
 }
 
 func TestISO8601(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
-		input     string
+		input     types.String
 		wantError bool
 	}{
-		{"valid with Z", "2026-01-29T10:00:00Z", false},
-		{"valid with timezone", "2026-01-29T10:00:00+05:00", false},
-		{"valid end of year", "2026-12-31T23:59:59Z", false},
-		{"invalid - missing time", "2026-01-29", true},
-		{"invalid - space separator", "2026-01-29 10:00:00", true},
-		{"invalid - not a date", "invalid", true},
-		{"invalid - empty", "", true},
+		{"valid with Z", types.StringValue("2026-01-29T10:00:00Z"), false},
+		{"valid with timezone", types.StringValue("2026-01-29T10:00:00+05:00"), false},
+		{"valid end of year", types.StringValue("2026-12-31T23:59:59Z"), false},
+		{"invalid - missing time", types.StringValue("2026-01-29"), true},
+		{"invalid - space separator", types.StringValue("2026-01-29 10:00:00"), true},
+		{"invalid - not a date", types.StringValue("invalid"), true},
+		{"invalid - empty", types.StringValue(""), true},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := ISO8601()
 			req := validator.StringRequest{
 				Path:        path.Root("test"),
-				ConfigValue: types.StringValue(tt.input),
+				ConfigValue: tt.input,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("ISO8601(%q): got error=%v, want error=%v", tt.input, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("ISO8601(%v): got error=%v, want error=%v",
+					tt.input, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestISO8601_Null(t *testing.T) {
-	v := ISO8601()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("ISO8601(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
 	}
 }
 
 func TestUUIDFormat(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
-		input     string
+		input     types.String
 		wantError bool
 	}{
-		{"standard UUID", "550e8400-e29b-41d4-a716-446655440000", false},
-		{"monitor ID", "mon_abc123def456", false},
-		{"token ID", "tok_xyz789abc", false},
-		{"outage ID", "out_incident123", false},
-		{"incident ID", "inc_test123", false},
-		{"short monitor ID", "mon_123", false},
-		{"short statuspage ID", "sp_001", false},
-		{"invalid - no separators", "short", true},
-		{"invalid - no separators", "nodashesorunderscores", true},
-		{"invalid - empty", "", true},
+		{"standard UUID", types.StringValue("550e8400-e29b-41d4-a716-446655440000"), false},
+		{"monitor ID", types.StringValue("mon_abc123def456"), false},
+		{"token ID", types.StringValue("tok_xyz789abc"), false},
+		{"outage ID", types.StringValue("out_incident123"), false},
+		{"incident ID", types.StringValue("inc_test123"), false},
+		{"short monitor ID", types.StringValue("mon_123"), false},
+		{"short statuspage ID", types.StringValue("sp_001"), false},
+		{"invalid - no separators", types.StringValue("short"), true},
+		{"invalid - no separators long", types.StringValue("nodashesorunderscores"), true},
+		{"invalid - empty", types.StringValue(""), true},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := UUIDFormat()
 			req := validator.StringRequest{
 				Path:        path.Root("test"),
-				ConfigValue: types.StringValue(tt.input),
+				ConfigValue: tt.input,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("UUIDFormat(%q): got error=%v, want error=%v", tt.input, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("UUIDFormat(%v): got error=%v, want error=%v",
+					tt.input, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestUUIDFormat_Null(t *testing.T) {
-	v := UUIDFormat()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("UUIDFormat(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-// Description method tests for coverage
-func TestNoControlCharacters_Description(t *testing.T) {
-	v := NoControlCharacters("test message")
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
-	}
-}
-
-func TestReservedHeaderName_Description(t *testing.T) {
-	v := ReservedHeaderName()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
-	}
-}
-
-func TestISO8601_Description(t *testing.T) {
-	v := ISO8601()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
-	}
-}
-
-func TestUUIDFormat_Description(t *testing.T) {
-	v := UUIDFormat()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
-	}
-}
-
-// Unknown value tests
-func TestNoControlCharacters_Unknown(t *testing.T) {
-	v := NoControlCharacters("test message")
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("NoControlCharacters(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestReservedHeaderName_NullUnknown(t *testing.T) {
-	tests := []struct {
-		name  string
-		value types.String
-	}{
-		{"null", types.StringNull()},
-		{"unknown", types.StringUnknown()},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			v := ReservedHeaderName()
-			req := validator.StringRequest{
-				Path:        path.Root("test"),
-				ConfigValue: tt.value,
-			}
-			resp := &validator.StringResponse{}
-			v.ValidateString(context.Background(), req, resp)
-
-			if resp.Diagnostics.HasError() {
-				t.Errorf("ReservedHeaderName(%s): unexpected error: %v", tt.name, resp.Diagnostics.Errors())
-			}
-		})
-	}
-}
-
-func TestISO8601_Unknown(t *testing.T) {
-	v := ISO8601()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("ISO8601(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestUUIDFormat_Unknown(t *testing.T) {
-	v := UUIDFormat()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("UUIDFormat(unknown): unexpected error: %v", resp.Diagnostics.Errors())
 	}
 }
 
@@ -330,86 +176,42 @@ func TestURLFormatValidator(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		value     string
+		value     types.String
 		wantError bool
 	}{
-		{"valid https", "https://example.com", false},
-		{"valid http", "http://api.example.com/health", false},
-		{"valid with path", "https://example.com/api/v1/health", false},
-		{"valid with port", "https://example.com:8080", false},
-		{"valid with query", "https://example.com/api?key=value", false},
-		{"valid with fragment", "https://example.com/page#section", false},
-		{"invalid ftp", "ftp://example.com", true},
-		{"invalid no scheme", "example.com", true},
-		{"invalid typo", "htp://example.com", true},
-		{"invalid empty", "", true},
-		{"invalid just scheme", "https://", true},
-		{"invalid file scheme", "file:///path/to/file", true},
-		{"invalid javascript", "javascript:alert(1)", true},
+		{"valid https", types.StringValue("https://example.com"), false},
+		{"valid http", types.StringValue("http://api.example.com/health"), false},
+		{"valid with path", types.StringValue("https://example.com/api/v1/health"), false},
+		{"valid with port", types.StringValue("https://example.com:8080"), false},
+		{"valid with query", types.StringValue("https://example.com/api?key=value"), false},
+		{"valid with fragment", types.StringValue("https://example.com/page#section"), false},
+		{"invalid ftp", types.StringValue("ftp://example.com"), true},
+		{"invalid no scheme", types.StringValue("example.com"), true},
+		{"invalid typo", types.StringValue("htp://example.com"), true},
+		{"invalid empty", types.StringValue(""), true},
+		{"invalid just scheme", types.StringValue("https://"), true},
+		{"invalid file scheme", types.StringValue("file:///path/to/file"), true},
+		{"invalid javascript", types.StringValue("javascript:alert(1)"), true},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := URLFormat()
 			req := validator.StringRequest{
 				Path:        path.Root("url"),
-				ConfigValue: types.StringValue(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("URLFormat(%q): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("URLFormat(%v): got error=%v, want error=%v",
+					tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestURLFormat_Null(t *testing.T) {
-	v := URLFormat()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("URLFormat(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestURLFormat_Unknown(t *testing.T) {
-	v := URLFormat()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("URLFormat(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestURLFormat_Description(t *testing.T) {
-	v := URLFormat()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
 	}
 }
 
@@ -420,85 +222,40 @@ func TestStringLengthValidator(t *testing.T) {
 		name      string
 		min       int
 		max       int
-		value     string
+		value     types.String
 		wantError bool
 	}{
-		{"valid in range", 1, 255, "Valid Name", false},
-		{"valid at min", 1, 255, "X", false},
-		{"valid at max", 1, 255, string(make([]byte, 255)), false},
-		{"invalid too short", 1, 255, "", true},
-		{"invalid too long", 1, 255, string(make([]byte, 256)), true},
-		{"valid exact length", 5, 5, "hello", false},
-		{"invalid one under min", 5, 10, "test", true},
-		{"invalid one over max", 5, 10, "hello world", true},
-		{"valid unicode single char", 1, 10, "😀", false},
-		{"valid unicode multi char", 1, 10, "Hello 世界", false},
-		{"invalid unicode too long", 1, 5, "Hello 世界", true},
+		{"valid in range", 1, 255, types.StringValue("Valid Name"), false},
+		{"valid at min", 1, 255, types.StringValue("X"), false},
+		{"valid at max", 1, 255, types.StringValue(string(make([]byte, 255))), false},
+		{"invalid too short", 1, 255, types.StringValue(""), true},
+		{"invalid too long", 1, 255, types.StringValue(string(make([]byte, 256))), true},
+		{"valid exact length", 5, 5, types.StringValue("hello"), false},
+		{"invalid one under min", 5, 10, types.StringValue("test"), true},
+		{"invalid one over max", 5, 10, types.StringValue("hello world"), true},
+		{"valid unicode single char", 1, 10, types.StringValue("\U0001f600"), false},
+		{"valid unicode multi char", 1, 10, types.StringValue("Hello \u4e16\u754c"), false},
+		{"invalid unicode too long", 1, 5, types.StringValue("Hello \u4e16\u754c"), true},
+		{"null value", 1, 255, types.StringNull(), false},
+		{"unknown value", 1, 255, types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := StringLength(tt.min, tt.max)
 			req := validator.StringRequest{
 				Path:        path.Root("name"),
-				ConfigValue: types.StringValue(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("StringLength(%d,%d)(%q): got error=%v, want error=%v",
-					tt.min, tt.max, tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("StringLength(%d,%d)(%v): got error=%v, want error=%v",
+					tt.min, tt.max, tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestStringLength_Null(t *testing.T) {
-	v := StringLength(1, 255)
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("StringLength(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestStringLength_Unknown(t *testing.T) {
-	v := StringLength(1, 255)
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("StringLength(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestStringLength_Description(t *testing.T) {
-	v := StringLength(1, 255)
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
 	}
 }
 
@@ -507,83 +264,43 @@ func TestCronExpressionValidator(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		value     string
+		value     types.String
 		wantError bool
 	}{
-		{"valid daily midnight", "0 0 * * *", false},
-		{"valid every 15 min", "*/15 * * * *", false},
-		{"valid business hours", "0 9-17 * * 1-5", false},
-		{"valid specific time", "30 14 * * *", false},
-		{"valid every hour", "0 * * * *", false},
-		{"valid complex", "0,30 9-17 * * 1-5", false},
-		{"invalid text", "invalid", true},
-		{"invalid minute 60", "60 * * * *", true},
-		{"invalid day 32", "* * 32 * *", true},
-		{"invalid empty", "", true},
-		{"invalid too few fields", "0 0 *", true},
-		{"invalid too many fields", "0 0 * * * * *", true},
-		{"invalid month 13", "0 0 * 13 *", true},
-		{"invalid weekday 8", "0 0 * * 8", true},
+		{"valid daily midnight", types.StringValue("0 0 * * *"), false},
+		{"valid every 15 min", types.StringValue("*/15 * * * *"), false},
+		{"valid business hours", types.StringValue("0 9-17 * * 1-5"), false},
+		{"valid specific time", types.StringValue("30 14 * * *"), false},
+		{"valid every hour", types.StringValue("0 * * * *"), false},
+		{"valid complex", types.StringValue("0,30 9-17 * * 1-5"), false},
+		{"invalid text", types.StringValue("invalid"), true},
+		{"invalid minute 60", types.StringValue("60 * * * *"), true},
+		{"invalid day 32", types.StringValue("* * 32 * *"), true},
+		{"invalid empty", types.StringValue(""), true},
+		{"invalid too few fields", types.StringValue("0 0 *"), true},
+		{"invalid too many fields", types.StringValue("0 0 * * * * *"), true},
+		{"invalid month 13", types.StringValue("0 0 * 13 *"), true},
+		{"invalid weekday 8", types.StringValue("0 0 * * 8"), true},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := CronExpression()
 			req := validator.StringRequest{
 				Path:        path.Root("cron"),
-				ConfigValue: types.StringValue(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("CronExpression(%q): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("CronExpression(%v): got error=%v, want error=%v",
+					tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestCronExpression_Null(t *testing.T) {
-	v := CronExpression()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("CronExpression(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestCronExpression_Unknown(t *testing.T) {
-	v := CronExpression()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("CronExpression(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestCronExpression_Description(t *testing.T) {
-	v := CronExpression()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
 	}
 }
 
@@ -592,82 +309,42 @@ func TestTimezoneValidator(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		value     string
+		value     types.String
 		wantError bool
 	}{
-		{"valid UTC", "UTC", false},
-		{"valid America/New_York", "America/New_York", false},
-		{"valid Europe/London", "Europe/London", false},
-		{"valid Asia/Tokyo", "Asia/Tokyo", false},
-		{"valid America/Los_Angeles", "America/Los_Angeles", false},
-		{"valid Europe/Paris", "Europe/Paris", false},
-		{"valid Australia/Sydney", "Australia/Sydney", false},
-		{"valid Africa/Cairo", "Africa/Cairo", false},
-		{"valid EST", "EST", false},     // EST is a valid timezone abbreviation
-		{"valid Local", "Local", false}, // Local is a valid timezone
-		{"invalid New York", "New York", true},
-		{"invalid random", "RandomTimezone", true},
-		{"invalid number", "12345", true},
+		{"valid UTC", types.StringValue("UTC"), false},
+		{"valid America/New_York", types.StringValue("America/New_York"), false},
+		{"valid Europe/London", types.StringValue("Europe/London"), false},
+		{"valid Asia/Tokyo", types.StringValue("Asia/Tokyo"), false},
+		{"valid America/Los_Angeles", types.StringValue("America/Los_Angeles"), false},
+		{"valid Europe/Paris", types.StringValue("Europe/Paris"), false},
+		{"valid Australia/Sydney", types.StringValue("Australia/Sydney"), false},
+		{"valid Africa/Cairo", types.StringValue("Africa/Cairo"), false},
+		{"valid EST", types.StringValue("EST"), false},
+		{"valid Local", types.StringValue("Local"), false},
+		{"invalid New York", types.StringValue("New York"), true},
+		{"invalid random", types.StringValue("RandomTimezone"), true},
+		{"invalid number", types.StringValue("12345"), true},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := Timezone()
 			req := validator.StringRequest{
 				Path:        path.Root("timezone"),
-				ConfigValue: types.StringValue(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("Timezone(%q): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("Timezone(%v): got error=%v, want error=%v",
+					tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestTimezone_Null(t *testing.T) {
-	v := Timezone()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Timezone(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestTimezone_Unknown(t *testing.T) {
-	v := Timezone()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("Timezone(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestTimezone_Description(t *testing.T) {
-	v := Timezone()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
 	}
 }
 
@@ -676,89 +353,45 @@ func TestPortRangeValidator(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		value     int64
+		value     types.Int64
 		wantError bool
 	}{
-		{"valid port 80", 80, false},
-		{"valid port 443", 443, false},
-		{"valid port 1", 1, false},
-		{"valid port 65535", 65535, false},
-		{"valid port 3000", 3000, false},
-		{"valid port 8080", 8080, false},
-		{"valid port 22", 22, false},
-		{"valid port 3306", 3306, false},
-		{"valid port 5432", 5432, false},
-		{"valid port 27017", 27017, false},
-		{"invalid port 0", 0, true},
-		{"invalid port -1", -1, true},
-		{"invalid port -100", -100, true},
-		{"invalid port 65536", 65536, true},
-		{"invalid port 100000", 100000, true},
-		{"invalid port 70000", 70000, true},
+		{"valid port 80", types.Int64Value(80), false},
+		{"valid port 443", types.Int64Value(443), false},
+		{"valid port 1", types.Int64Value(1), false},
+		{"valid port 65535", types.Int64Value(65535), false},
+		{"valid port 3000", types.Int64Value(3000), false},
+		{"valid port 8080", types.Int64Value(8080), false},
+		{"valid port 22", types.Int64Value(22), false},
+		{"valid port 3306", types.Int64Value(3306), false},
+		{"valid port 5432", types.Int64Value(5432), false},
+		{"valid port 27017", types.Int64Value(27017), false},
+		{"invalid port 0", types.Int64Value(0), true},
+		{"invalid port -1", types.Int64Value(-1), true},
+		{"invalid port -100", types.Int64Value(-100), true},
+		{"invalid port 65536", types.Int64Value(65536), true},
+		{"invalid port 100000", types.Int64Value(100000), true},
+		{"invalid port 70000", types.Int64Value(70000), true},
+		{"null value", types.Int64Null(), false},
+		{"unknown value", types.Int64Unknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := PortRange()
 			req := validator.Int64Request{
 				Path:        path.Root("port"),
-				ConfigValue: types.Int64Value(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.Int64Response{}
 			v.ValidateInt64(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("PortRange(%d): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("PortRange(%v): got error=%v, want error=%v",
+					tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestPortRange_Null(t *testing.T) {
-	v := PortRange()
-	req := validator.Int64Request{
-		Path:        path.Root("test"),
-		ConfigValue: types.Int64Null(),
-	}
-	resp := &validator.Int64Response{}
-	v.ValidateInt64(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("PortRange(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestPortRange_Unknown(t *testing.T) {
-	v := PortRange()
-	req := validator.Int64Request{
-		Path:        path.Root("test"),
-		ConfigValue: types.Int64Unknown(),
-	}
-	resp := &validator.Int64Response{}
-	v.ValidateInt64(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("PortRange(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestPortRange_Description(t *testing.T) {
-	v := PortRange()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
 	}
 }
 
@@ -767,92 +400,52 @@ func TestHexColorValidator(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		value     string
+		value     types.String
 		wantError bool
 	}{
-		{"valid lowercase", "#ff5733", false},
-		{"valid uppercase", "#FF5733", false},
-		{"valid mixed case", "#Ff5733", false},
-		{"valid black", "#000000", false},
-		{"valid white", "#ffffff", false},
-		{"valid white uppercase", "#FFFFFF", false},
-		{"valid gray", "#808080", false},
-		{"valid default hyperping", "#36b27e", false},
-		{"valid all digits", "#123456", false},
-		{"valid all letters", "#abcdef", false},
-		{"valid mixed", "#a1b2c3", false},
-		{"invalid no hash", "ff5733", true},
-		{"invalid 3 digit", "#fff", true},
-		{"invalid 8 digit", "#ff5733aa", true},
-		{"invalid with alpha", "#ff5733ff", true},
-		{"invalid chars g", "#gggggg", true},
-		{"invalid chars z", "#zzzzzz", true},
-		{"invalid empty", "", true},
-		{"invalid just hash", "#", true},
-		{"invalid 5 digit", "#12345", true},
-		{"invalid 7 digit", "#1234567", true},
-		{"invalid space", "#ff 5733", true},
-		{"invalid special char", "#ff57@3", true},
+		{"valid lowercase", types.StringValue("#ff5733"), false},
+		{"valid uppercase", types.StringValue("#FF5733"), false},
+		{"valid mixed case", types.StringValue("#Ff5733"), false},
+		{"valid black", types.StringValue("#000000"), false},
+		{"valid white", types.StringValue("#ffffff"), false},
+		{"valid white uppercase", types.StringValue("#FFFFFF"), false},
+		{"valid gray", types.StringValue("#808080"), false},
+		{"valid default hyperping", types.StringValue("#36b27e"), false},
+		{"valid all digits", types.StringValue("#123456"), false},
+		{"valid all letters", types.StringValue("#abcdef"), false},
+		{"valid mixed", types.StringValue("#a1b2c3"), false},
+		{"invalid no hash", types.StringValue("ff5733"), true},
+		{"invalid 3 digit", types.StringValue("#fff"), true},
+		{"invalid 8 digit", types.StringValue("#ff5733aa"), true},
+		{"invalid with alpha", types.StringValue("#ff5733ff"), true},
+		{"invalid chars g", types.StringValue("#gggggg"), true},
+		{"invalid chars z", types.StringValue("#zzzzzz"), true},
+		{"invalid empty", types.StringValue(""), true},
+		{"invalid just hash", types.StringValue("#"), true},
+		{"invalid 5 digit", types.StringValue("#12345"), true},
+		{"invalid 7 digit", types.StringValue("#1234567"), true},
+		{"invalid space", types.StringValue("#ff 5733"), true},
+		{"invalid special char", types.StringValue("#ff57@3"), true},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := HexColor()
 			req := validator.StringRequest{
 				Path:        path.Root("accent_color"),
-				ConfigValue: types.StringValue(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("HexColor(%q): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("HexColor(%v): got error=%v, want error=%v",
+					tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestHexColor_Null(t *testing.T) {
-	v := HexColor()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("HexColor(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestHexColor_Unknown(t *testing.T) {
-	v := HexColor()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("HexColor(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestHexColor_Description(t *testing.T) {
-	v := HexColor()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
 	}
 }
 
@@ -861,92 +454,48 @@ func TestEmailFormatValidator(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		value     string
+		value     types.String
 		wantError bool
 	}{
-		{"valid simple", "user@example.com", false},
-		{"valid subdomain", "user@mail.example.com", false},
-		{"valid plus", "user+tag@example.com", false},
-		{"valid dots", "first.last@example.com", false},
-		{"valid numbers", "user123@example456.com", false},
-		{"valid hyphen", "user@ex-ample.com", false},
-		{"valid underscore", "user_name@example.com", false},
-		{"valid percent", "user%test@example.com", false},
-		{"valid uppercase", "User@Example.COM", false},
-		{"invalid no @", "userexample.com", true},
-		{"invalid no domain", "user@", true},
-		{"invalid no user", "@example.com", true},
-		{"invalid no tld", "user@example", true},
-		{"invalid spaces", "user @example.com", true},
-		{"invalid double @", "user@@example.com", true},
-		{"invalid empty", "", true},
-		{"invalid special chars", "user<>@example.com", true},
-		{"invalid no domain part", "user@.com", true},
-		{"invalid tld too short", "user@example.c", true},
+		{"valid simple", types.StringValue("user@example.com"), false},
+		{"valid subdomain", types.StringValue("user@mail.example.com"), false},
+		{"valid plus", types.StringValue("user+tag@example.com"), false},
+		{"valid dots", types.StringValue("first.last@example.com"), false},
+		{"valid numbers", types.StringValue("user123@example456.com"), false},
+		{"valid hyphen", types.StringValue("user@ex-ample.com"), false},
+		{"valid underscore", types.StringValue("user_name@example.com"), false},
+		{"valid percent", types.StringValue("user%test@example.com"), false},
+		{"valid uppercase", types.StringValue("User@Example.COM"), false},
+		{"invalid no @", types.StringValue("userexample.com"), true},
+		{"invalid no domain", types.StringValue("user@"), true},
+		{"invalid no user", types.StringValue("@example.com"), true},
+		{"invalid no tld", types.StringValue("user@example"), true},
+		{"invalid spaces", types.StringValue("user @example.com"), true},
+		{"invalid double @", types.StringValue("user@@example.com"), true},
+		{"invalid empty", types.StringValue(""), true},
+		{"invalid special chars", types.StringValue("user<>@example.com"), true},
+		{"invalid no domain part", types.StringValue("user@.com"), true},
+		{"invalid tld too short", types.StringValue("user@example.c"), true},
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := EmailFormat()
 			req := validator.StringRequest{
 				Path:        path.Root("email"),
-				ConfigValue: types.StringValue(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("EmailFormat(%q): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("EmailFormat(%v): got error=%v, want error=%v",
+					tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestEmailFormat_Null(t *testing.T) {
-	v := EmailFormat()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("EmailFormat(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestEmailFormat_Unknown(t *testing.T) {
-	v := EmailFormat()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("EmailFormat(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestEmailFormat_Description(t *testing.T) {
-	v := EmailFormat()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
 	}
 }
 
@@ -955,89 +504,45 @@ func TestAlertsWaitValidator(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		value     int64
+		value     types.Int64
 		wantError bool
 	}{
-		{"valid -1 (disabled)", -1, false},
-		{"valid 0 (immediate)", 0, false},
-		{"valid 1 minute", 1, false},
-		{"valid 2 minutes", 2, false},
-		{"valid 3 minutes", 3, false},
-		{"valid 5 minutes", 5, false},
-		{"valid 10 minutes", 10, false},
-		{"valid 30 minutes", 30, false},
-		{"valid 60 minutes", 60, false},
-		{"invalid 300 (original bug)", 300, true},
-		{"invalid -2", -2, true},
-		{"invalid 100", 100, true},
-		{"invalid 7", 7, true},
-		{"invalid 4", 4, true},
-		{"invalid 15", 15, true},
-		{"invalid 120", 120, true},
+		{"valid -1 (disabled)", types.Int64Value(-1), false},
+		{"valid 0 (immediate)", types.Int64Value(0), false},
+		{"valid 1 minute", types.Int64Value(1), false},
+		{"valid 2 minutes", types.Int64Value(2), false},
+		{"valid 3 minutes", types.Int64Value(3), false},
+		{"valid 5 minutes", types.Int64Value(5), false},
+		{"valid 10 minutes", types.Int64Value(10), false},
+		{"valid 30 minutes", types.Int64Value(30), false},
+		{"valid 60 minutes", types.Int64Value(60), false},
+		{"invalid 300 (original bug)", types.Int64Value(300), true},
+		{"invalid -2", types.Int64Value(-2), true},
+		{"invalid 100", types.Int64Value(100), true},
+		{"invalid 7", types.Int64Value(7), true},
+		{"invalid 4", types.Int64Value(4), true},
+		{"invalid 15", types.Int64Value(15), true},
+		{"invalid 120", types.Int64Value(120), true},
+		{"null value", types.Int64Null(), false},
+		{"unknown value", types.Int64Unknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := AlertsWait()
 			req := validator.Int64Request{
 				Path:        path.Root("alerts_wait"),
-				ConfigValue: types.Int64Value(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.Int64Response{}
 			v.ValidateInt64(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("AlertsWait(%d): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("AlertsWait(%v): got error=%v, want error=%v",
+					tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
-	}
-}
-
-func TestAlertsWait_Null(t *testing.T) {
-	v := AlertsWait()
-	req := validator.Int64Request{
-		Path:        path.Root("alerts_wait"),
-		ConfigValue: types.Int64Null(),
-	}
-	resp := &validator.Int64Response{}
-	v.ValidateInt64(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("AlertsWait(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestAlertsWait_Unknown(t *testing.T) {
-	v := AlertsWait()
-	req := validator.Int64Request{
-		Path:        path.Root("alerts_wait"),
-		ConfigValue: types.Int64Unknown(),
-	}
-	resp := &validator.Int64Response{}
-	v.ValidateInt64(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("AlertsWait(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestAlertsWait_Description(t *testing.T) {
-	v := AlertsWait()
-	ctx := context.Background()
-
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
-	}
-
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
-	}
-
-	if desc != mdDesc {
-		t.Error("description and markdown description should match")
 	}
 }
 
@@ -1046,113 +551,156 @@ func TestStatusCodePatternValidator(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		value     string
+		value     types.String
 		wantError bool
 	}{
 		// Valid specific codes
-		{"valid specific 200", "200", false},
-		{"valid specific 404", "404", false},
-		{"valid specific 599", "599", false},
-		{"valid specific 100", "100", false},
-		{"valid specific 503", "503", false},
+		{"valid specific 200", types.StringValue("200"), false},
+		{"valid specific 404", types.StringValue("404"), false},
+		{"valid specific 599", types.StringValue("599"), false},
+		{"valid specific 100", types.StringValue("100"), false},
+		{"valid specific 503", types.StringValue("503"), false},
 
 		// Valid single wildcards
-		{"valid wildcard 2xx", "2xx", false},
-		{"valid wildcard 5xx", "5xx", false},
-		{"valid wildcard 1xx", "1xx", false},
-		{"valid wildcard 3xx", "3xx", false},
-		{"valid wildcard 4xx", "4xx", false},
+		{"valid wildcard 2xx", types.StringValue("2xx"), false},
+		{"valid wildcard 5xx", types.StringValue("5xx"), false},
+		{"valid wildcard 1xx", types.StringValue("1xx"), false},
+		{"valid wildcard 3xx", types.StringValue("3xx"), false},
+		{"valid wildcard 4xx", types.StringValue("4xx"), false},
 
 		// Valid multi-range patterns
-		{"valid range 1xx-3xx", "1xx-3xx", false},
-		{"valid range 2xx-5xx", "2xx-5xx", false},
-		{"valid range same class 2xx-2xx", "2xx-2xx", false},
-		{"valid range 1xx-5xx", "1xx-5xx", false},
-		{"valid range 3xx-4xx", "3xx-4xx", false},
+		{"valid range 1xx-3xx", types.StringValue("1xx-3xx"), false},
+		{"valid range 2xx-5xx", types.StringValue("2xx-5xx"), false},
+		{"valid range same class 2xx-2xx", types.StringValue("2xx-2xx"), false},
+		{"valid range 1xx-5xx", types.StringValue("1xx-5xx"), false},
+		{"valid range 3xx-4xx", types.StringValue("3xx-4xx"), false},
 
 		// Invalid: inverted range
-		{"invalid inverted range 3xx-1xx", "3xx-1xx", true},
-		{"invalid inverted range 5xx-2xx", "5xx-2xx", true},
+		{"invalid inverted range 3xx-1xx", types.StringValue("3xx-1xx"), true},
+		{"invalid inverted range 5xx-2xx", types.StringValue("5xx-2xx"), true},
 
 		// Invalid: class out of range
-		{"invalid class 6xx", "6xx", true},
-		{"invalid class 0xx", "0xx", true},
-		{"invalid code 600", "600", true},
-		{"invalid code 099", "099", true},
+		{"invalid class 6xx", types.StringValue("6xx"), true},
+		{"invalid class 0xx", types.StringValue("0xx"), true},
+		{"invalid code 600", types.StringValue("600"), true},
+		{"invalid code 099", types.StringValue("099"), true},
 
 		// Invalid: malformed patterns
-		{"invalid text abc", "abc", true},
-		{"invalid too long 2xxx", "2xxx", true},
-		{"invalid too short 20", "20", true},
-		{"invalid incomplete 2x", "2x", true},
-		{"invalid empty string", "", true},
-		{"invalid spaces", "2 xx", true},
-		{"invalid mixed 2xX", "2xX", true},
-		{"invalid range with specific 200-3xx", "200-3xx", true},
-		{"invalid uppercase 2XX", "2XX", true},
-		{"invalid trailing dash 1xx-", "1xx-", true},
-		{"invalid leading dash -3xx", "-3xx", true},
-		{"invalid range endpoint 1xx-6xx", "1xx-6xx", true},
-		{"invalid trailing dash after wildcard 2xx-", "2xx-", true},
+		{"invalid text abc", types.StringValue("abc"), true},
+		{"invalid too long 2xxx", types.StringValue("2xxx"), true},
+		{"invalid too short 20", types.StringValue("20"), true},
+		{"invalid incomplete 2x", types.StringValue("2x"), true},
+		{"invalid empty string", types.StringValue(""), true},
+		{"invalid spaces", types.StringValue("2 xx"), true},
+		{"invalid mixed 2xX", types.StringValue("2xX"), true},
+		{"invalid range with specific 200-3xx", types.StringValue("200-3xx"), true},
+		{"invalid uppercase 2XX", types.StringValue("2XX"), true},
+		{"invalid trailing dash 1xx-", types.StringValue("1xx-"), true},
+		{"invalid leading dash -3xx", types.StringValue("-3xx"), true},
+		{"invalid range endpoint 1xx-6xx", types.StringValue("1xx-6xx"), true},
+		{"invalid trailing dash after wildcard 2xx-", types.StringValue("2xx-"), true},
+
+		// Null/Unknown
+		{"null value", types.StringNull(), false},
+		{"unknown value", types.StringUnknown(), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			v := StatusCodePattern()
 			req := validator.StringRequest{
 				Path:        path.Root("expected_status_code"),
-				ConfigValue: types.StringValue(tt.value),
+				ConfigValue: tt.value,
 			}
 			resp := &validator.StringResponse{}
 			v.ValidateString(context.Background(), req, resp)
 
-			hasError := resp.Diagnostics.HasError()
-			if hasError != tt.wantError {
-				t.Errorf("StatusCodePattern(%q): got error=%v, want error=%v", tt.value, hasError, tt.wantError)
+			if resp.Diagnostics.HasError() != tt.wantError {
+				t.Errorf("StatusCodePattern(%v): got error=%v, want error=%v",
+					tt.value, resp.Diagnostics.HasError(), tt.wantError)
 			}
 		})
 	}
 }
 
-func TestStatusCodePattern_Null(t *testing.T) {
-	v := StatusCodePattern()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringNull(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
+// TestStringValidatorDescriptions verifies Description and MarkdownDescription
+// for all string validators return non-empty values.
+func TestStringValidatorDescriptions(t *testing.T) {
+	t.Parallel()
 
-	if resp.Diagnostics.HasError() {
-		t.Errorf("StatusCodePattern(null): unexpected error for null value: %v", resp.Diagnostics.Errors())
+	validators := []struct {
+		name          string
+		validator     validator.String
+		descMatchesMD bool
+	}{
+		{"NoControlCharacters", NoControlCharacters("test"), true},
+		{"ReservedHeaderName", ReservedHeaderName(), true},
+		{"ISO8601", ISO8601(), true},
+		{"UUIDFormat", UUIDFormat(), true},
+		{"URLFormat", URLFormat(), true},
+		{"StringLength", StringLength(1, 255), true},
+		{"CronExpression", CronExpression(), false},
+		{"Timezone", Timezone(), false},
+		{"HexColor", HexColor(), false},
+		{"EmailFormat", EmailFormat(), true},
+		{"StatusCodePattern", StatusCodePattern(), false},
 	}
-}
 
-func TestStatusCodePattern_Unknown(t *testing.T) {
-	v := StatusCodePattern()
-	req := validator.StringRequest{
-		Path:        path.Root("test"),
-		ConfigValue: types.StringUnknown(),
-	}
-	resp := &validator.StringResponse{}
-	v.ValidateString(context.Background(), req, resp)
-
-	if resp.Diagnostics.HasError() {
-		t.Errorf("StatusCodePattern(unknown): unexpected error: %v", resp.Diagnostics.Errors())
-	}
-}
-
-func TestStatusCodePattern_Description(t *testing.T) {
-	v := StatusCodePattern()
 	ctx := context.Background()
+	for _, tt := range validators {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	desc := v.Description(ctx)
-	if desc == "" {
-		t.Error("expected non-empty description")
+			desc := tt.validator.Description(ctx)
+			if desc == "" {
+				t.Error("expected non-empty description")
+			}
+
+			mdDesc := tt.validator.MarkdownDescription(ctx)
+			if mdDesc == "" {
+				t.Error("expected non-empty markdown description")
+			}
+
+			if tt.descMatchesMD && desc != mdDesc {
+				t.Errorf("description and markdown description should match: %q != %q", desc, mdDesc)
+			}
+		})
+	}
+}
+
+// TestInt64ValidatorDescriptions verifies Description and MarkdownDescription
+// for all int64 validators return non-empty values.
+func TestInt64ValidatorDescriptions(t *testing.T) {
+	t.Parallel()
+
+	validators := []struct {
+		name          string
+		validator     validator.Int64
+		descMatchesMD bool
+	}{
+		{"PortRange", PortRange(), true},
+		{"AlertsWait", AlertsWait(), true},
 	}
 
-	mdDesc := v.MarkdownDescription(ctx)
-	if mdDesc == "" {
-		t.Error("expected non-empty markdown description")
+	ctx := context.Background()
+	for _, tt := range validators {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			desc := tt.validator.Description(ctx)
+			if desc == "" {
+				t.Error("expected non-empty description")
+			}
+
+			mdDesc := tt.validator.MarkdownDescription(ctx)
+			if mdDesc == "" {
+				t.Error("expected non-empty markdown description")
+			}
+
+			if tt.descMatchesMD && desc != mdDesc {
+				t.Errorf("description and markdown description should match: %q != %q", desc, mdDesc)
+			}
+		})
 	}
 }

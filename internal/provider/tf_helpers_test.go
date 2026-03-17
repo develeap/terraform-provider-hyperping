@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestIsNullOrUnknown(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		value types.String
@@ -40,13 +41,18 @@ func TestIsNullOrUnknown(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := isNullOrUnknown(tt.value)
-			assert.Equal(t, tt.want, got)
+			if got != tt.want {
+				t.Errorf("isNullOrUnknown() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
 
 func TestTfStringToPtr(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		value types.String
@@ -76,18 +82,27 @@ func TestTfStringToPtr(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tfStringToPtr(tt.value)
 			if tt.want == nil {
-				assert.Nil(t, got)
+				if got != nil {
+					t.Errorf("tfStringToPtr() = %v, want nil", *got)
+				}
 			} else {
-				assert.NotNil(t, got)
-				assert.Equal(t, *tt.want, *got)
+				if got == nil {
+					t.Fatalf("tfStringToPtr() = nil, want %q", *tt.want)
+				}
+				if *got != *tt.want {
+					t.Errorf("tfStringToPtr() = %q, want %q", *got, *tt.want)
+				}
 			}
 		})
 	}
 }
 
 func TestTfIntToPtr(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		value types.Int64
@@ -117,18 +132,27 @@ func TestTfIntToPtr(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tfIntToPtr(tt.value)
 			if tt.want == nil {
-				assert.Nil(t, got)
+				if got != nil {
+					t.Errorf("tfIntToPtr() = %v, want nil", *got)
+				}
 			} else {
-				assert.NotNil(t, got)
-				assert.Equal(t, *tt.want, *got)
+				if got == nil {
+					t.Fatalf("tfIntToPtr() = nil, want %d", *tt.want)
+				}
+				if *got != *tt.want {
+					t.Errorf("tfIntToPtr() = %d, want %d", *got, *tt.want)
+				}
 			}
 		})
 	}
 }
 
 func TestTfBoolToPtr(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		value types.Bool
@@ -158,12 +182,19 @@ func TestTfBoolToPtr(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tfBoolToPtr(tt.value)
 			if tt.want == nil {
-				assert.Nil(t, got)
+				if got != nil {
+					t.Errorf("tfBoolToPtr() = %v, want nil", *got)
+				}
 			} else {
-				assert.NotNil(t, got)
-				assert.Equal(t, *tt.want, *got)
+				if got == nil {
+					t.Fatalf("tfBoolToPtr() = nil, want %v", *tt.want)
+				}
+				if *got != *tt.want {
+					t.Errorf("tfBoolToPtr() = %v, want %v", *got, *tt.want)
+				}
 			}
 		})
 	}

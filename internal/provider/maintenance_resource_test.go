@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	frameworkresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
@@ -447,6 +448,92 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 		}
 		if !model.EndDate.IsNull() {
 			t.Error("expected EndDate to be null")
+		}
+	})
+
+	t.Run("write-only text preserved when API returns empty", func(t *testing.T) {
+		// The API accepts text on write but may not return it on GET.
+		// When the model already has a Text value (from plan/state) and
+		// the API returns empty text, the existing value must be preserved.
+		startDate := "2025-12-20T02:00:00.000Z"
+		endDate := "2025-12-20T06:00:00.000Z"
+		maintenance := &client.Maintenance{
+			UUID:      "mw_wo_1",
+			Name:      "Write-only Text Test",
+			Title:     client.LocalizedText{En: "Title"},
+			Text:      client.LocalizedText{En: ""}, // API returns empty
+			StartDate: &startDate,
+			EndDate:   &endDate,
+			Monitors:  []string{"mon-1"},
+		}
+
+		model := &MaintenanceResourceModel{
+			Text: types.StringValue("Original text from plan"),
+		}
+		diags := &diag.Diagnostics{}
+		r.mapMaintenanceToModel(maintenance, model, diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags)
+		}
+		if model.Text.ValueString() != "Original text from plan" {
+			t.Errorf("expected text to be preserved as 'Original text from plan', got %q", model.Text.ValueString())
+		}
+	})
+
+	t.Run("text overwritten when API returns non-empty", func(t *testing.T) {
+		// When the API does return text, use the API value.
+		startDate := "2025-12-20T02:00:00.000Z"
+		endDate := "2025-12-20T06:00:00.000Z"
+		maintenance := &client.Maintenance{
+			UUID:      "mw_wo_2",
+			Name:      "API Text Test",
+			Title:     client.LocalizedText{En: "Title"},
+			Text:      client.LocalizedText{En: "Text from API"},
+			StartDate: &startDate,
+			EndDate:   &endDate,
+			Monitors:  []string{"mon-1"},
+		}
+
+		model := &MaintenanceResourceModel{
+			Text: types.StringValue("Old plan text"),
+		}
+		diags := &diag.Diagnostics{}
+		r.mapMaintenanceToModel(maintenance, model, diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags)
+		}
+		if model.Text.ValueString() != "Text from API" {
+			t.Errorf("expected text to be 'Text from API', got %q", model.Text.ValueString())
+		}
+	})
+
+	t.Run("text stays null when model has null value and API returns empty", func(t *testing.T) {
+		// Fresh model with null Text and API returns empty.
+		startDate := "2025-12-20T02:00:00.000Z"
+		endDate := "2025-12-20T06:00:00.000Z"
+		maintenance := &client.Maintenance{
+			UUID:      "mw_wo_3",
+			Name:      "Null Text Test",
+			Text:      client.LocalizedText{En: ""},
+			StartDate: &startDate,
+			EndDate:   &endDate,
+			Monitors:  []string{"mon-1"},
+		}
+
+		model := &MaintenanceResourceModel{
+			Text: types.StringNull(),
+		}
+		diags := &diag.Diagnostics{}
+		r.mapMaintenanceToModel(maintenance, model, diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags)
+		}
+		// Model.Text should remain null since API also returned empty
+		if !model.Text.IsNull() {
+			t.Errorf("expected text to remain null, got %q", model.Text.ValueString())
 		}
 	})
 }

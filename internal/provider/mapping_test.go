@@ -14,6 +14,8 @@ import (
 )
 
 func TestMapHealthcheckCommonFields_NilPointer(t *testing.T) {
+	t.Parallel()
+
 	f := MapHealthcheckCommonFields(nil)
 	if !f.ID.IsNull() {
 		t.Error("expected ID to be null for nil healthcheck")
@@ -27,6 +29,8 @@ func TestMapHealthcheckCommonFields_NilPointer(t *testing.T) {
 }
 
 func TestMapHealthcheckCommonFields_FullHealthcheck(t *testing.T) {
+	t.Parallel()
+
 	periodValue := 60
 	hc := &client.Healthcheck{
 		UUID:             "hc_abc123",
@@ -75,6 +79,8 @@ func TestMapHealthcheckCommonFields_FullHealthcheck(t *testing.T) {
 }
 
 func TestMapHealthcheckCommonFields_NullOptionalFields(t *testing.T) {
+	t.Parallel()
+
 	hc := &client.Healthcheck{
 		UUID:             "hc_min",
 		Name:             "Minimal",
@@ -108,6 +114,8 @@ func TestMapHealthcheckCommonFields_NullOptionalFields(t *testing.T) {
 }
 
 func TestMapOutageNestedObjects_NilOutage(t *testing.T) {
+	t.Parallel()
+
 	var diags diag.Diagnostics
 	monitorObj, ackObj := MapOutageNestedObjects(nil, &diags)
 
@@ -123,6 +131,8 @@ func TestMapOutageNestedObjects_NilOutage(t *testing.T) {
 }
 
 func TestMapOutageNestedObjects_ZeroValueMonitor(t *testing.T) {
+	t.Parallel()
+
 	outage := &client.Outage{
 		UUID: "out_123",
 		// Monitor is zero-value: all empty strings
@@ -140,6 +150,8 @@ func TestMapOutageNestedObjects_ZeroValueMonitor(t *testing.T) {
 }
 
 func TestMapOutageNestedObjects_FullOutage(t *testing.T) {
+	t.Parallel()
+
 	outage := &client.Outage{
 		UUID: "out_456",
 		Monitor: client.MonitorReference{
@@ -180,6 +192,8 @@ func TestMapOutageNestedObjects_FullOutage(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_BothSet(t *testing.T) {
+	t.Parallel()
+
 	plan := buildTestPlan("* * * * *", "UTC", intPtr(60), "seconds")
 	err := validateCronPeriodExclusivity(&plan)
 	if err == nil {
@@ -188,6 +202,8 @@ func TestValidateCronPeriodExclusivity_BothSet(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_CronOnly(t *testing.T) {
+	t.Parallel()
+
 	plan := buildTestPlan("* * * * *", "UTC", nil, "")
 	err := validateCronPeriodExclusivity(&plan)
 	if err != nil {
@@ -196,6 +212,8 @@ func TestValidateCronPeriodExclusivity_CronOnly(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_PeriodOnly(t *testing.T) {
+	t.Parallel()
+
 	plan := buildTestPlan("", "", intPtr(60), "seconds")
 	err := validateCronPeriodExclusivity(&plan)
 	if err != nil {
@@ -204,6 +222,8 @@ func TestValidateCronPeriodExclusivity_PeriodOnly(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_CronWithoutTz(t *testing.T) {
+	t.Parallel()
+
 	plan := buildTestPlan("* * * * *", "", nil, "")
 	err := validateCronPeriodExclusivity(&plan)
 	if err == nil {
@@ -212,6 +232,8 @@ func TestValidateCronPeriodExclusivity_CronWithoutTz(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_TzWithoutCron(t *testing.T) {
+	t.Parallel()
+
 	plan := buildTestPlan("", "UTC", nil, "")
 	err := validateCronPeriodExclusivity(&plan)
 	if err == nil {
@@ -220,6 +242,8 @@ func TestValidateCronPeriodExclusivity_TzWithoutCron(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_PeriodValueWithoutType(t *testing.T) {
+	t.Parallel()
+
 	plan := buildTestPlan("", "", intPtr(60), "")
 	err := validateCronPeriodExclusivity(&plan)
 	if err == nil {
@@ -228,6 +252,8 @@ func TestValidateCronPeriodExclusivity_PeriodValueWithoutType(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_PeriodTypeWithoutValue(t *testing.T) {
+	t.Parallel()
+
 	plan := buildTestPlan("", "", nil, "seconds")
 	err := validateCronPeriodExclusivity(&plan)
 	if err == nil {
@@ -236,6 +262,8 @@ func TestValidateCronPeriodExclusivity_PeriodTypeWithoutValue(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_NeitherSet(t *testing.T) {
+	t.Parallel()
+
 	plan := buildTestPlan("", "", nil, "")
 	err := validateCronPeriodExclusivity(&plan)
 	if err == nil {
@@ -244,6 +272,8 @@ func TestValidateCronPeriodExclusivity_NeitherSet(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_EmptyCronString(t *testing.T) {
+	t.Parallel()
+
 	// Empty string cron should be treated as "not set"
 	plan := buildTestPlan("", "UTC", nil, "")
 	err := validateCronPeriodExclusivity(&plan)
@@ -253,6 +283,8 @@ func TestValidateCronPeriodExclusivity_EmptyCronString(t *testing.T) {
 }
 
 func TestValidateCronPeriodExclusivity_EmptyTzString(t *testing.T) {
+	t.Parallel()
+
 	// Empty string tz should be treated as "not set"
 	plan := buildTestPlan("* * * * *", "", nil, "")
 	err := validateCronPeriodExclusivity(&plan)
@@ -301,6 +333,8 @@ func tfInt64(v int64) types.Int64    { return types.Int64Value(v) }
 func tfInt64Null() types.Int64       { return types.Int64Null() }
 
 func TestMapTFListToRequestHeaders_NullList(t *testing.T) {
+	t.Parallel()
+
 	var diags diag.Diagnostics
 	result := mapTFListToRequestHeaders(types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}), &diags)
 
@@ -313,6 +347,8 @@ func TestMapTFListToRequestHeaders_NullList(t *testing.T) {
 }
 
 func TestMapTFListToRequestHeaders_UnknownList(t *testing.T) {
+	t.Parallel()
+
 	var diags diag.Diagnostics
 	result := mapTFListToRequestHeaders(types.ListUnknown(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}), &diags)
 
@@ -325,6 +361,8 @@ func TestMapTFListToRequestHeaders_UnknownList(t *testing.T) {
 }
 
 func TestMapTFListToRequestHeaders_EmptyList(t *testing.T) {
+	t.Parallel()
+
 	var diags diag.Diagnostics
 	emptyList, _ := types.ListValue(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}, []attr.Value{})
 	result := mapTFListToRequestHeaders(emptyList, &diags)
@@ -338,6 +376,8 @@ func TestMapTFListToRequestHeaders_EmptyList(t *testing.T) {
 }
 
 func TestMapTFListToRequestHeaders_ValidHeaders(t *testing.T) {
+	t.Parallel()
+
 	var diags diag.Diagnostics
 
 	header1, _ := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
@@ -367,6 +407,8 @@ func TestMapTFListToRequestHeaders_ValidHeaders(t *testing.T) {
 }
 
 func TestMapTFListToRequestHeaders_NullNameValue(t *testing.T) {
+	t.Parallel()
+
 	var diags diag.Diagnostics
 
 	// Header with null name and value should be skipped

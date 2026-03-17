@@ -15,6 +15,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
@@ -358,6 +359,79 @@ func TestIncidentResource_mapIncidentToModel(t *testing.T) {
 		}
 		if !model.Date.IsNull() {
 			t.Error("expected Date to be null for empty string")
+		}
+	})
+
+	t.Run("write-only text preserved when API returns empty", func(t *testing.T) {
+		// The API accepts text on write but may not return it on GET.
+		// When the model already has a Text value (from plan/state) and
+		// the API returns empty text, the existing value must be preserved.
+		incident := &client.Incident{
+			UUID:        "inci_wo_1",
+			Title:       client.LocalizedText{En: "Write-only Text Test"},
+			Text:        client.LocalizedText{En: ""}, // API returns empty
+			Type:        "incident",
+			StatusPages: []string{"sp-1"},
+		}
+
+		model := &IncidentResourceModel{
+			Text: types.StringValue("Original text from plan"),
+		}
+		diags := &diag.Diagnostics{}
+		r.mapIncidentToModel(incident, model, diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags)
+		}
+		if model.Text.ValueString() != "Original text from plan" {
+			t.Errorf("expected text to be preserved as 'Original text from plan', got %q", model.Text.ValueString())
+		}
+	})
+
+	t.Run("text overwritten when API returns non-empty", func(t *testing.T) {
+		// When the API does return text, use the API value.
+		incident := &client.Incident{
+			UUID:        "inci_wo_2",
+			Title:       client.LocalizedText{En: "API Text Test"},
+			Text:        client.LocalizedText{En: "Text from API"},
+			Type:        "incident",
+			StatusPages: []string{"sp-1"},
+		}
+
+		model := &IncidentResourceModel{
+			Text: types.StringValue("Old plan text"),
+		}
+		diags := &diag.Diagnostics{}
+		r.mapIncidentToModel(incident, model, diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags)
+		}
+		if model.Text.ValueString() != "Text from API" {
+			t.Errorf("expected text to be 'Text from API', got %q", model.Text.ValueString())
+		}
+	})
+
+	t.Run("text stays empty when model has no prior value and API returns empty", func(t *testing.T) {
+		// Fresh model with no prior Text value and API returns empty.
+		incident := &client.Incident{
+			UUID:        "inci_wo_3",
+			Title:       client.LocalizedText{En: "Fresh Model Test"},
+			Text:        client.LocalizedText{En: ""},
+			Type:        "incident",
+			StatusPages: []string{"sp-1"},
+		}
+
+		model := &IncidentResourceModel{} // Text is zero-value (empty StringValue)
+		diags := &diag.Diagnostics{}
+		r.mapIncidentToModel(incident, model, diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags)
+		}
+		// Model.Text should remain its zero value (empty string value)
+		if model.Text.ValueString() != "" {
+			t.Errorf("expected text to remain empty, got %q", model.Text.ValueString())
 		}
 	})
 }

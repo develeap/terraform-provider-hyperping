@@ -10,6 +10,8 @@ import (
 )
 
 func TestMatchesNameRegex(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		input    string
@@ -125,6 +127,8 @@ func TestMatchesNameRegex(t *testing.T) {
 }
 
 func TestMatchesExact(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		value    string
@@ -186,6 +190,8 @@ func TestMatchesExact(t *testing.T) {
 }
 
 func TestMatchesExactCaseInsensitive(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		value    string
@@ -235,6 +241,8 @@ func TestMatchesExactCaseInsensitive(t *testing.T) {
 }
 
 func TestMatchesBool(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		value    bool
@@ -290,6 +298,8 @@ func TestMatchesBool(t *testing.T) {
 }
 
 func TestMatchesStringSlice(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		values   []string
@@ -363,6 +373,8 @@ func TestMatchesStringSlice(t *testing.T) {
 }
 
 func TestMatchesStringSliceCaseInsensitive(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		values   []string
@@ -406,6 +418,8 @@ func TestMatchesStringSliceCaseInsensitive(t *testing.T) {
 }
 
 func TestMatchesInt64(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		value    int64
@@ -461,6 +475,8 @@ func TestMatchesInt64(t *testing.T) {
 }
 
 func TestMatchesInt64Range(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		value    int64
@@ -551,6 +567,8 @@ func TestMatchesInt64Range(t *testing.T) {
 }
 
 func TestContainsSubstring(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		value    string
@@ -618,6 +636,8 @@ func TestContainsSubstring(t *testing.T) {
 }
 
 func TestApplyAllFilters(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		filters  []func() bool
@@ -692,6 +712,8 @@ func TestApplyAllFilters(t *testing.T) {
 
 // Performance test with large dataset
 func TestMatchesNameRegexPerformance(t *testing.T) {
+	t.Parallel()
+
 	pattern := types.StringValue("\\[PROD\\]-.*-api-.*")
 
 	testCases := []string{

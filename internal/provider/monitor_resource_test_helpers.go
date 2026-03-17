@@ -4,12 +4,16 @@
 package provider
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -206,13 +210,22 @@ resource "hyperping_monitor" "test" {
 `, baseURL)
 }
 
+// recordedRequest stores a snapshot of an HTTP request for later assertions.
+type recordedRequest struct {
+	Method string
+	Path   string
+	Body   map[string]interface{} // decoded JSON body (nil for GET/DELETE)
+}
+
 // Mock server implementation
 
 type mockHyperpingServer struct {
 	*httptest.Server
 	t        *testing.T
+	mu       sync.RWMutex
 	monitors map[string]map[string]interface{}
 	counter  int
+	requests []recordedRequest // append-only log of all requests
 }
 
 func newMockHyperpingServer(t *testing.T) *mockHyperpingServer {
@@ -231,7 +244,49 @@ func newMockHyperpingServer(t *testing.T) *mockHyperpingServer {
 
 // Mock server helpers
 
+// recordRequest snapshots the incoming request and restores r.Body for downstream handlers.
+func (m *mockHyperpingServer) recordRequest(r *http.Request) {
+	rec := recordedRequest{Method: r.Method, Path: r.URL.Path}
+	if r.Body != nil && r.Method != "GET" && r.Method != "DELETE" {
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err == nil && len(bodyBytes) > 0 {
+			r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			var decoded map[string]interface{}
+			if json.Unmarshal(bodyBytes, &decoded) == nil {
+				rec.Body = decoded
+			}
+		} else if err == nil {
+			r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		}
+	}
+	m.mu.Lock()
+	m.requests = append(m.requests, rec)
+	m.mu.Unlock()
+}
+
+// getRequests returns a copy of all recorded requests (thread-safe).
+func (m *mockHyperpingServer) getRequests() []recordedRequest {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]recordedRequest, len(m.requests))
+	copy(out, m.requests)
+	return out
+}
+
+// lastRequest returns the most recent recorded request, or nil if none.
+func (m *mockHyperpingServer) lastRequest() *recordedRequest {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if len(m.requests) == 0 {
+		return nil
+	}
+	r := m.requests[len(m.requests)-1]
+	return &r
+}
+
 func (m *mockHyperpingServer) createTestMonitor(id, name string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.monitors[id] = map[string]interface{}{
 		"uuid":            id,
 		"name":            name,
@@ -251,11 +306,11 @@ func (m *mockHyperpingServer) createTestMonitor(id, name string) {
 
 type mockHyperpingServerWithErrors struct {
 	*mockHyperpingServer
-	createError bool
-	readError   bool
-	updateError bool
-	deleteError bool
-	pauseError  bool
+	createError atomic.Bool
+	readError   atomic.Bool
+	updateError atomic.Bool
+	deleteError atomic.Bool
+	pauseError  atomic.Bool
 }
 
 func newMockHyperpingServerWithErrors(t *testing.T) *mockHyperpingServerWithErrors {
@@ -274,11 +329,11 @@ func newMockHyperpingServerWithErrors(t *testing.T) *mockHyperpingServerWithErro
 	return m
 }
 
-func (m *mockHyperpingServerWithErrors) setCreateError(v bool) { m.createError = v }
-func (m *mockHyperpingServerWithErrors) setReadError(v bool)   { m.readError = v }
-func (m *mockHyperpingServerWithErrors) setUpdateError(v bool) { m.updateError = v }
-func (m *mockHyperpingServerWithErrors) setDeleteError(v bool) { m.deleteError = v }
-func (m *mockHyperpingServerWithErrors) setPauseError(v bool)  { m.pauseError = v }
+func (m *mockHyperpingServerWithErrors) setCreateError(v bool) { m.createError.Store(v) }
+func (m *mockHyperpingServerWithErrors) setReadError(v bool)   { m.readError.Store(v) }
+func (m *mockHyperpingServerWithErrors) setUpdateError(v bool) { m.updateError.Store(v) }
+func (m *mockHyperpingServerWithErrors) setDeleteError(v bool) { m.deleteError.Store(v) }
+func (m *mockHyperpingServerWithErrors) setPauseError(v bool)  { m.pauseError.Store(v) }
 
 func (m *mockHyperpingServerWithErrors) writeInternalError(w http.ResponseWriter, msg string) {
 	w.WriteHeader(http.StatusInternalServerError)
@@ -289,12 +344,21 @@ func (m *mockHyperpingServerWithErrors) writeInternalError(w http.ResponseWriter
 
 // handlePauseError checks whether the request is a pause operation and,
 // if pauseError is set, writes an error response. Returns true if an error was written.
+// The request body is buffered and restored so subsequent handlers can read it.
 func (m *mockHyperpingServerWithErrors) handlePauseError(w http.ResponseWriter, r *http.Request) bool {
-	if !m.pauseError {
+	if !m.pauseError.Load() {
 		return false
 	}
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		m.t.Errorf("failed to read request body: %v", err)
+		return true
+	}
+	// Restore the body for subsequent readers
+	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+
 	var req map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		m.t.Errorf("failed to decode request body: %v", err)
 		return true
 	}
@@ -306,27 +370,28 @@ func (m *mockHyperpingServerWithErrors) handlePauseError(w http.ResponseWriter, 
 }
 
 func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
+	m.recordRequest(r)
 	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
 	isMonitorPath := len(r.URL.Path) > len(client.MonitorsBasePath+"/")
 
 	switch {
 	case r.Method == "POST" && r.URL.Path == client.MonitorsBasePath:
-		if m.createError {
+		if m.createError.Load() {
 			m.writeInternalError(w, "Internal server error")
 			return
 		}
 		m.createMonitor(w, r)
 
 	case r.Method == "GET" && isMonitorPath:
-		if m.readError {
+		if m.readError.Load() {
 			m.writeInternalError(w, "Internal server error")
 			return
 		}
 		m.getMonitor(w, r)
 
 	case r.Method == "PUT" && isMonitorPath:
-		if m.updateError {
+		if m.updateError.Load() {
 			m.writeInternalError(w, "Internal server error")
 			return
 		}
@@ -336,7 +401,7 @@ func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseW
 		m.updateMonitor(w, r)
 
 	case r.Method == "DELETE" && isMonitorPath:
-		if m.deleteError {
+		if m.deleteError.Load() {
 			m.writeInternalError(w, "Internal server error")
 			return
 		}
@@ -348,6 +413,7 @@ func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseW
 }
 
 func (m *mockHyperpingServer) handleRequest(w http.ResponseWriter, r *http.Request) {
+	m.recordRequest(r)
 	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
 
 	switch {
@@ -370,6 +436,9 @@ func (m *mockHyperpingServer) handleRequest(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockHyperpingServer) listMonitors(w http.ResponseWriter) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	// Collect UUIDs and sort for deterministic ordering across Go map iterations.
 	uuids := make([]string, 0, len(m.monitors))
 	for id := range m.monitors {
@@ -395,6 +464,9 @@ func (m *mockHyperpingServer) createMonitor(w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	m.counter++
 	id := fmt.Sprintf("mon_mock%d", m.counter)
@@ -474,6 +546,9 @@ func (m *mockHyperpingServer) createMonitor(w http.ResponseWriter, r *http.Reque
 
 func (m *mockHyperpingServer) getMonitor(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
 	monitor, exists := m.monitors[id]
 	if !exists {
@@ -599,6 +674,9 @@ func applyMonitorField(monitor map[string]interface{}, key string, value interfa
 func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	monitor, exists := m.monitors[id]
 	if !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -645,6 +723,9 @@ func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Reque
 func (m *mockHyperpingServer) deleteMonitor(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if _, exists := m.monitors[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
 		if err := json.NewEncoder(w).Encode(map[string]string{"error": "Monitor not found"}); err != nil {
@@ -658,6 +739,8 @@ func (m *mockHyperpingServer) deleteMonitor(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockHyperpingServer) deleteAllMonitors() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.monitors = make(map[string]map[string]interface{})
 }
 

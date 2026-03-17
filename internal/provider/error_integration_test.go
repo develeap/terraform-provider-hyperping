@@ -8,16 +8,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sony/gobreaker"
-
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
-// Integration tests that validate error propagation through resources
+// Integration tests that validate error propagation through resources.
 // These tests ensure enhanced error messages with troubleshooting steps
 // are properly displayed to users during CRUD operations.
 
+// ---------------------------------------------------------------------------
+// Error propagation: Monitor CRUD
+// ---------------------------------------------------------------------------
+
 func TestErrorPropagation_MonitorRead(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		err               error
@@ -71,35 +75,32 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Use the standard error helper
+			t.Parallel()
 			diag := newReadError("Monitor", "mon_test123", tt.err)
 
 			summary := diag.Summary()
 			detail := diag.Detail()
 
-			// Verify summary contains resource type
 			if !strings.Contains(summary, "Failed to Read Monitor") {
-				t.Errorf("Expected summary to contain 'Failed to Read Monitor', got: %s", summary)
+				t.Errorf("Summary = %q, want it to contain 'Failed to Read Monitor'", summary)
 			}
 
-			// Verify detail contains expected troubleshooting guidance
 			for _, want := range tt.wantInMessage {
 				if !strings.Contains(detail, want) {
-					t.Errorf("Expected detail to contain %q, got: %s", want, detail)
+					t.Errorf("Detail missing %q, got: %s", want, detail)
 				}
 			}
 
-			// Verify dashboard link is present when expected
-			if tt.wantDashboardLink {
-				if !strings.Contains(detail, "https://app.hyperping.io") {
-					t.Errorf("Expected detail to contain dashboard link")
-				}
+			if tt.wantDashboardLink && !strings.Contains(detail, "https://app.hyperping.io") {
+				t.Error("Detail missing dashboard link")
 			}
 		})
 	}
 }
 
 func TestErrorPropagation_MonitorCreate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		err           error
@@ -126,12 +127,13 @@ func TestErrorPropagation_MonitorCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			diag := newCreateError("Monitor", tt.err)
 
 			detail := diag.Detail()
 			for _, want := range tt.wantInMessage {
 				if !strings.Contains(detail, want) {
-					t.Errorf("Expected detail to contain %q, got: %s", want, detail)
+					t.Errorf("Detail missing %q, got: %s", want, detail)
 				}
 			}
 		})
@@ -139,6 +141,8 @@ func TestErrorPropagation_MonitorCreate(t *testing.T) {
 }
 
 func TestErrorPropagation_MonitorUpdate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		err           error
@@ -164,12 +168,13 @@ func TestErrorPropagation_MonitorUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			diag := newUpdateError("Monitor", "mon_update123", tt.err)
 
 			detail := diag.Detail()
 			for _, want := range tt.wantInMessage {
 				if !strings.Contains(detail, want) {
-					t.Errorf("Expected detail to contain %q, got: %s", want, detail)
+					t.Errorf("Detail missing %q, got: %s", want, detail)
 				}
 			}
 		})
@@ -177,6 +182,8 @@ func TestErrorPropagation_MonitorUpdate(t *testing.T) {
 }
 
 func TestErrorPropagation_MonitorDelete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		err           error
@@ -201,48 +208,52 @@ func TestErrorPropagation_MonitorDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			diag := newDeleteError("Monitor", "mon_delete123", tt.err)
 
 			detail := diag.Detail()
 			for _, want := range tt.wantInMessage {
 				if !strings.Contains(detail, want) {
-					t.Errorf("Expected detail to contain %q, got: %s", want, detail)
+					t.Errorf("Detail missing %q, got: %s", want, detail)
 				}
 			}
 		})
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Error propagation: other resource types
+// ---------------------------------------------------------------------------
+
 func TestErrorPropagation_IncidentRead(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		err           error
 		wantInMessage []string
 	}{
 		{
-			name: "incident not found",
-			err:  client.NewAPIError(404, "incident not found"),
-			wantInMessage: []string{
-				"Troubleshooting",
-			},
+			name:          "incident not found",
+			err:           client.NewAPIError(404, "incident not found"),
+			wantInMessage: []string{"Troubleshooting"},
 		},
 		{
-			name: "unauthorized for incident",
-			err:  client.NewAPIError(401, "unauthorized"),
-			wantInMessage: []string{
-				"API key",
-			},
+			name:          "unauthorized for incident",
+			err:           client.NewAPIError(401, "unauthorized"),
+			wantInMessage: []string{"API key"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			diag := newReadError("Incident", "inc_test123", tt.err)
 
 			detail := diag.Detail()
 			for _, want := range tt.wantInMessage {
 				if !strings.Contains(detail, want) {
-					t.Errorf("Expected detail to contain %q, got: %s", want, detail)
+					t.Errorf("Detail missing %q, got: %s", want, detail)
 				}
 			}
 		})
@@ -250,178 +261,53 @@ func TestErrorPropagation_IncidentRead(t *testing.T) {
 }
 
 func TestErrorPropagation_MaintenanceCreate(t *testing.T) {
-	tests := []struct {
-		name          string
-		err           error
-		wantInMessage []string
-	}{
-		{
-			name: "validation error for maintenance",
-			err:  client.NewValidationError(400, "invalid schedule", []client.ValidationDetail{{Field: "scheduled_start", Message: "must be in future"}}),
-			wantInMessage: []string{
-				"Troubleshooting",
-			},
-		},
-	}
+	t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			diag := newCreateError("Maintenance", tt.err)
+	err := client.NewValidationError(400, "invalid schedule", []client.ValidationDetail{
+		{Field: "scheduled_start", Message: "must be in future"},
+	})
+	diag := newCreateError("Maintenance", err)
 
-			detail := diag.Detail()
-			for _, want := range tt.wantInMessage {
-				if !strings.Contains(detail, want) {
-					t.Errorf("Expected detail to contain %q, got: %s", want, detail)
-				}
-			}
-		})
+	detail := diag.Detail()
+	if !strings.Contains(detail, "Troubleshooting") {
+		t.Errorf("Detail missing 'Troubleshooting', got: %s", detail)
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Cross-resource consistency
+// ---------------------------------------------------------------------------
+
 func TestErrorPropagation_MultipleResources(t *testing.T) {
-	// Test that error messages are consistent across different resource types
+	t.Parallel()
+
 	resourceTypes := []string{"Monitor", "Incident", "Maintenance", "Healthcheck", "Outage", "StatusPage"}
 	testErr := client.NewAPIError(404, "not found")
 
 	for _, resourceType := range resourceTypes {
 		t.Run(resourceType, func(t *testing.T) {
+			t.Parallel()
 			diag := newReadError(resourceType, "test_id_123", testErr)
 
 			summary := diag.Summary()
 			detail := diag.Detail()
 
-			// All should contain resource type in summary
 			if !strings.Contains(summary, resourceType) {
-				t.Errorf("Expected summary to contain %q, got: %s", resourceType, summary)
+				t.Errorf("Summary missing %q, got: %s", resourceType, summary)
 			}
-
-			// All should contain troubleshooting section
 			if !strings.Contains(detail, "Troubleshooting") {
-				t.Errorf("Expected detail to contain Troubleshooting section")
+				t.Error("Detail missing Troubleshooting section")
 			}
-
-			// All should contain dashboard link
 			if !strings.Contains(detail, "https://app.hyperping.io") {
-				t.Errorf("Expected detail to contain dashboard link")
+				t.Error("Detail missing dashboard link")
 			}
 		})
 	}
 }
 
-func TestTroubleshootingSteps_UserReadability(t *testing.T) {
-	// Test that error messages are user-friendly and actionable
-	tests := []struct {
-		name    string
-		diag    func() (string, string)
-		wantHas []string
-		wantNot []string
-	}{
-		{
-			name: "read error is user-friendly",
-			diag: func() (string, string) {
-				err := client.NewAPIError(404, "not found")
-				d := newReadError("Monitor", "mon_123", err)
-				return d.Summary(), d.Detail()
-			},
-			wantHas: []string{
-				"Troubleshooting",
-				"Verify",
-				"Check",
-			},
-			wantNot: []string{
-				"panic",
-				"nil pointer",
-				"stack trace",
-			},
-		},
-		{
-			name: "create error provides actionable steps",
-			diag: func() (string, string) {
-				err := client.NewAPIError(400, "invalid request")
-				d := newCreateError("Monitor", err)
-				return d.Summary(), d.Detail()
-			},
-			wantHas: []string{
-				"Troubleshooting",
-				"Verify",
-				"Check",
-			},
-			wantNot: []string{
-				"internal error",
-				"unexpected",
-			},
-		},
-	}
+func TestErrorContext_AllResourceTypes_CRUD(t *testing.T) {
+	t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, detail := tt.diag()
-
-			for _, want := range tt.wantHas {
-				if !strings.Contains(detail, want) {
-					t.Errorf("Expected detail to contain %q, got: %s", want, detail)
-				}
-			}
-
-			for _, notWant := range tt.wantNot {
-				if strings.Contains(strings.ToLower(detail), strings.ToLower(notWant)) {
-					t.Errorf("Expected detail NOT to contain %q, but it did: %s", notWant, detail)
-				}
-			}
-		})
-	}
-}
-
-func TestRateLimitError_RetryGuidance(t *testing.T) {
-	// Test that rate limit errors provide clear retry guidance
-	retryAfterTests := []int{30, 60, 120, 300}
-
-	for _, retryAfter := range retryAfterTests {
-		t.Run(strings.Join([]string{"retry_after", string(rune(retryAfter))}, "_"), func(t *testing.T) {
-			err := client.NewRateLimitError(retryAfter)
-			diag := newReadError("Monitor", "mon_rate123", err)
-
-			detail := diag.Detail()
-
-			// Should mention rate limiting
-			if !strings.Contains(detail, "Troubleshooting") {
-				t.Errorf("Expected troubleshooting guidance for rate limit")
-			}
-
-			// Should contain the error message with retry time
-			if !strings.Contains(err.Error(), "retry after") {
-				t.Errorf("Expected error to mention retry time")
-			}
-		})
-	}
-}
-
-func TestAuthError_KeyVerification(t *testing.T) {
-	// Test that auth errors provide API key verification steps
-	authErrors := []int{401, 403}
-
-	for _, statusCode := range authErrors {
-		t.Run(strings.Join([]string{"status", string(rune(statusCode))}, "_"), func(t *testing.T) {
-			err := client.NewAPIError(statusCode, "unauthorized")
-			diag := newReadError("Monitor", "mon_auth123", err)
-
-			detail := diag.Detail()
-
-			// Should mention API key verification
-			if !strings.Contains(detail, "API key") {
-				t.Errorf("Expected detail to mention API key verification")
-			}
-
-			// Should have troubleshooting section
-			if !strings.Contains(detail, "Troubleshooting") {
-				t.Errorf("Expected troubleshooting section")
-			}
-		})
-	}
-}
-
-func TestErrorContext_AllResourceTypes(t *testing.T) {
-	// Test error handling for all 8 resource types
 	allResources := []struct {
 		resourceType string
 		resourceID   string
@@ -440,40 +326,50 @@ func TestErrorContext_AllResourceTypes(t *testing.T) {
 
 	for _, resource := range allResources {
 		t.Run(resource.resourceType, func(t *testing.T) {
-			// Test all CRUD operations
+			t.Parallel()
+
 			t.Run("create", func(t *testing.T) {
+				t.Parallel()
 				diag := newCreateError(resource.resourceType, testErr)
 				if !strings.Contains(diag.Summary(), "Failed to Create") {
-					t.Errorf("Create error missing expected summary")
+					t.Errorf("Create summary missing 'Failed to Create', got: %s", diag.Summary())
 				}
 			})
 
 			t.Run("read", func(t *testing.T) {
+				t.Parallel()
 				diag := newReadError(resource.resourceType, resource.resourceID, testErr)
 				if !strings.Contains(diag.Summary(), "Failed to Read") {
-					t.Errorf("Read error missing expected summary")
+					t.Errorf("Read summary missing 'Failed to Read', got: %s", diag.Summary())
 				}
 			})
 
 			t.Run("update", func(t *testing.T) {
+				t.Parallel()
 				diag := newUpdateError(resource.resourceType, resource.resourceID, testErr)
 				if !strings.Contains(diag.Summary(), "Failed to Update") {
-					t.Errorf("Update error missing expected summary")
+					t.Errorf("Update summary missing 'Failed to Update', got: %s", diag.Summary())
 				}
 			})
 
 			t.Run("delete", func(t *testing.T) {
+				t.Parallel()
 				diag := newDeleteError(resource.resourceType, resource.resourceID, testErr)
 				if !strings.Contains(diag.Summary(), "Failed to Delete") {
-					t.Errorf("Delete error missing expected summary")
+					t.Errorf("Delete summary missing 'Failed to Delete', got: %s", diag.Summary())
 				}
 			})
 		})
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Error message formatting consistency
+// ---------------------------------------------------------------------------
+
 func TestErrorMessage_Format(t *testing.T) {
-	// Test that error messages follow consistent formatting
+	t.Parallel()
+
 	testErr := errors.New("test error")
 
 	tests := []struct {
@@ -517,87 +413,151 @@ func TestErrorMessage_Format(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			summary, detail := tt.createDiag()
 
 			if summary != tt.wantSummary {
-				t.Errorf("Expected summary %q, got %q", tt.wantSummary, summary)
+				t.Errorf("Summary = %q, want %q", summary, tt.wantSummary)
 			}
-
-			// All error messages should have a detail section
 			if len(detail) == 0 {
-				t.Errorf("Expected non-empty detail")
+				t.Error("Detail is empty")
 			}
-
-			// All should have troubleshooting section
 			if !strings.Contains(detail, "Troubleshooting") {
-				t.Errorf("Expected troubleshooting section in detail")
+				t.Error("Detail missing Troubleshooting section")
 			}
 		})
 	}
 }
 
-func TestNewReadErrorWithContext_CircuitBreaker(t *testing.T) {
-	err := gobreaker.ErrOpenState
-	d := NewReadErrorWithContext("Monitor", "mon_abc123", err)
-
-	summary := d.Summary()
-	detail := d.Detail()
-
-	if !strings.Contains(summary, "Failed to Read Monitor") {
-		t.Errorf("Expected summary to contain 'Failed to Read Monitor', got: %s", summary)
-	}
-
-	if !strings.Contains(detail, "circuit breaker is open") {
-		t.Errorf("Expected detail to contain 'circuit breaker is open', got: %s", detail)
-	}
-
-	if !strings.Contains(detail, "Wait 30 seconds") {
-		t.Errorf("Expected detail to contain 'Wait 30 seconds', got: %s", detail)
-	}
-
-	if !strings.Contains(detail, "-parallelism=1") {
-		t.Errorf("Expected detail to contain '-parallelism=1', got: %s", detail)
-	}
-
-	if !strings.Contains(detail, "status.hyperping.app") {
-		t.Errorf("Expected detail to contain API status URL, got: %s", detail)
-	}
-}
-
 func TestErrorMessage_AllOperations(t *testing.T) {
-	// Verify all CRUD operations have proper error handling
+	t.Parallel()
+
 	testErr := client.NewAPIError(400, "test error")
 
 	operations := map[string]func() string{
-		"Create": func() string {
-			return newCreateError("Resource", testErr).Detail()
-		},
-		"Read": func() string {
-			return newReadError("Resource", "id_123", testErr).Detail()
-		},
-		"Update": func() string {
-			return newUpdateError("Resource", "id_123", testErr).Detail()
-		},
-		"Delete": func() string {
-			return newDeleteError("Resource", "id_123", testErr).Detail()
-		},
-		"List": func() string {
-			return newListError("Resources", testErr).Detail()
-		},
+		"Create": func() string { return newCreateError("Resource", testErr).Detail() },
+		"Read":   func() string { return newReadError("Resource", "id_123", testErr).Detail() },
+		"Update": func() string { return newUpdateError("Resource", "id_123", testErr).Detail() },
+		"Delete": func() string { return newDeleteError("Resource", "id_123", testErr).Detail() },
+		"List":   func() string { return newListError("Resources", testErr).Detail() },
 	}
 
 	for opName, opFunc := range operations {
 		t.Run(opName, func(t *testing.T) {
+			t.Parallel()
 			detail := opFunc()
 
-			// All operations should have troubleshooting guidance
 			if !strings.Contains(detail, "Troubleshooting") {
 				t.Errorf("%s operation missing troubleshooting guidance", opName)
 			}
-
-			// All should mention the error
 			if !strings.Contains(detail, "test error") {
 				t.Errorf("%s operation missing original error message", opName)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// User readability / actionability
+// ---------------------------------------------------------------------------
+
+func TestTroubleshootingSteps_UserReadability(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		diag    func() (string, string)
+		wantHas []string
+		wantNot []string
+	}{
+		{
+			name: "read error is user-friendly",
+			diag: func() (string, string) {
+				err := client.NewAPIError(404, "not found")
+				d := newReadError("Monitor", "mon_123", err)
+				return d.Summary(), d.Detail()
+			},
+			wantHas: []string{"Troubleshooting", "Verify", "Check"},
+			wantNot: []string{"panic", "nil pointer", "stack trace"},
+		},
+		{
+			name: "create error provides actionable steps",
+			diag: func() (string, string) {
+				err := client.NewAPIError(400, "invalid request")
+				d := newCreateError("Monitor", err)
+				return d.Summary(), d.Detail()
+			},
+			wantHas: []string{"Troubleshooting", "Verify", "Check"},
+			wantNot: []string{"internal error", "unexpected"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, detail := tt.diag()
+
+			for _, want := range tt.wantHas {
+				if !strings.Contains(detail, want) {
+					t.Errorf("Detail missing %q, got: %s", want, detail)
+				}
+			}
+			for _, notWant := range tt.wantNot {
+				if strings.Contains(strings.ToLower(detail), strings.ToLower(notWant)) {
+					t.Errorf("Detail should NOT contain %q, got: %s", notWant, detail)
+				}
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Rate limit retry guidance across the error flow
+// ---------------------------------------------------------------------------
+
+func TestRateLimitError_RetryGuidance(t *testing.T) {
+	t.Parallel()
+
+	retryAfterTests := []int{30, 60, 120, 300}
+
+	for _, retryAfter := range retryAfterTests {
+		t.Run(strings.Join([]string{"retry_after", string(rune(retryAfter))}, "_"), func(t *testing.T) {
+			t.Parallel()
+			err := client.NewRateLimitError(retryAfter)
+			diag := newReadError("Monitor", "mon_rate123", err)
+
+			detail := diag.Detail()
+			if !strings.Contains(detail, "Troubleshooting") {
+				t.Error("Missing troubleshooting guidance for rate limit")
+			}
+			if !strings.Contains(err.Error(), "retry after") {
+				t.Error("Error message missing retry time")
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Auth error key verification across the error flow
+// ---------------------------------------------------------------------------
+
+func TestAuthError_KeyVerification(t *testing.T) {
+	t.Parallel()
+
+	authErrors := []int{401, 403}
+
+	for _, statusCode := range authErrors {
+		t.Run(strings.Join([]string{"status", string(rune(statusCode))}, "_"), func(t *testing.T) {
+			t.Parallel()
+			err := client.NewAPIError(statusCode, "unauthorized")
+			diag := newReadError("Monitor", "mon_auth123", err)
+
+			detail := diag.Detail()
+			if !strings.Contains(detail, "API key") {
+				t.Error("Detail missing API key verification")
+			}
+			if !strings.Contains(detail, "Troubleshooting") {
+				t.Error("Detail missing Troubleshooting section")
 			}
 		})
 	}

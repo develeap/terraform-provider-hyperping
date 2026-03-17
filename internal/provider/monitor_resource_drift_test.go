@@ -133,6 +133,8 @@ func TestAccMonitorResource_driftDetection_requiredKeyword(t *testing.T) {
 // testAccExternallyPauseMonitor simulates external pause operation
 func testAccExternallyPauseMonitor(server *mockHyperpingServer) tfresource.TestCheckFunc {
 	return func(s *terraform.State) error {
+		server.mu.Lock()
+		defer server.mu.Unlock()
 		for id, monitor := range server.monitors {
 			monitor["paused"] = true
 			server.monitors[id] = monitor
@@ -144,6 +146,8 @@ func testAccExternallyPauseMonitor(server *mockHyperpingServer) tfresource.TestC
 // testAccExternallyChangeMonitorName simulates external name change
 func testAccExternallyChangeMonitorName(server *mockHyperpingServer, newName string) tfresource.TestCheckFunc {
 	return func(s *terraform.State) error {
+		server.mu.Lock()
+		defer server.mu.Unlock()
 		for id, monitor := range server.monitors {
 			monitor["name"] = newName
 			server.monitors[id] = monitor
@@ -155,6 +159,8 @@ func testAccExternallyChangeMonitorName(server *mockHyperpingServer, newName str
 // testAccExternallyChangeMonitorFrequency simulates external frequency change
 func testAccExternallyChangeMonitorFrequency(server *mockHyperpingServer, newFrequency int) tfresource.TestCheckFunc {
 	return func(s *terraform.State) error {
+		server.mu.Lock()
+		defer server.mu.Unlock()
 		for id, monitor := range server.monitors {
 			monitor["check_frequency"] = newFrequency
 			server.monitors[id] = monitor
@@ -167,6 +173,8 @@ func testAccExternallyChangeMonitorFrequency(server *mockHyperpingServer, newFre
 // Note: This field is write-only in the API, so changes won't be visible to Terraform
 func testAccExternallyChangeMonitorKeyword(server *mockHyperpingServer, newKeyword string) tfresource.TestCheckFunc {
 	return func(s *terraform.State) error {
+		server.mu.Lock()
+		defer server.mu.Unlock()
 		for id, monitor := range server.monitors {
 			monitor["required_keyword"] = newKeyword
 			server.monitors[id] = monitor
@@ -178,6 +186,8 @@ func testAccExternallyChangeMonitorKeyword(server *mockHyperpingServer, newKeywo
 // testAccExternallyRemoveEscalationPolicy simulates an external removal of escalation_policy
 func testAccExternallyRemoveEscalationPolicy(server *mockHyperpingServer) tfresource.TestCheckFunc {
 	return func(s *terraform.State) error {
+		server.mu.Lock()
+		defer server.mu.Unlock()
 		for id, monitor := range server.monitors {
 			monitor["escalation_policy"] = nil
 			server.monitors[id] = monitor

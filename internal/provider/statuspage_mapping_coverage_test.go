@@ -14,9 +14,570 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
-// Increase coverage for mapTFToSettings
+// =============================================================================
+// extractLocalizedString
+// =============================================================================
+
+func TestExtractLocalizedString(t *testing.T) {
+	tests := []struct {
+		name            string
+		m               map[string]string
+		configuredLangs []string
+		wantNull        bool
+		wantValue       string
+	}{
+		{
+			name:            "nil map returns null",
+			m:               nil,
+			configuredLangs: nil,
+			wantNull:        true,
+		},
+		{
+			name:            "empty map returns null",
+			m:               map[string]string{},
+			configuredLangs: nil,
+			wantNull:        true,
+		},
+		{
+			name:            "map with en only returns en value",
+			m:               map[string]string{"en": "hello"},
+			configuredLangs: nil,
+			wantNull:        false,
+			wantValue:       "hello",
+		},
+		{
+			name:            "map with en and fr returns en value",
+			m:               map[string]string{"en": "hello", "fr": "bonjour"},
+			configuredLangs: []string{"en", "fr"},
+			wantNull:        false,
+			wantValue:       "hello",
+		},
+		{
+			name:            "en empty and fr populated skips en returns fr",
+			m:               map[string]string{"en": "", "fr": "bonjour"},
+			configuredLangs: []string{"en", "fr"},
+			wantNull:        false,
+			wantValue:       "bonjour",
+		},
+		{
+			name:            "en empty and fr populated with nil configuredLangs falls back to fr",
+			m:               map[string]string{"en": "", "fr": "bonjour"},
+			configuredLangs: nil,
+			wantNull:        false,
+			wantValue:       "bonjour",
+		},
+		{
+			name:            "en empty and fr populated with empty configuredLangs falls back to fr",
+			m:               map[string]string{"en": "", "fr": "bonjour"},
+			configuredLangs: []string{},
+			wantNull:        false,
+			wantValue:       "bonjour",
+		},
+		{
+			name:            "only unconfigured languages falls back to any non-empty value",
+			m:               map[string]string{"de": "hallo", "es": "hola"},
+			configuredLangs: []string{"en", "fr"},
+			wantNull:        false,
+			// Cannot predict map iteration order, but should be one of de/es
+		},
+		{
+			name:            "all values empty with en key returns empty string",
+			m:               map[string]string{"en": "", "fr": ""},
+			configuredLangs: nil,
+			wantNull:        false,
+			wantValue:       "",
+		},
+		{
+			name:            "all values empty without en key returns null",
+			m:               map[string]string{"fr": "", "de": ""},
+			configuredLangs: nil,
+			wantNull:        true,
+		},
+		{
+			name:            "configured lang matches before fallback",
+			m:               map[string]string{"fr": "bonjour", "de": "hallo"},
+			configuredLangs: []string{"fr"},
+			wantNull:        false,
+			wantValue:       "bonjour",
+		},
+		{
+			name:            "configured lang first entry is empty second is populated",
+			m:               map[string]string{"fr": "", "de": "hallo"},
+			configuredLangs: []string{"fr", "de"},
+			wantNull:        false,
+			wantValue:       "hallo",
+		},
+		{
+			name:            "single non-en language no configured langs",
+			m:               map[string]string{"ja": "konnichiwa"},
+			configuredLangs: nil,
+			wantNull:        false,
+			wantValue:       "konnichiwa",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractLocalizedString(tt.m, tt.configuredLangs)
+
+			if tt.wantNull {
+				if !result.IsNull() {
+					t.Errorf("expected null, got %q", result.ValueString())
+				}
+				return
+			}
+
+			if result.IsNull() {
+				t.Fatal("expected non-null result")
+			}
+
+			// For the "unconfigured languages" case we cannot predict map iteration order,
+			// so we only verify the value is non-null and non-empty.
+			if tt.name == "only unconfigured languages falls back to any non-empty value" {
+				if result.ValueString() == "" {
+					t.Error("expected non-empty fallback value")
+				}
+				return
+			}
+
+			if result.ValueString() != tt.wantValue {
+				t.Errorf("got %q, want %q", result.ValueString(), tt.wantValue)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// filterLocalizedMap
+// =============================================================================
+
+func TestFilterLocalizedMap_Coverage(t *testing.T) {
+	tests := []struct {
+		name            string
+		m               map[string]string
+		configuredLangs []string
+		wantNil         bool
+		wantLen         int
+		wantKeys        []string
+	}{
+		{
+			name:            "nil configuredLangs returns original map",
+			m:               map[string]string{"en": "a", "fr": "b"},
+			configuredLangs: nil,
+			wantLen:         2,
+			wantKeys:        []string{"en", "fr"},
+		},
+		{
+			name:            "empty configuredLangs returns original map",
+			m:               map[string]string{"en": "a", "fr": "b"},
+			configuredLangs: []string{},
+			wantLen:         2,
+			wantKeys:        []string{"en", "fr"},
+		},
+		{
+			name:            "nil map with configuredLangs returns nil",
+			m:               nil,
+			configuredLangs: []string{"en"},
+			wantNil:         true,
+		},
+		{
+			name:            "empty map with configuredLangs returns empty",
+			m:               map[string]string{},
+			configuredLangs: []string{"en"},
+			wantLen:         0,
+		},
+		{
+			name:            "filters to subset",
+			m:               map[string]string{"en": "a", "fr": "b", "de": "c"},
+			configuredLangs: []string{"en", "de"},
+			wantLen:         2,
+			wantKeys:        []string{"en", "de"},
+		},
+		{
+			name:            "no matching languages returns empty map",
+			m:               map[string]string{"en": "a", "fr": "b"},
+			configuredLangs: []string{"de", "es"},
+			wantLen:         0,
+		},
+		{
+			name:            "single language filter",
+			m:               map[string]string{"en": "a", "fr": "b", "de": "c"},
+			configuredLangs: []string{"fr"},
+			wantLen:         1,
+			wantKeys:        []string{"fr"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filterLocalizedMap(tt.m, tt.configuredLangs)
+
+			if tt.wantNil {
+				if result != nil {
+					t.Errorf("expected nil, got %v", result)
+				}
+				return
+			}
+
+			if len(result) != tt.wantLen {
+				t.Errorf("expected len %d, got %d (map: %v)", tt.wantLen, len(result), result)
+			}
+
+			for _, key := range tt.wantKeys {
+				if _, ok := result[key]; !ok {
+					t.Errorf("expected key %q in result", key)
+				}
+			}
+		})
+	}
+}
+
+// =============================================================================
+// mapTFToStringMap
+// =============================================================================
+
+func TestMapTFToStringMap_Coverage(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     types.Map
+		wantNil   bool
+		wantLen   int
+		wantPairs map[string]string
+		wantError bool
+	}{
+		{
+			name:    "null map returns nil",
+			input:   types.MapNull(types.StringType),
+			wantNil: true,
+		},
+		{
+			name:    "unknown map returns nil",
+			input:   types.MapUnknown(types.StringType),
+			wantNil: true,
+		},
+		{
+			name: "populated map returns correct entries",
+			input: types.MapValueMust(types.StringType, map[string]attr.Value{
+				"en": types.StringValue("English"),
+				"fr": types.StringValue("French"),
+			}),
+			wantLen: 2,
+			wantPairs: map[string]string{
+				"en": "English",
+				"fr": "French",
+			},
+		},
+		{
+			name: "null values in map are skipped",
+			input: types.MapValueMust(types.StringType, map[string]attr.Value{
+				"en":   types.StringValue("English"),
+				"null": types.StringNull(),
+			}),
+			wantLen: 1,
+			wantPairs: map[string]string{
+				"en": "English",
+			},
+		},
+		{
+			name: "empty string values are preserved",
+			input: types.MapValueMust(types.StringType, map[string]attr.Value{
+				"en": types.StringValue(""),
+			}),
+			wantLen: 1,
+			wantPairs: map[string]string{
+				"en": "",
+			},
+		},
+		{
+			name: "single entry map",
+			input: types.MapValueMust(types.StringType, map[string]attr.Value{
+				"ja": types.StringValue("Japanese"),
+			}),
+			wantLen: 1,
+			wantPairs: map[string]string{
+				"ja": "Japanese",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var diags diag.Diagnostics
+			result := mapTFToStringMap(tt.input, &diags)
+
+			if tt.wantError {
+				if !diags.HasError() {
+					t.Error("expected diagnostics error")
+				}
+				return
+			}
+
+			if diags.HasError() {
+				t.Fatalf("unexpected error: %v", diags.Errors())
+			}
+
+			if tt.wantNil {
+				if result != nil {
+					t.Errorf("expected nil, got %v", result)
+				}
+				return
+			}
+
+			if len(result) != tt.wantLen {
+				t.Errorf("expected len %d, got %d", tt.wantLen, len(result))
+			}
+
+			for k, v := range tt.wantPairs {
+				got, ok := result[k]
+				if !ok {
+					t.Errorf("expected key %q not found", k)
+					continue
+				}
+				if got != v {
+					t.Errorf("key %q: got %q, want %q", k, got, v)
+				}
+			}
+		})
+	}
+}
+
+// =============================================================================
+// mapStringMapToTF
+// =============================================================================
+
+func TestMapStringMapToTF_Coverage(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     map[string]string
+		wantNull  bool
+		wantLen   int
+		wantPairs map[string]string
+	}{
+		{
+			name:     "nil map returns null",
+			input:    nil,
+			wantNull: true,
+		},
+		{
+			name:     "empty map returns null",
+			input:    map[string]string{},
+			wantNull: true,
+		},
+		{
+			name:    "single entry",
+			input:   map[string]string{"en": "hello"},
+			wantLen: 1,
+			wantPairs: map[string]string{
+				"en": "hello",
+			},
+		},
+		{
+			name: "multiple entries",
+			input: map[string]string{
+				"en": "English",
+				"fr": "French",
+				"de": "German",
+			},
+			wantLen: 3,
+			wantPairs: map[string]string{
+				"en": "English",
+				"fr": "French",
+				"de": "German",
+			},
+		},
+		{
+			name:    "entry with empty string value",
+			input:   map[string]string{"en": ""},
+			wantLen: 1,
+			wantPairs: map[string]string{
+				"en": "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mapStringMapToTF(tt.input)
+
+			if tt.wantNull {
+				if !result.IsNull() {
+					t.Errorf("expected null, got non-null map with %d elements", len(result.Elements()))
+				}
+				return
+			}
+
+			if result.IsNull() {
+				t.Fatal("expected non-null map")
+			}
+
+			elements := result.Elements()
+			if len(elements) != tt.wantLen {
+				t.Errorf("expected %d elements, got %d", tt.wantLen, len(elements))
+			}
+
+			for k, wantVal := range tt.wantPairs {
+				attrVal, ok := elements[k]
+				if !ok {
+					t.Errorf("expected key %q not found", k)
+					continue
+				}
+				strVal, ok := attrVal.(types.String)
+				if !ok {
+					t.Errorf("key %q: expected types.String, got %T", k, attrVal)
+					continue
+				}
+				if strVal.ValueString() != wantVal {
+					t.Errorf("key %q: got %q, want %q", k, strVal.ValueString(), wantVal)
+				}
+			}
+		})
+	}
+}
+
+// =============================================================================
+// serviceIDToString (supplementary cases not covered by statuspage_nested_service_test.go)
+// =============================================================================
+
+func TestServiceIDToString_SupplementaryCases(t *testing.T) {
+	tests := []struct {
+		name  string
+		input interface{}
+		want  string
+	}{
+		{
+			name:  "empty string",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "float64 large value",
+			input: float64(9999999),
+			want:  "9999999",
+		},
+		{
+			name:  "float64 with fractional part truncated",
+			input: float64(123.456),
+			want:  "123",
+		},
+		{
+			name:  "int falls through to default",
+			input: 42,
+			want:  "42",
+		},
+		{
+			name:  "int64 falls through to default",
+			input: int64(99),
+			want:  "99",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := serviceIDToString(tt.input)
+			if got != tt.want {
+				t.Errorf("serviceIDToString(%v) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// mapListToStringSlice
+// =============================================================================
+
+func TestMapListToStringSlice_Coverage(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     types.List
+		want      []string
+		wantError bool
+	}{
+		{
+			name:  "null list returns empty slice",
+			input: types.ListNull(types.StringType),
+			want:  []string{},
+		},
+		{
+			name:  "unknown list returns empty slice",
+			input: types.ListUnknown(types.StringType),
+			want:  []string{},
+		},
+		{
+			name: "populated list with multiple values",
+			input: types.ListValueMust(types.StringType, []attr.Value{
+				types.StringValue("en"),
+				types.StringValue("fr"),
+				types.StringValue("de"),
+			}),
+			want: []string{"en", "fr", "de"},
+		},
+		{
+			name: "single element list",
+			input: types.ListValueMust(types.StringType, []attr.Value{
+				types.StringValue("only"),
+			}),
+			want: []string{"only"},
+		},
+		{
+			name: "list with empty string element",
+			input: types.ListValueMust(types.StringType, []attr.Value{
+				types.StringValue(""),
+			}),
+			want: []string{""},
+		},
+		{
+			name: "list with null element produces empty string",
+			input: types.ListValueMust(types.StringType, []attr.Value{
+				types.StringValue("first"),
+				types.StringNull(),
+				types.StringValue("third"),
+			}),
+			want: []string{"first", "", "third"},
+		},
+		{
+			name: "invalid element type produces diagnostics error",
+			input: types.ListValueMust(types.BoolType, []attr.Value{
+				types.BoolValue(true),
+			}),
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var diags diag.Diagnostics
+			result := mapListToStringSlice(tt.input, &diags)
+
+			if tt.wantError {
+				if !diags.HasError() {
+					t.Error("expected diagnostics error")
+				}
+				return
+			}
+
+			if diags.HasError() {
+				t.Fatalf("unexpected error: %v", diags.Errors())
+			}
+
+			if len(result) != len(tt.want) {
+				t.Fatalf("expected %d elements, got %d", len(tt.want), len(result))
+			}
+
+			for i, wantVal := range tt.want {
+				if result[i] != wantVal {
+					t.Errorf("index %d: got %q, want %q", i, result[i], wantVal)
+				}
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Retained coverage tests from original file (mapTFToSettings, mapTFToSections,
+// mapTFToServices, mapSettingsToTFWithFilter edge cases, subscriber mapping)
+// =============================================================================
+
 func TestMapTFToSettings_WithValues(t *testing.T) {
-	// Create subscribe settings object
 	subscribeObj, _ := types.ObjectValue(SubscribeSettingsAttrTypes(), map[string]attr.Value{
 		"enabled": types.BoolValue(true),
 		"email":   types.BoolValue(true),
@@ -25,7 +586,6 @@ func TestMapTFToSettings_WithValues(t *testing.T) {
 		"sms":     types.BoolValue(false),
 	})
 
-	// Create authentication settings object
 	authObj, _ := types.ObjectValue(AuthenticationSettingsAttrTypes(), map[string]attr.Value{
 		"password_protection": types.BoolValue(true),
 		"google_sso":          types.BoolValue(false),
@@ -36,7 +596,6 @@ func TestMapTFToSettings_WithValues(t *testing.T) {
 		}),
 	})
 
-	// Create settings object with subscribe and authentication
 	settingsObj, _ := types.ObjectValue(StatusPageSettingsAttrTypes(), map[string]attr.Value{
 		"name":                     types.StringValue("Test"),
 		"website":                  types.StringValue("https://example.com"),
@@ -91,10 +650,7 @@ func TestMapTFToSettings_WithValues(t *testing.T) {
 	}
 }
 
-// Increase coverage for mapTFToSections
 func TestMapTFToSections_WithValues(t *testing.T) {
-	// Create a service object — must include "services" key (null for non-group) to satisfy
-	// ServiceAttrTypes() and the new apply-time validation (uuid required for non-group).
 	serviceObj, _ := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
 		"id":   types.StringValue("svc_1"),
 		"uuid": types.StringValue("mon_123"),
@@ -108,10 +664,8 @@ func TestMapTFToSections_WithValues(t *testing.T) {
 		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 
-	// Create services list
 	servicesList, _ := types.ListValue(types.ObjectType{AttrTypes: ServiceAttrTypes()}, []attr.Value{serviceObj})
 
-	// Create a section object
 	sectionObj, _ := types.ObjectValue(SectionAttrTypes(), map[string]attr.Value{
 		"name": types.MapValueMust(types.StringType, map[string]attr.Value{
 			"en": types.StringValue("Services"),
@@ -121,7 +675,6 @@ func TestMapTFToSections_WithValues(t *testing.T) {
 		"services": servicesList,
 	})
 
-	// Create sections list
 	sectionsList, _ := types.ListValue(types.ObjectType{AttrTypes: SectionAttrTypes()}, []attr.Value{sectionObj})
 
 	var diags diag.Diagnostics
@@ -145,9 +698,7 @@ func TestMapTFToSections_WithValues(t *testing.T) {
 	}
 }
 
-// Increase coverage for mapTFToServices
 func TestMapTFToServices_WithValues(t *testing.T) {
-	// Create multiple service objects
 	service1, _ := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
 		"id":   types.StringValue("svc_1"),
 		"uuid": types.StringValue("mon_123"),
@@ -160,8 +711,6 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 
-	// service2 is a group (is_group=true) — MonitorUUID is intentionally omitted for groups.
-	// Groups must have at least one nested service to satisfy the new apply-time validation.
 	nestedSvc, _ := types.ObjectValue(NestedServiceAttrTypes(), map[string]attr.Value{
 		"id":   types.StringValue("nsvc_1"),
 		"uuid": types.StringValue("mon_456"),
@@ -199,12 +748,10 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 		t.Fatalf("expected 2 services, got %d", len(services))
 	}
 
-	// Check first service
 	if services[0].MonitorUUID == nil || *services[0].MonitorUUID != "mon_123" {
 		t.Errorf("service[0].MonitorUUID = %v, want 'mon_123'", services[0].MonitorUUID)
 	}
 
-	// Check second service — it's a group, so MonitorUUID is nil (groups don't reference a monitor directly)
 	if services[1].MonitorUUID != nil {
 		t.Errorf("service[1].MonitorUUID should be nil for groups, got %v", *services[1].MonitorUUID)
 	}
@@ -213,7 +760,6 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 	}
 }
 
-// Increase coverage for mapSettingsToTFWithFilter edge cases
 func TestMapSettingsToTFWithFilter_EdgeCases(t *testing.T) {
 	t.Run("with null logo and favicon", func(t *testing.T) {
 		settings := client.StatusPageSettings{
@@ -234,15 +780,9 @@ func TestMapSettingsToTFWithFilter_EdgeCases(t *testing.T) {
 			Subscribe: client.StatusPageSubscribeSettings{
 				Enabled: true,
 				Email:   true,
-				Slack:   false,
-				Teams:   false,
-				SMS:     false,
 			},
 			Authentication: client.StatusPageAuthenticationSettings{
-				PasswordProtection: false,
-				GoogleSSO:          false,
-				SAMLSSO:            false,
-				AllowedDomains:     []string{},
+				AllowedDomains: []string{},
 			},
 		}
 
@@ -275,25 +815,13 @@ func TestMapSettingsToTFWithFilter_EdgeCases(t *testing.T) {
 			Theme:           "light",
 			Font:            "inter",
 			AccentColor:     "#3B82F6",
-			AutoRefresh:     false,
-			BannerHeader:    false,
 			Logo:            &emptyStr,
 			LogoHeight:      "40px",
 			Favicon:         &emptyStr,
 			GoogleAnalytics: &emptyStr,
-			HidePoweredBy:   false,
-			Subscribe: client.StatusPageSubscribeSettings{
-				Enabled: false,
-				Email:   false,
-				Slack:   false,
-				Teams:   false,
-				SMS:     false,
-			},
+			Subscribe:       client.StatusPageSubscribeSettings{},
 			Authentication: client.StatusPageAuthenticationSettings{
-				PasswordProtection: false,
-				GoogleSSO:          false,
-				SAMLSSO:            false,
-				AllowedDomains:     []string{},
+				AllowedDomains: []string{},
 			},
 		}
 
@@ -312,9 +840,7 @@ func TestMapSettingsToTFWithFilter_EdgeCases(t *testing.T) {
 	})
 }
 
-// Increase coverage for mapTFToStringMap edge cases
 func TestMapTFToStringMap_InvalidElement(t *testing.T) {
-	// Create a map with a null value
 	tfMap := types.MapValueMust(types.StringType, map[string]attr.Value{
 		"en":   types.StringValue("English"),
 		"null": types.StringNull(),
@@ -323,7 +849,6 @@ func TestMapTFToStringMap_InvalidElement(t *testing.T) {
 	var diags diag.Diagnostics
 	result := mapTFToStringMap(tfMap, &diags)
 
-	// Should not error but should skip null values
 	if diags.HasError() {
 		t.Errorf("unexpected error: %v", diags.Errors())
 	}
@@ -337,7 +862,6 @@ func TestMapTFToStringMap_InvalidElement(t *testing.T) {
 	}
 }
 
-// Increase coverage for mapListToStringSlice with invalid element
 func TestMapListToStringSlice_WithInvalidElement(t *testing.T) {
 	t.Run("empty list", func(t *testing.T) {
 		emptyList, _ := types.ListValue(types.StringType, []attr.Value{})
@@ -372,7 +896,6 @@ func TestMapListToStringSlice_WithInvalidElement(t *testing.T) {
 	})
 }
 
-// Increase coverage for mapSubscriberToTF with empty optionals
 func TestMapSubscriberToTF_EmptyOptionals(t *testing.T) {
 	emptyStr := ""
 	subscriber := &client.StatusPageSubscriber{
@@ -392,7 +915,6 @@ func TestMapSubscriberToTF_EmptyOptionals(t *testing.T) {
 		t.Fatalf("unexpected error: %v", diags.Errors())
 	}
 
-	// Empty strings should result in null values
 	if !result.Email.IsNull() {
 		t.Error("expected null email for empty string")
 	}
@@ -404,7 +926,6 @@ func TestMapSubscriberToTF_EmptyOptionals(t *testing.T) {
 	}
 }
 
-// Test mapTFToSections with null and unknown lists
 func TestMapTFToSections_NullAndUnknown(t *testing.T) {
 	t.Run("null list", func(t *testing.T) {
 		nullList := types.ListNull(types.ObjectType{AttrTypes: SectionAttrTypes()})
@@ -433,7 +954,6 @@ func TestMapTFToSections_NullAndUnknown(t *testing.T) {
 	})
 
 	t.Run("invalid element type", func(t *testing.T) {
-		// Create list with wrong element type (string instead of object)
 		invalidList, _ := types.ListValue(types.StringType, []attr.Value{
 			types.StringValue("invalid"),
 		})
@@ -449,10 +969,9 @@ func TestMapTFToSections_NullAndUnknown(t *testing.T) {
 	})
 
 	t.Run("section with name without en key", func(t *testing.T) {
-		// Create section with name map that doesn't have "en" key
 		sectionObj, _ := types.ObjectValue(SectionAttrTypes(), map[string]attr.Value{
 			"name": types.MapValueMust(types.StringType, map[string]attr.Value{
-				"fr": types.StringValue("Français"),
+				"fr": types.StringValue("Francais"),
 				"de": types.StringValue("Deutsch"),
 			}),
 			"is_split": types.BoolValue(false),
@@ -472,14 +991,12 @@ func TestMapTFToSections_NullAndUnknown(t *testing.T) {
 			t.Fatalf("expected 1 section, got %d", len(sections))
 		}
 
-		// Should use first available language when "en" not present
 		if sections[0].Name == "" {
 			t.Error("expected section name to be set to first available language")
 		}
 	})
 }
 
-// Test mapTFToStringMap with null and unknown maps
 func TestMapTFToStringMap_NullAndUnknown(t *testing.T) {
 	t.Run("null map", func(t *testing.T) {
 		nullMap := types.MapNull(types.StringType)
@@ -508,13 +1025,10 @@ func TestMapTFToStringMap_NullAndUnknown(t *testing.T) {
 	})
 
 	t.Run("map with non-string value type", func(t *testing.T) {
-		// Create a map with wrong value type (using ObjectAsOptions to bypass type checking)
-		// Note: This is difficult to test in practice since Maps enforce element type
-		// Testing the null value handling instead which is the critical path
 		tfMap := types.MapValueMust(types.StringType, map[string]attr.Value{
 			"en":   types.StringValue("English"),
 			"fr":   types.StringValue("French"),
-			"null": types.StringNull(), // This tests line 517
+			"null": types.StringNull(),
 		})
 
 		var diags diag.Diagnostics
@@ -524,7 +1038,6 @@ func TestMapTFToStringMap_NullAndUnknown(t *testing.T) {
 			t.Errorf("unexpected error: %v", diags.Errors())
 		}
 
-		// Null values should be skipped
 		if _, ok := result["null"]; ok {
 			t.Error("expected null values to be skipped")
 		}
@@ -535,7 +1048,6 @@ func TestMapTFToStringMap_NullAndUnknown(t *testing.T) {
 	})
 }
 
-// Test mapListToStringSlice with null and unknown lists
 func TestMapListToStringSlice_NullAndUnknown(t *testing.T) {
 	t.Run("null list", func(t *testing.T) {
 		nullList := types.ListNull(types.StringType)
@@ -545,7 +1057,6 @@ func TestMapListToStringSlice_NullAndUnknown(t *testing.T) {
 		if diags.HasError() {
 			t.Errorf("unexpected error: %v", diags.Errors())
 		}
-		// Function returns empty slice, not nil
 		if len(result) != 0 {
 			t.Errorf("expected empty result for null list, got %v", result)
 		}
@@ -559,7 +1070,6 @@ func TestMapListToStringSlice_NullAndUnknown(t *testing.T) {
 		if diags.HasError() {
 			t.Errorf("unexpected error: %v", diags.Errors())
 		}
-		// Function returns empty slice, not nil
 		if len(result) != 0 {
 			t.Errorf("expected empty result for unknown list, got %v", result)
 		}
@@ -578,7 +1088,6 @@ func TestMapListToStringSlice_NullAndUnknown(t *testing.T) {
 			t.Errorf("unexpected error: %v", diags.Errors())
 		}
 
-		// Null values become empty strings
 		if len(result) != 3 {
 			t.Errorf("expected 3 elements, got %d", len(result))
 		}
@@ -588,7 +1097,6 @@ func TestMapListToStringSlice_NullAndUnknown(t *testing.T) {
 	})
 
 	t.Run("list with invalid element type", func(t *testing.T) {
-		// Create list with Bool instead of String
 		invalidList, _ := types.ListValue(types.BoolType, []attr.Value{
 			types.BoolValue(true),
 		})
@@ -599,9 +1107,210 @@ func TestMapListToStringSlice_NullAndUnknown(t *testing.T) {
 			t.Error("expected error for invalid element type")
 		}
 
-		// Should continue processing and return empty result
 		if len(result) != 0 {
 			t.Errorf("expected empty result after error, got %d elements", len(result))
 		}
 	})
+}
+
+// =============================================================================
+// mapTFToSettings edge cases
+// =============================================================================
+
+func TestMapTFToSettings_NullObject(t *testing.T) {
+	nullObj := types.ObjectNull(StatusPageSettingsAttrTypes())
+	var diags diag.Diagnostics
+	subscribe, auth := mapTFToSettings(context.Background(), nullObj, &diags)
+
+	if diags.HasError() {
+		t.Errorf("unexpected error: %v", diags.Errors())
+	}
+	if subscribe != nil {
+		t.Error("expected nil subscribe for null object")
+	}
+	if auth != nil {
+		t.Error("expected nil auth for null object")
+	}
+}
+
+func TestMapTFToSettings_UnknownObject(t *testing.T) {
+	unknownObj := types.ObjectUnknown(StatusPageSettingsAttrTypes())
+	var diags diag.Diagnostics
+	subscribe, auth := mapTFToSettings(context.Background(), unknownObj, &diags)
+
+	if diags.HasError() {
+		t.Errorf("unexpected error: %v", diags.Errors())
+	}
+	if subscribe != nil {
+		t.Error("expected nil subscribe for unknown object")
+	}
+	if auth != nil {
+		t.Error("expected nil auth for unknown object")
+	}
+}
+
+// =============================================================================
+// mapTFToServices validation branches
+// =============================================================================
+
+func TestMapTFToServices_NonGroupWithoutUUID(t *testing.T) {
+	// Non-group service without UUID should produce a validation error
+	svc, _ := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
+		"id":                  types.StringNull(),
+		"uuid":                types.StringNull(),
+		"name":                types.MapNull(types.StringType),
+		"is_group":            types.BoolValue(false),
+		"show_uptime":         types.BoolNull(),
+		"show_response_times": types.BoolNull(),
+		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
+	})
+
+	list, _ := types.ListValue(types.ObjectType{AttrTypes: ServiceAttrTypes()}, []attr.Value{svc})
+
+	var diags diag.Diagnostics
+	services := mapTFToServices(list, &diags)
+
+	if !diags.HasError() {
+		t.Fatal("expected error for non-group service without UUID")
+	}
+
+	if len(services) != 1 {
+		t.Errorf("expected 1 service (still appended), got %d", len(services))
+	}
+}
+
+func TestMapTFToServices_GroupWithEmptyServices(t *testing.T) {
+	// Group service with empty services list should produce a validation error
+	svc, _ := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
+		"id":                  types.StringNull(),
+		"uuid":                types.StringNull(),
+		"name":                types.MapNull(types.StringType),
+		"is_group":            types.BoolValue(true),
+		"show_uptime":         types.BoolNull(),
+		"show_response_times": types.BoolNull(),
+		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
+	})
+
+	list, _ := types.ListValue(types.ObjectType{AttrTypes: ServiceAttrTypes()}, []attr.Value{svc})
+
+	var diags diag.Diagnostics
+	services := mapTFToServices(list, &diags)
+
+	if !diags.HasError() {
+		t.Fatal("expected error for group service with empty services")
+	}
+
+	if len(services) != 1 {
+		t.Errorf("expected 1 service (still appended), got %d", len(services))
+	}
+}
+
+func TestMapTFToServices_NullList(t *testing.T) {
+	nullList := types.ListNull(types.ObjectType{AttrTypes: ServiceAttrTypes()})
+	var diags diag.Diagnostics
+	services := mapTFToServices(nullList, &diags)
+
+	if diags.HasError() {
+		t.Errorf("unexpected error: %v", diags.Errors())
+	}
+	if services != nil {
+		t.Error("expected nil for null list")
+	}
+}
+
+func TestMapTFToNestedServices_NullList(t *testing.T) {
+	nullList := types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()})
+	var diags diag.Diagnostics
+	services := mapTFToNestedServices(nullList, &diags)
+
+	if diags.HasError() {
+		t.Errorf("unexpected error: %v", diags.Errors())
+	}
+	if services != nil {
+		t.Error("expected nil for null list")
+	}
+}
+
+// =============================================================================
+// mapSettingsToTFWithFilter with non-nil non-empty optional fields
+// =============================================================================
+
+func TestMapSettingsToTFWithFilter_WithOptionalValues(t *testing.T) {
+	logoVal := "https://example.com/logo.png"
+	faviconVal := "https://example.com/favicon.ico"
+	gaVal := "UA-12345678-1"
+	settings := client.StatusPageSettings{
+		Name:            "Test",
+		Website:         "https://example.com",
+		Description:     map[string]string{"en": "Test page"},
+		Languages:       []string{"en", "fr"},
+		DefaultLanguage: "en",
+		Theme:           "light",
+		Font:            "inter",
+		AccentColor:     "#3B82F6",
+		AutoRefresh:     true,
+		BannerHeader:    false,
+		Logo:            &logoVal,
+		LogoHeight:      "40px",
+		Favicon:         &faviconVal,
+		HidePoweredBy:   false,
+		GoogleAnalytics: &gaVal,
+		Subscribe: client.StatusPageSubscribeSettings{
+			Enabled: true,
+			Email:   true,
+		},
+		Authentication: client.StatusPageAuthenticationSettings{
+			AllowedDomains: []string{"example.com"},
+		},
+	}
+
+	var diags diag.Diagnostics
+	result := mapSettingsToTFWithFilter(settings, []string{"en"}, &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %v", diags.Errors())
+	}
+
+	attrs := result.Attributes()
+
+	logo, _ := attrs["logo"].(types.String)
+	if logo.IsNull() || logo.ValueString() != logoVal {
+		t.Errorf("logo = %q, want %q", logo.ValueString(), logoVal)
+	}
+
+	favicon, _ := attrs["favicon"].(types.String)
+	if favicon.IsNull() || favicon.ValueString() != faviconVal {
+		t.Errorf("favicon = %q, want %q", favicon.ValueString(), faviconVal)
+	}
+
+	ga, _ := attrs["google_analytics"].(types.String)
+	if ga.IsNull() || ga.ValueString() != gaVal {
+		t.Errorf("google_analytics = %q, want %q", ga.ValueString(), gaVal)
+	}
+}
+
+// =============================================================================
+// isAllowedBaseURL edge case — port in domain
+// =============================================================================
+
+func TestIsAllowedBaseURL_PortVariants(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		want    bool
+	}{
+		{"https with port", "https://api.hyperping.io:443", true},
+		{"localhost with path", "http://localhost/api/v1", true},
+		{"127.0.0.1 with path", "http://127.0.0.1/api", true},
+		{"http non-localhost with port", "http://api.example.com:8080", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isAllowedBaseURL(tt.baseURL)
+			if got != tt.want {
+				t.Errorf("isAllowedBaseURL(%q) = %v, want %v", tt.baseURL, got, tt.want)
+			}
+		})
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -835,10 +836,18 @@ func mapStringSliceToHeaders(headers []client.RequestHeader, diags *diag.Diagnos
 	if len(headers) == 0 {
 		return types.ListNull(objType)
 	}
-	vals := make([]types.String, 0)
-	_ = vals
-	// Build using the same approach as mapMonitorToModel
-	result, d := types.ListValueFrom(context.Background(), objType, []interface{}{})
+
+	headerObjects := make([]attr.Value, len(headers))
+	for i, h := range headers {
+		obj, d := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
+			"name":  types.StringValue(h.Name),
+			"value": types.StringValue(h.Value),
+		})
+		diags.Append(d...)
+		headerObjects[i] = obj
+	}
+
+	result, d := types.ListValue(objType, headerObjects)
 	diags.Append(d...)
 	return result
 }

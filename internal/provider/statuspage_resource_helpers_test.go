@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -273,17 +274,26 @@ func (m *mockStatusPageServer) listStatusPages(w http.ResponseWriter, _ *http.Re
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	// Collect UUIDs and sort for deterministic ordering across Go map iterations.
+	uuids := make([]string, 0, len(m.statusPages))
+	for uuid := range m.statusPages {
+		uuids = append(uuids, uuid)
+	}
+	sort.Strings(uuids)
+
 	pages := make([]map[string]interface{}, 0, len(m.statusPages))
-	for _, page := range m.statusPages {
-		pages = append(pages, page)
+	for _, uuid := range uuids {
+		pages = append(pages, m.statusPages[uuid])
 	}
 
 	response := map[string]interface{}{
-		"statuspages":   pages,
-		"total":         len(pages),
-		"has_next_page": false,
+		"statuspages":    pages,
+		"total":          len(pages),
+		"hasNextPage":    false,
+		"page":           0,
+		"resultsPerPage": 25,
 	}
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(response) //nolint:errcheck // test helper
 }
 
 // buildMockService converts a service map from the request into the mock response format.

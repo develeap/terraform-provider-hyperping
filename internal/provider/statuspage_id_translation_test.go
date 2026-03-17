@@ -474,3 +474,414 @@ func TestTranslateResponseNumericIDsToUUIDs_NestedServices(t *testing.T) {
 		t.Errorf("expected mon_nested, got %s", sp.Sections[0].Services[0].Services[0].UUID)
 	}
 }
+
+// --- Tests for collectDriftedUUIDs (deep nesting) ---
+
+func TestCollectDriftedUUIDs_EmptyServices(t *testing.T) {
+	var drifted []string
+	collectDriftedUUIDs([]client.StatusPageService{}, &drifted)
+
+	if len(drifted) != 0 {
+		t.Errorf("expected 0 drifted UUIDs, got %d: %v", len(drifted), drifted)
+	}
+}
+
+func TestCollectDriftedUUIDs_NilServices(t *testing.T) {
+	var drifted []string
+	collectDriftedUUIDs(nil, &drifted)
+
+	if len(drifted) != 0 {
+		t.Errorf("expected 0 drifted UUIDs, got %d: %v", len(drifted), drifted)
+	}
+}
+
+func TestCollectDriftedUUIDs_SingleNumericUUID(t *testing.T) {
+	services := []client.StatusPageService{
+		{UUID: "12345"},
+	}
+
+	var drifted []string
+	collectDriftedUUIDs(services, &drifted)
+
+	if len(drifted) != 1 {
+		t.Fatalf("expected 1 drifted UUID, got %d: %v", len(drifted), drifted)
+	}
+	if drifted[0] != "12345" {
+		t.Errorf("expected 12345, got %s", drifted[0])
+	}
+}
+
+func TestCollectDriftedUUIDs_SingleMonUUID_NotCollected(t *testing.T) {
+	services := []client.StatusPageService{
+		{UUID: "mon_abc123"},
+	}
+
+	var drifted []string
+	collectDriftedUUIDs(services, &drifted)
+
+	if len(drifted) != 0 {
+		t.Errorf("expected 0 drifted UUIDs, got %d: %v", len(drifted), drifted)
+	}
+}
+
+func TestCollectDriftedUUIDs_MixedAtSameLevel(t *testing.T) {
+	services := []client.StatusPageService{
+		{UUID: "11111"},
+		{UUID: "mon_abc"},
+		{UUID: "22222"},
+		{UUID: "mon_def"},
+		{UUID: "33333"},
+	}
+
+	var drifted []string
+	collectDriftedUUIDs(services, &drifted)
+
+	if len(drifted) != 3 {
+		t.Fatalf("expected 3 drifted UUIDs, got %d: %v", len(drifted), drifted)
+	}
+	expected := []string{"11111", "22222", "33333"}
+	for i, want := range expected {
+		if drifted[i] != want {
+			t.Errorf("drifted[%d] = %s, want %s", i, drifted[i], want)
+		}
+	}
+}
+
+func TestCollectDriftedUUIDs_NestedGroupWithNumericChildren(t *testing.T) {
+	services := []client.StatusPageService{
+		{
+			UUID:    "mon_group",
+			IsGroup: true,
+			Services: []client.StatusPageService{
+				{UUID: "44444"},
+				{UUID: "55555"},
+			},
+		},
+	}
+
+	var drifted []string
+	collectDriftedUUIDs(services, &drifted)
+
+	if len(drifted) != 2 {
+		t.Fatalf("expected 2 drifted UUIDs, got %d: %v", len(drifted), drifted)
+	}
+	if drifted[0] != "44444" || drifted[1] != "55555" {
+		t.Errorf("expected [44444, 55555], got %v", drifted)
+	}
+}
+
+func TestCollectDriftedUUIDs_DeepNesting(t *testing.T) {
+	services := []client.StatusPageService{
+		{
+			UUID: "mon_abc",
+			Services: []client.StatusPageService{
+				{
+					UUID: "12345",
+					Services: []client.StatusPageService{
+						{UUID: "67890"},
+						{UUID: "mon_deep"},
+					},
+				},
+			},
+		},
+	}
+
+	var drifted []string
+	collectDriftedUUIDs(services, &drifted)
+
+	if len(drifted) != 2 {
+		t.Fatalf("expected 2 drifted UUIDs, got %d: %v", len(drifted), drifted)
+	}
+	if drifted[0] != "12345" || drifted[1] != "67890" {
+		t.Errorf("expected [12345, 67890], got %v", drifted)
+	}
+}
+
+func TestCollectDriftedUUIDs_FourLevelsDeep(t *testing.T) {
+	services := []client.StatusPageService{
+		{
+			UUID: "mon_l1",
+			Services: []client.StatusPageService{
+				{
+					UUID: "mon_l2",
+					Services: []client.StatusPageService{
+						{
+							UUID: "mon_l3",
+							Services: []client.StatusPageService{
+								{UUID: "99999"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var drifted []string
+	collectDriftedUUIDs(services, &drifted)
+
+	if len(drifted) != 1 {
+		t.Fatalf("expected 1 drifted UUID, got %d: %v", len(drifted), drifted)
+	}
+	if drifted[0] != "99999" {
+		t.Errorf("expected 99999, got %s", drifted[0])
+	}
+}
+
+func TestCollectDriftedUUIDs_EmptyUUIDSkipped(t *testing.T) {
+	services := []client.StatusPageService{
+		{UUID: ""},
+		{UUID: "mon_abc"},
+	}
+
+	var drifted []string
+	collectDriftedUUIDs(services, &drifted)
+
+	if len(drifted) != 0 {
+		t.Errorf("expected 0 drifted UUIDs, got %d: %v", len(drifted), drifted)
+	}
+}
+
+// --- Additional isNumericString tests ---
+
+func TestIsNumericString_AdditionalCases(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"123", true},
+		{"abc", false},
+		{"12a", false},
+		{"", false},
+		{"0", true},
+		{"-1", true}, // strconv.Atoi handles negative numbers
+		{"999999", true},
+		{" 123", false}, // leading space
+		{"123 ", false}, // trailing space
+		{"1.5", false},  // float
+	}
+
+	for _, tt := range tests {
+		name := tt.input
+		if name == "" {
+			name = "(empty)"
+		}
+		t.Run(name, func(t *testing.T) {
+			got := isNumericString(tt.input)
+			if got != tt.want {
+				t.Errorf("isNumericString(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// --- Additional warnUnresolvedNumericUUIDs tests ---
+
+func TestWarnUnresolvedNumericUUIDs_EmptySections(t *testing.T) {
+	sp := &client.StatusPage{
+		Sections: []client.StatusPageSection{},
+	}
+
+	var diags diag.Diagnostics
+	warnUnresolvedNumericUUIDs(sp, &diags)
+
+	if diags.WarningsCount() > 0 {
+		t.Errorf("expected no warnings for empty sections, got %d", diags.WarningsCount())
+	}
+}
+
+func TestWarnUnresolvedNumericUUIDs_SectionsWithDriftedUUIDs(t *testing.T) {
+	sp := &client.StatusPage{
+		Sections: []client.StatusPageSection{
+			{
+				Services: []client.StatusPageService{
+					{UUID: "11111"},
+				},
+			},
+			{
+				Services: []client.StatusPageService{
+					{UUID: "22222"},
+				},
+			},
+		},
+	}
+
+	var diags diag.Diagnostics
+	warnUnresolvedNumericUUIDs(sp, &diags)
+
+	if diags.WarningsCount() != 1 {
+		t.Fatalf("expected 1 warning, got %d", diags.WarningsCount())
+	}
+	detail := diags[0].Detail()
+	if !strings.Contains(detail, "11111") || !strings.Contains(detail, "22222") {
+		t.Errorf("expected both drifted UUIDs in warning, got: %s", detail)
+	}
+	if !strings.Contains(detail, "2 service(s)") {
+		t.Errorf("expected count of 2, got: %s", detail)
+	}
+}
+
+func TestTranslateCreateServicesToNumericIDs_NilMonitorUUID(t *testing.T) {
+	uuidToID := map[string]string{
+		"mon_abc": "100",
+	}
+	services := []client.CreateStatusPageService{
+		{MonitorUUID: nil},               // nil MonitorUUID, should be skipped
+		{UUID: nil},                      // nil UUID, should be skipped
+		{MonitorUUID: strPtr("")},        // empty string MonitorUUID, should be skipped
+		{UUID: strPtr("")},               // empty string UUID, should be skipped
+		{MonitorUUID: strPtr("mon_abc")}, // valid, should be translated
+	}
+
+	var unresolved []string
+	translateCreateServicesToNumericIDs(services, uuidToID, &unresolved)
+
+	if len(unresolved) > 0 {
+		t.Errorf("expected no unresolved UUIDs, got %v", unresolved)
+	}
+	if *services[4].MonitorUUID != "100" {
+		t.Errorf("expected 100, got %s", *services[4].MonitorUUID)
+	}
+}
+
+func TestTranslateServicesToUUIDs_EmptyUUIDSkipped(t *testing.T) {
+	idToUUID := map[string]string{
+		"100": "mon_abc",
+	}
+	services := []client.StatusPageService{
+		{UUID: ""},    // empty, should be skipped
+		{UUID: "100"}, // numeric, should be translated
+	}
+
+	var unresolved []string
+	translateServicesToUUIDs(services, idToUUID, &unresolved)
+
+	if len(unresolved) > 0 {
+		t.Errorf("expected no unresolved, got %v", unresolved)
+	}
+	if services[0].UUID != "" {
+		t.Errorf("expected empty UUID to remain empty, got %s", services[0].UUID)
+	}
+	if services[1].UUID != "mon_abc" {
+		t.Errorf("expected mon_abc, got %s", services[1].UUID)
+	}
+}
+
+func TestTranslateSectionsUUIDsToNumericIDs_MultipleSections(t *testing.T) {
+	uuidToID := map[string]string{
+		"mon_a": "100",
+		"mon_b": "200",
+		"mon_c": "300",
+	}
+	monA := "mon_a"
+	monB := "mon_b"
+	monC := "mon_c"
+	sections := []client.CreateStatusPageSection{
+		{
+			Name:     "Section 1",
+			Services: []client.CreateStatusPageService{{MonitorUUID: &monA}},
+		},
+		{
+			Name:     "Section 2",
+			Services: []client.CreateStatusPageService{{MonitorUUID: &monB}, {MonitorUUID: &monC}},
+		},
+	}
+
+	var diags diag.Diagnostics
+	translateSectionsUUIDsToNumericIDs(sections, uuidToID, &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected error: %s", diags.Errors()[0].Detail())
+	}
+	if *sections[0].Services[0].MonitorUUID != "100" {
+		t.Errorf("section 0, service 0: expected 100, got %s", *sections[0].Services[0].MonitorUUID)
+	}
+	if *sections[1].Services[0].MonitorUUID != "200" {
+		t.Errorf("section 1, service 0: expected 200, got %s", *sections[1].Services[0].MonitorUUID)
+	}
+	if *sections[1].Services[1].MonitorUUID != "300" {
+		t.Errorf("section 1, service 1: expected 300, got %s", *sections[1].Services[1].MonitorUUID)
+	}
+}
+
+func TestTranslateResponseNumericIDsToUUIDs_EmptySections(t *testing.T) {
+	sp := &client.StatusPage{
+		Sections: []client.StatusPageSection{},
+	}
+
+	var diags diag.Diagnostics
+	translateResponseNumericIDsToUUIDs(sp, map[string]string{"100": "mon_abc"}, &diags)
+
+	if diags.HasError() || diags.WarningsCount() > 0 {
+		t.Errorf("expected no diagnostics for empty sections")
+	}
+}
+
+func TestTranslateResponseNumericIDsToUUIDs_MixedNumericAndMon(t *testing.T) {
+	idToUUID := map[string]string{
+		"100": "mon_abc",
+		"200": "mon_def",
+	}
+	sp := &client.StatusPage{
+		Sections: []client.StatusPageSection{
+			{
+				Services: []client.StatusPageService{
+					{UUID: "100"},     // numeric -> translate
+					{UUID: "mon_xyz"}, // already mon_ -> skip
+					{UUID: "200"},     // numeric -> translate
+					{UUID: ""},        // empty -> skip
+				},
+			},
+		},
+	}
+
+	var diags diag.Diagnostics
+	translateResponseNumericIDsToUUIDs(sp, idToUUID, &diags)
+
+	if diags.HasError() {
+		t.Fatalf("unexpected error")
+	}
+	if sp.Sections[0].Services[0].UUID != "mon_abc" {
+		t.Errorf("expected mon_abc, got %s", sp.Sections[0].Services[0].UUID)
+	}
+	if sp.Sections[0].Services[1].UUID != "mon_xyz" {
+		t.Errorf("expected mon_xyz unchanged, got %s", sp.Sections[0].Services[1].UUID)
+	}
+	if sp.Sections[0].Services[2].UUID != "mon_def" {
+		t.Errorf("expected mon_def, got %s", sp.Sections[0].Services[2].UUID)
+	}
+	if sp.Sections[0].Services[3].UUID != "" {
+		t.Errorf("expected empty UUID unchanged, got %s", sp.Sections[0].Services[3].UUID)
+	}
+}
+
+func TestBuildMonitorIDMaps_LargeList(t *testing.T) {
+	monitors := make([]client.Monitor, 100)
+	for i := range monitors {
+		monitors[i] = client.Monitor{
+			ID:   1000 + i,
+			UUID: fmt.Sprintf("mon_%04d", i),
+		}
+	}
+	listFn := func(_ context.Context) ([]client.Monitor, error) {
+		return monitors, nil
+	}
+
+	maps, err := buildMonitorIDMaps(context.Background(), listFn)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(maps.uuidToNumericID) != 100 {
+		t.Errorf("expected 100 entries, got %d", len(maps.uuidToNumericID))
+	}
+	if len(maps.numericIDToUUID) != 100 {
+		t.Errorf("expected 100 reverse entries, got %d", len(maps.numericIDToUUID))
+	}
+	// Spot check
+	if maps.uuidToNumericID["mon_0050"] != "1050" {
+		t.Errorf("expected mon_0050 -> 1050, got %s", maps.uuidToNumericID["mon_0050"])
+	}
+	if maps.numericIDToUUID["1050"] != "mon_0050" {
+		t.Errorf("expected 1050 -> mon_0050, got %s", maps.numericIDToUUID["1050"])
+	}
+}
