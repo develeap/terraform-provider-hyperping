@@ -2,6 +2,8 @@ module github.com/develeap/terraform-provider-hyperping/tools/scraper
 
 go 1.26
 
+toolchain go1.26.1
+
 require (
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/go-rod/rod v0.116.2
