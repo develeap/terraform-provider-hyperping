@@ -568,56 +568,6 @@ func TestNewReadAfterCreateError(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// newReadAfterUpdateError
-// ---------------------------------------------------------------------------
-
-func TestNewReadAfterUpdateError(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		resourceType string
-		resourceID   string
-		err          error
-		wantSummary  string
-		wantDetail   []string
-	}{
-		{
-			name:         "incident update error",
-			resourceType: "Incident",
-			resourceID:   "inc_789",
-			err:          errors.New("connection timeout"),
-			wantSummary:  "Updated But Read Failed",
-			wantDetail:   []string{"inc_789", "connection timeout", "terraform refresh"},
-		},
-		{
-			name:         "monitor update error",
-			resourceType: "Monitor",
-			resourceID:   "mon_abc",
-			err:          errors.New("network error"),
-			wantSummary:  "Updated But Read Failed",
-			wantDetail:   []string{"mon_abc", "network error", "terraform refresh"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			diag := newReadAfterUpdateError(tt.resourceType, tt.resourceID, tt.err)
-
-			if !strings.Contains(diag.Summary(), tt.wantSummary) {
-				t.Errorf("Summary = %q, want it to contain %q", diag.Summary(), tt.wantSummary)
-			}
-			for _, want := range tt.wantDetail {
-				if !strings.Contains(diag.Detail(), want) {
-					t.Errorf("Detail missing %q, got: %s", want, diag.Detail())
-				}
-			}
-		})
-	}
-}
-
-// ---------------------------------------------------------------------------
 // newConfigError
 // ---------------------------------------------------------------------------
 
@@ -736,10 +686,6 @@ func TestAllErrorHelpersReturnValidDiagnostics(t *testing.T) {
 		{"newListError", func() (string, string) { d := newListError("Resources", testErr); return d.Summary(), d.Detail() }},
 		{"newReadAfterCreateError", func() (string, string) {
 			d := newReadAfterCreateError("Resource", "new_123", testErr)
-			return d.Summary(), d.Detail()
-		}},
-		{"newReadAfterUpdateError", func() (string, string) {
-			d := newReadAfterUpdateError("Resource", "upd_456", testErr)
 			return d.Summary(), d.Detail()
 		}},
 		{"newConfigError", func() (string, string) { d := newConfigError("Invalid configuration"); return d.Summary(), d.Detail() }},

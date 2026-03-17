@@ -182,25 +182,6 @@ func TestAccMaintenanceResource_createError(t *testing.T) {
 	})
 }
 
-func TestAccMaintenanceResource_readAfterCreateError(t *testing.T) {
-	startStr, endStr := generateMaintenanceTimeRange(24, 2)
-
-	server := newMaintenanceServerReadAfterCreateError("mw_read_error_123")
-	defer server.Close()
-
-	tfresource.ParallelTest(t, tfresource.TestCase{
-		ProtoV6ProviderFactories: map[string]func() (tfprotov6.ProviderServer, error){
-			"hyperping": providerserver.NewProtocol6WithError(New("test")()),
-		},
-		Steps: []tfresource.TestStep{
-			{
-				Config:      generateMaintenanceConfigMinimal(server.URL, "Read After Create Error Test", startStr, endStr, []string{"mon_123"}),
-				ExpectError: regexp.MustCompile("Maintenance Window Created But Read Failed"),
-			},
-		},
-	})
-}
-
 func TestAccMaintenanceResource_invalidTimeRange(t *testing.T) {
 	start, _ := generateMaintenanceTimeRange(24, 2)
 	_, end := generateMaintenanceTimeRange(2, 2) // End before start

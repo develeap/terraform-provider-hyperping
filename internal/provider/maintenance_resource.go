@@ -230,19 +230,10 @@ func (r *MaintenanceResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	// Write the ID to state immediately to prevent orphaned resources if read-back fails.
 	plan.ID = types.StringValue(createResp.UUID)
 
-	// Read full maintenance details (create response only contains UUID)
-	maintenance, err := r.client.GetMaintenance(ctx, createResp.UUID)
-	if err != nil {
-		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-		resp.Diagnostics.Append(newReadAfterCreateError("Maintenance Window", createResp.UUID, err))
-		return
-	}
-
-	// Map complete API response to Terraform state
-	r.mapMaintenanceToModel(maintenance, &plan, &resp.Diagnostics)
+	// Map API response to Terraform state (POST now returns complete object)
+	r.mapMaintenanceToModel(createResp, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -344,21 +335,14 @@ func (r *MaintenanceResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	// Call API to update maintenance window
-	_, err := r.client.UpdateMaintenance(ctx, state.ID.ValueString(), updateReq)
+	updateResp, err := r.client.UpdateMaintenance(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.Append(newUpdateError("Maintenance Window", state.ID.ValueString(), err))
 		return
 	}
 
-	// Read full maintenance details (update response doesn't contain complete data)
-	maintenance, err := r.client.GetMaintenance(ctx, state.ID.ValueString())
-	if err != nil {
-		resp.Diagnostics.Append(newReadAfterUpdateError("Maintenance Window", state.ID.ValueString(), err))
-		return
-	}
-
-	// Map complete API response to Terraform state
-	r.mapMaintenanceToModel(maintenance, &plan, &resp.Diagnostics)
+	// Map API response to Terraform state (PUT now returns complete object)
+	r.mapMaintenanceToModel(updateResp, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}

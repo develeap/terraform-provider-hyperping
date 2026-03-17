@@ -177,24 +177,6 @@ func TestAccIncidentResource_readError(t *testing.T) {
 	})
 }
 
-func TestAccIncidentResource_readAfterCreateError(t *testing.T) {
-	server := newMockIncidentServerWithErrors(t)
-	defer server.Close()
-
-	// Enable read-after-create error: POST succeeds but GET fails
-	server.setReadAfterCreateError(true)
-
-	tfresource.ParallelTest(t, tfresource.TestCase{
-		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
-		Steps: []tfresource.TestStep{
-			{
-				Config:      testAccIncidentResourceConfig_basic(server.URL, "read-after-create-error-test"),
-				ExpectError: regexp.MustCompile(`Incident Created But Read Failed`),
-			},
-		},
-	})
-}
-
 // Unit tests
 
 func TestIncidentResource_ConfigureWrongType(t *testing.T) {
@@ -743,12 +725,10 @@ func (m *mockIncidentServer) addIncidentUpdate(w http.ResponseWriter, r *http.Re
 
 type mockIncidentServerWithErrors struct {
 	*mockIncidentServer
-	createError          bool
-	readError            bool
-	updateError          bool
-	deleteError          bool
-	readAfterCreateError bool
-	createCalled         bool
+	createError bool
+	readError   bool
+	updateError bool
+	deleteError bool
 }
 
 func newMockIncidentServerWithErrors(t *testing.T) *mockIncidentServerWithErrors {
@@ -767,10 +747,9 @@ func newMockIncidentServerWithErrors(t *testing.T) *mockIncidentServerWithErrors
 	return m
 }
 
-func (m *mockIncidentServerWithErrors) setCreateError(v bool)          { m.createError = v }
-func (m *mockIncidentServerWithErrors) setReadError(v bool)            { m.readError = v }
-func (m *mockIncidentServerWithErrors) setUpdateError(v bool)          { m.updateError = v }
-func (m *mockIncidentServerWithErrors) setReadAfterCreateError(v bool) { m.readAfterCreateError = v }
+func (m *mockIncidentServerWithErrors) setCreateError(v bool) { m.createError = v }
+func (m *mockIncidentServerWithErrors) setReadError(v bool)   { m.readError = v }
+func (m *mockIncidentServerWithErrors) setUpdateError(v bool) { m.updateError = v }
 
 func (m *mockIncidentServerWithErrors) writeIncidentInternalError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
@@ -778,7 +757,7 @@ func (m *mockIncidentServerWithErrors) writeIncidentInternalError(w http.Respons
 }
 
 func (m *mockIncidentServerWithErrors) isReadBlocked() bool {
-	return m.readError || (m.readAfterCreateError && m.createCalled)
+	return m.readError
 }
 
 func (m *mockIncidentServerWithErrors) handlePostIncident(w http.ResponseWriter, r *http.Request) {
@@ -795,7 +774,6 @@ func (m *mockIncidentServerWithErrors) handlePostIncident(w http.ResponseWriter,
 		m.writeIncidentInternalError(w)
 		return
 	}
-	m.createCalled = true
 	m.createIncident(w, r)
 }
 

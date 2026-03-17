@@ -399,27 +399,6 @@ func newMaintenanceServerWithUpdateCapture(fixture *maintenanceTestFixture) (*ht
 	return server, &maintenance
 }
 
-// newMaintenanceServerReadAfterCreateError creates a server where POST succeeds but GET fails
-func newMaintenanceServerReadAfterCreateError(uuid string) *httptest.Server {
-	createCalled := false
-
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
-			createCalled = true
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": uuid})
-		case r.Method == http.MethodGet && createCalled:
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-}
-
 // newMaintenanceServerDeleteNotFound creates a server where DELETE returns 404
 func newMaintenanceServerDeleteNotFound(fixture *maintenanceTestFixture) *httptest.Server {
 	deleted := false

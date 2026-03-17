@@ -176,19 +176,10 @@ func (r *IncidentResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	// Write the ID to state immediately to prevent orphaned resources if read-back fails.
 	plan.ID = types.StringValue(createResp.UUID)
 
-	// Read full incident details (create response only contains UUID)
-	incident, err := r.client.GetIncident(ctx, createResp.UUID)
-	if err != nil {
-		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-		resp.Diagnostics.Append(newReadAfterCreateError("Incident", createResp.UUID, err))
-		return
-	}
-
-	// Map complete API response to Terraform state
-	r.mapIncidentToModel(incident, &plan, &resp.Diagnostics)
+	// Map API response to Terraform state (POST now returns complete object)
+	r.mapIncidentToModel(createResp, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -274,21 +265,14 @@ func (r *IncidentResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	// Call API to update incident
-	_, err := r.client.UpdateIncident(ctx, state.ID.ValueString(), updateReq)
+	updateResp, err := r.client.UpdateIncident(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
 		resp.Diagnostics.Append(newUpdateError("Incident", state.ID.ValueString(), err))
 		return
 	}
 
-	// Read full incident details (update response doesn't contain complete data)
-	incident, err := r.client.GetIncident(ctx, state.ID.ValueString())
-	if err != nil {
-		resp.Diagnostics.Append(newReadAfterUpdateError("Incident", state.ID.ValueString(), err))
-		return
-	}
-
-	// Map complete API response to Terraform state
-	r.mapIncidentToModel(incident, &plan, &resp.Diagnostics)
+	// Map API response to Terraform state (PUT now returns complete object)
+	r.mapIncidentToModel(updateResp, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
