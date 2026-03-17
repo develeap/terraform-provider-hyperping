@@ -307,10 +307,6 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 	planExpectedStatusCode := plan.ExpectedStatusCode
 	planFollowRedirects := plan.FollowRedirects
 
-	// Preserve required_keyword and escalation_policy (write-only fields, API doesn't return them on write)
-	planRequiredKeyword := plan.RequiredKeyword
-	planEscalationPolicy := plan.EscalationPolicy
-
 	// Map API response to Terraform state
 	r.mapMonitorToModel(monitor, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -328,18 +324,6 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 		if !planFollowRedirects.IsNull() {
 			plan.FollowRedirects = planFollowRedirects
 		}
-	}
-
-	// Restore required_keyword (write-only: API accepts on write but never returns)
-	if !planRequiredKeyword.IsNull() {
-		plan.RequiredKeyword = planRequiredKeyword
-	}
-
-	// Restore escalation_policy when API returns null after write (same asymmetry as required_keyword).
-	// On READ (terraform plan/refresh) the API returns the object shape {"uuid":"..."} which
-	// UnmarshalJSON normalises to the UUID string — that path does NOT go through here.
-	if plan.EscalationPolicy.IsNull() && !planEscalationPolicy.IsNull() {
-		plan.EscalationPolicy = planEscalationPolicy
 	}
 
 	// Handle pause state via separate API call if needed
@@ -377,9 +361,6 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 	stateExpectedStatusCode := state.ExpectedStatusCode
 	stateFollowRedirects := state.FollowRedirects
 
-	// Preserve required_keyword (write-only field, API doesn't return it)
-	stateRequiredKeyword := state.RequiredKeyword
-
 	r.mapMonitorToModel(monitor, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
@@ -396,11 +377,6 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 		if !stateFollowRedirects.IsNull() {
 			state.FollowRedirects = stateFollowRedirects
 		}
-	}
-
-	// Restore required_keyword (write-only field, API doesn't return it)
-	if !stateRequiredKeyword.IsNull() {
-		state.RequiredKeyword = stateRequiredKeyword
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -435,10 +411,6 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 	planExpectedStatusCode := plan.ExpectedStatusCode
 	planFollowRedirects := plan.FollowRedirects
 
-	// Preserve required_keyword and escalation_policy (write-only fields, API doesn't return them on write)
-	planRequiredKeyword := plan.RequiredKeyword
-	planEscalationPolicy := plan.EscalationPolicy
-
 	// Map API response to Terraform state
 	r.mapMonitorToModel(monitor, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -456,18 +428,6 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		if !planFollowRedirects.IsNull() {
 			plan.FollowRedirects = planFollowRedirects
 		}
-	}
-
-	// Restore required_keyword (write-only: API accepts on write but never returns)
-	if !planRequiredKeyword.IsNull() {
-		plan.RequiredKeyword = planRequiredKeyword
-	}
-
-	// Restore escalation_policy when API returns null after write (same asymmetry as required_keyword).
-	// On READ (terraform plan/refresh) the API returns the object shape {"uuid":"..."} which
-	// UnmarshalJSON normalises to the UUID string — that path does NOT go through here.
-	if plan.EscalationPolicy.IsNull() && !planEscalationPolicy.IsNull() {
-		plan.EscalationPolicy = planEscalationPolicy
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

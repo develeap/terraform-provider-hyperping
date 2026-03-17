@@ -102,7 +102,8 @@ func TestAccMonitorResource_driftDetection_externalDeletion(t *testing.T) {
 	})
 }
 
-// TestAccMonitorResource_driftDetection_requiredKeyword tests write-only field consistency
+// TestAccMonitorResource_driftDetection_requiredKeyword tests that external changes
+// to required_keyword are detected as drift (API now returns this field).
 func TestAccMonitorResource_driftDetection_requiredKeyword(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
@@ -111,18 +112,17 @@ func TestAccMonitorResource_driftDetection_requiredKeyword(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			// Create monitor with required_keyword and externally change it
-			// No drift should be detected because API doesn't return this field
 			{
 				Config: testAccMonitorResourceConfigWithRequiredKeyword(server.URL, "healthy"),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "name", "keyword-test"),
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "required_keyword", "healthy"),
 					tfresource.TestCheckResourceAttrSet("hyperping_monitor.test", "id"),
-					// Externally change required_keyword (write-only field)
+					// Externally change required_keyword
 					testAccExternallyChangeMonitorKeyword(server, "status:ok"),
 				),
-				// No drift detected because API doesn't return this write-only field
-				ExpectNonEmptyPlan: false,
+				// Drift IS detected because API now returns required_keyword
+				ExpectNonEmptyPlan: true,
 			},
 		},
 	})
