@@ -601,10 +601,9 @@ func (m *mockIncidentServer) createIncident(w http.ResponseWriter, r *http.Reque
 
 	m.incidents[id] = incident
 
-	// Return ONLY UUID (simulating real Hyperping API behavior)
-	// The provider must do a GET to fetch the full incident
+	// Return full incident (API now returns complete object after server-side fix)
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{"uuid": id})
+	json.NewEncoder(w).Encode(incident)
 }
 
 func (m *mockIncidentServer) getIncident(w http.ResponseWriter, r *http.Request) {

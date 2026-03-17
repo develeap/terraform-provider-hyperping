@@ -106,7 +106,8 @@ func (m *maintenanceMockServer) handleCreate(w http.ResponseWriter, r *http.Requ
 	for _, f := range m.fixtures {
 		if nameVal, ok := req["name"].(string); ok && nameVal == f.Name {
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": f.UUID})
+			// Return full object (API now returns complete response after server-side fix)
+			json.NewEncoder(w).Encode(f.toAPIResponse())
 			return
 		}
 	}
@@ -349,7 +350,7 @@ func newMaintenanceServerWithDisappear(fixture *maintenanceTestFixture) (*httpte
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": fixture.UUID})
+			json.NewEncoder(w).Encode(fixture.toAPIResponse())
 		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
 			if deleted {
 				w.WriteHeader(http.StatusNotFound)
@@ -378,7 +379,7 @@ func newMaintenanceServerWithUpdateCapture(fixture *maintenanceTestFixture) (*ht
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": fixture.UUID})
+			json.NewEncoder(w).Encode(fixture.toAPIResponse())
 		case r.Method == http.MethodPut && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
 			var req map[string]interface{}
 			json.NewDecoder(r.Body).Decode(&req)
@@ -409,7 +410,7 @@ func newMaintenanceServerDeleteNotFound(fixture *maintenanceTestFixture) *httpte
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": fixture.UUID})
+			json.NewEncoder(w).Encode(fixture.toAPIResponse())
 		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
 			if deleted {
 				w.WriteHeader(http.StatusNotFound)

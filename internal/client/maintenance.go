@@ -87,16 +87,13 @@ func (c *Client) CreateMaintenance(ctx context.Context, req CreateMaintenanceReq
 		return nil, fmt.Errorf("CreateMaintenance: %w", err)
 	}
 
-	// API POST returns only UUID, not full object
-	var createResp struct {
-		UUID string `json:"uuid"`
-	}
-	if err := c.doRequest(ctx, http.MethodPost, maintenanceBasePath, req, &createResp); err != nil {
+	// API POST now returns the complete maintenance object (server-side fix, Bug #18)
+	var maintenance Maintenance
+	if err := c.doRequest(ctx, http.MethodPost, maintenanceBasePath, req, &maintenance); err != nil {
 		return nil, fmt.Errorf("failed to create maintenance: %w", err)
 	}
 
-	// Return minimal maintenance with UUID - provider will read full details
-	return &Maintenance{UUID: createResp.UUID}, nil
+	return &maintenance, nil
 }
 
 // UpdateMaintenance updates an existing maintenance window.

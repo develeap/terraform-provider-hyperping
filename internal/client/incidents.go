@@ -78,17 +78,13 @@ func (c *Client) CreateIncident(ctx context.Context, req CreateIncidentRequest) 
 		return nil, fmt.Errorf("CreateIncident: %w", err)
 	}
 
-	// API POST returns minimal wrapped response: {"message":"...","uuid":"..."}
-	var createResp struct {
-		Message string `json:"message"`
-		UUID    string `json:"uuid"`
-	}
-	if err := c.doRequest(ctx, http.MethodPost, incidentsBasePath, req, &createResp); err != nil {
+	// API POST now returns the complete incident object (server-side fix, Bug #18)
+	var incident Incident
+	if err := c.doRequest(ctx, http.MethodPost, incidentsBasePath, req, &incident); err != nil {
 		return nil, fmt.Errorf("failed to create incident: %w", err)
 	}
 
-	// Return minimal incident with UUID - provider will read full details
-	return &Incident{UUID: createResp.UUID}, nil
+	return &incident, nil
 }
 
 // UpdateIncident updates an existing incident.
