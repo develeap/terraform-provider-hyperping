@@ -259,6 +259,9 @@ func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *client.
 		}
 	}
 
+	// Extract is_split per section BEFORE API response overwrites it (write-only field)
+	sectionIsSplit := extractSectionIsSplit(model.Sections)
+
 	// Map with language filtering to prevent drift
 	commonFields := MapStatusPageCommonFieldsWithFilter(sp, configuredLangs, diags)
 	model.ID = commonFields.ID
@@ -275,6 +278,11 @@ func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *client.
 
 	// Map sections from API
 	model.Sections = commonFields.Sections
+
+	// Preserve is_split from plan: API accepts it on write but never returns it,
+	// so the response always has the zero value (false). Without this, Terraform
+	// reports "inconsistent result after apply" when is_split = true.
+	model.Sections = preserveSectionIsSplit(model.Sections, sectionIsSplit, diags)
 }
 
 // extractConfiguredLanguages extracts the list of configured languages from the settings object.
