@@ -203,10 +203,7 @@ func (r *OutageResource) Configure(_ context.Context, req resource.ConfigureRequ
 
 	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
 		return
 	}
 

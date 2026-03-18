@@ -192,21 +192,21 @@ func ValidateLocalizedText(t *testing.T, fieldName string, text LocalizedText, m
 	t.Helper()
 
 	// At least one language should be present
-	hasContent := text.En != "" || text.Fr != "" || text.De != "" || text.Es != ""
+	hasContent := text.En != "" || text.Fr != "" || text.De != "" || text.Ru != "" ||
+		text.Nl != "" || text.Es != "" || text.It != "" || text.Pt != "" ||
+		text.Ja != "" || text.Zh != ""
 	assert.True(t, hasContent, "%s should have at least one language set", fieldName)
 
 	// Validate length for each present language
-	if text.En != "" {
-		ValidateStringLength(t, fmt.Sprintf("%s.en", fieldName), text.En, maxLength)
+	fields := map[string]string{
+		"en": text.En, "fr": text.Fr, "de": text.De, "ru": text.Ru,
+		"nl": text.Nl, "es": text.Es, "it": text.It, "pt": text.Pt,
+		"ja": text.Ja, "zh": text.Zh,
 	}
-	if text.Fr != "" {
-		ValidateStringLength(t, fmt.Sprintf("%s.fr", fieldName), text.Fr, maxLength)
-	}
-	if text.De != "" {
-		ValidateStringLength(t, fmt.Sprintf("%s.de", fieldName), text.De, maxLength)
-	}
-	if text.Es != "" {
-		ValidateStringLength(t, fmt.Sprintf("%s.es", fieldName), text.Es, maxLength)
+	for lang, val := range fields {
+		if val != "" {
+			ValidateStringLength(t, fmt.Sprintf("%s.%s", fieldName, lang), val, maxLength)
+		}
 	}
 }
 
@@ -214,7 +214,9 @@ func ValidateLocalizedText(t *testing.T, fieldName string, text LocalizedText, m
 func ValidateOptionalLocalizedText(t *testing.T, fieldName string, text *LocalizedText, maxLength int) {
 	t.Helper()
 	if text != nil {
-		hasContent := text.En != "" || text.Fr != "" || text.De != "" || text.Es != ""
+		hasContent := text.En != "" || text.Fr != "" || text.De != "" || text.Ru != "" ||
+			text.Nl != "" || text.Es != "" || text.It != "" || text.Pt != "" ||
+			text.Ja != "" || text.Zh != ""
 		if hasContent {
 			ValidateLocalizedText(t, fieldName, *text, maxLength)
 		}

@@ -290,7 +290,7 @@ func mapSectionsToTFWithFilter(sections []client.StatusPageSection, configuredLa
 	for i, section := range sections {
 		// Map section name (map[string]string) with optional language filtering
 		filteredName := filterLocalizedMap(section.Name, configuredLangs)
-		nameMap := mapStringMapToTF(filteredName)
+		nameMap := mapStringMapToTF(filteredName, diags)
 
 		// Map services list (recursive) with optional language filtering
 		servicesList := mapServicesToTFWithFilter(section.Services, configuredLangs, diags)
@@ -349,7 +349,7 @@ func serviceIDToString(id interface{}) string {
 // Handles group entries (is_group=true with nested services) and flat monitor entries.
 func mapServiceToTFWithFilter(service client.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.Object {
 	filteredName := filterLocalizedMap(service.Name, configuredLangs)
-	nameMap := mapStringMapToTF(filteredName)
+	nameMap := mapStringMapToTF(filteredName, diags)
 
 	// Map nested services for group entries
 	var nestedServicesList types.List
@@ -382,7 +382,7 @@ func mapNestedServicesToTF(services []client.StatusPageService, configuredLangs 
 	values := make([]attr.Value, len(services))
 	for i, svc := range services {
 		filteredName := filterLocalizedMap(svc.Name, configuredLangs)
-		nameMap := mapStringMapToTF(filteredName)
+		nameMap := mapStringMapToTF(filteredName, diags)
 
 		obj, objDiags := types.ObjectValue(NestedServiceAttrTypes(), map[string]attr.Value{
 			"id":                  types.StringValue(serviceIDToString(svc.ID)),
@@ -633,7 +633,7 @@ func extractLocalizedString(m map[string]string, configuredLangs []string) types
 }
 
 // mapStringMapToTF converts a Go map[string]string to Terraform Map type.
-func mapStringMapToTF(m map[string]string) types.Map {
+func mapStringMapToTF(m map[string]string, diags ...*diag.Diagnostics) types.Map {
 	if len(m) == 0 {
 		return types.MapNull(types.StringType)
 	}
@@ -643,7 +643,10 @@ func mapStringMapToTF(m map[string]string) types.Map {
 		values[k] = types.StringValue(v)
 	}
 
-	result, _ := types.MapValue(types.StringType, values)
+	result, mapDiags := types.MapValue(types.StringType, values)
+	if len(diags) > 0 && diags[0] != nil {
+		diags[0].Append(mapDiags...)
+	}
 	return result
 }
 

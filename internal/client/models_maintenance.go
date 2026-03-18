@@ -65,10 +65,13 @@ func (r CreateMaintenanceRequest) Validate() error {
 // UpdateMaintenanceRequest represents a request to update a maintenance window.
 // API: PUT /v1/maintenance-windows/{uuid}
 type UpdateMaintenanceRequest struct {
-	Name      *string        `json:"name,omitempty"`
-	Title     *LocalizedText `json:"title,omitempty"`
-	Text      *LocalizedText `json:"text,omitempty"`
-	StartDate *string        `json:"start_date,omitempty"`
-	EndDate   *string        `json:"end_date,omitempty"`
-	Monitors  *[]string      `json:"monitors,omitempty"`
+	Name                *string        `json:"name,omitempty"`
+	Title               *LocalizedText `json:"title,omitempty"`
+	Text                *LocalizedText `json:"text,omitempty"`
+	StartDate           *string        `json:"start_date,omitempty"`
+	EndDate             *string        `json:"end_date,omitempty"`
+	Monitors            *[]string      `json:"monitors,omitempty"`
+	StatusPages         *[]string      `json:"statuspages,omitempty"`
+	NotificationOption  *string        `json:"notificationOption,omitempty"`
+	NotificationMinutes *int           `json:"notificationMinutes,omitempty"`
 }

@@ -54,11 +54,6 @@ func (fs FlexibleString) String() string {
 	return string(fs)
 }
 
-// boolPtr returns a pointer to the given bool value.
-func boolPtr(b bool) *bool {
-	return &b
-}
-
 // Input length limits to prevent resource exhaustion (VULN-007).
 const (
 	maxNameLength    = 255
@@ -79,24 +74,16 @@ func validateStringLength(field, value string, maxLen int) error {
 
 // validateLocalizedText validates all non-empty locale fields of a LocalizedText value.
 func validateLocalizedText(prefix string, text LocalizedText, maxLen int) error {
-	if text.En != "" {
-		if err := validateStringLength(prefix+".en", text.En, maxLen); err != nil {
-			return err
-		}
+	fields := map[string]string{
+		"en": text.En, "fr": text.Fr, "de": text.De, "ru": text.Ru,
+		"nl": text.Nl, "es": text.Es, "it": text.It, "pt": text.Pt,
+		"ja": text.Ja, "zh": text.Zh,
 	}
-	if text.Fr != "" {
-		if err := validateStringLength(prefix+".fr", text.Fr, maxLen); err != nil {
-			return err
-		}
-	}
-	if text.De != "" {
-		if err := validateStringLength(prefix+".de", text.De, maxLen); err != nil {
-			return err
-		}
-	}
-	if text.Es != "" {
-		if err := validateStringLength(prefix+".es", text.Es, maxLen); err != nil {
-			return err
+	for lang, val := range fields {
+		if val != "" {
+			if err := validateStringLength(prefix+"."+lang, val, maxLen); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -112,11 +99,18 @@ type RequestHeader struct {
 // LocalizedText represents text that can be localized in multiple languages.
 // Used for incident/maintenance titles and descriptions.
 // API format: {"en": "English text", "fr": "French text"}
+// Supports all AllowedLanguages: en, fr, de, ru, nl, es, it, pt, ja, zh.
 type LocalizedText struct {
 	En string `json:"en,omitempty"`
 	Fr string `json:"fr,omitempty"`
 	De string `json:"de,omitempty"`
+	Ru string `json:"ru,omitempty"`
+	Nl string `json:"nl,omitempty"`
 	Es string `json:"es,omitempty"`
+	It string `json:"it,omitempty"`
+	Pt string `json:"pt,omitempty"`
+	Ja string `json:"ja,omitempty"`
+	Zh string `json:"zh,omitempty"`
 }
 
 // =============================================================================

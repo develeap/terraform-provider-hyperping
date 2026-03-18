@@ -8,6 +8,11 @@ import "fmt"
 // Test helper functions for generating test data.
 // These are used by performance tests to generate large datasets.
 
+// boolPtr returns a pointer to the given bool value.
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 // MonitorUUID generates a test monitor UUID.
 func MonitorUUID(i int) string {
 	return fmt.Sprintf("mon_test_%06d", i)

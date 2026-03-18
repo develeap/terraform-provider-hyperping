@@ -125,10 +125,7 @@ func (r *IncidentResource) Configure(_ context.Context, req resource.ConfigureRe
 
 	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
 		return
 	}
 
@@ -172,7 +169,7 @@ func (r *IncidentResource) Create(ctx context.Context, req resource.CreateReques
 	// Call API to create incident
 	createResp, err := r.client.CreateIncident(ctx, createReq)
 	if err != nil {
-		resp.Diagnostics.Append(newCreateError("Incident", err))
+		resp.Diagnostics.Append(NewCreateErrorWithContext("Incident", err))
 		return
 	}
 
@@ -267,7 +264,7 @@ func (r *IncidentResource) Update(ctx context.Context, req resource.UpdateReques
 	// Call API to update incident
 	updateResp, err := r.client.UpdateIncident(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
-		resp.Diagnostics.Append(newUpdateError("Incident", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewUpdateErrorWithContext("Incident", state.ID.ValueString(), err))
 		return
 	}
 
@@ -295,7 +292,7 @@ func (r *IncidentResource) Delete(ctx context.Context, req resource.DeleteReques
 			// Already deleted, no error
 			return
 		}
-		resp.Diagnostics.Append(newDeleteError("Incident", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewDeleteErrorWithContext("Incident", state.ID.ValueString(), err))
 		return
 	}
 }
