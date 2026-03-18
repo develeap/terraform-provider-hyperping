@@ -379,174 +379,6 @@ func TestExtractStatusCode(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// newCreateError
-// ---------------------------------------------------------------------------
-
-func TestNewCreateError(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		resourceType string
-		err          error
-		wantSummary  string
-		wantDetail   []string
-		notInDetail  []string
-	}{
-		{
-			name:         "basic create error",
-			resourceType: "Monitor",
-			err:          errors.New("invalid request"),
-			wantSummary:  "Failed to Create Monitor",
-			wantDetail:   []string{"invalid request", "Troubleshooting"},
-		},
-		{
-			name:         "monitor includes quick reference",
-			resourceType: "Monitor",
-			err:          errors.New("validation failed"),
-			wantSummary:  "Failed to Create Monitor",
-			wantDetail:   []string{"Quick Reference", "protocol"},
-		},
-		{
-			name:         "unknown type has no quick reference",
-			resourceType: "Outage",
-			err:          errors.New("server error"),
-			wantSummary:  "Failed to Create Outage",
-			wantDetail:   []string{"Troubleshooting"},
-			notInDetail:  []string{"Quick Reference"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			diag := newCreateError(tt.resourceType, tt.err)
-
-			if !strings.Contains(diag.Summary(), tt.wantSummary) {
-				t.Errorf("Summary = %q, want it to contain %q", diag.Summary(), tt.wantSummary)
-			}
-			for _, want := range tt.wantDetail {
-				if !strings.Contains(diag.Detail(), want) {
-					t.Errorf("Detail missing %q, got: %s", want, diag.Detail())
-				}
-			}
-			for _, notWant := range tt.notInDetail {
-				if strings.Contains(diag.Detail(), notWant) {
-					t.Errorf("Detail should not contain %q, got: %s", notWant, diag.Detail())
-				}
-			}
-		})
-	}
-}
-
-// ---------------------------------------------------------------------------
-// newReadError
-// ---------------------------------------------------------------------------
-
-func TestNewReadError(t *testing.T) {
-	t.Parallel()
-
-	err := errors.New("not found")
-	diag := newReadError("StatusPage", "sp_123", err)
-
-	if !strings.Contains(diag.Summary(), "Failed to Read StatusPage") {
-		t.Errorf("Summary = %q, want it to contain 'Failed to Read StatusPage'", diag.Summary())
-	}
-	if !strings.Contains(diag.Detail(), "sp_123") {
-		t.Errorf("Detail missing resource ID, got: %s", diag.Detail())
-	}
-	if !strings.Contains(diag.Detail(), "not found") {
-		t.Errorf("Detail missing error message, got: %s", diag.Detail())
-	}
-}
-
-// ---------------------------------------------------------------------------
-// newUpdateError
-// ---------------------------------------------------------------------------
-
-func TestNewUpdateError(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		resourceType string
-		resourceID   string
-		err          error
-		wantSummary  string
-		wantDetail   []string
-	}{
-		{
-			name:         "basic update error",
-			resourceType: "Incident",
-			resourceID:   "inc_456",
-			err:          errors.New("validation failed"),
-			wantSummary:  "Failed to Update Incident",
-			wantDetail:   []string{"inc_456"},
-		},
-		{
-			name:         "monitor includes quick reference",
-			resourceType: "Monitor",
-			resourceID:   "mon-123",
-			err:          errors.New("validation failed"),
-			wantSummary:  "Failed to Update Monitor",
-			wantDetail:   []string{"Quick Reference", "protocol"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			diag := newUpdateError(tt.resourceType, tt.resourceID, tt.err)
-
-			if !strings.Contains(diag.Summary(), tt.wantSummary) {
-				t.Errorf("Summary = %q, want it to contain %q", diag.Summary(), tt.wantSummary)
-			}
-			for _, want := range tt.wantDetail {
-				if !strings.Contains(diag.Detail(), want) {
-					t.Errorf("Detail missing %q, got: %s", want, diag.Detail())
-				}
-			}
-		})
-	}
-}
-
-// ---------------------------------------------------------------------------
-// newDeleteError
-// ---------------------------------------------------------------------------
-
-func TestNewDeleteError(t *testing.T) {
-	t.Parallel()
-
-	err := errors.New("resource has dependencies")
-	diag := newDeleteError("Maintenance", "mw_789", err)
-
-	if !strings.Contains(diag.Summary(), "Failed to Delete Maintenance") {
-		t.Errorf("Summary = %q, want it to contain 'Failed to Delete Maintenance'", diag.Summary())
-	}
-	if !strings.Contains(diag.Detail(), "dependencies") {
-		t.Errorf("Detail missing 'dependencies', got: %s", diag.Detail())
-	}
-}
-
-// ---------------------------------------------------------------------------
-// newListError
-// ---------------------------------------------------------------------------
-
-func TestNewListError(t *testing.T) {
-	t.Parallel()
-
-	err := errors.New("permission denied")
-	diag := newListError("Monitors", err)
-
-	if !strings.Contains(diag.Summary(), "Failed to List Monitors") {
-		t.Errorf("Summary = %q, want it to contain 'Failed to List Monitors'", diag.Summary())
-	}
-	if !strings.Contains(diag.Detail(), "permission denied") {
-		t.Errorf("Detail missing error message, got: %s", diag.Detail())
-	}
-}
-
-// ---------------------------------------------------------------------------
 // newReadAfterCreateError
 // ---------------------------------------------------------------------------
 
@@ -564,40 +396,6 @@ func TestNewReadAfterCreateError(t *testing.T) {
 	}
 	if !strings.Contains(diag.Detail(), "terraform import") {
 		t.Errorf("Detail missing import instructions, got: %s", diag.Detail())
-	}
-}
-
-// ---------------------------------------------------------------------------
-// newConfigError
-// ---------------------------------------------------------------------------
-
-func TestNewConfigError(t *testing.T) {
-	t.Parallel()
-
-	diag := newConfigError("Invalid frequency value")
-
-	if !strings.Contains(diag.Summary(), "Configuration Error") {
-		t.Errorf("Summary = %q, want it to contain 'Configuration Error'", diag.Summary())
-	}
-	if !strings.Contains(diag.Detail(), "Invalid frequency value") {
-		t.Errorf("Detail missing error message, got: %s", diag.Detail())
-	}
-}
-
-// ---------------------------------------------------------------------------
-// newValidationError
-// ---------------------------------------------------------------------------
-
-func TestNewValidationError(t *testing.T) {
-	t.Parallel()
-
-	diag := newValidationError("URL", "URL must be a valid HTTP/HTTPS endpoint")
-
-	if !strings.Contains(diag.Summary(), "Invalid URL") {
-		t.Errorf("Summary = %q, want it to contain 'Invalid URL'", diag.Summary())
-	}
-	if !strings.Contains(diag.Detail(), "valid HTTP/HTTPS endpoint") {
-		t.Errorf("Detail missing validation message, got: %s", diag.Detail())
 	}
 }
 
@@ -640,23 +438,6 @@ func TestNewUnexpectedConfigTypeError(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// newDeleteWarning
-// ---------------------------------------------------------------------------
-
-func TestNewDeleteWarning(t *testing.T) {
-	t.Parallel()
-
-	diag := newDeleteWarning("Monitor", "Resource not found in Hyperping")
-
-	if !strings.Contains(diag.Summary(), "Monitor Not Found") {
-		t.Errorf("Summary = %q, want it to contain 'Monitor Not Found'", diag.Summary())
-	}
-	if !strings.Contains(diag.Detail(), "already been deleted") {
-		t.Errorf("Detail missing standard message, got: %s", diag.Detail())
-	}
-}
-
-// ---------------------------------------------------------------------------
 // TestAllErrorHelpersReturnValidDiagnostics -- ensures every helper produces
 // non-empty Summary and Detail.
 // ---------------------------------------------------------------------------
@@ -670,36 +451,13 @@ func TestAllErrorHelpersReturnValidDiagnostics(t *testing.T) {
 		name   string
 		create func() (string, string)
 	}{
-		{"newCreateError", func() (string, string) { d := newCreateError("Resource", testErr); return d.Summary(), d.Detail() }},
-		{"newReadError", func() (string, string) {
-			d := newReadError("Resource", "id_123", testErr)
-			return d.Summary(), d.Detail()
-		}},
-		{"newUpdateError", func() (string, string) {
-			d := newUpdateError("Resource", "id_456", testErr)
-			return d.Summary(), d.Detail()
-		}},
-		{"newDeleteError", func() (string, string) {
-			d := newDeleteError("Resource", "id_789", testErr)
-			return d.Summary(), d.Detail()
-		}},
-		{"newListError", func() (string, string) { d := newListError("Resources", testErr); return d.Summary(), d.Detail() }},
 		{"newReadAfterCreateError", func() (string, string) {
 			d := newReadAfterCreateError("Resource", "new_123", testErr)
-			return d.Summary(), d.Detail()
-		}},
-		{"newConfigError", func() (string, string) { d := newConfigError("Invalid configuration"); return d.Summary(), d.Detail() }},
-		{"newValidationError", func() (string, string) {
-			d := newValidationError("Field", "Invalid value")
 			return d.Summary(), d.Detail()
 		}},
 		{"newImportError", func() (string, string) { d := newImportError("Resource", testErr); return d.Summary(), d.Detail() }},
 		{"newUnexpectedConfigTypeError", func() (string, string) {
 			d := newUnexpectedConfigTypeError("*client.Client", 42)
-			return d.Summary(), d.Detail()
-		}},
-		{"newDeleteWarning", func() (string, string) {
-			d := newDeleteWarning("Resource", "Already deleted")
 			return d.Summary(), d.Detail()
 		}},
 	}

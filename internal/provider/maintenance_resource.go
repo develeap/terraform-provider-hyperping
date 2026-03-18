@@ -27,8 +27,9 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var (
-	_ resource.Resource                = &MaintenanceResource{}
-	_ resource.ResourceWithImportState = &MaintenanceResource{}
+	_ resource.Resource                   = &MaintenanceResource{}
+	_ resource.ResourceWithImportState    = &MaintenanceResource{}
+	_ resource.ResourceWithValidateConfig = &MaintenanceResource{}
 )
 
 // NewMaintenanceResource creates a new maintenance resource.
@@ -151,10 +152,7 @@ func (r *MaintenanceResource) Configure(_ context.Context, req resource.Configur
 
 	c, ok := req.ProviderData.(*client.Client)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
 		return
 	}
 
@@ -226,7 +224,7 @@ func (r *MaintenanceResource) Create(ctx context.Context, req resource.CreateReq
 	// Call API to create maintenance window
 	createResp, err := r.client.CreateMaintenance(ctx, createReq)
 	if err != nil {
-		resp.Diagnostics.Append(newCreateError("Maintenance Window", err))
+		resp.Diagnostics.Append(NewCreateErrorWithContext("Maintenance Window", err))
 		return
 	}
 
@@ -306,6 +304,26 @@ func buildMaintenanceUpdateRequest(ctx context.Context, plan *MaintenanceResourc
 		}
 	}
 
+	if !plan.StatusPages.Equal(state.StatusPages) {
+		var statusPages []string
+		if !isNullOrUnknown(plan.StatusPages) {
+			diags.Append(plan.StatusPages.ElementsAs(ctx, &statusPages, false)...)
+		}
+		if !diags.HasError() {
+			updateReq.StatusPages = &statusPages
+		}
+	}
+
+	if !plan.NotificationOption.Equal(state.NotificationOption) {
+		notifOption := plan.NotificationOption.ValueString()
+		updateReq.NotificationOption = &notifOption
+	}
+
+	if !plan.NotificationMinutes.Equal(state.NotificationMinutes) {
+		notifMinutes := int(plan.NotificationMinutes.ValueInt64())
+		updateReq.NotificationMinutes = &notifMinutes
+	}
+
 	return updateReq
 }
 
@@ -337,7 +355,7 @@ func (r *MaintenanceResource) Update(ctx context.Context, req resource.UpdateReq
 	// Call API to update maintenance window
 	updateResp, err := r.client.UpdateMaintenance(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
-		resp.Diagnostics.Append(newUpdateError("Maintenance Window", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewUpdateErrorWithContext("Maintenance Window", state.ID.ValueString(), err))
 		return
 	}
 
@@ -365,7 +383,7 @@ func (r *MaintenanceResource) Delete(ctx context.Context, req resource.DeleteReq
 			// Already deleted, no error
 			return
 		}
-		resp.Diagnostics.Append(newDeleteError("Maintenance Window", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewDeleteErrorWithContext("Maintenance Window", state.ID.ValueString(), err))
 		return
 	}
 }
@@ -378,6 +396,44 @@ func (r *MaintenanceResource) ImportState(ctx context.Context, req resource.Impo
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// ValidateConfig implements resource.ResourceWithValidateConfig for cross-field
+// validation at plan time, before any API call.
+//
+// Design: This is the first validation layer (plan-time). It only checks
+// end_date > start_date. The second layer, validateMaintenanceDates, runs at
+// apply-time and adds warnings (past start_date, long duration) that are
+// inappropriate at plan-time where values may change before apply.
+// Unparseable dates are silently skipped here; the ISO8601 schema validators
+// catch format issues independently.
+func (r *MaintenanceResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var startDate types.String
+	var endDate types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("start_date"), &startDate)...)
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("end_date"), &endDate)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Skip validation when dates are unknown (module composition support)
+	if startDate.IsUnknown() || startDate.IsNull() || endDate.IsUnknown() || endDate.IsNull() {
+		return
+	}
+
+	startTime, errStart := time.Parse(time.RFC3339, startDate.ValueString())
+	endTime, errEnd := time.Parse(time.RFC3339, endDate.ValueString())
+	if errStart != nil || errEnd != nil {
+		return // ISO8601 validators will catch format issues
+	}
+
+	if !endTime.After(startTime) {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("end_date"),
+			"Invalid Date Range",
+			"end_date must be after start_date",
+		)
+	}
 }
 
 // validateMaintenanceDates validates the maintenance date range and adds diagnostics.

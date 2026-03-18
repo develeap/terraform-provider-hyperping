@@ -159,10 +159,7 @@ func (r *StatusPageSubscriberResource) Configure(ctx context.Context, req resour
 
 	apiClient, ok := req.ProviderData.(client.HyperpingAPI)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected client.HyperpingAPI, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("client.HyperpingAPI", req.ProviderData))
 		return
 	}
 

@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -98,6 +97,9 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				MarkdownDescription: "The URL to monitor. For HTTP/ICMP/port protocols, must include scheme " +
 					"(e.g., `https://api.example.com/health`). For DNS protocol, use a bare domain (e.g., `example.com`).",
 				Required: true,
+				Validators: []validator.String{
+					StringLength(1, 2048),
+				},
 			},
 			"protocol": schema.StringAttribute{
 				MarkdownDescription: "The protocol type. Valid values: `http`, `port`, `icmp`, `dns`. Defaults to `http`.",
@@ -287,7 +289,7 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 	// Call API to create monitor
 	createResp, err := r.client.CreateMonitor(ctx, createReq)
 	if err != nil {
-		resp.Diagnostics.Append(newCreateError("Monitor", err))
+		resp.Diagnostics.Append(NewCreateErrorWithContext("Monitor", err))
 		return
 	}
 
@@ -376,7 +378,7 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 	// Call API to update monitor
 	monitor, err := r.client.UpdateMonitor(ctx, state.ID.ValueString(), updateReq)
 	if err != nil {
-		resp.Diagnostics.Append(newUpdateError("Monitor", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewUpdateErrorWithContext("Monitor", state.ID.ValueString(), err))
 		return
 	}
 
@@ -409,7 +411,7 @@ func (r *MonitorResource) Delete(ctx context.Context, req resource.DeleteRequest
 			// Already deleted, no error
 			return
 		}
-		resp.Diagnostics.Append(newDeleteError("Monitor", state.ID.ValueString(), err))
+		resp.Diagnostics.Append(NewDeleteErrorWithContext("Monitor", state.ID.ValueString(), err))
 		return
 	}
 }
@@ -463,108 +465,35 @@ func restoreHTTPFieldsForNonHTTP(protocol string, model *MonitorResourceModel, s
 }
 
 // mapMonitorToModel maps a client.Monitor to the Terraform model.
+// Delegates to the shared MapMonitorCommonFields to avoid duplication with data sources.
+//
+// The field-by-field copy is intentional: MonitorResourceModel embeds additional
+// resource-only fields (e.g. Timeouts) that MonitorCommonFields doesn't have,
+// so a direct struct assignment isn't possible.
 func (r *MonitorResource) mapMonitorToModel(monitor *client.Monitor, model *MonitorResourceModel, diags *diag.Diagnostics) {
-	model.ID = types.StringValue(monitor.UUID)
-	model.Name = types.StringValue(monitor.Name)
-	model.URL = types.StringValue(monitor.URL)
-	model.Protocol = types.StringValue(monitor.Protocol)
-	model.CheckFrequency = types.Int64Value(int64(monitor.CheckFrequency))
-	model.Paused = types.BoolValue(monitor.Paused)
-
-	// HTTP-specific fields (will be preserved for non-HTTP monitors in calling function)
-	model.HTTPMethod = types.StringValue(monitor.HTTPMethod)
-	model.ExpectedStatusCode = types.StringValue(string(monitor.ExpectedStatusCode))
-	model.FollowRedirects = types.BoolValue(monitor.FollowRedirects)
-
-	// Handle regions
-	model.Regions = mapStringSliceToList(monitor.Regions, diags)
-
-	// Handle request headers
-	if len(monitor.RequestHeaders) == 0 {
-		model.RequestHeaders = types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()})
-	} else {
-		values := make([]attr.Value, len(monitor.RequestHeaders))
-		for i, h := range monitor.RequestHeaders {
-			obj, objDiags := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
-				"name":  types.StringValue(h.Name),
-				"value": types.StringValue(h.Value),
-			})
-			diags.Append(objDiags...)
-			values[i] = obj
-		}
-		list, listDiags := types.ListValue(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}, values)
-		diags.Append(listDiags...)
-		model.RequestHeaders = list
-	}
-
-	// Handle request body
-	if monitor.RequestBody != "" {
-		model.RequestBody = types.StringValue(monitor.RequestBody)
-	} else {
-		model.RequestBody = types.StringNull()
-	}
-
-	// Handle port
-	if monitor.Port != nil {
-		model.Port = types.Int64Value(int64(*monitor.Port))
-	} else {
-		model.Port = types.Int64Null()
-	}
-
-	// Handle alerts_wait (0 means not set; -1 means disabled and must be preserved)
-	if monitor.AlertsWait != 0 {
-		model.AlertsWait = types.Int64Value(int64(monitor.AlertsWait))
-	} else {
-		model.AlertsWait = types.Int64Null()
-	}
-
-	// Handle escalation_policy
-	if monitor.EscalationPolicy != nil && *monitor.EscalationPolicy != "" {
-		model.EscalationPolicy = types.StringValue(*monitor.EscalationPolicy)
-	} else {
-		model.EscalationPolicy = types.StringNull()
-	}
-
-	// Handle DNS-protocol fields
-	if monitor.DNSRecordType != nil && *monitor.DNSRecordType != "" {
-		model.DNSRecordType = types.StringValue(*monitor.DNSRecordType)
-	} else {
-		model.DNSRecordType = types.StringNull()
-	}
-	if monitor.DNSNameserver != nil && *monitor.DNSNameserver != "" {
-		model.DNSNameserver = types.StringValue(*monitor.DNSNameserver)
-	} else {
-		model.DNSNameserver = types.StringNull()
-	}
-	if monitor.DNSExpectedAnswer != nil && *monitor.DNSExpectedAnswer != "" {
-		model.DNSExpectedAnswer = types.StringValue(*monitor.DNSExpectedAnswer)
-	} else {
-		model.DNSExpectedAnswer = types.StringNull()
-	}
-
-	// Handle required_keyword
-	if monitor.RequiredKeyword != nil && *monitor.RequiredKeyword != "" {
-		model.RequiredKeyword = types.StringValue(*monitor.RequiredKeyword)
-	} else {
-		model.RequiredKeyword = types.StringNull()
-	}
-
-	// Handle status (read-only)
-	model.Status = types.StringValue(monitor.Status)
-
-	// Handle ssl_expiration (read-only, nullable)
-	if monitor.SSLExpiration != nil {
-		model.SSLExpiration = types.Int64Value(int64(*monitor.SSLExpiration))
-	} else {
-		model.SSLExpiration = types.Int64Null()
-	}
-
-	// Handle project_uuid
-	if monitor.ProjectUUID != "" {
-		model.ProjectUUID = types.StringValue(monitor.ProjectUUID)
-	} else {
-		model.ProjectUUID = types.StringNull()
-	}
+	common := MapMonitorCommonFields(monitor, diags)
+	model.ID = common.ID
+	model.Name = common.Name
+	model.URL = common.URL
+	model.Protocol = common.Protocol
+	model.HTTPMethod = common.HTTPMethod
+	model.CheckFrequency = common.CheckFrequency
+	model.Regions = common.Regions
+	model.RequestHeaders = common.RequestHeaders
+	model.RequestBody = common.RequestBody
+	model.ExpectedStatusCode = common.ExpectedStatusCode
+	model.FollowRedirects = common.FollowRedirects
+	model.Paused = common.Paused
+	model.Port = common.Port
+	model.AlertsWait = common.AlertsWait
+	model.EscalationPolicy = common.EscalationPolicy
+	model.DNSRecordType = common.DNSRecordType
+	model.DNSNameserver = common.DNSNameserver
+	model.DNSExpectedAnswer = common.DNSExpectedAnswer
+	model.RequiredKeyword = common.RequiredKeyword
+	model.Status = common.Status
+	model.SSLExpiration = common.SSLExpiration
+	model.ProjectUUID = common.ProjectUUID
 }
 
 // buildCreateRequest constructs a CreateMonitorRequest from the Terraform plan.
@@ -627,7 +556,7 @@ func (r *MonitorResource) buildCreateRequest(ctx context.Context, plan *MonitorR
 func (r *MonitorResource) handlePostCreatePause(ctx context.Context, monitorID string, plan *MonitorResourceModel, diags *diag.Diagnostics) {
 	_, err := r.client.PauseMonitor(ctx, monitorID)
 	if err != nil {
-		diags.Append(newUpdateError("Monitor", monitorID, fmt.Errorf("monitor created but failed to pause: %w", err)))
+		diags.Append(NewUpdateErrorWithContext("Monitor", monitorID, fmt.Errorf("monitor created but failed to pause: %w", err)))
 		return
 	}
 	plan.Paused = types.BoolValue(true)
