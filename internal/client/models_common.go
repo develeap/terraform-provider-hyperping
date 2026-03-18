@@ -72,16 +72,27 @@ func validateStringLength(field, value string, maxLen int) error {
 	return nil
 }
 
-// validateLocalizedText validates all non-empty locale fields of a LocalizedText value.
-func validateLocalizedText(prefix string, text LocalizedText, maxLen int) error {
-	fields := map[string]string{
-		"en": text.En, "fr": text.Fr, "de": text.De, "ru": text.Ru,
-		"nl": text.Nl, "es": text.Es, "it": text.It, "pt": text.Pt,
-		"ja": text.Ja, "zh": text.Zh,
+// localizedField pairs a language code with its value for deterministic iteration.
+type localizedField struct {
+	lang string
+	val  string
+}
+
+// localizedFields returns all locale fields in a stable, deterministic order.
+func localizedFields(text LocalizedText) []localizedField {
+	return []localizedField{
+		{"en", text.En}, {"fr", text.Fr}, {"de", text.De}, {"ru", text.Ru},
+		{"nl", text.Nl}, {"es", text.Es}, {"it", text.It}, {"pt", text.Pt},
+		{"ja", text.Ja}, {"zh", text.Zh},
 	}
-	for lang, val := range fields {
-		if val != "" {
-			if err := validateStringLength(prefix+"."+lang, val, maxLen); err != nil {
+}
+
+// validateLocalizedText validates all non-empty locale fields of a LocalizedText value.
+// Iteration order is deterministic (en, fr, de, ru, nl, es, it, pt, ja, zh).
+func validateLocalizedText(prefix string, text LocalizedText, maxLen int) error {
+	for _, f := range localizedFields(text) {
+		if f.val != "" {
+			if err := validateStringLength(prefix+"."+f.lang, f.val, maxLen); err != nil {
 				return err
 			}
 		}
