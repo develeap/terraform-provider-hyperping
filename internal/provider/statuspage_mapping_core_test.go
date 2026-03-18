@@ -50,7 +50,7 @@ func TestMapStringMapToTF(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mapStringMapToTF(tt.input)
+			result := mapStringMapToTF(tt.input, nil)
 
 			if tt.wantNull {
 				if !result.IsNull() {

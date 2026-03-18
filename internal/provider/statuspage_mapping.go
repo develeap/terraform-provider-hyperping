@@ -633,7 +633,7 @@ func extractLocalizedString(m map[string]string, configuredLangs []string) types
 }
 
 // mapStringMapToTF converts a Go map[string]string to Terraform Map type.
-func mapStringMapToTF(m map[string]string, diags ...*diag.Diagnostics) types.Map {
+func mapStringMapToTF(m map[string]string, diags *diag.Diagnostics) types.Map {
 	if len(m) == 0 {
 		return types.MapNull(types.StringType)
 	}
@@ -644,8 +644,8 @@ func mapStringMapToTF(m map[string]string, diags ...*diag.Diagnostics) types.Map
 	}
 
 	result, mapDiags := types.MapValue(types.StringType, values)
-	if len(diags) > 0 && diags[0] != nil {
-		diags[0].Append(mapDiags...)
+	if diags != nil {
+		diags.Append(mapDiags...)
 	}
 	return result
 }

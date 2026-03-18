@@ -1,12 +1,11 @@
 // Copyright (c) 2026 Develeap
 // SPDX-License-Identifier: MPL-2.0
 
-package client
+package testutil
 
 import "fmt"
 
-// Test helper functions for generating test data.
-// These are used by performance tests to generate large datasets.
+// Test data generators for building large datasets in performance tests.
 
 // MonitorUUID generates a test monitor UUID.
 func MonitorUUID(i int) string {

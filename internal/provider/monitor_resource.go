@@ -466,6 +466,10 @@ func restoreHTTPFieldsForNonHTTP(protocol string, model *MonitorResourceModel, s
 
 // mapMonitorToModel maps a client.Monitor to the Terraform model.
 // Delegates to the shared MapMonitorCommonFields to avoid duplication with data sources.
+//
+// The field-by-field copy is intentional: MonitorResourceModel embeds additional
+// resource-only fields (e.g. Timeouts) that MonitorCommonFields doesn't have,
+// so a direct struct assignment isn't possible.
 func (r *MonitorResource) mapMonitorToModel(monitor *client.Monitor, model *MonitorResourceModel, diags *diag.Diagnostics) {
 	common := MapMonitorCommonFields(monitor, diags)
 	model.ID = common.ID

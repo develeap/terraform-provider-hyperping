@@ -400,6 +400,13 @@ func (r *MaintenanceResource) ImportState(ctx context.Context, req resource.Impo
 
 // ValidateConfig implements resource.ResourceWithValidateConfig for cross-field
 // validation at plan time, before any API call.
+//
+// Design: This is the first validation layer (plan-time). It only checks
+// end_date > start_date. The second layer, validateMaintenanceDates, runs at
+// apply-time and adds warnings (past start_date, long duration) that are
+// inappropriate at plan-time where values may change before apply.
+// Unparseable dates are silently skipped here; the ISO8601 schema validators
+// catch format issues independently.
 func (r *MaintenanceResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
 	var startDate types.String
 	var endDate types.String

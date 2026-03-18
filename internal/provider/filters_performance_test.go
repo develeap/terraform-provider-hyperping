@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // generateTestMonitors creates n test monitors for performance testing.
@@ -20,8 +21,8 @@ func generateTestMonitors(n int) []client.Monitor {
 
 	for i := 0; i < n; i++ {
 		monitors[i] = client.Monitor{
-			UUID:     client.MonitorUUID(i),
-			Name:     client.MonitorName(i, i%4),
+			UUID:     testutil.MonitorUUID(i),
+			Name:     testutil.MonitorName(i, i%4),
 			URL:      "https://example.com",
 			Protocol: protocols[i%len(protocols)],
 			Paused:   i%3 == 0,
@@ -37,10 +38,10 @@ func generateTestIncidents(n int) []client.Incident {
 	types := []string{"incident", "maintenance"}
 
 	for i := 0; i < n; i++ {
-		title := client.IncidentTitle(i)
+		title := testutil.IncidentTitle(i)
 		text := "Test incident text"
 		incidents[i] = client.Incident{
-			UUID:  client.IncidentID(i),
+			UUID:  testutil.IncidentID(i),
 			Title: client.LocalizedText{En: title},
 			Text:  client.LocalizedText{En: text},
 			Type:  types[i%len(types)],
@@ -55,11 +56,11 @@ func generateTestMaintenanceWindows(n int) []client.Maintenance {
 	windows := make([]client.Maintenance, n)
 
 	for i := 0; i < n; i++ {
-		title := client.MaintenanceTitle(i)
+		title := testutil.MaintenanceTitle(i)
 		text := "Test maintenance text"
 		windows[i] = client.Maintenance{
-			UUID:  client.MaintenanceID(i),
-			Name:  client.MaintenanceTitle(i),
+			UUID:  testutil.MaintenanceID(i),
+			Name:  testutil.MaintenanceTitle(i),
 			Title: client.LocalizedText{En: title},
 			Text:  client.LocalizedText{En: text},
 		}

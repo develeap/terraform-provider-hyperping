@@ -197,15 +197,10 @@ func ValidateLocalizedText(t *testing.T, fieldName string, text LocalizedText, m
 		text.Ja != "" || text.Zh != ""
 	assert.True(t, hasContent, "%s should have at least one language set", fieldName)
 
-	// Validate length for each present language
-	fields := map[string]string{
-		"en": text.En, "fr": text.Fr, "de": text.De, "ru": text.Ru,
-		"nl": text.Nl, "es": text.Es, "it": text.It, "pt": text.Pt,
-		"ja": text.Ja, "zh": text.Zh,
-	}
-	for lang, val := range fields {
-		if val != "" {
-			ValidateStringLength(t, fmt.Sprintf("%s.%s", fieldName, lang), val, maxLength)
+	// Validate length for each present language (deterministic order)
+	for _, f := range localizedFields(text) {
+		if f.val != "" {
+			ValidateStringLength(t, fmt.Sprintf("%s.%s", fieldName, f.lang), f.val, maxLength)
 		}
 	}
 }

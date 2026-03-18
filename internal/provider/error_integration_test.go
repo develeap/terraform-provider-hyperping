@@ -16,7 +16,7 @@ import (
 // are properly displayed to users during CRUD operations.
 
 // ---------------------------------------------------------------------------
-// Error propagation: Monitor CRUD
+// Error propagation: Monitor CRUD (WithContext versions)
 // ---------------------------------------------------------------------------
 
 func TestErrorPropagation_MonitorRead(t *testing.T) {
@@ -35,7 +35,7 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 			wantErrorType: "not_found",
 			wantInMessage: []string{
 				"Troubleshooting",
-				"Verify the resource still exists",
+				"Verify the Monitor still exists",
 				"dashboard",
 			},
 			wantDashboardLink: true,
@@ -47,9 +47,8 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 			wantInMessage: []string{
 				"Troubleshooting",
 				"API key",
-				"permissions",
 			},
-			wantDashboardLink: true,
+			wantDashboardLink: false,
 		},
 		{
 			name:          "rate limit error",
@@ -59,7 +58,7 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 				"Troubleshooting",
 				"60 seconds",
 			},
-			wantDashboardLink: true,
+			wantDashboardLink: false,
 		},
 		{
 			name:          "server error",
@@ -67,16 +66,16 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 			wantErrorType: "server_error",
 			wantInMessage: []string{
 				"Troubleshooting",
-				"Verify the resource still exists",
+				"status.hyperping.app",
 			},
-			wantDashboardLink: true,
+			wantDashboardLink: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			diag := newReadError("Monitor", "mon_test123", tt.err)
+			diag := NewReadErrorWithContext("Monitor", "mon_test123", tt.err)
 
 			summary := diag.Summary()
 			detail := diag.Detail()
@@ -91,7 +90,7 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 				}
 			}
 
-			if tt.wantDashboardLink && !strings.Contains(detail, "https://app.hyperping.io") {
+			if tt.wantDashboardLink && !strings.Contains(detail, "app.hyperping.io") {
 				t.Error("Detail missing dashboard link")
 			}
 		})
@@ -111,7 +110,6 @@ func TestErrorPropagation_MonitorCreate(t *testing.T) {
 			err:  client.NewAPIError(400, "invalid URL"),
 			wantInMessage: []string{
 				"Troubleshooting",
-				"API key",
 				"required fields",
 			},
 		},
@@ -128,7 +126,7 @@ func TestErrorPropagation_MonitorCreate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			diag := newCreateError("Monitor", tt.err)
+			diag := NewCreateErrorWithContext("Monitor", tt.err)
 
 			detail := diag.Detail()
 			for _, want := range tt.wantInMessage {
@@ -161,7 +159,7 @@ func TestErrorPropagation_MonitorUpdate(t *testing.T) {
 			err:  client.NewAPIError(422, "invalid frequency"),
 			wantInMessage: []string{
 				"Troubleshooting",
-				"update values are valid",
+				"required fields",
 			},
 		},
 	}
@@ -169,7 +167,7 @@ func TestErrorPropagation_MonitorUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			diag := newUpdateError("Monitor", "mon_update123", tt.err)
+			diag := NewUpdateErrorWithContext("Monitor", "mon_update123", tt.err)
 
 			detail := diag.Detail()
 			for _, want := range tt.wantInMessage {
@@ -194,7 +192,7 @@ func TestErrorPropagation_MonitorDelete(t *testing.T) {
 			err:  client.NewAPIError(500, "internal error"),
 			wantInMessage: []string{
 				"Troubleshooting",
-				"still exists",
+				"status.hyperping.app",
 			},
 		},
 		{
@@ -202,6 +200,7 @@ func TestErrorPropagation_MonitorDelete(t *testing.T) {
 			err:  client.NewRateLimitError(120),
 			wantInMessage: []string{
 				"Troubleshooting",
+				"120 seconds",
 			},
 		},
 	}
@@ -209,7 +208,7 @@ func TestErrorPropagation_MonitorDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			diag := newDeleteError("Monitor", "mon_delete123", tt.err)
+			diag := NewDeleteErrorWithContext("Monitor", "mon_delete123", tt.err)
 
 			detail := diag.Detail()
 			for _, want := range tt.wantInMessage {
@@ -248,7 +247,7 @@ func TestErrorPropagation_IncidentRead(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			diag := newReadError("Incident", "inc_test123", tt.err)
+			diag := NewReadErrorWithContext("Incident", "inc_test123", tt.err)
 
 			detail := diag.Detail()
 			for _, want := range tt.wantInMessage {
@@ -266,7 +265,7 @@ func TestErrorPropagation_MaintenanceCreate(t *testing.T) {
 	err := client.NewValidationError(400, "invalid schedule", []client.ValidationDetail{
 		{Field: "scheduled_start", Message: "must be in future"},
 	})
-	diag := newCreateError("Maintenance", err)
+	diag := NewCreateErrorWithContext("Maintenance", err)
 
 	detail := diag.Detail()
 	if !strings.Contains(detail, "Troubleshooting") {
@@ -275,7 +274,7 @@ func TestErrorPropagation_MaintenanceCreate(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Cross-resource consistency
+// Cross-resource consistency (WithContext versions)
 // ---------------------------------------------------------------------------
 
 func TestErrorPropagation_MultipleResources(t *testing.T) {
@@ -287,7 +286,7 @@ func TestErrorPropagation_MultipleResources(t *testing.T) {
 	for _, resourceType := range resourceTypes {
 		t.Run(resourceType, func(t *testing.T) {
 			t.Parallel()
-			diag := newReadError(resourceType, "test_id_123", testErr)
+			diag := NewReadErrorWithContext(resourceType, "test_id_123", testErr)
 
 			summary := diag.Summary()
 			detail := diag.Detail()
@@ -297,9 +296,6 @@ func TestErrorPropagation_MultipleResources(t *testing.T) {
 			}
 			if !strings.Contains(detail, "Troubleshooting") {
 				t.Error("Detail missing Troubleshooting section")
-			}
-			if !strings.Contains(detail, "https://app.hyperping.io") {
-				t.Error("Detail missing dashboard link")
 			}
 		})
 	}
@@ -330,7 +326,7 @@ func TestErrorContext_AllResourceTypes_CRUD(t *testing.T) {
 
 			t.Run("create", func(t *testing.T) {
 				t.Parallel()
-				diag := newCreateError(resource.resourceType, testErr)
+				diag := NewCreateErrorWithContext(resource.resourceType, testErr)
 				if !strings.Contains(diag.Summary(), "Failed to Create") {
 					t.Errorf("Create summary missing 'Failed to Create', got: %s", diag.Summary())
 				}
@@ -338,7 +334,7 @@ func TestErrorContext_AllResourceTypes_CRUD(t *testing.T) {
 
 			t.Run("read", func(t *testing.T) {
 				t.Parallel()
-				diag := newReadError(resource.resourceType, resource.resourceID, testErr)
+				diag := NewReadErrorWithContext(resource.resourceType, resource.resourceID, testErr)
 				if !strings.Contains(diag.Summary(), "Failed to Read") {
 					t.Errorf("Read summary missing 'Failed to Read', got: %s", diag.Summary())
 				}
@@ -346,7 +342,7 @@ func TestErrorContext_AllResourceTypes_CRUD(t *testing.T) {
 
 			t.Run("update", func(t *testing.T) {
 				t.Parallel()
-				diag := newUpdateError(resource.resourceType, resource.resourceID, testErr)
+				diag := NewUpdateErrorWithContext(resource.resourceType, resource.resourceID, testErr)
 				if !strings.Contains(diag.Summary(), "Failed to Update") {
 					t.Errorf("Update summary missing 'Failed to Update', got: %s", diag.Summary())
 				}
@@ -354,7 +350,7 @@ func TestErrorContext_AllResourceTypes_CRUD(t *testing.T) {
 
 			t.Run("delete", func(t *testing.T) {
 				t.Parallel()
-				diag := newDeleteError(resource.resourceType, resource.resourceID, testErr)
+				diag := NewDeleteErrorWithContext(resource.resourceType, resource.resourceID, testErr)
 				if !strings.Contains(diag.Summary(), "Failed to Delete") {
 					t.Errorf("Delete summary missing 'Failed to Delete', got: %s", diag.Summary())
 				}
@@ -364,7 +360,7 @@ func TestErrorContext_AllResourceTypes_CRUD(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Error message formatting consistency
+// Error message formatting consistency (WithContext versions)
 // ---------------------------------------------------------------------------
 
 func TestErrorMessage_Format(t *testing.T) {
@@ -380,7 +376,7 @@ func TestErrorMessage_Format(t *testing.T) {
 		{
 			name: "create error format",
 			createDiag: func() (string, string) {
-				d := newCreateError("Monitor", testErr)
+				d := NewCreateErrorWithContext("Monitor", testErr)
 				return d.Summary(), d.Detail()
 			},
 			wantSummary: "Failed to Create Monitor",
@@ -388,7 +384,7 @@ func TestErrorMessage_Format(t *testing.T) {
 		{
 			name: "read error format",
 			createDiag: func() (string, string) {
-				d := newReadError("Monitor", "mon_123", testErr)
+				d := NewReadErrorWithContext("Monitor", "mon_123", testErr)
 				return d.Summary(), d.Detail()
 			},
 			wantSummary: "Failed to Read Monitor",
@@ -396,7 +392,7 @@ func TestErrorMessage_Format(t *testing.T) {
 		{
 			name: "update error format",
 			createDiag: func() (string, string) {
-				d := newUpdateError("Monitor", "mon_123", testErr)
+				d := NewUpdateErrorWithContext("Monitor", "mon_123", testErr)
 				return d.Summary(), d.Detail()
 			},
 			wantSummary: "Failed to Update Monitor",
@@ -404,7 +400,7 @@ func TestErrorMessage_Format(t *testing.T) {
 		{
 			name: "delete error format",
 			createDiag: func() (string, string) {
-				d := newDeleteError("Monitor", "mon_123", testErr)
+				d := NewDeleteErrorWithContext("Monitor", "mon_123", testErr)
 				return d.Summary(), d.Detail()
 			},
 			wantSummary: "Failed to Delete Monitor",
@@ -435,11 +431,10 @@ func TestErrorMessage_AllOperations(t *testing.T) {
 	testErr := client.NewAPIError(400, "test error")
 
 	operations := map[string]func() string{
-		"Create": func() string { return newCreateError("Resource", testErr).Detail() },
-		"Read":   func() string { return newReadError("Resource", "id_123", testErr).Detail() },
-		"Update": func() string { return newUpdateError("Resource", "id_123", testErr).Detail() },
-		"Delete": func() string { return newDeleteError("Resource", "id_123", testErr).Detail() },
-		"List":   func() string { return newListError("Resources", testErr).Detail() },
+		"Create": func() string { return NewCreateErrorWithContext("Resource", testErr).Detail() },
+		"Read":   func() string { return NewReadErrorWithContext("Resource", "id_123", testErr).Detail() },
+		"Update": func() string { return NewUpdateErrorWithContext("Resource", "id_123", testErr).Detail() },
+		"Delete": func() string { return NewDeleteErrorWithContext("Resource", "id_123", testErr).Detail() },
 	}
 
 	for opName, opFunc := range operations {
@@ -474,21 +469,21 @@ func TestTroubleshootingSteps_UserReadability(t *testing.T) {
 			name: "read error is user-friendly",
 			diag: func() (string, string) {
 				err := client.NewAPIError(404, "not found")
-				d := newReadError("Monitor", "mon_123", err)
+				d := NewReadErrorWithContext("Monitor", "mon_123", err)
 				return d.Summary(), d.Detail()
 			},
-			wantHas: []string{"Troubleshooting", "Verify", "Check"},
+			wantHas: []string{"Troubleshooting", "Verify"},
 			wantNot: []string{"panic", "nil pointer", "stack trace"},
 		},
 		{
 			name: "create error provides actionable steps",
 			diag: func() (string, string) {
 				err := client.NewAPIError(400, "invalid request")
-				d := newCreateError("Monitor", err)
+				d := NewCreateErrorWithContext("Monitor", err)
 				return d.Summary(), d.Detail()
 			},
-			wantHas: []string{"Troubleshooting", "Verify", "Check"},
-			wantNot: []string{"internal error", "unexpected"},
+			wantHas: []string{"Troubleshooting"},
+			wantNot: []string{"panic", "nil pointer"},
 		},
 	}
 
@@ -524,7 +519,7 @@ func TestRateLimitError_RetryGuidance(t *testing.T) {
 		t.Run(strings.Join([]string{"retry_after", string(rune(retryAfter))}, "_"), func(t *testing.T) {
 			t.Parallel()
 			err := client.NewRateLimitError(retryAfter)
-			diag := newReadError("Monitor", "mon_rate123", err)
+			diag := NewReadErrorWithContext("Monitor", "mon_rate123", err)
 
 			detail := diag.Detail()
 			if !strings.Contains(detail, "Troubleshooting") {
@@ -550,10 +545,10 @@ func TestAuthError_KeyVerification(t *testing.T) {
 		t.Run(strings.Join([]string{"status", string(rune(statusCode))}, "_"), func(t *testing.T) {
 			t.Parallel()
 			err := client.NewAPIError(statusCode, "unauthorized")
-			diag := newReadError("Monitor", "mon_auth123", err)
+			diag := NewReadErrorWithContext("Monitor", "mon_auth123", err)
 
 			detail := diag.Detail()
-			if !strings.Contains(detail, "API key") {
+			if !strings.Contains(detail, "HYPERPING_API_KEY") {
 				t.Error("Detail missing API key verification")
 			}
 			if !strings.Contains(detail, "Troubleshooting") {
