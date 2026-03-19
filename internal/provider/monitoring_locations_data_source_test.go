@@ -22,14 +22,14 @@ func TestMonitoringLocations_MetadataCorrectness(t *testing.T) {
 		continent   string
 		cloudRegion string
 	}{
-		{"london", "London, UK", "Europe", "eu-west-2"},
-		{"frankfurt", "Frankfurt, DE", "Europe", "eu-central-1"},
-		{"singapore", "Singapore", "Asia Pacific", "ap-southeast-1"},
-		{"sydney", "Sydney, AU", "Asia Pacific", "ap-southeast-2"},
-		{"tokyo", "Tokyo, JP", "Asia Pacific", "ap-northeast-1"},
-		{"virginia", "Virginia, US", "North America", "us-east-1"},
-		{"saopaulo", "Sao Paulo, BR", "South America", "sa-east-1"},
-		{"bahrain", "Bahrain, ME", "Middle East", "me-south-1"},
+		{"london", "London, UK", "Europe", "lon1"},
+		{"frankfurt", "Frankfurt, DE", "Europe", "fra1"},
+		{"singapore", "Singapore", "Asia Pacific", "sgp1"},
+		{"sydney", "Sydney, AU", "Asia Pacific", "syd1"},
+		{"tokyo", "Tokyo, JP", "Asia Pacific", "sgp1"},
+		{"virginia", "Virginia, US", "North America", "nyc1"},
+		{"saopaulo", "Sao Paulo, BR", "South America", "nyc1"},
+		{"bahrain", "Bahrain, ME", "Middle East", "blr1"},
 	}
 
 	for _, tt := range tests {
@@ -120,8 +120,8 @@ func TestAccMonitoringLocationsDataSource_basic(t *testing.T) {
 				Config: testAccMonitoringLocationsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					// T29: All 8 locations returned
-					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "locations.#", "8"),
-					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "ids.#", "8"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "locations.#", "17"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "ids.#", "17"),
 					// T30: Known IDs present
 					tfresource.TestCheckTypeSetElemAttr("data.hyperping_monitoring_locations.all", "ids.*", "london"),
 					tfresource.TestCheckTypeSetElemAttr("data.hyperping_monitoring_locations.all", "ids.*", "frankfurt"),

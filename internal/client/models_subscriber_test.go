@@ -193,7 +193,7 @@ func TestValidateSubscriberType(t *testing.T) {
 // =============================================================================
 
 func TestValidateSubscriberLanguage(t *testing.T) {
-	validLangs := []string{"en", "fr", "de", "ru", "nl", "es", "it", "pt", "ja", "zh"}
+	validLangs := []string{"en", "fr", "de", "ru", "nl", "pl", "sv"}
 	for _, lang := range validLangs {
 		lang := lang
 		t.Run("valid language: "+lang, func(t *testing.T) {

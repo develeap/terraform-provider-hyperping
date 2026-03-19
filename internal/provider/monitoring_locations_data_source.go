@@ -49,15 +49,32 @@ type monitoringLocationMetadata struct {
 }
 
 // monitoringLocations maps region codes from client.AllowedRegions to metadata.
+// monitoringLocations maps region codes from client.AllowedRegions to metadata.
+// Hyperping uses DigitalOcean infrastructure. CloudRegion values are approximate
+// DigitalOcean datacenter identifiers where available.
 var monitoringLocations = map[string]monitoringLocationMetadata{
-	"london":    {Name: "London, UK", Continent: "Europe", CloudRegion: "eu-west-2"},
-	"frankfurt": {Name: "Frankfurt, DE", Continent: "Europe", CloudRegion: "eu-central-1"},
-	"singapore": {Name: "Singapore", Continent: "Asia Pacific", CloudRegion: "ap-southeast-1"},
-	"sydney":    {Name: "Sydney, AU", Continent: "Asia Pacific", CloudRegion: "ap-southeast-2"},
-	"tokyo":     {Name: "Tokyo, JP", Continent: "Asia Pacific", CloudRegion: "ap-northeast-1"},
-	"virginia":  {Name: "Virginia, US", Continent: "North America", CloudRegion: "us-east-1"},
-	"saopaulo":  {Name: "Sao Paulo, BR", Continent: "South America", CloudRegion: "sa-east-1"},
-	"bahrain":   {Name: "Bahrain, ME", Continent: "Middle East", CloudRegion: "me-south-1"},
+	// Europe
+	"london":    {Name: "London, UK", Continent: "Europe", CloudRegion: "lon1"},
+	"frankfurt": {Name: "Frankfurt, DE", Continent: "Europe", CloudRegion: "fra1"},
+	"paris":     {Name: "Paris, FR", Continent: "Europe", CloudRegion: "fra1"},
+	"amsterdam": {Name: "Amsterdam, NL", Continent: "Europe", CloudRegion: "ams3"},
+	// Asia Pacific
+	"singapore": {Name: "Singapore", Continent: "Asia Pacific", CloudRegion: "sgp1"},
+	"sydney":    {Name: "Sydney, AU", Continent: "Asia Pacific", CloudRegion: "syd1"},
+	"tokyo":     {Name: "Tokyo, JP", Continent: "Asia Pacific", CloudRegion: "sgp1"},
+	"seoul":     {Name: "Seoul, KR", Continent: "Asia Pacific", CloudRegion: "sgp1"},
+	"mumbai":    {Name: "Mumbai, IN", Continent: "Asia Pacific", CloudRegion: "blr1"},
+	"bangalore": {Name: "Bangalore, IN", Continent: "Asia Pacific", CloudRegion: "blr1"},
+	// North America
+	"virginia":     {Name: "Virginia, US", Continent: "North America", CloudRegion: "nyc1"},
+	"california":   {Name: "California, US", Continent: "North America", CloudRegion: "sfo3"},
+	"sanfrancisco": {Name: "San Francisco, US", Continent: "North America", CloudRegion: "sfo3"},
+	"nyc":          {Name: "New York, US", Continent: "North America", CloudRegion: "nyc3"},
+	"toronto":      {Name: "Toronto, CA", Continent: "North America", CloudRegion: "tor1"},
+	// South America
+	"saopaulo": {Name: "Sao Paulo, BR", Continent: "South America", CloudRegion: "nyc1"},
+	// Middle East
+	"bahrain": {Name: "Bahrain, ME", Continent: "Middle East", CloudRegion: "blr1"},
 }
 
 // Metadata returns the data source type name.
@@ -91,7 +108,7 @@ func (d *MonitoringLocationsDataSource) Schema(_ context.Context, _ datasource.S
 							Computed:            true,
 						},
 						"cloud_region": schema.StringAttribute{
-							MarkdownDescription: "Approximate cloud provider region identifier (e.g., `eu-west-2`).",
+							MarkdownDescription: "Approximate DigitalOcean datacenter identifier (e.g., `lon1`, `nyc3`, `sgp1`).",
 							Computed:            true,
 						},
 					},

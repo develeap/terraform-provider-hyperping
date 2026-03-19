@@ -129,7 +129,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"regions": schema.ListAttribute{
-				MarkdownDescription: "List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.",
+				MarkdownDescription: "List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations.",
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,

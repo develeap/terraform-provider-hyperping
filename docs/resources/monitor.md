@@ -80,7 +80,7 @@ resource "hyperping_monitor" "maintenance" {
 - `port` (Number) TCP port number (1-65535). Required when protocol is `port`. Examples: `443` (HTTPS), `5432` (PostgreSQL), `6379` (Redis).
 - `project_uuid` (String) UUID of the Hyperping project this monitor belongs to.
 - `protocol` (String) The protocol type. Valid values: `http`, `port`, `icmp`, `dns`. Defaults to `http`.
-- `regions` (List of String) List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations. Valid values: `london`, `frankfurt`, `singapore`, `sydney`, `tokyo`, `virginia`, `saopaulo`, `bahrain`.
+- `regions` (List of String) List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations.
 - `request_body` (String) HTTP request body. Only valid when protocol is `http` and http_method is `POST`, `PUT`, or `PATCH`.
 - `request_headers` (Attributes List) Custom HTTP headers to send with the request. Only valid when protocol is `http`. (see [below for nested schema](#nestedatt--request_headers))
 - `required_keyword` (String) A keyword that must appear in the HTTP response body for the check to pass. Only valid when protocol is `http`.

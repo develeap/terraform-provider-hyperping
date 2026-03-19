@@ -63,7 +63,7 @@ func TestAccMonitorResource_allRegions(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	// All 8 regions from client.AllowedRegions
+	// Subset of regions for testing multi-region configuration
 	allRegions := []string{
 		"london", "frankfurt", "singapore", "sydney",
 		"tokyo", "virginia", "saopaulo", "bahrain",
@@ -72,7 +72,7 @@ func TestAccMonitorResource_allRegions(t *testing.T) {
 	tfresource.ParallelTest(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
-			// Create with all 8 regions
+			// Create with 8 regions
 			{
 				Config: testAccMonitorResourceConfigWithAllRegions(server.URL, allRegions),
 				Check: tfresource.ComposeAggregateTestCheckFunc(

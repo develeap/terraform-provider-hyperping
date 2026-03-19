@@ -431,9 +431,9 @@ func TestContract_AddSubscriber_WithLanguage(t *testing.T) {
 
 	statusPageUUID := statusPages.StatusPages[0].UUID
 
-	// Test: Add subscriber with Spanish language
-	email := "spanish-test@example.com"
-	language := "es"
+	// Test: Add subscriber with Polish language
+	email := "polish-test@example.com"
+	language := "pl"
 	addReq := AddSubscriberRequest{
 		Type:     "email",
 		Email:    &email,
