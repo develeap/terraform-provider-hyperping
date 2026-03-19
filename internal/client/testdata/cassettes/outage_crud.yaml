@@ -94,7 +94,7 @@ interactions:
                 - application/json
             User-Agent:
                 - terraform-provider-hyperping/dev (go1.24.13; linux/amd64)
-        url: https://api.hyperping.io/v2/outages
+        url: https://api.hyperping.io/v2/outages?page=0
         method: POST
       response:
         proto: HTTP/2.0
