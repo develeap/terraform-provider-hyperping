@@ -303,16 +303,22 @@ Client models + Terraform schema + mapping layer.
 
 ## Implementation Phases
 
+> **ATOMICITY RULE**: Phases 2-5 MUST be applied in a single commit. Changing
+> `AuthenticationSettingsAttrTypes()`, `ServiceAttrTypes()`, or `NestedServiceAttrTypes()`
+> without simultaneously updating every `types.ObjectValue` / `types.ObjectValueMust` call
+> that uses them will cause runtime panics (`objectValue missing key`).  Phase 1 (client
+> models) can be a separate commit since it has no TF dependency.
+
 ### Phase 1: Client Models (no TF dependency)
 **Files**: `internal/client/models_incident.go`, `internal/client/models_statuspage.go`
 **Tests**: `internal/client/models_test.go`
 
-1. [ ] Add `Updates []AddIncidentUpdateRequest` to `CreateIncidentRequest` after `Date` field (models_incident.go:33-40)
-2. [ ] Add `Updates []AddIncidentUpdateRequest` to `UpdateIncidentRequest` after `StatusPages` field (models_incident.go:55-60)
-3. [ ] Add `SSOConnectionUUID *string` to `StatusPageAuthenticationSettings` after `AllowedDomains` (models_statuspage.go:55-60)
-4. [ ] Add `SSOConnectionUUID *string` to `CreateStatusPageAuthenticationSettings` after `AllowedDomains` (models_statuspage.go:137-142)
-5. [ ] Add `Description map[string]string` to `StatusPageService` after `Services` field (models_statuspage.go:79-87)
-6. [ ] Add `Description *string` to `CreateStatusPageService` after `Services` field (models_statuspage.go:156-165)
+1. [ ] Add `Updates []AddIncidentUpdateRequest` to `CreateIncidentRequest` after `Date` field (models_incident.go:39, between `Date` and the closing brace at line 40)
+2. [ ] Add `Updates []AddIncidentUpdateRequest` to `UpdateIncidentRequest` after `StatusPages` field (models_incident.go:59, between `StatusPages` and the closing brace at line 60)
+3. [ ] Add `SSOConnectionUUID *string` to `StatusPageAuthenticationSettings` after `AllowedDomains` (models_statuspage.go:59, between `AllowedDomains` and the closing brace at line 60)
+4. [ ] Add `SSOConnectionUUID *string` to `CreateStatusPageAuthenticationSettings` after `AllowedDomains` (models_statuspage.go:141, between `AllowedDomains` and the closing brace at line 142)
+5. [ ] Add `Description map[string]string` to `StatusPageService` after `Services` field (models_statuspage.go:86, between `Services` and the closing brace at line 87)
+6. [ ] Add `Description *string` to `CreateStatusPageService` after `Services` field (models_statuspage.go:164, between `Services` and the closing brace at line 165)
 7. [ ] Write client model serialization tests
 
 ### Phase 2: AttrTypes (mapping types layer)
@@ -325,29 +331,115 @@ Client models + Terraform schema + mapping layer.
 ### Phase 3: Terraform Schemas
 **Files**: `statuspage_resource_schema.go`, `statuspage_data_source.go`, `statuspages_data_source.go`
 
-11. [ ] Add `sso_connection_uuid` attribute to resource schema authentication block
-12. [ ] Add `description` map attribute to resource schema service blocks (both top-level and nested)
-13. [ ] Add `sso_connection_uuid` attribute to data source schema authentication blocks
-14. [ ] Add `description` map attribute to data source schema service blocks (both top-level and nested)
+11. [ ] Add `sso_connection_uuid` attribute to resource schema authentication block (resource_schema.go: inside the map starting at line 209, after `allowed_domains` at line 230)
+12. [ ] Add `description` map attribute to resource schema service blocks:
+    - Top-level services: inside Attributes map at line 256, after `show_response_times` (line 286) and before `services` (line 287)
+    - Nested services: inside Attributes map at line 292, after `show_response_times` (line 322)
+13. [ ] Add `sso_connection_uuid` computed attribute to data source schema authentication blocks:
+    - `statuspage_data_source.go`: inside map at line 169, after `allowed_domains` (line 186)
+    - `statuspages_data_source.go`: inside map at line 182, after `allowed_domains` (line 190)
+14. [ ] Add `description` computed map attribute to data source schema service blocks (4 locations):
+    - `statuspage_data_source.go`: top-level service attrs (line 209), nested service attrs (line 239)
+    - `statuspages_data_source.go`: top-level service attrs (line 213), nested service attrs (line 243)
 
 ### Phase 4: Mapping Functions
 **Files**: `internal/provider/statuspage_mapping.go`
 
-15. [ ] Update `mapSettingsToTFWithFilter` -- map `SSOConnectionUUID` to auth object
-16. [ ] Update `extractAuthSettings` -- extract `sso_connection_uuid` from TF object
-17. [ ] Update `mapServiceToTFWithFilter` -- map `Description` to service object
-18. [ ] Update `mapNestedServicesToTF` -- map `Description` to nested service object
-19. [ ] Update `mapTFToService` -- extract `description` from TF service object (write as plain string)
-20. [ ] Update `mapTFToNestedServices` -- extract `description` from TF nested service object
+15. [ ] Update `mapSettingsToTFWithFilter` (line 110) -- add `SSOConnectionUUID` to the auth object at line 122:
+    ```go
+    var ssoConnectionUUIDValue types.String
+    if settings.Authentication.SSOConnectionUUID != nil {
+        ssoConnectionUUIDValue = types.StringValue(*settings.Authentication.SSOConnectionUUID)
+    } else {
+        ssoConnectionUUIDValue = types.StringNull()
+    }
+    ```
+    Then add `"sso_connection_uuid": ssoConnectionUUIDValue` to the auth object map (line 122-127).
+16. [ ] Update `extractAuthSettings` (line 243) -- extract `sso_connection_uuid` after line 267:
+    ```go
+    if ssoUUID, ok := attrs["sso_connection_uuid"].(types.String); ok && !ssoUUID.IsNull() && !ssoUUID.IsUnknown() {
+        val := ssoUUID.ValueString()
+        authentication.SSOConnectionUUID = &val
+    }
+    ```
+17. [ ] Update `mapServiceToTFWithFilter` (line 350) -- add description mapping before `types.ObjectValue` call at line 362:
+    ```go
+    filteredDesc := filterLocalizedMap(service.Description, configuredLangs)
+    descMap := mapStringMapToTF(filteredDesc, diags)
+    ```
+    Then add `"description": descMap` to the service object map (line 362-370).
+18. [ ] Update `mapNestedServicesToTF` (line 377) -- add description mapping before `types.ObjectValue` call at line 387:
+    ```go
+    filteredDesc := filterLocalizedMap(svc.Description, configuredLangs)
+    descMap := mapStringMapToTF(filteredDesc, diags)
+    ```
+    Then add `"description": descMap` to the nested service object map (line 387-394).
+19. [ ] Update `mapTFToService` (line 497) -- extract `description` after `show_response_times` extraction (line 547), before nested services block:
+    ```go
+    if descMap, ok := attrs["description"].(types.Map); ok && !descMap.IsNull() {
+        descStrMap := mapTFToStringMap(descMap, diags)
+        if enDesc, ok := descStrMap["en"]; ok && enDesc != "" {
+            service.Description = &enDesc
+        } else {
+            for _, v := range descStrMap {
+                if v != "" {
+                    service.Description = &v
+                    break
+                }
+            }
+        }
+    }
+    ```
+20. [ ] Update `mapTFToNestedServices` (line 560) -- extract `description` after `name` extraction (line 585):
+    ```go
+    if descMap, ok := attrs["description"].(types.Map); ok && !descMap.IsNull() {
+        descStrMap := mapTFToStringMap(descMap, diags)
+        if enDesc, ok := descStrMap["en"]; ok && enDesc != "" {
+            svc.Description = &enDesc
+        } else {
+            for _, v := range descStrMap {
+                if v != "" {
+                    svc.Description = &v
+                    break
+                }
+            }
+        }
+    }
+    ```
+    **Note**: nested services currently use `svc.Name` (localized map) for write and `svc.UUID` for identity. The `Description` field uses the same `*string` write pattern via `CreateStatusPageService.Description`.
 
 ### Phase 5: Tests
 **Files**: Various `*_test.go`
 
-21. [ ] Client model serialization tests (incident updates, sso_connection_uuid, service description)
-22. [ ] Update `TestNestedServiceAttrTypes` expected keys (6->7); add `TestServiceAttrTypes_Count` (7->8 keys)
-23. [ ] Update `buildAuthObj` helper to auto-inject `sso_connection_uuid: types.StringNull()` default
-24. [ ] Update `buildNestedServiceObj`, `buildTopLevelServiceObj`, `buildFullServiceObj`, `buildMinimalServiceObj` helpers to include `"description"` key
-25. [ ] Update all inline service/auth object constructors in coverage tests to include new keys
+21. [ ] Client model serialization tests (incident updates, sso_connection_uuid, service description) in `internal/client/models_test.go`
+22. [ ] Update `TestNestedServiceAttrTypes` expected keys (6->7, add `"description"`) at `statuspage_nested_service_test.go:73`; add `TestServiceAttrTypes_Count` (expect 8 keys); add `TestAuthenticationSettingsAttrTypes_Count` (expect 5 keys)
+23. [ ] Update `buildAuthObj` helper (`statuspage_mapping_test.go:101`) to auto-inject `sso_connection_uuid: types.StringNull()` when caller omits it. Modify the function to check for the key:
+    ```go
+    func buildAuthObj(t *testing.T, attrs map[string]attr.Value) types.Object {
+        t.Helper()
+        if _, ok := attrs["sso_connection_uuid"]; !ok {
+            attrs["sso_connection_uuid"] = types.StringNull()
+        }
+        obj, diags := types.ObjectValue(AuthenticationSettingsAttrTypes(), attrs)
+        if diags.HasError() {
+            t.Fatalf("failed to build auth test object: %v", diags.Errors())
+        }
+        return obj
+    }
+    ```
+    This keeps all 4 existing callers (lines 120, 188, 217, 239) working without changes.
+24. [ ] Update service object builder helpers to include `"description"` key:
+    - `buildFullServiceObj()` (`statuspage_mapping_sections_test.go:261`): add `"description": types.MapNull(types.StringType)` to the ServiceAttrTypes object
+    - `buildMinimalServiceObj()` (`statuspage_mapping_sections_test.go:275`): add `"description": types.MapNull(types.StringType)`
+    - `buildNestedServiceObj()` (`statuspage_nested_service_test.go:566`): add `"description": types.MapNull(types.StringType)` to the NestedServiceAttrTypes object
+    - `buildTopLevelServiceObj()` (`statuspage_nested_service_test.go:605`): add `"description": types.MapNull(types.StringType)` to the ServiceAttrTypes object
+25. [ ] Update all inline service/auth object constructors in coverage tests to include new keys:
+    - `TestMapTFToSettings_WithValues` (`statuspage_mapping_coverage_test.go:589`): add `"sso_connection_uuid": types.StringNull()` to auth object
+    - `TestMapTFToSections_WithValues` (`statuspage_mapping_coverage_test.go:654`): add `"description": types.MapNull(types.StringType)` to service object
+    - `TestMapTFToServices_WithValues` (`statuspage_mapping_coverage_test.go:702,714,726`): add `"description"` to all service AND nested service objects
+    - `TestMapTFToServices_NonGroupWithoutUUID` (`statuspage_mapping_coverage_test.go:1158`): add `"description": types.MapNull(types.StringType)`
+    - `TestMapTFToServices_GroupWithEmptyServices` (`statuspage_mapping_coverage_test.go:1184`): add `"description": types.MapNull(types.StringType)`
+    - Inline `statuspage_mapping_sections_test.go:160`: the section test constructs an inline service object via SectionAttrTypes -- no service objects directly, so no change needed (only section name + is_split + services list)
 26. [ ] Add mapping tests for sso_connection_uuid read/write round-trip
 27. [ ] Add mapping tests for service description read/write round-trip
 
@@ -361,18 +453,20 @@ Client models + Terraform schema + mapping layer.
 3. **Mapping round-trip tests** -- TF -> API -> TF for sso_connection_uuid and description
 
 ### Existing Test Updates
-All tests that construct `ServiceAttrTypes()` or `NestedServiceAttrTypes()` objects will fail until `description` is added. These must be updated in the same commit as the AttrTypes change.
+All tests that construct `ServiceAttrTypes()`, `NestedServiceAttrTypes()`, or `AuthenticationSettingsAttrTypes()` objects will fail until corresponding new keys are added. These MUST be updated in the same commit as the AttrTypes change.
 
 **Service/NestedService objects -- files that need `"description"` added:**
-- `statuspage_mapping_coverage_test.go` -- multiple inline object constructors (lines 654, 702, 714, 726, 1158, 1184)
-- `statuspage_mapping_sections_test.go` -- `buildFullServiceObj()` (line 261) and `buildMinimalServiceObj()` (line 275), plus inline constructions (line 160)
-- `statuspage_nested_service_test.go` -- `buildNestedServiceObj()` (line 566) and `buildTopLevelServiceObj()` (line 605) helpers; all callers get fixed automatically
+- `statuspage_mapping_coverage_test.go` -- inline object constructors at lines 654, 702, 714, 726, 1158, 1184
+- `statuspage_mapping_sections_test.go` -- `buildFullServiceObj()` (line 261) and `buildMinimalServiceObj()` (line 275). The inline section construction at line 154-161 only builds SectionAttrTypes objects (name + is_split + services list), NOT ServiceAttrTypes objects directly, so it needs no `"description"` key.
+- `statuspage_nested_service_test.go` -- `buildNestedServiceObj()` (line 566) and `buildTopLevelServiceObj()` (line 605) helpers; all callers get fixed automatically through these helpers
 
 Note: `statuspage_nested_groups_test.go` does NOT construct typed objects directly -- it uses API client structs, so it needs no changes.
 
 **Authentication objects -- files that need `"sso_connection_uuid"` added:**
-- `statuspage_mapping_coverage_test.go` -- `TestMapTFToSettings_WithValues` (line 589)
-- `statuspage_mapping_settings_test.go` -- `buildAuthObj()` helper (line 101); must default `sso_connection_uuid` to `types.StringNull()` when not in caller's attrs map, OR every caller (lines 120, 188, 217, 239) must add `"sso_connection_uuid"`. Best approach: update `buildAuthObj` to inject a default `types.StringNull()` for `sso_connection_uuid` when not provided, so all existing callers keep working.
+- `statuspage_mapping_coverage_test.go` -- `TestMapTFToSettings_WithValues` (line 589): inline auth object must add `"sso_connection_uuid": types.StringNull()`
+- `statuspage_mapping_test.go` -- `buildAuthObj()` helper (line 101): update to inject default `types.StringNull()` for `sso_connection_uuid` when not in caller's attrs map. This fixes all 4 callers (lines 120, 188, 217, 239) automatically.
+- `statuspage_mapping_settings_test.go` -- `TestMapSettingsToTF` (lines 17-83): uses `client.StatusPageSettings` struct directly, which zero-values the new `SSOConnectionUUID` field to nil. The mapping function handles nil correctly, so NO test changes needed here.
+- `statuspage_mapping_coverage_test.go` -- `TestMapSettingsToTFWithFilter_EdgeCases` (line 763) and `TestMapSettingsToTFWithFilter_WithOptionalValues` (line 1238): both use `client.StatusPageAuthenticationSettings` struct directly with Go zero-values. The mapping function handles nil `SSOConnectionUUID` correctly, so NO test changes needed for these.
 
 ### Verification Commands
 ```bash
