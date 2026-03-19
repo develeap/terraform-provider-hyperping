@@ -249,15 +249,13 @@ func (w *interactiveWizardPD) executeMigration() int {
 
 	createdResources := w.createHyperpingResources(progressBar)
 
-	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
-	progressBar.Add(1)
+	_ = progressBar.Add(1) //nolint:errcheck // #nosec G104 -- best-effort progress display
 
 	if exitCode := w.writeImportScript(createdResources); exitCode != 0 {
 		return exitCode
 	}
 
-	//nolint:errcheck // best-effort progress display; Finish error does not affect migration correctness
-	progressBar.Finish()
+	_ = progressBar.Finish() //nolint:errcheck // #nosec G104 -- best-effort progress display
 
 	w.printFinalSummary(migrationReport)
 	return 0
@@ -272,8 +270,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to write Terraform config: %v", writeErr))
 		return 1
 	}
-	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
-	progressBar.Add(1)
+	_ = progressBar.Add(1) //nolint:errcheck // #nosec G104 -- best-effort progress display
 
 	jsonReport, err := reporter.GenerateJSONReport(migrationReport)
 	if err != nil {
@@ -285,8 +282,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to write JSON report: %v", writeErr))
 		return 1
 	}
-	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
-	progressBar.Add(1)
+	_ = progressBar.Add(1) //nolint:errcheck // #nosec G104 -- best-effort progress display
 
 	textReport := reporter.GenerateTextReport(migrationReport)
 	textPath := filepath.Join(w.config.outputDir, "report.txt")                         //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
@@ -294,8 +290,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to write text report: %v", writeErr))
 		return 1
 	}
-	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
-	progressBar.Add(1)
+	_ = progressBar.Add(1) //nolint:errcheck // #nosec G104 -- best-effort progress display
 
 	manualSteps := reporter.GenerateManualStepsMarkdown(migrationReport)
 	manualPath := filepath.Join(w.config.outputDir, "manual-steps.md")                     //nolint:gosec // G703: outputDir is a CLI flag, operator-controlled
@@ -303,8 +298,7 @@ func (w *interactiveWizardPD) writeGeneratedFiles(reporter *report.Reporter, mig
 		w.prompter.PrintError(fmt.Sprintf("Failed to write manual steps: %v", writeErr))
 		return 1
 	}
-	//nolint:errcheck // best-effort progress display; Add error does not affect migration correctness
-	progressBar.Add(1)
+	_ = progressBar.Add(1) //nolint:errcheck // #nosec G104 -- best-effort progress display
 
 	return 0
 }

@@ -393,8 +393,7 @@ func finalizeExecution(ctx context.Context, summary *ImportSummary) int {
 
 	checkpointMgr := NewCheckpointManager(*checkpointFile, !*noCheckpoint)
 	if summary.FailureCount == 0 && !*noCheckpoint {
-		//nolint:errcheck
-		checkpointMgr.Delete()
+		_ = checkpointMgr.Delete() //nolint:errcheck // #nosec G104 -- best-effort checkpoint cleanup after successful import
 	}
 
 	if !*quiet {

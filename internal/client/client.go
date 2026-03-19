@@ -513,7 +513,7 @@ func (c *Client) doRequestWithRetry(ctx context.Context, method, path string, bo
 
 		if err != nil {
 			if resp != nil && resp.Body != nil {
-				resp.Body.Close()
+				_ = resp.Body.Close() //nolint:errcheck // #nosec G104 -- best-effort cleanup on failed request
 			}
 			c.logDebug(ctx, "request failed", map[string]interface{}{
 				"method":      method,

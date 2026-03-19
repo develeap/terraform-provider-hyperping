@@ -227,19 +227,19 @@ func (r *pingdomRunner) initState() error {
 		if migID == "" {
 			mgr, mgrErr := checkpoint.NewManager()
 			if mgrErr != nil {
-				logger.Close()
+				_ = logger.Close() //nolint:errcheck // #nosec G104 -- best-effort cleanup before returning error
 				return fmt.Errorf("failed to create checkpoint manager: %w", mgrErr)
 			}
 			latest, latestErr := mgr.FindLatest(toolName)
 			if latestErr != nil {
-				logger.Close()
+				_ = logger.Close() //nolint:errcheck // #nosec G104 -- best-effort cleanup before returning error
 				return fmt.Errorf("no checkpoint found to resume from")
 			}
 			migID = latest.MigrationID
 		}
 		state, stateErr := migrationstate.Resume(migID, logger)
 		if stateErr != nil {
-			logger.Close()
+			_ = logger.Close() //nolint:errcheck // #nosec G104 -- best-effort cleanup before returning error
 			return fmt.Errorf("failed to resume from checkpoint: %w", stateErr)
 		}
 		r.state = state
@@ -251,7 +251,7 @@ func (r *pingdomRunner) initState() error {
 	// totalResources will be updated after fetch; use 0 as placeholder
 	state, stateErr := migrationstate.New(toolName, migID, 0, logger)
 	if stateErr != nil {
-		logger.Close()
+		_ = logger.Close() //nolint:errcheck // #nosec G104 -- best-effort cleanup before returning error
 		return fmt.Errorf("failed to create migration state: %w", stateErr)
 	}
 	r.state = state

@@ -121,13 +121,13 @@ func (c *Client) FetchMonitors(ctx context.Context) ([]Monitor, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
+			_ = resp.Body.Close() //nolint:errcheck // #nosec G104 -- best-effort cleanup before returning error
 			return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 		}
 
 		var result MonitorsResponse
 		err = json.NewDecoder(resp.Body).Decode(&result)
-		resp.Body.Close()
+		_ = resp.Body.Close() //nolint:errcheck // #nosec G104 -- body already consumed, close error not actionable
 		if err != nil {
 			return nil, fmt.Errorf("decoding response: %w", err)
 		}
@@ -165,13 +165,13 @@ func (c *Client) FetchHeartbeats(ctx context.Context) ([]Heartbeat, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
+			_ = resp.Body.Close() //nolint:errcheck // #nosec G104 -- best-effort cleanup before returning error
 			return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 		}
 
 		var result HeartbeatsResponse
 		err = json.NewDecoder(resp.Body).Decode(&result)
-		resp.Body.Close()
+		_ = resp.Body.Close() //nolint:errcheck // #nosec G104 -- body already consumed, close error not actionable
 		if err != nil {
 			return nil, fmt.Errorf("decoding response: %w", err)
 		}

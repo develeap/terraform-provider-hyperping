@@ -100,7 +100,7 @@ func (m *Manager) Save(checkpoint *Checkpoint) error {
 
 	// Atomic rename
 	if err := os.Rename(tempFile, filename); err != nil {
-		os.Remove(tempFile) // Clean up temp file on error
+		_ = os.Remove(tempFile) //nolint:errcheck // #nosec G104 -- best-effort cleanup of temp file on rename error
 		return fmt.Errorf("failed to rename checkpoint file: %w", err)
 	}
 

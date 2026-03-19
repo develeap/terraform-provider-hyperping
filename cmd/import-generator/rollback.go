@@ -151,8 +151,7 @@ func (rm *RollbackManager) Rollback(ctx context.Context) error {
 		fmt.Print("\nThis will remove all listed resources from Terraform state.\n")
 		fmt.Print("Are you sure you want to proceed? (yes/no): ")
 		var response string
-		//nolint:errcheck
-		fmt.Scanln(&response)
+		_, _ = fmt.Scanln(&response) //nolint:errcheck // #nosec G104 -- user input is optional, empty default is safe
 
 		if response != "yes" {
 			fmt.Println("Rollback cancelled")

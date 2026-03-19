@@ -210,7 +210,7 @@ func (c *Client) doRequest(ctx context.Context, endpoint string, payload map[str
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
+		_ = resp.Body.Close() //nolint:errcheck // #nosec G104 -- best-effort cleanup before returning error
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 

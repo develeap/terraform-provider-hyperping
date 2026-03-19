@@ -221,8 +221,7 @@ func PromptForResume(checkpoint *ImportCheckpoint) bool {
 
 	fmt.Printf("Resume from checkpoint? (y/N): ")
 	var response string
-	//nolint:errcheck
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response) //nolint:errcheck // #nosec G104 -- user input is optional, empty default is safe
 
 	return response == "y" || response == "Y"
 }

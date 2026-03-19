@@ -154,7 +154,7 @@ func ConfirmAction(prompt string, defaultYes bool) bool {
 
 	fmt.Fprintf(os.Stderr, "%s [%s]: ", prompt, defaultStr)
 	// Ignore error from Scanln - user input is optional
-	fmt.Scanln(&response) //nolint:errcheck
+	_, _ = fmt.Scanln(&response) //nolint:errcheck //nolint:errcheck // #nosec G104 -- user input is optional, empty default is safe
 
 	if response == "" {
 		return defaultYes
