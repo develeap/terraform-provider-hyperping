@@ -6,7 +6,7 @@ This file provides context for AI coding agents working on the Terraform Provide
 
 **What**: Terraform provider enabling Infrastructure as Code management of Hyperping monitoring resources (monitors, incidents, maintenance windows, status pages).
 
-**Language**: Go 1.24+
+**Language**: Go 1.26.1+
 **Framework**: Terraform Plugin Framework
 **API**: Hyperping REST API (https://api.hyperping.io)
 

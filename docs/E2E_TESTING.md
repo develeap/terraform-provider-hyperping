@@ -22,7 +22,7 @@ The E2E testing pipeline validates the entire migration workflow:
 
 ### Required Software
 
-- **Go 1.21+** - For running tests
+- **Go 1.26.1+** - For running tests
 - **Terraform 1.8+** - For infrastructure validation
 - **Bash** - For import script execution
 - **Git** - For version control
@@ -352,7 +352,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.26'
 
       - uses: hashicorp/setup-terraform@v3
         with:

@@ -10,16 +10,154 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-03-19
+
+### Security
+
+- Upgraded `google.golang.org/grpc` from v1.79.2 to v1.79.3, fixing a CVE for authorization bypass via missing leading slash in HTTP/2 `:path` pseudo-header.
+- Resolved all 30 gosec G104 findings — explicitly handled all unhandled errors (`resp.Body.Close()`, `fmt.Scanln`, `progressBar.Add/Finish`, `logger.Close`) across 13 files.
+- Hardened localhost TLS bypass check — `strings.Contains(url, "localhost")` replaced with `url.Parse` hostname check, preventing matches on hostnames like `evil-localhost.com`.
+- Hardened domain allowlist — manual string splitting replaced with `url.Parse`, correctly handling userinfo, ports, and IPv6.
+- Marked `ping_url` as Sensitive to prevent secret healthcheck URLs from appearing in plan output and state files.
+- Marked subscriber `email` and `phone` fields as Sensitive to hide PII in plan output.
+
+### Fixed
+
+- **`hyperping_healthcheck`**: Fixed timezone unmarshal bug — API returns `"tz"` but struct had `json:"timezone"`. Added dual-field support with `GetTimezone()` fallback.
+- **`hyperping_incident`**: `text` and `type` fields lacked `RequiresReplace()`. Update was a no-op but Terraform reported success; now forces destroy+recreate.
+- **`hyperping_outage`**: Fixed list pagination — client now loops through all pages. Accounts with >20 outages were getting truncated data.
+- **`hyperping_maintenance`**: Fixed list pagination — same page-loop fix, iterates until `hasNextPage` is false.
+- **Client**: POST requests no longer retried on 500 to prevent creating duplicate resources.
+- **Build**: Moved 886-line `monitor_resource_test_helpers.go` (importing `testing`/`httptest`) from production binary to `_test.go`.
+
 ### Changed
 
-- **Migration Tools**: Extracted shared utilities into `pkg/migrate/` package, eliminating ~224 lines of duplicated code across Better Stack, UptimeRobot, and Pingdom migration tools. Shared functions: `MapFrequency`, `SanitizeResourceName`, `EscapeHCL`, `EscapeShell`, `MapRegions`, `EnsureURLScheme`, `DeduplicateResourceName`.
-- **Migration Tools**: Added `bahrain` region aliases (`me`, `me-south`, `me-south-1`) to shared region mapping.
-- **Integration Tests**: Populated BetterStack and UptimeRobot test accounts with diverse monitor types for meaningful Medium/Large scenario testing. Updated scenario expectations to match actual account data (UptimeRobot: 26 resources across 5 types, BetterStack: 10 monitors at free tier limit).
+- **`hyperping_healthcheck`**: Added `ValidateConfig` for plan-time validation of cron/period mutual exclusivity.
+- **`hyperping_statuspage_subscriber`**: Added `GetSubscriber` client method with early termination, returning `ErrNotFound` for proper state removal. Read now passes subscriber type as server-side filter to reduce pages fetched.
+- **Validators**: ISO 8601 validator now uses `time.Parse(RFC3339)` instead of `strings.Contains("T")`. UUID validator requires minimum length and proper charset.
+- **Client**: Pre-compiled regexes for `extractRetryAfter`/`extractStatusCode` (moved from per-call to package-level vars).
+- **Tests**: Introduced generic `testutil.Ptr[T]` replacing 6+ duplicate `strPtr`/`boolPtr`/`intPtr` helpers.
+- **Refactor**: Removed 7 redundant `var xxxBasePath = XxxBasePath` aliases in favor of direct constant usage.
+
+### CI
+
+- Removed VCR cassette caching — `actions/cache` was overwriting checked-out cassettes with stale versions via prefix matching.
+
+## [1.7.1] - 2026-03-18
+
+### Fixed
+
+- **`hyperping_maintenance`**: `UpdateMaintenanceRequest` was missing `status_pages`, `notification_option`, and `notification_minutes`. Any `terraform apply` on a maintenance resource with these fields would silently reset them to defaults on every update.
+- **`mapStringMapToTF`**: Changed from variadic to required `*diag.Diagnostics` parameter, preventing callers from accidentally swallowing errors.
+- Fixed non-deterministic map iteration in contract validators test.
 
 ### Added
 
-- **`pkg/migrate/`**: New shared package with 83+ test cases covering frequency mapping, resource name sanitization, HCL/shell escaping, URL scheme normalization, and cloud region mapping.
-- **`cmd/migrate-uptimerobot/uptimerobot/client_test.go`**: Added `FlexibleInt` JSON unmarshaling tests (14 cases covering numeric, string, empty, null, and struct embedding).
+- **`hyperping_maintenance`**: Added `ValidateConfig` for plan-time cross-field validation that catches `end_date <= start_date` before any API call. Covers unknown/null values, unparseable dates, and timezone-aware comparison.
+- Extended `LocalizedText` from 4 to all 10 API-supported languages.
+- Added `StringLength(1, 2048)` validator on monitor URL.
+
+### Changed
+
+- Consolidated duplicate `mapMonitorToModel` into shared `MapMonitorCommonFields` (~80 lines removed).
+- Standardized `Configure` type assertions across all 8 resources.
+
+### Removed
+
+- `filter_examples.go` (386 lines of commented-out code).
+- `filters_performance_test.go` (422 lines of fake performance tests with meaningless thresholds).
+- `testutil/test_data.go` (72 lines that only supported deleted perf tests).
+- `client/test_helpers.go` (72 lines of exported helpers shipping in production binary).
+- `statuspage_id_translation_test.go` (165 lines of orphaned test for removed code).
+- 8 superseded error helpers and ~240 lines of their tests (replaced by `*WithContext` variants).
+- Dead `boolPtr` moved from production to test-only file.
+
+## [1.7.0] - 2026-03-17
+
+### Changed
+
+- Removed 10 API workarounds that are no longer needed after Hyperping deployed server-side fixes in March 2026. All removals were verified against the live production API:
+  - **required_keyword** (Bug #8) — plan-value preservation removed from monitor Create/Read/Update.
+  - **escalation_policy race condition** (Bug #9) — conditional restore removed from monitor Create/Update.
+  - **isProtected reset** (Bug #2) — `authenticationWorkaround` removed from status page updates.
+  - **show_response_times / show_uptime** (Bugs #3, #4, #14, #15) — `statuspage_writeonly_booleans.go` deleted (~234 lines).
+  - **is_split** (Bug #5) — `statuspage_section_is_split.go` deleted.
+  - **dns_record_type validation** (Bug #13) — API now correctly allows null for non-DNS monitors.
+  - **Incomplete POST/PUT responses** (Bug #18) — read-after-write GET calls removed from incidents and maintenance, saving 2 API calls per create/update.
+- **Total:** ~800+ lines of defensive code removed.
+
+### Fixed
+
+- Updated incident and maintenance client methods to parse full POST/PUT response objects instead of extracting only the UUID.
+- Restored `is_split` preservation logic after premature removal (API confirmed still write-only during verification).
+- **fix(scraper)**: Added `toolchain` directive to `go.mod` to prevent automatic Go version downloads.
+- **fix(ci)**: Fixed API drift detection workflow not opening GitHub issues.
+
+### Tests
+
+- Comprehensive test suite hardening across incident, maintenance, and status page resources (~8,700+ lines).
+- Mock HTTP servers updated to return complete API responses matching real production behavior.
+- Added unit tests for `is_split` preservation in status page sections.
+
+### Dependencies
+
+- Bumped `oasdiff` to v1.12.3 and switched to `oasdiff/kin-openapi` fork.
+- Bumped `github.com/PuerkitoBio/goquery` to v1.12.0 in scraper tool.
+
+## [1.6.0] - 2026-03-16
+
+### Added
+
+- **`hyperping_monitor`**: DNS protocol support. Monitors can now use `protocol = "dns"` alongside existing HTTP, ICMP, and port protocols. New attributes: `dns_record_type` (A, AAAA, CNAME, MX, NS, TXT, SOA, SRV, CAA, PTR), `dns_nameserver`, and `dns_expected_answer`.
+- DNS fields are available on the `hyperping_monitor` resource and both `hyperping_monitor` and `hyperping_monitors` data sources.
+
+### Changed
+
+- **URL validation**: Now protocol-aware at plan time. HTTP/ICMP/port monitors require `http://` or `https://` URLs; DNS monitors accept bare domain names.
+- **Cross-field validation**: Setting DNS-only fields on non-DNS monitors (or HTTP-only fields on DNS monitors) is caught at plan time with clear error messages.
+- Removed `dns_record_type` PUT workaround — the Hyperping API bug requiring this injection on every PUT has been fixed upstream, verified by 13 integration tests.
+
+### Dependencies
+
+- Bumped `github/codeql-action` in the github-actions group.
+
+## [1.5.0] - 2026-03-16
+
+### Added
+
+- **`hyperping_monitoring_locations`**: New data source listing all 8 Hyperping monitoring regions with metadata (name, continent, cloud region). Use it to dynamically assign regions to monitors.
+- **List data sources**: All list data sources (`hyperping_monitors`, `hyperping_incidents`, `hyperping_healthchecks`, `hyperping_maintenance_windows`, `hyperping_outages`, `hyperping_statuspages`, `hyperping_statuspage_subscribers`) now expose `total` (count) and `ids` (list of UUIDs) computed attributes.
+- **Prometheus exporter**: New `cmd/hyperping-exporter` tool exposing Hyperping monitor metrics for Prometheus scraping.
+
+### Changed
+
+- **Plan-time validation**: Terraform now catches invalid monitor field combinations at plan time (e.g., setting `http_method` on an ICMP monitor, omitting `port` on a port monitor).
+- **Schema descriptions**: Now show valid values inline (allowed protocols, HTTP methods, check frequencies).
+- **Maintenance windows**: `notification_option` validates against allowed values at plan time.
+- **Status pages**: `languages` and `default_language` validate against allowed values at plan time.
+- **Migration Tools**: Extracted shared utilities into `pkg/migrate/` package, eliminating ~224 lines of duplicated code across Better Stack, UptimeRobot, and Pingdom migration tools.
+- **Migration Tools**: Added `bahrain` region aliases (`me`, `me-south`, `me-south-1`) to shared region mapping.
+
+### Tests
+
+- New `pkg/migrate/` shared package with 83+ test cases covering frequency mapping, resource name sanitization, HCL/shell escaping, URL scheme normalization, and cloud region mapping.
+- Added `FlexibleInt` JSON unmarshaling tests (14 cases) in UptimeRobot migration client.
+- Populated BetterStack and UptimeRobot test accounts for meaningful Medium/Large scenario testing.
+
+### Dependencies
+
+- Bumped the terraform-plugin group with 3 updates.
+- Bumped `golang.org/x/oauth2` and `golang.org/x/time` in scraper tool.
+
+### CI
+
+- Removed `all` option from integration test workflow dispatch.
+- Added rate limit cooldown between sequential integration test runs.
+- Defaulted integration tests to SmallScenario on PRs.
+- Fixed working directory for `go run` in integration tests.
+- Used read-only cache restore for API sync check snapshots.
+- Prevented false positive API change issues for metadata-only diffs.
+- Removed unused `module-tests` workflow.
 
 ## [1.4.10] - 2026-03-07
 
@@ -790,7 +928,12 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.10...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.2...HEAD
+[1.7.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.1...v1.7.2
+[1.7.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.0...v1.7.1
+[1.7.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.6.0...v1.7.0
+[1.6.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.10...v1.5.0
 [1.4.10]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.9...v1.4.10
 [1.4.9]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.8...v1.4.9
 [1.4.8]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.4.7...v1.4.8

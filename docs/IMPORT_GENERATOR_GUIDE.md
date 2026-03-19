@@ -62,7 +62,7 @@ go install ./cmd/import-generator
 
 ### Prerequisites
 
-- **Go 1.21+** (for building)
+- **Go 1.26.1+** (for building)
 - **Terraform 1.8+** (for execution mode)
 - **Hyperping API Key** (set as environment variable)
 

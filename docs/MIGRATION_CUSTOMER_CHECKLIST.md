@@ -44,7 +44,7 @@ Complete these steps before running the migration tool.
   - Linux: Download from [terraform.io](https://terraform.io)
   - Windows: Use Chocolatey `choco install terraform`
 
-- [ ] **Go 1.21 or later installed** (for building migration tools)
+- [ ] **Go 1.26.1 or later installed** (for building migration tools)
   ```bash
   go version
   # Should show: go1.21 or higher

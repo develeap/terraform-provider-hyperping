@@ -58,7 +58,7 @@ test: add acceptance tests for healthcheck resource
 
 ### Prerequisites
 
-- [Go](https://golang.org/doc/install) 1.24 or later
+- [Go](https://golang.org/doc/install) 1.26.1 or later
 - [Terraform](https://www.terraform.io/downloads.html) 1.0 or later
 - [golangci-lint](https://golangci-lint.run/usage/install/) for linting
 - [gosec](https://github.com/securego/gosec) for security scanning

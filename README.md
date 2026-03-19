@@ -140,7 +140,7 @@ migrate-pingdom --pingdom-api-key $PINGDOM_KEY --hyperping-api-key $HYPERPING_KE
 ## Requirements
 
 - Terraform >= 1.0
-- Go >= 1.24 (development only)
+- Go >= 1.26.1 (development only)
 - Hyperping account with API key
 
 ## Development
