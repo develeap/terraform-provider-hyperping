@@ -16,6 +16,12 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+// resourceIDPattern matches valid Hyperping resource IDs:
+// - Standard UUIDs: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+// - Prefixed IDs: mon_xxx, inc_xxx, sp_xxx, out_xxx, tok_xxx, etc.
+// Requires at least 3 characters, only alphanumeric, dashes, and underscores.
+var resourceIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{1,}[a-zA-Z0-9]$`)
+
 // reservedHeaderNames lists HTTP headers that users must not override.
 // Allowing these could leak API credentials or manipulate routing.
 var reservedHeaderNames = map[string]bool{
@@ -111,14 +117,12 @@ func (v iso8601Validator) ValidateString(_ context.Context, req validator.String
 	}
 
 	value := req.ConfigValue.ValueString()
-	// Simple ISO 8601 validation: must contain 'T' and end with 'Z' or timezone offset
-	// Full RFC3339 parsing would be overkill for plan-time validation (API will validate)
-	if !strings.Contains(value, "T") {
+	if _, err := time.Parse(time.RFC3339, value); err != nil {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid ISO 8601 Format",
-			fmt.Sprintf("The value %q does not appear to be in ISO 8601 format. "+
-				"Expected format: 2026-01-29T10:00:00Z", value),
+			fmt.Sprintf("The value %q must be a valid ISO 8601 timestamp "+
+				"(e.g., 2024-01-15T10:00:00Z).", value),
 		)
 	}
 }
@@ -147,10 +151,10 @@ func (v uuidFormatValidator) ValidateString(_ context.Context, req validator.Str
 	value := req.ConfigValue.ValueString()
 	// Accept standard UUIDs (with dashes) or Hyperping resource IDs (prefix_xxx).
 	// Hyperping IDs use short prefixes: mon_, sp_, out_, tok_, inc_, etc.
-	hasDashes := strings.Contains(value, "-")
-	hasUnderscores := strings.Contains(value, "_")
-
-	if !hasDashes && !hasUnderscores {
+	// Must be at least 3 chars, only alphanumeric/dashes/underscores, and contain
+	// at least one dash or underscore to distinguish from plain strings.
+	if !resourceIDPattern.MatchString(value) ||
+		(!strings.Contains(value, "-") && !strings.Contains(value, "_")) {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid UUID Format",

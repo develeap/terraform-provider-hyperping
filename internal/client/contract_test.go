@@ -569,11 +569,3 @@ func TestContractStatusPage_UnmarshalListResponse(t *testing.T) {
 // =============================================================================
 // Helper functions
 // =============================================================================
-
-func strPtr(s string) *string {
-	return &s
-}
-
-func intPtr(i int) *int {
-	return &i
-}

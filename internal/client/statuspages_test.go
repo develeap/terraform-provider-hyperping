@@ -22,10 +22,6 @@ func setupStatusPageTestServer(handler http.HandlerFunc) (*httptest.Server, *Cli
 	return server, client
 }
 
-func stringPtr(s string) *string {
-	return &s
-}
-
 // =============================================================================
 // ListStatusPages Tests
 // =============================================================================

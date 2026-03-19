@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 func TestMapHealthcheckCommonFields_NilPointer(t *testing.T) {
@@ -194,7 +195,7 @@ func TestMapOutageNestedObjects_FullOutage(t *testing.T) {
 func TestValidateCronPeriodExclusivity_BothSet(t *testing.T) {
 	t.Parallel()
 
-	plan := buildTestPlan("* * * * *", "UTC", intPtr(60), "seconds")
+	plan := buildTestPlan("* * * * *", "UTC", testutil.Ptr(60), "seconds")
 	err := validateCronPeriodExclusivity(&plan)
 	if err == nil {
 		t.Error("expected error when both cron and period are set")
@@ -214,7 +215,7 @@ func TestValidateCronPeriodExclusivity_CronOnly(t *testing.T) {
 func TestValidateCronPeriodExclusivity_PeriodOnly(t *testing.T) {
 	t.Parallel()
 
-	plan := buildTestPlan("", "", intPtr(60), "seconds")
+	plan := buildTestPlan("", "", testutil.Ptr(60), "seconds")
 	err := validateCronPeriodExclusivity(&plan)
 	if err != nil {
 		t.Errorf("unexpected error for period-only: %s", err)
@@ -244,7 +245,7 @@ func TestValidateCronPeriodExclusivity_TzWithoutCron(t *testing.T) {
 func TestValidateCronPeriodExclusivity_PeriodValueWithoutType(t *testing.T) {
 	t.Parallel()
 
-	plan := buildTestPlan("", "", intPtr(60), "")
+	plan := buildTestPlan("", "", testutil.Ptr(60), "")
 	err := validateCronPeriodExclusivity(&plan)
 	if err == nil {
 		t.Error("expected error: period_type required when period_value is set")
@@ -323,8 +324,6 @@ func buildTestPlan(cron, tz string, periodValue *int, periodType string) Healthc
 
 	return plan
 }
-
-func intPtr(v int) *int { return &v }
 
 // Terraform types helpers for tests.
 func tfString(v string) types.String { return types.StringValue(v) }
