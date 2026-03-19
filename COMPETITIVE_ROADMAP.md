@@ -49,25 +49,17 @@ provider "uptime" {
 
 ---
 
-## Phase 2: User-Agent Versioning
+## Phase 2: User-Agent Versioning -- DONE (v1.4.x)
 
 **Branch:** `feat/user-agent-version`
 **Source:** StatusCake, Better Uptime
+**Shipped:** v1.4.x
 
-### Problem
+### Delivered
 
-Our HTTP client sends a generic or missing User-Agent. Competitors send `terraform-provider-{name}/{version}` for API analytics and debugging.
-
-### Changes
-
-- Add provider version string to client (via Go build ldflags or provider metadata)
-- Set User-Agent header to `terraform-provider-hyperping/{version}` in transport layer
-- Ensure User-Agent is not overridable by request_headers validator (already blocked by `ReservedHeaderName`)
-
-### Files
-
-- `internal/client/client.go` or `internal/client/headers.go`
-- `main.go` (version injection via ldflags)
+- Provider version injected via `WithVersion()` functional option in `client.go`
+- User-Agent header set to `terraform-provider-hyperping/{version}` via `buildUserAgent()` in transport layer
+- User-Agent blocked from override by `ReservedHeaderName` validator
 
 ---
 
@@ -125,27 +117,27 @@ Adding a new resource goes from ~50 lines of boilerplate schema to ~10.
 
 ---
 
-## Phase 5: Cross-Field Schema Validators -- IN PROGRESS (v1.5.0 partial)
+## Phase 5: Cross-Field Schema Validators -- DONE (v1.5.0 + v1.7.1 + v1.7.2)
 
 **Branch:** `feat/cross-field-validators`
 **Source:** Better Uptime, StatusCake, Datadog
-**Shipped (v1.5.0):** Monitor `ValidateConfig` — protocol-aware cross-field validation at plan time
+**Shipped:** v1.5.0 (monitor), v1.7.1 (maintenance), v1.7.2 (healthcheck)
 
-### Delivered (v1.5.0, PR #82)
+### Delivered
 
-- `ValidateConfig()` on monitor resource via `resource.ResourceWithValidateConfig` interface
-- ICMP/port protocols reject HTTP-only fields (`http_method`, `expected_status_code`, `follow_redirects`, `request_headers`, `request_body`, `required_keyword`)
-- Port protocol requires `port` field; HTTP/ICMP reject `port` field
-- Clear error messages with field name and suggested fix
-- 513 lines of unit tests covering all protocol/field combinations
-
-### Remaining
-
-- Add `ConfigValidators()` to healthcheck resource:
-  - `cron` conflicts with `period_value` + `period_type`
-- Add `ConfigValidators()` to maintenance resource:
-  - `end_date` must be after `start_date` (custom validator)
-- Monitor: `dns_record_type` requires protocol == "dns" (if applicable)
+- **Monitor** `ValidateConfig()` (v1.5.0, PR #82):
+  - ICMP/port protocols reject HTTP-only fields (`http_method`, `expected_status_code`, `follow_redirects`, `request_headers`, `request_body`, `required_keyword`)
+  - Port protocol requires `port` field; HTTP/ICMP reject `port` field
+  - 513 lines of unit tests covering all protocol/field combinations
+- **Maintenance** `ValidateConfig()` (v1.7.1, PR #88):
+  - `end_date` must be after `start_date` at plan time
+  - Handles unknown/null values for module composition
+  - 15 unit tests (valid ranges, reversed dates, equal dates, timezone handling)
+- **Healthcheck** `ValidateConfig()` (v1.7.2, PR #89):
+  - `cron` and `period_value` are mutually exclusive
+  - Neither set is also an error
+  - Handles unknown values for module composition
+  - 7 unit tests
 
 ### Competitive Reference
 
@@ -162,25 +154,25 @@ resp.Diagnostics.Append(resourcevalidator.ConflictsWith(
 
 ---
 
-## Phase 6: Enhanced Error Diagnostics -- IN PROGRESS (v1.5.0 partial)
+## Phase 6: Enhanced Error Diagnostics -- MOSTLY DONE (v1.5.0 + v1.7.1)
 
 **Branch:** `feat/error-diagnostics`
 **Source:** Datadog, StatusCake
-**Shipped (v1.5.0):** Valid value reference tables in error messages
+**Shipped:** v1.5.0 (valid value tables), v1.7.1 (context-aware troubleshooting)
 
-### Delivered (v1.5.0, PR #82)
+### Delivered
 
-- `ValidValueReference()` function that appends formatted valid value tables to API error messages
-- Covers Monitor (protocol, http_method, check_frequency, expected_status_code, regions, alerts_wait), Maintenance Window (notification_option), and Incident (type) resources
-- `error_diagnostics.go` + `error_diagnostics_test.go` (119 lines of tests)
-- Inline schema descriptions now show valid values
+- `ValidValueReference()` — formatted valid value tables appended to API error messages (v1.5.0)
+- `*WithContext` error helpers — `NewCreateErrorWithContext`, `NewReadErrorWithContext`, etc. with context-specific troubleshooting steps based on error type (404, 401/403, 429, 5xx, validation, circuit breaker) (v1.7.1)
+- `DetectErrorContext()` — auto-classifies errors into actionable categories
+- `BuildTroubleshootingSteps()` — generates resource-specific and error-type-specific guidance
+- `error_diagnostics.go` + `error_context.go` + comprehensive tests
 
 ### Remaining
 
 - Add doc URL constants per resource (e.g., `https://docs.hyperping.io/api#monitors`)
 - Append doc URL as diagnostic detail in error messages
 - Add `DiagnosticWithDocLink()` helper
-- Show field path + received value + expected values in validation error formatting
 
 ### Example (current)
 
@@ -506,54 +498,20 @@ No other provider offers this. Combined with our existing migration CLI tools, t
 
 ---
 
-## Phase 15: Cassette-Based Testing
+## Phase 15: Cassette-Based Testing -- DONE (v1.6.0)
 
 **Branch:** `feat/cassette-testing`
 **Source:** Datadog
+**Shipped:** v1.6.0
 
-### Problem
+### Delivered
 
-Our tests use mock HTTP servers which is good for isolation but can drift from real API behavior over time. Datadog uses cassette recording (record real API responses, replay in CI). This gives the best of both worlds: fast CI without API keys, plus real response validation.
-
-### Changes
-
-- Add `go-vcr` (or `go-cassette`) dependency for HTTP recording/replay
-- Create test helper: `NewCassetteClient(t, cassetteName)` that:
-  - In RECORD mode (`RECORD=true`): hits real API, saves responses to `testdata/cassettes/`
-  - In REPLAY mode (default): replays saved responses (no API key needed)
-- Add cassette files for core CRUD operations:
-  - `testdata/cassettes/monitor_create.yaml`
-  - `testdata/cassettes/monitor_read.yaml`
-  - `testdata/cassettes/monitor_update.yaml`
-  - `testdata/cassettes/monitor_delete.yaml`
-  - Same for healthcheck, statuspage, incident, maintenance, outage
-- Add `docker-compose.yaml` for acceptance test environment:
-  - Go container with mounted source
-  - Pre-configured env vars (TF_ACC=1)
-  - Rate-limited test configuration
-- Add `make docker-test` and `make record-cassettes` targets
-- Add cassette sanitizer to redact API keys from recorded responses
-- Document testing approach in CONTRIBUTING.md
-
-### Competitive Reference
-
-```go
-// Datadog cassette pattern:
-func TestAccMonitor_Basic(t *testing.T) {
-    // RECORD=false: replays cassettes (default, fast, CI-friendly)
-    // RECORD=true:  hits real API, records responses
-    // RECORD=none:  live API only (debugging)
-    ctx, providers, accProviders := testAccFrameworkMuxProviders(ctx, t)
-    // ... test steps using recorded responses
-}
-```
-
-### Benefit
-
-- CI runs without API keys (replay mode)
-- Catches API drift when cassettes are re-recorded periodically
-- Faster test execution (no network calls in replay mode)
-- Real response shapes ensure mock accuracy
+- 42 VCR cassettes recorded from live Hyperping API at `internal/client/testdata/cassettes/`
+- `testutil/vcr.go` — `NewVCRRecorder()` with three modes: Record, Replay, Auto
+- Credential masking: Authorization headers, `sk_*` API keys, Set-Cookie all redacted
+- Cassettes cover: CRUD cycles, list operations, auth scenarios, error conditions, pagination, subscriber operations
+- Contract test suite using VCR for deterministic replay without API keys
+- CI runs in replay mode (no API key needed), re-record with `HYPERPING_API_KEY` + record mode
 
 ---
 
@@ -561,27 +519,29 @@ func TestAccMonitor_Basic(t *testing.T) {
 
 | Phase | Branch | Priority | Effort | Status |
 |-------|--------|----------|--------|--------|
-| 1 | `feat/provider-config` | P0 | 2-3 days | TODO |
-| 2 | `feat/user-agent-version` | P0 | 30 min | TODO |
+| 1 | `feat/provider-config` | P0 | 2-3 days | **TODO** — only remaining P0 |
+| 2 | `feat/user-agent-version` | P0 | -- | **DONE** (v1.4.x) |
 | 3 | `feat/locations-datasource` | P0 | -- | **DONE** (v1.5.0) |
 | 4 | `refactor/schema-helpers` | P1 | 2-3 days | TODO |
-| 5 | `feat/cross-field-validators` | P1 | ~1 day | **IN PROGRESS** — monitor done, healthcheck/maintenance remaining |
-| 6 | `feat/error-diagnostics` | P1 | ~0.5 day | **IN PROGRESS** — valid value tables done, doc URLs remaining |
+| 5 | `feat/cross-field-validators` | P1 | -- | **DONE** (v1.5.0 + v1.7.1 + v1.7.2) |
+| 6 | `feat/error-diagnostics` | P1 | ~0.5 day | **MOSTLY DONE** — doc URL links remaining |
 | 7 | `refactor/plan-value-preserver` | P2 | 1-2 days | TODO (depends on Phase 4) |
 | 8 | `feat/datasource-enhancements` | P2 | -- | **DONE** (v1.5.0) |
-| 9 | `feat/maintenance-recurrence` | P2 | 1-2 days | TODO |
-| 10 | `feat/statuspage-enhancements` | P2 | 1-2 days | TODO |
-| 11 | `feat/escalation-enhancements` | P2 | 1-2 days | TODO |
-| 12 | `feat/sla-report-enhancement` | P2 | 1-2 days | TODO |
+| 9 | `feat/maintenance-recurrence` | P2 | 1-2 days | TODO (requires API investigation) |
+| 10 | `feat/statuspage-enhancements` | P2 | 1-2 days | TODO (requires API investigation) |
+| 11 | `feat/escalation-enhancements` | P2 | 1-2 days | TODO (requires API investigation) |
+| 12 | `feat/sla-report-enhancement` | P2 | 1-2 days | TODO (docs + computed fields, no API dep) |
 | 13 | `docs/validation-advantages` | P3 | 1 day | TODO |
 | 14 | `feat/import-generator` | P3 | 2-3 days | TODO |
-| 15 | `feat/cassette-testing` | P3 | 2-3 days | TODO |
+| 15 | `feat/cassette-testing` | P3 | -- | **DONE** (v1.6.0) |
 
-Phases 1, 2 are the remaining P0 items (Phase 3 done).
-Phases 4, 5 (remaining), 6 (remaining) can run in parallel.
-Phase 7 depends on Phase 4 (uses schema helpers).
-Phases 9, 10, 11, 12 are independent (Phase 8 done).
-Phases 13, 14, 15 are independent.
+**Completed: 7/15 phases** (2, 3, 5, 8, 15 fully done; 6 mostly done; plus all P0 items except Phase 1).
+
+Phase 1 is the only remaining P0 item.
+Phase 4 + Phase 6 remainder are the P1 items.
+Phase 7 depends on Phase 4.
+Phases 9-12 are independent P2 items (9-11 require API investigation).
+Phases 13-14 are independent P3 docs/tooling items.
 
 ---
 
