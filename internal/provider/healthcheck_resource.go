@@ -22,8 +22,9 @@ import (
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var (
-	_ resource.Resource                = &HealthcheckResource{}
-	_ resource.ResourceWithImportState = &HealthcheckResource{}
+	_ resource.Resource                   = &HealthcheckResource{}
+	_ resource.ResourceWithImportState    = &HealthcheckResource{}
+	_ resource.ResourceWithValidateConfig = &HealthcheckResource{}
 )
 
 // NewHealthcheckResource creates a new healthcheck resource.
@@ -84,6 +85,7 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"ping_url": schema.StringAttribute{
 				MarkdownDescription: "The auto-generated ping URL. Your cron job pings this URL to prove it ran.",
 				Computed:            true,
+				Sensitive:           true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -161,6 +163,45 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 				},
 			},
 		},
+	}
+}
+
+// ValidateConfig implements resource.ResourceWithValidateConfig for cross-field
+// validation of cron/period mutual exclusivity at plan time. This gives users
+// immediate feedback before any API call.
+func (r *HealthcheckResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var cron types.String
+	var periodValue types.Int64
+
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("cron"), &cron)...)
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("period_value"), &periodValue)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Skip validation when either value is unknown (module composition support).
+	if cron.IsUnknown() || periodValue.IsUnknown() {
+		return
+	}
+
+	hasCron := !cron.IsNull()
+	hasPeriod := !periodValue.IsNull()
+
+	if hasCron && hasPeriod {
+		resp.Diagnostics.AddError(
+			"Invalid Configuration",
+			"Specify either cron (with timezone) or period_value (with period_type), not both. "+
+				"These scheduling modes are mutually exclusive.",
+		)
+		return
+	}
+
+	if !hasCron && !hasPeriod {
+		resp.Diagnostics.AddError(
+			"Invalid Configuration",
+			"Either cron or period_value must be specified. "+
+				"Use cron for cron-expression scheduling, or period_value/period_type for interval-based scheduling.",
+		)
 	}
 }
 

@@ -76,12 +76,18 @@ func (r *IncidentUpdateResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Validators: []validator.String{
 					StringLength(1, 10000),
 				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"type": schema.StringAttribute{
 				MarkdownDescription: "The type of update. Valid values: `investigating`, `identified`, `update`, `monitoring`, `resolved`.",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(client.AllowedIncidentUpdateTypes...),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
 				},
 			},
 			"date": schema.StringAttribute{
@@ -225,7 +231,9 @@ func (r *IncidentUpdateResource) Read(ctx context.Context, req resource.ReadRequ
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-// Update updates the resource and sets the updated Terraform state.
+// Update handles in-place updates. Since text, type, and incident_id all have
+// RequiresReplace plan modifiers, the only field that can trigger an in-place
+// update is date. Preserve computed fields from state and write the plan.
 func (r *IncidentUpdateResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan IncidentUpdateResourceModel
 	var state IncidentUpdateResourceModel
@@ -236,26 +244,7 @@ func (r *IncidentUpdateResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	// Parse the composite ID to get update UUID
-	incidentID, updateID := parseIncidentUpdateID(state.ID.ValueString())
-	if incidentID == "" || updateID == "" {
-		resp.Diagnostics.AddError(
-			"Invalid Resource ID",
-			fmt.Sprintf("Could not parse incident update ID: %s", state.ID.ValueString()),
-		)
-		return
-	}
-
-	// The Hyperping API supports PUT /v3/incidents/{uuid}/updates/{updateuuid}
-	// But our client doesn't have this method yet. For now, we'll note this limitation.
-	// Updates to incident updates are not commonly needed, and the API may not support all field changes.
-
-	resp.Diagnostics.AddWarning(
-		"Update Not Fully Supported",
-		"Incident update modifications may not be fully supported by the Hyperping API. Consider destroying and recreating the resource if changes are needed.",
-	)
-
-	// Keep the state as-is for now
+	// Preserve computed fields from current state.
 	plan.ID = state.ID
 	plan.Date = state.Date
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
