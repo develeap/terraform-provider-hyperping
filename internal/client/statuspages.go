@@ -204,7 +204,7 @@ func (c *Client) GetSubscriber(ctx context.Context, statuspageID string, subscri
 		}
 	}
 
-	return nil, fmt.Errorf("subscriber %d not found on status page %s", subscriberID, statuspageID)
+	return nil, fmt.Errorf("subscriber %d not found on status page %s: %w", subscriberID, statuspageID, ErrNotFound)
 }
 
 // maxSubscriberPaginationPages is a safety limit to prevent infinite pagination loops.

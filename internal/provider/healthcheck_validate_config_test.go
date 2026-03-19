@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -184,7 +185,7 @@ func TestHealthcheckValidateConfig(t *testing.T) {
 			if tt.wantError && tt.errMatch != "" {
 				found := false
 				for _, d := range resp.Diagnostics.Errors() {
-					if containsAttrRef(d.Detail(), tt.errMatch) || containsAttrRef(d.Summary(), tt.errMatch) {
+					if strings.Contains(d.Detail(), tt.errMatch) || strings.Contains(d.Summary(), tt.errMatch) {
 						found = true
 						break
 					}

@@ -779,3 +779,74 @@ func TestClient_ListOutages_DataWrapper(t *testing.T) {
 		}
 	})
 }
+
+func TestClient_ListOutages_MultiPagePagination(t *testing.T) {
+	t.Parallel()
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page := r.URL.Query().Get("page")
+		requestCount++
+
+		w.WriteHeader(http.StatusOK)
+		switch page {
+		case "0":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"outages": []map[string]interface{}{
+					{"uuid": "out_page0_1", "isResolved": false, "statusCode": 500},
+					{"uuid": "out_page0_2", "isResolved": false, "statusCode": 503},
+				},
+				"hasNextPage":    true,
+				"total":          5,
+				"page":           0,
+				"resultsPerPage": 2,
+			})
+		case "1":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"outages": []map[string]interface{}{
+					{"uuid": "out_page1_1", "isResolved": true, "statusCode": 200},
+					{"uuid": "out_page1_2", "isResolved": false, "statusCode": 502},
+				},
+				"hasNextPage":    true,
+				"total":          5,
+				"page":           1,
+				"resultsPerPage": 2,
+			})
+		case "2":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"outages": []map[string]interface{}{
+					{"uuid": "out_page2_1", "isResolved": true, "statusCode": 200},
+				},
+				"hasNextPage":    false,
+				"total":          5,
+				"page":           2,
+				"resultsPerPage": 2,
+			})
+		default:
+			t.Errorf("unexpected page request: %s", page)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer server.Close()
+
+	client := NewClient("test_key", WithBaseURL(server.URL))
+	outages, err := client.ListOutages(context.Background())
+	if err != nil {
+		t.Fatalf("ListOutages() error = %v", err)
+	}
+
+	if len(outages) != 5 {
+		t.Errorf("ListOutages() got %d outages, want 5", len(outages))
+	}
+	if requestCount != 3 {
+		t.Errorf("expected 3 page requests, got %d", requestCount)
+	}
+
+	// Verify order: page 0 items first, then page 1, then page 2
+	expectedUUIDs := []string{"out_page0_1", "out_page0_2", "out_page1_1", "out_page1_2", "out_page2_1"}
+	for i, want := range expectedUUIDs {
+		if outages[i].UUID != want {
+			t.Errorf("outage[%d].UUID = %q, want %q", i, outages[i].UUID, want)
+		}
+	}
+}
