@@ -25,7 +25,7 @@ Returns available monitoring locations (regions) for Hyperping monitors. This da
 
 Read-Only:
 
-- `cloud_region` (String) Approximate cloud provider region identifier (e.g., `eu-west-2`).
+- `cloud_region` (String) Approximate DigitalOcean datacenter identifier (e.g., `lon1`, `nyc3`, `sgp1`).
 - `continent` (String) Continent grouping (e.g., `Europe`, `Asia Pacific`).
 - `id` (String) Region code (e.g., `london`). Use this value in `hyperping_monitor.regions`.
 - `name` (String) Display name of the location (e.g., `London, UK`).

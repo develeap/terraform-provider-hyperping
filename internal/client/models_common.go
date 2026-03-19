@@ -160,16 +160,27 @@ var (
 
 	// AllowedRegions contains valid monitor check regions.
 	// Combined from official Hyperping API documentation and real API responses.
+	// See: https://hyperping.com/docs/api/monitors/create
 	AllowedRegions = []string{
 		// Europe
 		"london",
 		"frankfurt",
+		"paris",
+		"amsterdam",
 		// Asia Pacific
 		"singapore",
 		"sydney",
 		"tokyo",
-		// Americas
+		"seoul",
+		"mumbai",
+		"bangalore",
+		// North America
 		"virginia",
+		"california",
+		"sanfrancisco",
+		"nyc",
+		"toronto",
+		// South America
 		"saopaulo",
 		// Middle East
 		"bahrain",
@@ -182,7 +193,8 @@ var (
 	AllowedIncidentUpdateTypes = []string{"investigating", "identified", "update", "monitoring", "resolved"}
 
 	// AllowedNotificationOptions contains valid maintenance notification options.
-	AllowedNotificationOptions = []string{"scheduled", "immediate"}
+	// "none" disables notifications, "scheduled" sends before start, "immediate" sends at creation.
+	AllowedNotificationOptions = []string{"none", "scheduled", "immediate"}
 
 	// AllowedPeriodTypes contains valid healthcheck period type values.
 	AllowedPeriodTypes = []string{"seconds", "minutes", "hours", "days"}
@@ -197,8 +209,11 @@ var (
 		"Merriweather", "DM Sans", "Work Sans",
 	}
 
-	// AllowedLanguages contains valid language codes for status pages.
-	AllowedLanguages = []string{"en", "fr", "de", "ru", "nl", "es", "it", "pt", "ja", "zh"}
+	// AllowedLanguages contains valid language codes for status page configuration.
+	// From API spec: https://hyperping.com/docs/api/status-pages/create
+	// Note: LocalizedText struct supports additional languages for content fields,
+	// but the status page `languages` setting only accepts these values.
+	AllowedLanguages = []string{"en", "fr", "de", "ru", "nl", "pl", "sv"}
 
 	// AllowedSubscriberTypes contains valid subscriber type values.
 	AllowedSubscriberTypes = []string{"email", "sms", "teams"}

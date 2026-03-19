@@ -130,7 +130,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				Computed:            true,
 				Default:             stringdefault.StaticString("en"),
 				Validators: []validator.String{
-					stringvalidator.OneOf("en", "fr", "de", "ru", "nl", "es", "it", "pt", "ja", "zh"),
+					stringvalidator.OneOf(client.AllowedLanguages...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),

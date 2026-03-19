@@ -122,14 +122,17 @@ func TestMonitorResource_Schema(t *testing.T) {
 
 func TestAllowedRegions(t *testing.T) {
 	// Verify client.AllowedRegions contains expected values
-	// From official API documentation (8 regions)
+	// From official API documentation (17 regions)
+	// See: https://hyperping.com/docs/api/monitors/create
 	expectedRegions := []string{
 		// Europe
-		"london", "frankfurt",
+		"london", "frankfurt", "paris", "amsterdam",
 		// Asia Pacific
-		"singapore", "sydney", "tokyo",
-		// Americas
-		"virginia", "saopaulo",
+		"singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore",
+		// North America
+		"virginia", "california", "sanfrancisco", "nyc", "toronto",
+		// South America
+		"saopaulo",
 		// Middle East
 		"bahrain",
 	}

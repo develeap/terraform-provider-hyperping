@@ -321,9 +321,9 @@ func TestAccStatuspageResource_defaultLanguageFonts(t *testing.T) {
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{
-				Config: testAccStatusPageResourceConfig_defaultLanguageFonts(server.URL, "es", "Roboto"),
+				Config: testAccStatusPageResourceConfig_defaultLanguageFonts(server.URL, "pl", "Roboto"),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.default_language", "es"),
+					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.default_language", "pl"),
 					tfresource.TestCheckResourceAttr("hyperping_statuspage.test", "settings.font", "Roboto"),
 				),
 			},
@@ -558,7 +558,7 @@ resource "hyperping_statuspage" "test" {
 
   settings = {
     name             = "Language Font Status"
-    languages        = ["en", "es", "fr"]
+    languages        = ["en", "pl", "fr"]
     default_language = "` + defaultLang + `"
     font             = "` + font + `"
   }
