@@ -215,9 +215,9 @@ func TestIsAllowedBaseURL(t *testing.T) {
 			want:    true,
 		},
 		{
-			name:    "invalid - IPv6 localhost not supported",
+			name:    "valid - IPv6 localhost now supported via url.Parse",
 			baseURL: "http://[::1]",
-			want:    false,
+			want:    true,
 		},
 		{
 			name:    "valid - localhost with https",
