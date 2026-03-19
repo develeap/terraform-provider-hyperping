@@ -11,15 +11,12 @@ import (
 	"strconv"
 )
 
-// statuspagesBasePath uses the exported constant for consistency.
-var statuspagesBasePath = StatuspagesBasePath
-
 // ListStatusPages returns a paginated list of status pages.
 // Parameters:
 //   - page: Optional 0-indexed page number
 //   - search: Optional search filter for name, hostname, or subdomain
 func (c *Client) ListStatusPages(ctx context.Context, page *int, search *string) (*StatusPagePaginatedResponse, error) {
-	path := statuspagesBasePath
+	path := StatuspagesBasePath
 
 	// Build query parameters
 	params := url.Values{}
@@ -52,7 +49,7 @@ func (c *Client) GetStatusPage(ctx context.Context, uuid string) (*StatusPage, e
 	var response struct {
 		StatusPage StatusPage `json:"statuspage"`
 	}
-	path := fmt.Sprintf("%s/%s", statuspagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", StatuspagesBasePath, uuid)
 	if err := c.doRequest(ctx, http.MethodGet, path, nil, &response); err != nil {
 		return nil, fmt.Errorf("failed to get status page %s: %w", uuid, err)
 	}
@@ -72,7 +69,7 @@ func (c *Client) CreateStatusPage(ctx context.Context, req CreateStatusPageReque
 		StatusPage StatusPage `json:"statuspage"`
 	}
 
-	if err := c.doRequest(ctx, http.MethodPost, statuspagesBasePath, req, &response); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, StatuspagesBasePath, req, &response); err != nil {
 		return nil, fmt.Errorf("failed to create status page: %w", err)
 	}
 
@@ -92,7 +89,7 @@ func (c *Client) UpdateStatusPage(ctx context.Context, uuid string, req UpdateSt
 		StatusPage StatusPage `json:"statuspage"`
 	}
 
-	path := fmt.Sprintf("%s/%s", statuspagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", StatuspagesBasePath, uuid)
 	if err := c.doRequest(ctx, http.MethodPut, path, req, &response); err != nil {
 		return nil, fmt.Errorf("failed to update status page %s: %w", uuid, err)
 	}
@@ -107,7 +104,7 @@ func (c *Client) DeleteStatusPage(ctx context.Context, uuid string) error {
 		return fmt.Errorf("DeleteStatusPage: %w", err)
 	}
 
-	path := fmt.Sprintf("%s/%s", statuspagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", StatuspagesBasePath, uuid)
 	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete status page %s: %w", uuid, err)
 	}
@@ -125,7 +122,7 @@ func (c *Client) ListSubscribers(ctx context.Context, uuid string, page *int, su
 		return nil, fmt.Errorf("ListSubscribers: %w", err)
 	}
 
-	path := fmt.Sprintf("%s/%s/subscribers", statuspagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s/subscribers", StatuspagesBasePath, uuid)
 
 	// Build query parameters
 	params := url.Values{}
@@ -171,13 +168,47 @@ func (c *Client) AddSubscriber(ctx context.Context, uuid string, req AddSubscrib
 		Subscriber StatusPageSubscriber `json:"subscriber"`
 	}
 
-	path := fmt.Sprintf("%s/%s/subscribers", statuspagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s/subscribers", StatuspagesBasePath, uuid)
 	if err := c.doRequest(ctx, http.MethodPost, path, req, &response); err != nil {
 		return nil, fmt.Errorf("failed to add subscriber to status page %s: %w", uuid, err)
 	}
 
 	return &response.Subscriber, nil
 }
+
+// GetSubscriber retrieves a single subscriber by ID from a status page.
+// The Hyperping API does not provide a direct GET endpoint for individual subscribers,
+// so this method paginates through the subscriber list with early termination.
+func (c *Client) GetSubscriber(ctx context.Context, statuspageID string, subscriberID int) (*StatusPageSubscriber, error) {
+	if err := ValidateResourceID(statuspageID); err != nil {
+		return nil, fmt.Errorf("GetSubscriber: %w", err)
+	}
+	if subscriberID <= 0 {
+		return nil, fmt.Errorf("GetSubscriber: subscriber ID must be positive (got %d)", subscriberID)
+	}
+
+	for page := 0; page < maxSubscriberPaginationPages; page++ {
+		resp, err := c.ListSubscribers(ctx, statuspageID, &page, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get subscriber %d: %w", subscriberID, err)
+		}
+
+		for i := range resp.Subscribers {
+			if resp.Subscribers[i].ID == subscriberID {
+				return &resp.Subscribers[i], nil
+			}
+		}
+
+		if !resp.HasNextPage {
+			break
+		}
+	}
+
+	return nil, fmt.Errorf("subscriber %d not found on status page %s: %w", subscriberID, statuspageID, ErrNotFound)
+}
+
+// maxSubscriberPaginationPages is a safety limit to prevent infinite pagination loops.
+const maxSubscriberPaginationPages = 100
 
 // DeleteSubscriber deletes a subscriber from a status page.
 func (c *Client) DeleteSubscriber(ctx context.Context, uuid string, subscriberID int) error {
@@ -189,7 +220,7 @@ func (c *Client) DeleteSubscriber(ctx context.Context, uuid string, subscriberID
 		return fmt.Errorf("DeleteSubscriber: subscriber ID must be positive (got %d)", subscriberID)
 	}
 
-	path := fmt.Sprintf("%s/%s/subscribers/%d", statuspagesBasePath, uuid, subscriberID)
+	path := fmt.Sprintf("%s/%s/subscribers/%d", StatuspagesBasePath, uuid, subscriberID)
 	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete subscriber %d from status page %s: %w", subscriberID, uuid, err)
 	}

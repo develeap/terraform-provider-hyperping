@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // TestMonitorValidateConfig_SchemaConsistency verifies that all attributes
@@ -149,15 +150,6 @@ func setStringAttr(vals map[string]tftypes.Value, name string, val *string) {
 	}
 }
 
-// Helper to create *string from literal.
-func strPtr(s string) *string { return &s }
-
-// Helper to create *bool from literal.
-func boolPtr(b bool) *bool { return &b }
-
-// Helper to create *int64 from literal.
-func int64Ptr(n int64) *int64 { return &n }
-
 // runValidateConfig is a test helper that invokes ValidateConfig on MonitorResource.
 func runValidateConfig(t *testing.T, b *monitorConfigBuilder) *resource.ValidateConfigResponse {
 	t.Helper()
@@ -216,11 +208,11 @@ func TestValidateConfig_HTTPProtocolValid(t *testing.T) {
 			name: "http with all HTTP-only fields set",
 			builder: &monitorConfigBuilder{
 				protocol:        "http",
-				httpMethod:      strPtr("POST"),
-				expectedStatus:  strPtr("201"),
-				followRedirects: boolPtr(false),
-				requestBody:     strPtr(`{"check":"health"}`),
-				requiredKeyword: strPtr("OK"),
+				httpMethod:      testutil.Ptr("POST"),
+				expectedStatus:  testutil.Ptr("201"),
+				followRedirects: testutil.Ptr(false),
+				requestBody:     testutil.Ptr(`{"check":"health"}`),
+				requiredKeyword: testutil.Ptr("OK"),
 				requestHeaders:  []map[string]string{{"name": "X-Test", "value": "val"}},
 			},
 		},
@@ -242,7 +234,7 @@ func TestValidateConfig_HTTPProtocolRejectsPort(t *testing.T) {
 
 	resp := runValidateConfig(t, &monitorConfigBuilder{
 		protocol: "http",
-		port:     int64Ptr(443),
+		port:     testutil.Ptr(int64(443)),
 	})
 
 	if !resp.Diagnostics.HasError() {
@@ -281,7 +273,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects http_method",
 			builder: &monitorConfigBuilder{
 				protocol:   "icmp",
-				httpMethod: strPtr("POST"),
+				httpMethod: testutil.Ptr("POST"),
 			},
 			wantError:     true,
 			errorContains: "http_method",
@@ -290,7 +282,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects expected_status_code",
 			builder: &monitorConfigBuilder{
 				protocol:       "icmp",
-				expectedStatus: strPtr("200"),
+				expectedStatus: testutil.Ptr("200"),
 			},
 			wantError:     true,
 			errorContains: "expected_status_code",
@@ -299,7 +291,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects follow_redirects",
 			builder: &monitorConfigBuilder{
 				protocol:        "icmp",
-				followRedirects: boolPtr(false),
+				followRedirects: testutil.Ptr(false),
 			},
 			wantError:     true,
 			errorContains: "follow_redirects",
@@ -317,7 +309,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects request_body",
 			builder: &monitorConfigBuilder{
 				protocol:    "icmp",
-				requestBody: strPtr("test"),
+				requestBody: testutil.Ptr("test"),
 			},
 			wantError:     true,
 			errorContains: "request_body",
@@ -326,7 +318,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects required_keyword",
 			builder: &monitorConfigBuilder{
 				protocol:        "icmp",
-				requiredKeyword: strPtr("HEALTHY"),
+				requiredKeyword: testutil.Ptr("HEALTHY"),
 			},
 			wantError:     true,
 			errorContains: "required_keyword",
@@ -335,7 +327,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects port",
 			builder: &monitorConfigBuilder{
 				protocol: "icmp",
-				port:     int64Ptr(443),
+				port:     testutil.Ptr(int64(443)),
 			},
 			wantError:     true,
 			errorContains: "port",
@@ -344,7 +336,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects dns_record_type",
 			builder: &monitorConfigBuilder{
 				protocol:      "icmp",
-				dnsRecordType: strPtr("A"),
+				dnsRecordType: testutil.Ptr("A"),
 			},
 			wantError:     true,
 			errorContains: "dns_record_type",
@@ -353,7 +345,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects dns_nameserver",
 			builder: &monitorConfigBuilder{
 				protocol:      "icmp",
-				dnsNameserver: strPtr("8.8.8.8"),
+				dnsNameserver: testutil.Ptr("8.8.8.8"),
 			},
 			wantError:     true,
 			errorContains: "dns_nameserver",
@@ -362,7 +354,7 @@ func TestValidateConfig_ICMPProtocol(t *testing.T) {
 			name: "icmp rejects dns_expected_answer",
 			builder: &monitorConfigBuilder{
 				protocol:          "icmp",
-				dnsExpectedAnswer: strPtr("1.2.3.4"),
+				dnsExpectedAnswer: testutil.Ptr("1.2.3.4"),
 			},
 			wantError:     true,
 			errorContains: "dns_expected_answer",
@@ -409,7 +401,7 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port valid config with port set",
 			builder: &monitorConfigBuilder{
 				protocol: "port",
-				port:     int64Ptr(5432),
+				port:     testutil.Ptr(int64(5432)),
 			},
 			wantError: false,
 		},
@@ -425,8 +417,8 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects http_method",
 			builder: &monitorConfigBuilder{
 				protocol:   "port",
-				port:       int64Ptr(5432),
-				httpMethod: strPtr("POST"),
+				port:       testutil.Ptr(int64(5432)),
+				httpMethod: testutil.Ptr("POST"),
 			},
 			wantError:     true,
 			errorContains: "http_method",
@@ -435,8 +427,8 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects expected_status_code",
 			builder: &monitorConfigBuilder{
 				protocol:       "port",
-				port:           int64Ptr(5432),
-				expectedStatus: strPtr("200"),
+				port:           testutil.Ptr(int64(5432)),
+				expectedStatus: testutil.Ptr("200"),
 			},
 			wantError:     true,
 			errorContains: "expected_status_code",
@@ -445,8 +437,8 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects follow_redirects",
 			builder: &monitorConfigBuilder{
 				protocol:        "port",
-				port:            int64Ptr(5432),
-				followRedirects: boolPtr(true),
+				port:            testutil.Ptr(int64(5432)),
+				followRedirects: testutil.Ptr(true),
 			},
 			wantError:     true,
 			errorContains: "follow_redirects",
@@ -455,8 +447,8 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects request_body",
 			builder: &monitorConfigBuilder{
 				protocol:    "port",
-				port:        int64Ptr(5432),
-				requestBody: strPtr("body"),
+				port:        testutil.Ptr(int64(5432)),
+				requestBody: testutil.Ptr("body"),
 			},
 			wantError:     true,
 			errorContains: "request_body",
@@ -465,8 +457,8 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects required_keyword",
 			builder: &monitorConfigBuilder{
 				protocol:        "port",
-				port:            int64Ptr(5432),
-				requiredKeyword: strPtr("HEALTHY"),
+				port:            testutil.Ptr(int64(5432)),
+				requiredKeyword: testutil.Ptr("HEALTHY"),
 			},
 			wantError:     true,
 			errorContains: "required_keyword",
@@ -475,7 +467,7 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects request_headers",
 			builder: &monitorConfigBuilder{
 				protocol:       "port",
-				port:           int64Ptr(5432),
+				port:           testutil.Ptr(int64(5432)),
 				requestHeaders: []map[string]string{{"name": "X-Test", "value": "val"}},
 			},
 			wantError:     true,
@@ -485,8 +477,8 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects dns_record_type",
 			builder: &monitorConfigBuilder{
 				protocol:      "port",
-				port:          int64Ptr(5432),
-				dnsRecordType: strPtr("A"),
+				port:          testutil.Ptr(int64(5432)),
+				dnsRecordType: testutil.Ptr("A"),
 			},
 			wantError:     true,
 			errorContains: "dns_record_type",
@@ -495,8 +487,8 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects dns_nameserver",
 			builder: &monitorConfigBuilder{
 				protocol:      "port",
-				port:          int64Ptr(5432),
-				dnsNameserver: strPtr("8.8.8.8"),
+				port:          testutil.Ptr(int64(5432)),
+				dnsNameserver: testutil.Ptr("8.8.8.8"),
 			},
 			wantError:     true,
 			errorContains: "dns_nameserver",
@@ -505,8 +497,8 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			name: "port rejects dns_expected_answer",
 			builder: &monitorConfigBuilder{
 				protocol:          "port",
-				port:              int64Ptr(5432),
-				dnsExpectedAnswer: strPtr("1.2.3.4"),
+				port:              testutil.Ptr(int64(5432)),
+				dnsExpectedAnswer: testutil.Ptr("1.2.3.4"),
 			},
 			wantError:     true,
 			errorContains: "dns_expected_answer",
@@ -553,10 +545,10 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns valid config with all DNS fields",
 			builder: &monitorConfigBuilder{
 				protocol:          "dns",
-				url:               strPtr("example.com"),
-				dnsRecordType:     strPtr("A"),
-				dnsNameserver:     strPtr("8.8.8.8"),
-				dnsExpectedAnswer: strPtr("93.184.216.34"),
+				url:               testutil.Ptr("example.com"),
+				dnsRecordType:     testutil.Ptr("A"),
+				dnsNameserver:     testutil.Ptr("8.8.8.8"),
+				dnsExpectedAnswer: testutil.Ptr("93.184.216.34"),
 			},
 			wantError: false,
 		},
@@ -564,7 +556,7 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns minimal config",
 			builder: &monitorConfigBuilder{
 				protocol: "dns",
-				url:      strPtr("example.com"),
+				url:      testutil.Ptr("example.com"),
 			},
 			wantError: false,
 		},
@@ -572,8 +564,8 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns rejects port",
 			builder: &monitorConfigBuilder{
 				protocol: "dns",
-				url:      strPtr("example.com"),
-				port:     int64Ptr(53),
+				url:      testutil.Ptr("example.com"),
+				port:     testutil.Ptr(int64(53)),
 			},
 			wantError:     true,
 			errorContains: "port",
@@ -582,8 +574,8 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns rejects http_method",
 			builder: &monitorConfigBuilder{
 				protocol:   "dns",
-				url:        strPtr("example.com"),
-				httpMethod: strPtr("GET"),
+				url:        testutil.Ptr("example.com"),
+				httpMethod: testutil.Ptr("GET"),
 			},
 			wantError:     true,
 			errorContains: "http_method",
@@ -592,8 +584,8 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns rejects expected_status_code",
 			builder: &monitorConfigBuilder{
 				protocol:       "dns",
-				url:            strPtr("example.com"),
-				expectedStatus: strPtr("200"),
+				url:            testutil.Ptr("example.com"),
+				expectedStatus: testutil.Ptr("200"),
 			},
 			wantError:     true,
 			errorContains: "expected_status_code",
@@ -602,8 +594,8 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns rejects follow_redirects",
 			builder: &monitorConfigBuilder{
 				protocol:        "dns",
-				url:             strPtr("example.com"),
-				followRedirects: boolPtr(true),
+				url:             testutil.Ptr("example.com"),
+				followRedirects: testutil.Ptr(true),
 			},
 			wantError:     true,
 			errorContains: "follow_redirects",
@@ -612,8 +604,8 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns rejects request_body",
 			builder: &monitorConfigBuilder{
 				protocol:    "dns",
-				url:         strPtr("example.com"),
-				requestBody: strPtr("body"),
+				url:         testutil.Ptr("example.com"),
+				requestBody: testutil.Ptr("body"),
 			},
 			wantError:     true,
 			errorContains: "request_body",
@@ -622,8 +614,8 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns rejects required_keyword",
 			builder: &monitorConfigBuilder{
 				protocol:        "dns",
-				url:             strPtr("example.com"),
-				requiredKeyword: strPtr("HEALTHY"),
+				url:             testutil.Ptr("example.com"),
+				requiredKeyword: testutil.Ptr("HEALTHY"),
 			},
 			wantError:     true,
 			errorContains: "required_keyword",
@@ -632,7 +624,7 @@ func TestValidateConfig_DNSProtocol(t *testing.T) {
 			name: "dns rejects request_headers",
 			builder: &monitorConfigBuilder{
 				protocol:       "dns",
-				url:            strPtr("example.com"),
+				url:            testutil.Ptr("example.com"),
 				requestHeaders: []map[string]string{{"name": "X-Test", "value": "val"}},
 			},
 			wantError:     true,
@@ -692,8 +684,8 @@ func TestValidateConfig_ProtocolSkipsValidation(t *testing.T) {
 			// With unknown/null protocol, validation should be skipped entirely.
 			resp := runValidateConfig(t, &monitorConfigBuilder{
 				protocol:   tt.protocol,
-				httpMethod: strPtr("POST"),
-				port:       int64Ptr(8080),
+				httpMethod: testutil.Ptr("POST"),
+				port:       testutil.Ptr(int64(8080)),
 			})
 
 			if resp.Diagnostics.HasError() {
@@ -780,12 +772,12 @@ func TestValidateConfig_URLValidation(t *testing.T) {
 
 			builder := &monitorConfigBuilder{
 				protocol: tt.protocol,
-				url:      strPtr(tt.url),
+				url:      testutil.Ptr(tt.url),
 			}
 
 			// Port protocol requires port to be set to avoid a separate error.
 			if tt.protocol == "port" {
-				builder.port = int64Ptr(5432)
+				builder.port = testutil.Ptr(int64(5432))
 			}
 
 			resp := runValidateConfig(t, builder)
@@ -818,10 +810,10 @@ func TestValidateConfig_MultipleErrors(t *testing.T) {
 	// least the first invalid field is caught.
 	resp := runValidateConfig(t, &monitorConfigBuilder{
 		protocol:       "icmp",
-		httpMethod:     strPtr("POST"),
-		expectedStatus: strPtr("200"),
-		port:           int64Ptr(443),
-		dnsRecordType:  strPtr("A"),
+		httpMethod:     testutil.Ptr("POST"),
+		expectedStatus: testutil.Ptr("200"),
+		port:           testutil.Ptr(int64(443)),
+		dnsRecordType:  testutil.Ptr("A"),
 	})
 
 	if !resp.Diagnostics.HasError() {
@@ -846,7 +838,7 @@ func TestValidateConfig_HTTPRejectsDNSFields(t *testing.T) {
 			name: "http rejects dns_record_type",
 			builder: &monitorConfigBuilder{
 				protocol:      "http",
-				dnsRecordType: strPtr("A"),
+				dnsRecordType: testutil.Ptr("A"),
 			},
 			errorContains: "dns_record_type",
 		},
@@ -854,7 +846,7 @@ func TestValidateConfig_HTTPRejectsDNSFields(t *testing.T) {
 			name: "http rejects dns_nameserver",
 			builder: &monitorConfigBuilder{
 				protocol:      "http",
-				dnsNameserver: strPtr("8.8.8.8"),
+				dnsNameserver: testutil.Ptr("8.8.8.8"),
 			},
 			errorContains: "dns_nameserver",
 		},
@@ -862,7 +854,7 @@ func TestValidateConfig_HTTPRejectsDNSFields(t *testing.T) {
 			name: "http rejects dns_expected_answer",
 			builder: &monitorConfigBuilder{
 				protocol:          "http",
-				dnsExpectedAnswer: strPtr("1.2.3.4"),
+				dnsExpectedAnswer: testutil.Ptr("1.2.3.4"),
 			},
 			errorContains: "dns_expected_answer",
 		},
@@ -912,7 +904,7 @@ func TestValidateConfig_ErrorMessages(t *testing.T) {
 			name: "http with port produces Invalid Attribute Combination",
 			builder: &monitorConfigBuilder{
 				protocol: "http",
-				port:     int64Ptr(443),
+				port:     testutil.Ptr(int64(443)),
 			},
 			expectedSummary: "Invalid Attribute Combination",
 			detailSubstring: "port is not valid",
@@ -921,7 +913,7 @@ func TestValidateConfig_ErrorMessages(t *testing.T) {
 			name: "icmp http_method produces Invalid Attribute Combination",
 			builder: &monitorConfigBuilder{
 				protocol:   "icmp",
-				httpMethod: strPtr("POST"),
+				httpMethod: testutil.Ptr("POST"),
 			},
 			expectedSummary: "Invalid Attribute Combination",
 			detailSubstring: "http_method is only valid for HTTP monitors",
@@ -930,8 +922,8 @@ func TestValidateConfig_ErrorMessages(t *testing.T) {
 			name: "dns port produces Invalid Attribute Combination",
 			builder: &monitorConfigBuilder{
 				protocol: "dns",
-				url:      strPtr("example.com"),
-				port:     int64Ptr(53),
+				url:      testutil.Ptr("example.com"),
+				port:     testutil.Ptr(int64(53)),
 			},
 			expectedSummary: "Invalid Attribute Combination",
 			detailSubstring: "port is not valid",
@@ -975,8 +967,8 @@ func TestValidateConfig_UnrecognizedProtocolNoValidation(t *testing.T) {
 	// should fall through without errors (forward-compatible with new protocols).
 	resp := runValidateConfig(t, &monitorConfigBuilder{
 		protocol:   "tcp",
-		httpMethod: strPtr("POST"),
-		port:       int64Ptr(8080),
+		httpMethod: testutil.Ptr("POST"),
+		port:       testutil.Ptr(int64(8080)),
 	})
 
 	if resp.Diagnostics.HasError() {

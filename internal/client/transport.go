@@ -7,7 +7,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
-	"strings"
+	"net/url"
 )
 
 // defaultTLSConfig returns a TLS configuration restricted to AEAD cipher suites
@@ -78,15 +78,18 @@ func buildTransportChain(apiKey []byte, baseTransport http.RoundTripper, baseURL
 // enforceTLS applies TLS restrictions to the transport based on the base URL.
 // Localhost targets (used in tests with httptest) are exempt.
 func enforceTLS(transport http.RoundTripper, baseURL string) http.RoundTripper {
-	isLocalhost := strings.Contains(baseURL, "localhost") ||
-		strings.Contains(baseURL, "127.0.0.1") ||
-		strings.Contains(baseURL, "[::1]")
+	parsed, err := url.Parse(baseURL)
+	isLocalhost := false
+	if err == nil {
+		host := parsed.Hostname()
+		isLocalhost = host == "localhost" || host == "127.0.0.1" || host == "::1"
+	}
 
 	if isLocalhost {
 		return transport
 	}
 
-	if !strings.HasPrefix(baseURL, "https://") {
+	if parsed == nil || parsed.Scheme != "https" {
 		// Non-HTTPS, non-localhost: wrap to block cleartext
 		return &tlsEnforcedTransport{next: transport}
 	}

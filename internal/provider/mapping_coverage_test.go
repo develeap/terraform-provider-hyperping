@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // ---------------------------------------------------------------------------
@@ -233,19 +234,19 @@ func TestMapMonitorCommonFields_PortSetVsNil(t *testing.T) {
 		},
 		{
 			name:      "port 80",
-			port:      intPtrCov(80),
+			port:      testutil.Ptr(80),
 			wantNull:  false,
 			wantValue: 80,
 		},
 		{
 			name:      "port 443",
-			port:      intPtrCov(443),
+			port:      testutil.Ptr(443),
 			wantNull:  false,
 			wantValue: 443,
 		},
 		{
 			name:      "port 0",
-			port:      intPtrCov(0),
+			port:      testutil.Ptr(0),
 			wantNull:  false,
 			wantValue: 0,
 		},
@@ -355,25 +356,25 @@ func TestMapMonitorCommonFields_DNSFields(t *testing.T) {
 		},
 		{
 			name:              "all empty strings",
-			dnsRecordType:     strPtrCov(""),
-			dnsNameserver:     strPtrCov(""),
-			dnsExpectedAnswer: strPtrCov(""),
+			dnsRecordType:     testutil.Ptr(""),
+			dnsNameserver:     testutil.Ptr(""),
+			dnsExpectedAnswer: testutil.Ptr(""),
 			wantRecTypeNull:   true,
 			wantNSNull:        true,
 			wantAnswerNull:    true,
 		},
 		{
 			name:              "all populated",
-			dnsRecordType:     strPtrCov("AAAA"),
-			dnsNameserver:     strPtrCov("1.1.1.1"),
-			dnsExpectedAnswer: strPtrCov("2001:db8::1"),
+			dnsRecordType:     testutil.Ptr("AAAA"),
+			dnsNameserver:     testutil.Ptr("1.1.1.1"),
+			dnsExpectedAnswer: testutil.Ptr("2001:db8::1"),
 			wantRecTypeNull:   false,
 			wantNSNull:        false,
 			wantAnswerNull:    false,
 		},
 		{
 			name:            "partially populated (only record type)",
-			dnsRecordType:   strPtrCov("MX"),
+			dnsRecordType:   testutil.Ptr("MX"),
 			wantRecTypeNull: false,
 			wantNSNull:      true,
 			wantAnswerNull:  true,
@@ -435,13 +436,13 @@ func TestMapMonitorCommonFields_SSLExpiration(t *testing.T) {
 		},
 		{
 			name:      "positive value",
-			sslExp:    intPtrCov(90),
+			sslExp:    testutil.Ptr(90),
 			wantNull:  false,
 			wantValue: 90,
 		},
 		{
 			name:      "zero value",
-			sslExp:    intPtrCov(0),
+			sslExp:    testutil.Ptr(0),
 			wantNull:  false,
 			wantValue: 0,
 		},
@@ -1073,9 +1074,6 @@ func TestRequestHeaders_Roundtrip(t *testing.T) {
 // ---------------------------------------------------------------------------
 // Test helpers (unique to this file)
 // ---------------------------------------------------------------------------
-
-func intPtrCov(v int) *int       { return &v }
-func strPtrCov(v string) *string { return &v }
 
 func assertStringField(t *testing.T, name string, field types.String, want string) {
 	t.Helper()

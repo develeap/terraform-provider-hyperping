@@ -10,15 +10,12 @@ import (
 	"net/http"
 )
 
-// monitorsBasePath uses the exported constant for consistency.
-var monitorsBasePath = MonitorsBasePath
-
 // ListMonitors returns all monitors.
 //
 // NOTE: The Hyperping API returns all monitors in a single response (no pagination).
 func (c *Client) ListMonitors(ctx context.Context) ([]Monitor, error) {
 	var rawResponse json.RawMessage
-	if err := c.doRequest(ctx, http.MethodGet, monitorsBasePath, nil, &rawResponse); err != nil {
+	if err := c.doRequest(ctx, http.MethodGet, MonitorsBasePath, nil, &rawResponse); err != nil {
 		return nil, fmt.Errorf("failed to list monitors: %w", err)
 	}
 
@@ -75,7 +72,7 @@ func (c *Client) GetMonitor(ctx context.Context, id string) (*Monitor, error) {
 		return nil, fmt.Errorf("GetMonitor: %w", err)
 	}
 	var monitor Monitor
-	path := fmt.Sprintf("%s/%s", monitorsBasePath, id)
+	path := fmt.Sprintf("%s/%s", MonitorsBasePath, id)
 	if err := c.doRequest(ctx, http.MethodGet, path, nil, &monitor); err != nil {
 		return nil, fmt.Errorf("failed to get monitor %s: %w", id, err)
 	}
@@ -88,7 +85,7 @@ func (c *Client) CreateMonitor(ctx context.Context, req CreateMonitorRequest) (*
 		return nil, fmt.Errorf("CreateMonitor: %w", err)
 	}
 	var monitor Monitor
-	if err := c.doRequest(ctx, http.MethodPost, monitorsBasePath, req, &monitor); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, MonitorsBasePath, req, &monitor); err != nil {
 		return nil, fmt.Errorf("failed to create monitor: %w", err)
 	}
 	return &monitor, nil
@@ -101,7 +98,7 @@ func (c *Client) UpdateMonitor(ctx context.Context, id string, req UpdateMonitor
 	}
 
 	var monitor Monitor
-	path := fmt.Sprintf("%s/%s", monitorsBasePath, id)
+	path := fmt.Sprintf("%s/%s", MonitorsBasePath, id)
 	if err := c.doRequest(ctx, http.MethodPut, path, req, &monitor); err != nil {
 		return nil, fmt.Errorf("failed to update monitor %s: %w", id, err)
 	}
@@ -113,7 +110,7 @@ func (c *Client) DeleteMonitor(ctx context.Context, id string) error {
 	if err := ValidateResourceID(id); err != nil {
 		return fmt.Errorf("DeleteMonitor: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s", monitorsBasePath, id)
+	path := fmt.Sprintf("%s/%s", MonitorsBasePath, id)
 	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete monitor %s: %w", id, err)
 	}

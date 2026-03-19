@@ -76,4 +76,4 @@ output "backup_ping_url" {
 - `is_down` (Boolean) Whether the healthcheck is currently in a failure state (read-only).
 - `last_ping` (String) Timestamp of the last ping received in ISO 8601 format (read-only).
 - `period` (Number) Calculated period in seconds (read-only).
-- `ping_url` (String) The auto-generated ping URL. Your cron job pings this URL to prove it ran.
+- `ping_url` (String, Sensitive) The auto-generated ping URL. Your cron job pings this URL to prove it ran.

@@ -486,8 +486,15 @@ func (c *Client) doRequestWithRetry(ctx context.Context, method, path string, bo
 		return err
 	}
 
+	// POST requests are not idempotent: retrying after a server-side failure
+	// may create duplicate resources. Only retry idempotent methods.
+	effectiveMaxRetries := c.maxRetries
+	if method == http.MethodPost {
+		effectiveMaxRetries = 0
+	}
+
 	var lastErr error
-	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+	for attempt := 0; attempt <= effectiveMaxRetries; attempt++ {
 		req, err := c.buildHTTPRequest(ctx, method, path, jsonBody)
 		if err != nil {
 			return err

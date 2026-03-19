@@ -10,9 +10,6 @@ import (
 	"net/http"
 )
 
-// healthchecksBasePath uses the exported constant for consistency.
-var healthchecksBasePath = HealthchecksBasePath
-
 // parseHealthcheckListResponse handles the various response formats the API might return.
 func parseHealthcheckListResponse(raw json.RawMessage) ([]Healthcheck, error) {
 	// Try direct array first
@@ -47,7 +44,7 @@ func (c *Client) GetHealthcheck(ctx context.Context, uuid string) (*Healthcheck,
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("GetHealthcheck: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s", healthchecksBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", HealthchecksBasePath, uuid)
 
 	// API GET returns wrapped response: {"healthcheck":{...}}
 	var getResp struct {
@@ -68,7 +65,7 @@ func (c *Client) GetHealthcheck(ctx context.Context, uuid string) (*Healthcheck,
 //   - Wrapped in "healthchecks": {"healthchecks": [{...}]}
 //   - Wrapped in "data": {"data": [{...}]}
 func (c *Client) ListHealthchecks(ctx context.Context) ([]Healthcheck, error) {
-	path := healthchecksBasePath
+	path := HealthchecksBasePath
 
 	var rawResponse json.RawMessage
 	if err := c.doRequest(ctx, http.MethodGet, path, nil, &rawResponse); err != nil {
@@ -96,7 +93,7 @@ func (c *Client) CreateHealthcheck(ctx context.Context, req CreateHealthcheckReq
 		Message     string      `json:"message"`
 		Healthcheck Healthcheck `json:"healthcheck"`
 	}
-	if err := c.doRequest(ctx, http.MethodPost, healthchecksBasePath, req, &createResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, HealthchecksBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create healthcheck: %w", err)
 	}
 
@@ -109,7 +106,7 @@ func (c *Client) UpdateHealthcheck(ctx context.Context, uuid string, req UpdateH
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("UpdateHealthcheck: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s", healthchecksBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", HealthchecksBasePath, uuid)
 
 	// API PUT returns wrapped response: {"message":"...","healthcheck":{...}}
 	var updateResp struct {
@@ -128,7 +125,7 @@ func (c *Client) DeleteHealthcheck(ctx context.Context, uuid string) error {
 	if err := ValidateResourceID(uuid); err != nil {
 		return fmt.Errorf("DeleteHealthcheck: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s", healthchecksBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", HealthchecksBasePath, uuid)
 
 	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete healthcheck: %w", err)
@@ -142,7 +139,7 @@ func (c *Client) PauseHealthcheck(ctx context.Context, uuid string) (*Healthchec
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("PauseHealthcheck: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s/pause", healthchecksBasePath, uuid)
+	path := fmt.Sprintf("%s/%s/pause", HealthchecksBasePath, uuid)
 
 	var action HealthcheckAction
 	if err := c.doRequest(ctx, http.MethodPost, path, nil, &action); err != nil {
@@ -157,7 +154,7 @@ func (c *Client) ResumeHealthcheck(ctx context.Context, uuid string) (*Healthche
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("ResumeHealthcheck: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s/resume", healthchecksBasePath, uuid)
+	path := fmt.Sprintf("%s/%s/resume", HealthchecksBasePath, uuid)
 
 	var action HealthcheckAction
 	if err := c.doRequest(ctx, http.MethodPost, path, nil, &action); err != nil {

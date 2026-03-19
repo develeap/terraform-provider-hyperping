@@ -765,18 +765,6 @@ func TestIncidentUpdateResource_Update_Success(t *testing.T) {
 		t.Fatalf("unexpected errors: %v", resp.Diagnostics.Errors())
 	}
 
-	// Should have a warning about update not being fully supported
-	hasWarning := false
-	for _, d := range resp.Diagnostics {
-		if d.Severity() == diag.SeverityWarning && d.Summary() == "Update Not Fully Supported" {
-			hasWarning = true
-			break
-		}
-	}
-	if !hasWarning {
-		t.Error("expected 'Update Not Fully Supported' warning diagnostic")
-	}
-
 	// Verify state preservation: ID and Date come from previous state
 	var resultState IncidentUpdateResourceModel
 	diags := resp.State.Get(ctx, &resultState)
@@ -799,14 +787,16 @@ func TestIncidentUpdateResource_Update_Success(t *testing.T) {
 	}
 }
 
-func TestIncidentUpdateResource_Update_InvalidID(t *testing.T) {
+func TestIncidentUpdateResource_Update_PreservesState(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{}
 
 	r := &IncidentUpdateResource{client: mock}
 	ctx := context.Background()
 
-	plan := buildIncidentUpdatePlan("incident-uuid-3", "Updated text", "identified", "")
-	state := buildIncidentUpdateState("no-slash-id", "incident-uuid-3", "Old text", "investigating", "2026-01-01T00:00:00Z")
+	// Update preserves computed fields (ID, date) from state regardless of ID format.
+	// With RequiresReplace on text and type, Update is only called for date-only changes.
+	plan := buildIncidentUpdatePlan("incident-uuid-3", "Same text", "investigating", "")
+	state := buildIncidentUpdateState("incident-uuid-3/update-uuid-1", "incident-uuid-3", "Same text", "investigating", "2026-01-15T10:00:00Z")
 
 	req := resource.UpdateRequest{
 		Plan:  plan,
@@ -818,19 +808,21 @@ func TestIncidentUpdateResource_Update_InvalidID(t *testing.T) {
 
 	r.Update(ctx, req, resp)
 
-	if !resp.Diagnostics.HasError() {
-		t.Fatal("expected error diagnostic when ID is invalid")
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("unexpected errors: %v", resp.Diagnostics.Errors())
 	}
 
-	found := false
-	for _, d := range resp.Diagnostics.Errors() {
-		if d.Summary() == "Invalid Resource ID" {
-			found = true
-			break
-		}
+	var resultState IncidentUpdateResourceModel
+	diags := resp.State.Get(ctx, &resultState)
+	if diags.HasError() {
+		t.Fatalf("failed to read result state: %v", diags.Errors())
 	}
-	if !found {
-		t.Errorf("expected 'Invalid Resource ID' diagnostic, got: %v", resp.Diagnostics.Errors())
+
+	if resultState.ID.ValueString() != "incident-uuid-3/update-uuid-1" {
+		t.Errorf("expected ID preserved from state, got %q", resultState.ID.ValueString())
+	}
+	if resultState.Date.ValueString() != "2026-01-15T10:00:00Z" {
+		t.Errorf("expected date preserved from state, got %q", resultState.Date.ValueString())
 	}
 }
 

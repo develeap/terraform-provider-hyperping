@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // TestMapStringMapToTF tests conversion of map[string]string to types.Map
@@ -205,7 +206,7 @@ func TestMapStatusPageCommonFields(t *testing.T) {
 			input: &client.StatusPage{
 				UUID:            "sp_full123",
 				Name:            "Full Status",
-				Hostname:        stringPtr("status.example.com"),
+				Hostname:        testutil.Ptr("status.example.com"),
 				HostedSubdomain: "status",
 				URL:             "https://status.example.com",
 				Settings: client.StatusPageSettings{
@@ -336,9 +337,4 @@ func TestMapListToStringSlice(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper function for tests
-func stringPtr(s string) *string {
-	return &s
 }

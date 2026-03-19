@@ -3,8 +3,12 @@
 
 package client
 
-// boolPtr returns a pointer to the given bool value.
-// Lives in _test.go to exclude from production binary.
-func boolPtr(b bool) *bool {
-	return &b
-}
+import "github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
+
+// Package-level test pointer helpers. These delegate to testutil.Ptr
+// to avoid duplicating the implementation across test files.
+
+func boolPtr(b bool) *bool       { return testutil.Ptr(b) }
+func strPtr(s string) *string    { return testutil.Ptr(s) }
+func stringPtr(s string) *string { return testutil.Ptr(s) }
+func intPtr(i int) *int          { return testutil.Ptr(i) }

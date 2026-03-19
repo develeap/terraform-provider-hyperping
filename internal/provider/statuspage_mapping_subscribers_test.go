@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // TestMapSubscriberToTF tests subscriber mapping
@@ -23,7 +24,7 @@ func TestMapSubscriberToTF(t *testing.T) {
 				ID:        1,
 				Type:      "email",
 				Value:     "user@example.com",
-				Email:     stringPtr("user@example.com"),
+				Email:     testutil.Ptr("user@example.com"),
 				CreatedAt: "2026-01-31T10:00:00Z",
 			},
 		},
@@ -33,7 +34,7 @@ func TestMapSubscriberToTF(t *testing.T) {
 				ID:        2,
 				Type:      "sms",
 				Value:     "+1234567890",
-				Phone:     stringPtr("+1234567890"),
+				Phone:     testutil.Ptr("+1234567890"),
 				CreatedAt: "2026-01-31T10:00:00Z",
 			},
 		},
@@ -52,7 +53,7 @@ func TestMapSubscriberToTF(t *testing.T) {
 				ID:           4,
 				Type:         "slack",
 				Value:        "#general",
-				SlackChannel: stringPtr("#general"),
+				SlackChannel: testutil.Ptr("#general"),
 				CreatedAt:    "2026-01-31T10:00:00Z",
 			},
 		},

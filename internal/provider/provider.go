@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
@@ -170,37 +171,30 @@ func (p *HyperpingProvider) DataSources(_ context.Context) []func() datasource.D
 // Only *.hyperping.io and localhost (for testing) are permitted to prevent
 // credential theft via SSRF attacks.
 func isAllowedBaseURL(baseURL string) bool {
-	lower := strings.ToLower(baseURL)
-
-	// Extract domain, handling both http:// and https:// prefixes
-	domain := lower
-	domain = strings.TrimPrefix(domain, "https://")
-	domain = strings.TrimPrefix(domain, "http://")
-	// Remove path, query, and fragment
-	if idx := strings.IndexAny(domain, "/:?#"); idx != -1 {
-		domain = domain[:idx]
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return false
 	}
+
+	// Require a scheme to avoid ambiguous parsing
+	host := parsed.Hostname()
 
 	// Allow localhost for local testing (127.0.0.1, ::1, localhost)
 	// Localhost is exempt from HTTPS requirement (httptest uses HTTP)
-	if domain == "localhost" || domain == "127.0.0.1" || domain == "[::1]" {
-		return true
-	}
-	if strings.HasPrefix(domain, "127.0.0.1:") || strings.HasPrefix(domain, "localhost:") {
+	isLocalhost := host == "localhost" || host == "127.0.0.1" || host == "::1"
+
+	if isLocalhost {
 		return true
 	}
 
 	// Non-localhost targets MUST use HTTPS to prevent credential leakage (VULN-016)
-	if !strings.HasPrefix(lower, "https://") {
+	if parsed.Scheme != "https" {
 		return false
 	}
 
 	// Allow official Hyperping domains (*.hyperping.io)
-	if domain == "hyperping.io" || strings.HasSuffix(domain, ".hyperping.io") {
-		return true
-	}
-
-	return false
+	host = strings.ToLower(host)
+	return host == "hyperping.io" || strings.HasSuffix(host, ".hyperping.io")
 }
 
 // New creates a new provider factory function.

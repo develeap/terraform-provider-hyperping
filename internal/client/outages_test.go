@@ -137,8 +137,8 @@ func TestClient_GetOutage(t *testing.T) {
 				if r.Method != http.MethodGet {
 					t.Errorf("Expected GET request, got %s", r.Method)
 				}
-				if r.URL.Path != outagesBasePath+"/"+tt.uuid {
-					t.Errorf("Expected path %s/%s, got %s", outagesBasePath, tt.uuid, r.URL.Path)
+				if r.URL.Path != OutagesBasePath+"/"+tt.uuid {
+					t.Errorf("Expected path %s/%s, got %s", OutagesBasePath, tt.uuid, r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -255,8 +255,8 @@ func TestClient_ListOutages(t *testing.T) {
 				if r.Method != http.MethodGet {
 					t.Errorf("Expected GET request, got %s", r.Method)
 				}
-				if r.URL.Path != outagesBasePath {
-					t.Errorf("Expected path %s, got %s", outagesBasePath, r.URL.Path)
+				if r.URL.Path != OutagesBasePath {
+					t.Errorf("Expected path %s, got %s", OutagesBasePath, r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -338,7 +338,7 @@ func TestClient_CreateOutage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != outagesBasePath {
+				if r.URL.Path != OutagesBasePath {
 					t.Errorf("unexpected path: got %v", r.URL.Path)
 				}
 				if r.Method != http.MethodPost {
@@ -375,8 +375,8 @@ func TestClient_AcknowledgeOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != outagesBasePath+"/out_test123/acknowledge" {
-			t.Errorf("Expected path %s/out_test123/acknowledge, got %s", outagesBasePath, r.URL.Path)
+		if r.URL.Path != OutagesBasePath+"/out_test123/acknowledge" {
+			t.Errorf("Expected path %s/out_test123/acknowledge, got %s", OutagesBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -407,8 +407,8 @@ func TestClient_UnacknowledgeOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != outagesBasePath+"/out_test123/unacknowledge" {
-			t.Errorf("Expected path %s/out_test123/unacknowledge, got %s", outagesBasePath, r.URL.Path)
+		if r.URL.Path != OutagesBasePath+"/out_test123/unacknowledge" {
+			t.Errorf("Expected path %s/out_test123/unacknowledge, got %s", OutagesBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -436,8 +436,8 @@ func TestClient_ResolveOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != outagesBasePath+"/out_test123/resolve" {
-			t.Errorf("Expected path %s/out_test123/resolve, got %s", outagesBasePath, r.URL.Path)
+		if r.URL.Path != OutagesBasePath+"/out_test123/resolve" {
+			t.Errorf("Expected path %s/out_test123/resolve, got %s", OutagesBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -468,8 +468,8 @@ func TestClient_EscalateOutage(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
 		}
-		if r.URL.Path != outagesBasePath+"/out_test123/escalate" {
-			t.Errorf("Expected path %s/out_test123/escalate, got %s", outagesBasePath, r.URL.Path)
+		if r.URL.Path != OutagesBasePath+"/out_test123/escalate" {
+			t.Errorf("Expected path %s/out_test123/escalate, got %s", OutagesBasePath, r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -525,8 +525,8 @@ func TestClient_DeleteOutage(t *testing.T) {
 				if r.Method != http.MethodDelete {
 					t.Errorf("Expected DELETE request, got %s", r.Method)
 				}
-				if r.URL.Path != outagesBasePath+"/"+tt.uuid {
-					t.Errorf("Expected path %s/%s, got %s", outagesBasePath, tt.uuid, r.URL.Path)
+				if r.URL.Path != OutagesBasePath+"/"+tt.uuid {
+					t.Errorf("Expected path %s/%s, got %s", OutagesBasePath, tt.uuid, r.URL.Path)
 				}
 
 				w.WriteHeader(tt.responseStatus)
@@ -721,8 +721,8 @@ func TestParseOutageListResponse(t *testing.T) {
 				return
 			}
 
-			if !tt.wantErr && len(result) != tt.wantCount {
-				t.Errorf("parseOutageListResponse() count = %d, want %d", len(result), tt.wantCount)
+			if !tt.wantErr && len(result.Outages) != tt.wantCount {
+				t.Errorf("parseOutageListResponse() count = %d, want %d", len(result.Outages), tt.wantCount)
 			}
 		})
 	}
@@ -734,8 +734,8 @@ func TestClient_ListOutages_DataWrapper(t *testing.T) {
 			if r.Method != http.MethodGet {
 				t.Errorf("Expected GET request, got %s", r.Method)
 			}
-			if r.URL.Path != outagesBasePath {
-				t.Errorf("Expected path %s, got %s", outagesBasePath, r.URL.Path)
+			if r.URL.Path != OutagesBasePath {
+				t.Errorf("Expected path %s, got %s", OutagesBasePath, r.URL.Path)
 			}
 
 			w.WriteHeader(http.StatusOK)
@@ -778,4 +778,75 @@ func TestClient_ListOutages_DataWrapper(t *testing.T) {
 			t.Errorf("ListOutages() count = %d, want 2", len(outages))
 		}
 	})
+}
+
+func TestClient_ListOutages_MultiPagePagination(t *testing.T) {
+	t.Parallel()
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page := r.URL.Query().Get("page")
+		requestCount++
+
+		w.WriteHeader(http.StatusOK)
+		switch page {
+		case "0":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"outages": []map[string]interface{}{
+					{"uuid": "out_page0_1", "isResolved": false, "statusCode": 500},
+					{"uuid": "out_page0_2", "isResolved": false, "statusCode": 503},
+				},
+				"hasNextPage":    true,
+				"total":          5,
+				"page":           0,
+				"resultsPerPage": 2,
+			})
+		case "1":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"outages": []map[string]interface{}{
+					{"uuid": "out_page1_1", "isResolved": true, "statusCode": 200},
+					{"uuid": "out_page1_2", "isResolved": false, "statusCode": 502},
+				},
+				"hasNextPage":    true,
+				"total":          5,
+				"page":           1,
+				"resultsPerPage": 2,
+			})
+		case "2":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"outages": []map[string]interface{}{
+					{"uuid": "out_page2_1", "isResolved": true, "statusCode": 200},
+				},
+				"hasNextPage":    false,
+				"total":          5,
+				"page":           2,
+				"resultsPerPage": 2,
+			})
+		default:
+			t.Errorf("unexpected page request: %s", page)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer server.Close()
+
+	client := NewClient("test_key", WithBaseURL(server.URL))
+	outages, err := client.ListOutages(context.Background())
+	if err != nil {
+		t.Fatalf("ListOutages() error = %v", err)
+	}
+
+	if len(outages) != 5 {
+		t.Errorf("ListOutages() got %d outages, want 5", len(outages))
+	}
+	if requestCount != 3 {
+		t.Errorf("expected 3 page requests, got %d", requestCount)
+	}
+
+	// Verify order: page 0 items first, then page 1, then page 2
+	expectedUUIDs := []string{"out_page0_1", "out_page0_2", "out_page1_1", "out_page1_2", "out_page2_1"}
+	for i, want := range expectedUUIDs {
+		if outages[i].UUID != want {
+			t.Errorf("outage[%d].UUID = %q, want %q", i, outages[i].UUID, want)
+		}
+	}
 }

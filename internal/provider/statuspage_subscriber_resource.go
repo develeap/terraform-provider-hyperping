@@ -93,6 +93,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 			"email": schema.StringAttribute{
 				MarkdownDescription: "Email address (required when type=email)",
 				Optional:            true,
+				Sensitive:           true,
 				Validators: []validator.String{
 					RequiredWhenValueIs(path.Root("type"), "email", "type"),
 					EmailFormat(),
@@ -104,6 +105,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 			"phone": schema.StringAttribute{
 				MarkdownDescription: "Phone number (required when type=sms)",
 				Optional:            true,
+				Sensitive:           true,
 				Validators: []validator.String{
 					RequiredWhenValueIs(path.Root("type"), "sms", "type"),
 				},
@@ -217,13 +219,20 @@ func (r *StatusPageSubscriberResource) Read(ctx context.Context, req resource.Re
 	}
 
 	// List subscribers to find this one (API doesn't have GetSubscriber endpoint).
-	// Paginate through all pages to handle status pages with many subscribers.
+	// Use the subscriber type as a server-side filter to reduce the number of pages
+	// fetched. The API does not support filtering by ID or email, so we still need
+	// to paginate within the type, but this narrows the result set significantly.
 	subscriberID := int(state.ID.ValueInt64())
+	var subscriberType *string
+	if !state.Type.IsNull() && !state.Type.IsUnknown() {
+		t := state.Type.ValueString()
+		subscriberType = &t
+	}
 	var foundSubscriber *client.StatusPageSubscriber
 	page := 1
 	for {
 		pageNum := page
-		paginatedResp, err := r.client.ListSubscribers(ctx, state.StatusPageUUID.ValueString(), &pageNum, nil)
+		paginatedResp, err := r.client.ListSubscribers(ctx, state.StatusPageUUID.ValueString(), &pageNum, subscriberType)
 		if err != nil {
 			if client.IsNotFound(err) {
 				// Status page was deleted

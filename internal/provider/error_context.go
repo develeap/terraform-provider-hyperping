@@ -12,6 +12,11 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/internal/client"
 )
 
+var (
+	retryAfterPattern    = regexp.MustCompile(`retry after (\d+) seconds?`)
+	errStatusCodePattern = regexp.MustCompile(`status (\d{3})`)
+)
+
 // ErrorContext provides structured error information for enhanced error messages.
 // This context is used to generate actionable troubleshooting steps for users.
 type ErrorContext struct {
@@ -87,11 +92,10 @@ func extractRetryAfter(err error) int {
 		return 60
 	}
 
-	msg := err.Error()
+	msg := strings.ToLower(err.Error())
 
 	// Try to find "retry after X seconds" pattern (case-insensitive)
-	re := regexp.MustCompile(`retry after (\d+) seconds?`)
-	matches := re.FindStringSubmatch(strings.ToLower(msg))
+	matches := retryAfterPattern.FindStringSubmatch(msg)
 	if len(matches) > 1 {
 		if seconds, parseErr := strconv.Atoi(matches[1]); parseErr == nil {
 			return seconds
@@ -112,8 +116,7 @@ func extractStatusCode(err error, defaultCode int) int {
 	msg := err.Error()
 
 	// Try to find "status XXX" pattern
-	re := regexp.MustCompile(`status (\d{3})`)
-	matches := re.FindStringSubmatch(msg)
+	matches := errStatusCodePattern.FindStringSubmatch(msg)
 	if len(matches) > 1 {
 		if code, parseErr := strconv.Atoi(matches[1]); parseErr == nil {
 			return code
@@ -123,7 +126,7 @@ func extractStatusCode(err error, defaultCode int) int {
 	return defaultCode
 }
 
-// String returns a human-readable representation of the error context.
+// String implements fmt.Stringer for test debugging.
 func (ctx ErrorContext) String() string {
 	return fmt.Sprintf("ErrorContext{Type: %s, Status: %d, Resource: %s, ID: %s, Operation: %s}",
 		ctx.Type, ctx.HTTPStatus, ctx.ResourceType, ctx.ResourceID, ctx.Operation)
