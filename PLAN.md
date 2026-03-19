@@ -279,16 +279,25 @@ Client models + Terraform schema + mapping layer.
 - `TestCreateStatusPageService_Description_JSON` -- marshal with `description` string.
 
 #### `internal/provider/statuspage_mapping_coverage_test.go`
-- Update `TestMapTFToSections_WithValues` -- add `description` to service objects.
-- Update `TestMapTFToServices_WithValues` -- add `description` to service and nested service objects.
-- Update `TestMapTFToServices_NonGroupWithoutUUID` -- add `description` to attr map.
-- Update `TestMapTFToServices_GroupWithEmptyServices` -- add `description` to attr map.
-- Add `TestNestedServiceAttrTypes_Count` -- verify 7 keys (was 6).
+- Update `TestMapTFToSections_WithValues` (line 653) -- add `description` to service objects.
+- Update `TestMapTFToServices_WithValues` (line 701) -- add `description` to service and nested service objects.
+- Update `TestMapTFToServices_NonGroupWithoutUUID` (line 1156) -- add `description` to attr map.
+- Update `TestMapTFToServices_GroupWithEmptyServices` (line 1182) -- add `description` to attr map.
 - Add `TestServiceAttrTypes_Count` -- verify 8 keys (was 7).
+
+#### `internal/provider/statuspage_mapping_sections_test.go`
+- Update `buildFullServiceObj()` (line 261) -- add `"description"` key.
+- Update `buildMinimalServiceObj()` (line 275) -- add `"description"` key.
+
+#### `internal/provider/statuspage_nested_service_test.go`
+- Update `TestNestedServiceAttrTypes` (line 70) -- update expected keys from 6 to 7, add `"description"` to `expectedKeys`.
+- Update `buildNestedServiceObj()` (line 566) -- add `"description"` key.
+- Update `buildTopLevelServiceObj()` (line 605) -- add `"description"` key.
 
 #### `internal/provider/statuspage_mapping_test.go` or `statuspage_mapping_settings_test.go`
 - Add test for `mapServiceToTFWithFilter` with description populated.
 - Add test for `mapNestedServicesToTF` with description populated.
+- Update `buildAuthObj()` helper (statuspage_mapping_test.go:101) to default `sso_connection_uuid` to `types.StringNull()` when not provided.
 
 ---
 
@@ -298,20 +307,20 @@ Client models + Terraform schema + mapping layer.
 **Files**: `internal/client/models_incident.go`, `internal/client/models_statuspage.go`
 **Tests**: `internal/client/models_test.go`
 
-1. [ ] Add `Updates []AddIncidentUpdateRequest` to `CreateIncidentRequest` (models_incident.go:38)
-2. [ ] Add `Updates []AddIncidentUpdateRequest` to `UpdateIncidentRequest` (models_incident.go:59)
-3. [ ] Add `SSOConnectionUUID *string` to `StatusPageAuthenticationSettings` (models_statuspage.go:59)
-4. [ ] Add `SSOConnectionUUID *string` to `CreateStatusPageAuthenticationSettings` (models_statuspage.go:141)
-5. [ ] Add `Description map[string]string` to `StatusPageService` (models_statuspage.go:86)
-6. [ ] Add `Description *string` to `CreateStatusPageService` (models_statuspage.go:164)
+1. [ ] Add `Updates []AddIncidentUpdateRequest` to `CreateIncidentRequest` after `Date` field (models_incident.go:33-40)
+2. [ ] Add `Updates []AddIncidentUpdateRequest` to `UpdateIncidentRequest` after `StatusPages` field (models_incident.go:55-60)
+3. [ ] Add `SSOConnectionUUID *string` to `StatusPageAuthenticationSettings` after `AllowedDomains` (models_statuspage.go:55-60)
+4. [ ] Add `SSOConnectionUUID *string` to `CreateStatusPageAuthenticationSettings` after `AllowedDomains` (models_statuspage.go:137-142)
+5. [ ] Add `Description map[string]string` to `StatusPageService` after `Services` field (models_statuspage.go:79-87)
+6. [ ] Add `Description *string` to `CreateStatusPageService` after `Services` field (models_statuspage.go:156-165)
 7. [ ] Write client model serialization tests
 
 ### Phase 2: AttrTypes (mapping types layer)
 **Files**: `internal/provider/statuspage_mapping_types.go`
 
-8. [ ] Add `"sso_connection_uuid": types.StringType` to `AuthenticationSettingsAttrTypes()` (mapping_types.go:119)
-9. [ ] Add `"description": types.MapType{ElemType: types.StringType}` to `NestedServiceAttrTypes()` (mapping_types.go:141)
-10. [ ] Add `"description": types.MapType{ElemType: types.StringType}` to `ServiceAttrTypes()` (mapping_types.go:155)
+8. [ ] Add `"sso_connection_uuid": types.StringType` to `AuthenticationSettingsAttrTypes()` (mapping_types.go:114-121)
+9. [ ] Add `"description": types.MapType{ElemType: types.StringType}` to `NestedServiceAttrTypes()` (mapping_types.go:134-143)
+10. [ ] Add `"description": types.MapType{ElemType: types.StringType}` to `ServiceAttrTypes()` (mapping_types.go:147-157)
 
 ### Phase 3: Terraform Schemas
 **Files**: `statuspage_resource_schema.go`, `statuspage_data_source.go`, `statuspages_data_source.go`
@@ -335,10 +344,12 @@ Client models + Terraform schema + mapping layer.
 **Files**: Various `*_test.go`
 
 21. [ ] Client model serialization tests (incident updates, sso_connection_uuid, service description)
-22. [ ] AttrTypes count tests (AuthenticationSettingsAttrTypes=5, NestedServiceAttrTypes=7, ServiceAttrTypes=8)
-23. [ ] Update existing mapping coverage tests to include new fields in object constructors
-24. [ ] Add mapping tests for sso_connection_uuid read/write round-trip
-25. [ ] Add mapping tests for service description read/write round-trip
+22. [ ] Update `TestNestedServiceAttrTypes` expected keys (6->7); add `TestServiceAttrTypes_Count` (7->8 keys)
+23. [ ] Update `buildAuthObj` helper to auto-inject `sso_connection_uuid: types.StringNull()` default
+24. [ ] Update `buildNestedServiceObj`, `buildTopLevelServiceObj`, `buildFullServiceObj`, `buildMinimalServiceObj` helpers to include `"description"` key
+25. [ ] Update all inline service/auth object constructors in coverage tests to include new keys
+26. [ ] Add mapping tests for sso_connection_uuid read/write round-trip
+27. [ ] Add mapping tests for service description read/write round-trip
 
 ---
 
@@ -350,15 +361,18 @@ Client models + Terraform schema + mapping layer.
 3. **Mapping round-trip tests** -- TF -> API -> TF for sso_connection_uuid and description
 
 ### Existing Test Updates
-All tests that construct `ServiceAttrTypes()` or `NestedServiceAttrTypes()` objects will fail until `description` is added. These must be updated in the same commit as the AttrTypes change:
-- `statuspage_mapping_coverage_test.go` -- multiple functions construct service objects
-- `statuspage_mapping_test.go` -- `TestMapTFToSections_WithValues`, `TestMapTFToServices_WithValues`
-- `statuspage_nested_service_test.go`
-- `statuspage_nested_groups_test.go`
+All tests that construct `ServiceAttrTypes()` or `NestedServiceAttrTypes()` objects will fail until `description` is added. These must be updated in the same commit as the AttrTypes change.
 
-Similarly, tests constructing `AuthenticationSettingsAttrTypes()` objects need `sso_connection_uuid`:
-- `statuspage_mapping_coverage_test.go` -- `TestMapTFToSettings_WithValues`
-- `statuspage_mapping_settings_test.go`
+**Service/NestedService objects -- files that need `"description"` added:**
+- `statuspage_mapping_coverage_test.go` -- multiple inline object constructors (lines 654, 702, 714, 726, 1158, 1184)
+- `statuspage_mapping_sections_test.go` -- `buildFullServiceObj()` (line 261) and `buildMinimalServiceObj()` (line 275), plus inline constructions (line 160)
+- `statuspage_nested_service_test.go` -- `buildNestedServiceObj()` (line 566) and `buildTopLevelServiceObj()` (line 605) helpers; all callers get fixed automatically
+
+Note: `statuspage_nested_groups_test.go` does NOT construct typed objects directly -- it uses API client structs, so it needs no changes.
+
+**Authentication objects -- files that need `"sso_connection_uuid"` added:**
+- `statuspage_mapping_coverage_test.go` -- `TestMapTFToSettings_WithValues` (line 589)
+- `statuspage_mapping_settings_test.go` -- `buildAuthObj()` helper (line 101); must default `sso_connection_uuid` to `types.StringNull()` when not in caller's attrs map, OR every caller (lines 120, 188, 217, 239) must add `"sso_connection_uuid"`. Best approach: update `buildAuthObj` to inject a default `types.StringNull()` for `sso_connection_uuid` when not provided, so all existing callers keep working.
 
 ### Verification Commands
 ```bash
@@ -380,7 +394,8 @@ make lint
 | Risk | Mitigation |
 |------|------------|
 | AttrTypes / schema mismatch causes runtime panics | AttrTypes count tests catch this at unit-test time |
-| Existing tests break from missing `description` in object constructors | Phase 5 updates all constructors atomically with Phase 2-3 changes |
+| Existing tests break from missing `description` in object constructors | Phase 2 + Phase 5 (steps 22-25) must be applied atomically -- `types.ObjectValue` panics if any AttrTypes key is missing from the value map |
+| `buildAuthObj` helper breaks when `sso_connection_uuid` added to AttrTypes | Update `buildAuthObj` to inject `types.StringNull()` default for `sso_connection_uuid` when caller omits it -- all 4 existing callers keep working |
 | `sso_connection_uuid: null` causes type assertion panic | Use `*string` with explicit nil check, same pattern as existing optional fields |
 | Service description write-plain/read-localized mismatch | Follow existing pattern used by statuspage settings `description` field |
 | Incident `updates` array breaks existing create/update flows | `omitempty` ensures nil/empty arrays are not sent, preserving backward compatibility |
