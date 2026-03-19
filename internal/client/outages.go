@@ -8,37 +8,43 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
-// outagesBasePath uses the exported constant for consistency.
-var outagesBasePath = OutagesBasePath
+// outageListResponse holds the parsed outage list along with pagination metadata.
+type outageListResponse struct {
+	Outages     []Outage
+	HasNextPage bool
+}
 
 // parseOutageListResponse handles the various response formats the API might return.
-func parseOutageListResponse(raw json.RawMessage) ([]Outage, error) {
-	// Try direct array first
+// It also extracts pagination metadata when available.
+func parseOutageListResponse(raw json.RawMessage) (outageListResponse, error) {
+	// Try direct array first (no pagination metadata available)
 	var outages []Outage
 	if err := json.Unmarshal(raw, &outages); err == nil {
-		return outages, nil
+		return outageListResponse{Outages: outages, HasNextPage: false}, nil
 	}
 
-	// Try wrapped formats
+	// Try wrapped formats with pagination metadata
 	var wrapped struct {
-		Outages []Outage `json:"outages"`
-		Data    []Outage `json:"data"`
+		Outages     []Outage `json:"outages"`
+		Data        []Outage `json:"data"`
+		HasNextPage bool     `json:"hasNextPage"`
 	}
 	if err := json.Unmarshal(raw, &wrapped); err != nil {
-		return nil, err
+		return outageListResponse{}, err
 	}
 
 	if len(wrapped.Outages) > 0 {
-		return wrapped.Outages, nil
+		return outageListResponse{Outages: wrapped.Outages, HasNextPage: wrapped.HasNextPage}, nil
 	}
 	if len(wrapped.Data) > 0 {
-		return wrapped.Data, nil
+		return outageListResponse{Outages: wrapped.Data, HasNextPage: wrapped.HasNextPage}, nil
 	}
 
 	// Empty response
-	return []Outage{}, nil
+	return outageListResponse{Outages: []Outage{}, HasNextPage: false}, nil
 }
 
 // GetOutage retrieves a single outage by UUID.
@@ -47,7 +53,7 @@ func (c *Client) GetOutage(ctx context.Context, uuid string) (*Outage, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("GetOutage: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s", outagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", OutagesBasePath, uuid)
 
 	// API GET returns wrapped response: {"outage":{...}}
 	var getResp struct {
@@ -60,28 +66,44 @@ func (c *Client) GetOutage(ctx context.Context, uuid string) (*Outage, error) {
 	return &getResp.Outage, nil
 }
 
-// ListOutages retrieves all outages.
+// maxPaginationPages is a safety limit to prevent infinite pagination loops.
+const maxOutagePaginationPages = 100
+
+// ListOutages retrieves all outages, paginating through all pages.
 // API: ... /v2/outages
 //
 // The response can vary in format:
 //   - Direct array: [{...}, {...}]
-//   - Wrapped in "outages": {"outages": [{...}]}
+//   - Wrapped in "outages": {"outages": [{...}], "hasNextPage": bool}
 //   - Wrapped in "data": {"data": [{...}]}
 func (c *Client) ListOutages(ctx context.Context) ([]Outage, error) {
-	path := outagesBasePath
+	var allOutages []Outage
 
-	var rawResponse json.RawMessage
-	if err := c.doRequest(ctx, http.MethodGet, path, nil, &rawResponse); err != nil {
-		return nil, fmt.Errorf("failed to list outages: %w", err)
+	for page := 0; page < maxOutagePaginationPages; page++ {
+		path := OutagesBasePath + "?page=" + strconv.Itoa(page)
+
+		var rawResponse json.RawMessage
+		if err := c.doRequest(ctx, http.MethodGet, path, nil, &rawResponse); err != nil {
+			return nil, fmt.Errorf("failed to list outages (page %d): %w", page, err)
+		}
+
+		result, err := parseOutageListResponse(rawResponse)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse outages response (page %d): %w", page, err)
+		}
+
+		allOutages = append(allOutages, result.Outages...)
+
+		if !result.HasNextPage {
+			break
+		}
 	}
 
-	// Handle different response formats
-	outages, err := parseOutageListResponse(rawResponse)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse outages response: %w", err)
+	if allOutages == nil {
+		allOutages = []Outage{}
 	}
 
-	return outages, nil
+	return allOutages, nil
 }
 
 // CreateOutage creates a manual outage.
@@ -99,7 +121,7 @@ func (c *Client) CreateOutage(ctx context.Context, req CreateOutageRequest) (*Ou
 		Message string `json:"message"`
 		Outage  Outage `json:"outage"`
 	}
-	if err := c.doRequest(ctx, http.MethodPost, outagesBasePath, req, &createResp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, OutagesBasePath, req, &createResp); err != nil {
 		return nil, fmt.Errorf("failed to create outage: %w", err)
 	}
 
@@ -112,7 +134,7 @@ func (c *Client) AcknowledgeOutage(ctx context.Context, uuid string) (*OutageAct
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("AcknowledgeOutage: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s/acknowledge", outagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s/acknowledge", OutagesBasePath, uuid)
 
 	var response OutageAction
 	if err := c.doRequest(ctx, http.MethodPost, path, nil, &response); err != nil {
@@ -128,7 +150,7 @@ func (c *Client) UnacknowledgeOutage(ctx context.Context, uuid string) (*OutageA
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("UnacknowledgeOutage: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s/unacknowledge", outagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s/unacknowledge", OutagesBasePath, uuid)
 
 	var response OutageAction
 	if err := c.doRequest(ctx, http.MethodPost, path, nil, &response); err != nil {
@@ -144,7 +166,7 @@ func (c *Client) ResolveOutage(ctx context.Context, uuid string) (*OutageAction,
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("ResolveOutage: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s/resolve", outagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s/resolve", OutagesBasePath, uuid)
 
 	var response OutageAction
 	if err := c.doRequest(ctx, http.MethodPost, path, nil, &response); err != nil {
@@ -160,7 +182,7 @@ func (c *Client) EscalateOutage(ctx context.Context, uuid string) (*OutageAction
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("EscalateOutage: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s/escalate", outagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s/escalate", OutagesBasePath, uuid)
 
 	var response OutageAction
 	if err := c.doRequest(ctx, http.MethodPost, path, nil, &response); err != nil {
@@ -176,7 +198,7 @@ func (c *Client) DeleteOutage(ctx context.Context, uuid string) error {
 	if err := ValidateResourceID(uuid); err != nil {
 		return fmt.Errorf("DeleteOutage: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s", outagesBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", OutagesBasePath, uuid)
 
 	if err := c.doRequest(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return fmt.Errorf("failed to delete outage: %w", err)

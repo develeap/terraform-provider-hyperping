@@ -18,7 +18,8 @@ type Healthcheck struct {
 	Name             string                     `json:"name"`
 	PingURL          string                     `json:"pingUrl"`                    // Auto-generated ping URL
 	Cron             string                     `json:"cron,omitempty"`             // Cron expression (e.g., "0 0 * * *")
-	Timezone         string                     `json:"timezone,omitempty"`         // Timezone (e.g., "America/New_York")
+	Timezone         string                     `json:"timezone,omitempty"`         // Timezone from POST responses (e.g., "America/New_York")
+	Tz               string                     `json:"tz,omitempty"`               // Timezone from GET responses (API inconsistency: GET returns "tz")
 	PeriodValue      *int                       `json:"periodValue,omitempty"`      // Numeric value for period
 	PeriodType       string                     `json:"periodType,omitempty"`       // seconds, minutes, hours, days
 	Period           int                        `json:"period"`                     // Calculated period in seconds
@@ -33,6 +34,16 @@ type Healthcheck struct {
 	LastLogStartDate string                     `json:"lastLogStartDate,omitempty"` // ISO 8601 timestamp (read-only)
 	LastLogEndDate   string                     `json:"lastLogEndDate,omitempty"`   // ISO 8601 timestamp (read-only)
 	EscalationPolicy *EscalationPolicyReference `json:"escalationPolicy,omitempty"` // Linked escalation policy
+}
+
+// GetTimezone returns the timezone value regardless of which JSON field was populated.
+// The Hyperping API is inconsistent: POST responses use "timezone" while GET responses
+// use "tz". This method abstracts over that inconsistency.
+func (h Healthcheck) GetTimezone() string {
+	if h.Timezone != "" {
+		return h.Timezone
+	}
+	return h.Tz
 }
 
 // CreateHealthcheckRequest represents a request to create a healthcheck.

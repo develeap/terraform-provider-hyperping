@@ -10,16 +10,13 @@ import (
 	"net/url"
 )
 
-// reportsBasePath uses the exported constant for consistency.
-var reportsBasePath = ReportsBasePath
-
 // GetMonitorReport returns the report for a specific monitor.
 // Optional from/to parameters can be provided for date filtering.
 func (c *Client) GetMonitorReport(ctx context.Context, uuid string, from, to string) (*MonitorReport, error) {
 	if err := ValidateResourceID(uuid); err != nil {
 		return nil, fmt.Errorf("GetMonitorReport: %w", err)
 	}
-	path := fmt.Sprintf("%s/%s", reportsBasePath, uuid)
+	path := fmt.Sprintf("%s/%s", ReportsBasePath, uuid)
 
 	// Add query parameters if provided
 	if from != "" || to != "" {
@@ -44,7 +41,7 @@ func (c *Client) GetMonitorReport(ctx context.Context, uuid string, from, to str
 // Optional from/to parameters can be provided for date filtering.
 // API returns wrapped response: {"period": {...}, "monitors": [...]}
 func (c *Client) ListMonitorReports(ctx context.Context, from, to string) ([]MonitorReport, error) {
-	path := reportsBasePath
+	path := ReportsBasePath
 
 	// Add query parameters if provided
 	if from != "" || to != "" {

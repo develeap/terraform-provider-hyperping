@@ -80,6 +80,7 @@ type StatusPageAPI interface {
 	UpdateStatusPage(ctx context.Context, uuid string, req UpdateStatusPageRequest) (*StatusPage, error)
 	DeleteStatusPage(ctx context.Context, uuid string) error
 	ListSubscribers(ctx context.Context, uuid string, page *int, subscriberType *string) (*SubscriberPaginatedResponse, error)
+	GetSubscriber(ctx context.Context, statuspageID string, subscriberID int) (*StatusPageSubscriber, error)
 	AddSubscriber(ctx context.Context, uuid string, req AddSubscriberRequest) (*StatusPageSubscriber, error)
 	DeleteSubscriber(ctx context.Context, uuid string, subscriberID int) error
 }
