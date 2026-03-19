@@ -145,14 +145,9 @@ jobs:
           terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
 
-      # Cache VCR cassettes for faster test execution
-      - name: Cache VCR cassettes
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: internal/client/testdata/cassettes
-          key: vcr-cassettes-${{ hashFiles('internal/client/testdata/cassettes/**') }}
-          restore-keys: |
-            vcr-cassettes-
+      # VCR cassettes are committed to the repo — no caching needed.
+      # A prior cache step here was overwriting checked-out cassettes with
+      # stale cached versions, causing test failures when cassettes changed.
 
       # Run unit tests + contract tests with parallel execution
       - name: Run unit & contract tests with coverage
