@@ -594,6 +594,7 @@ func TestMapTFToSettings_WithValues(t *testing.T) {
 			types.StringValue("example.com"),
 			types.StringValue("test.com"),
 		}),
+		"sso_connection_uuid": types.StringNull(),
 	})
 
 	settingsObj, _ := types.ObjectValue(StatusPageSettingsAttrTypes(), map[string]attr.Value{
@@ -661,6 +662,7 @@ func TestMapTFToSections_WithValues(t *testing.T) {
 		"is_group":            types.BoolValue(false),
 		"show_uptime":         types.BoolValue(true),
 		"show_response_times": types.BoolValue(true),
+		"description":         types.MapNull(types.StringType),
 		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 
@@ -708,6 +710,7 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 		"is_group":            types.BoolValue(false),
 		"show_uptime":         types.BoolValue(true),
 		"show_response_times": types.BoolValue(false),
+		"description":         types.MapNull(types.StringType),
 		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 
@@ -720,6 +723,7 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 		"is_group":            types.BoolValue(false),
 		"show_uptime":         types.BoolValue(false),
 		"show_response_times": types.BoolValue(false),
+		"description":         types.MapNull(types.StringType),
 	})
 	nestedSvcList, _ := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, []attr.Value{nestedSvc})
 
@@ -732,6 +736,7 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 		"is_group":            types.BoolValue(true),
 		"show_uptime":         types.BoolValue(false),
 		"show_response_times": types.BoolValue(true),
+		"description":         types.MapNull(types.StringType),
 		"services":            nestedSvcList,
 	})
 
@@ -1162,6 +1167,7 @@ func TestMapTFToServices_NonGroupWithoutUUID(t *testing.T) {
 		"is_group":            types.BoolValue(false),
 		"show_uptime":         types.BoolNull(),
 		"show_response_times": types.BoolNull(),
+		"description":         types.MapNull(types.StringType),
 		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 
@@ -1188,6 +1194,7 @@ func TestMapTFToServices_GroupWithEmptyServices(t *testing.T) {
 		"is_group":            types.BoolValue(true),
 		"show_uptime":         types.BoolNull(),
 		"show_response_times": types.BoolNull(),
+		"description":         types.MapNull(types.StringType),
 		"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
 	})
 
@@ -1313,4 +1320,384 @@ func TestIsAllowedBaseURL_PortVariants(t *testing.T) {
 			}
 		})
 	}
+}
+
+// =============================================================================
+// AttrTypes count assertions
+// =============================================================================
+
+func TestServiceAttrTypes_Count(t *testing.T) {
+	attrs := ServiceAttrTypes()
+	expectedKeys := []string{"id", "uuid", "name", "is_group", "show_uptime", "show_response_times", "description", "services"}
+
+	if len(attrs) != len(expectedKeys) {
+		t.Errorf("expected %d keys, got %d: %v", len(expectedKeys), len(attrs), keysOf(attrs))
+	}
+
+	for _, key := range expectedKeys {
+		if _, ok := attrs[key]; !ok {
+			t.Errorf("missing expected key %q", key)
+		}
+	}
+}
+
+func TestAuthenticationSettingsAttrTypes_Count(t *testing.T) {
+	attrs := AuthenticationSettingsAttrTypes()
+	expectedKeys := []string{"password_protection", "google_sso", "saml_sso", "allowed_domains", "sso_connection_uuid"}
+
+	if len(attrs) != len(expectedKeys) {
+		t.Errorf("expected %d keys, got %d", len(expectedKeys), len(attrs))
+	}
+
+	for _, key := range expectedKeys {
+		if _, ok := attrs[key]; !ok {
+			t.Errorf("missing expected key %q", key)
+		}
+	}
+}
+
+// =============================================================================
+// SSO connection UUID mapping tests
+// =============================================================================
+
+func TestExtractAuthSettings_SSOConnectionUUID(t *testing.T) {
+	t.Run("non-null sso_connection_uuid extracted", func(t *testing.T) {
+		domainsList, _ := types.ListValue(types.StringType, []attr.Value{})
+		obj := buildAuthObj(t, map[string]attr.Value{
+			"password_protection": types.BoolValue(false),
+			"google_sso":          types.BoolValue(false),
+			"saml_sso":            types.BoolValue(false),
+			"allowed_domains":     domainsList,
+			"sso_connection_uuid": types.StringValue("uuid-123"),
+		})
+
+		var d diag.Diagnostics
+		result := extractAuthSettings(context.Background(), obj, &d)
+
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+		if result.SSOConnectionUUID == nil {
+			t.Fatal("expected non-nil SSOConnectionUUID")
+		}
+		if *result.SSOConnectionUUID != "uuid-123" {
+			t.Errorf("expected 'uuid-123', got %q", *result.SSOConnectionUUID)
+		}
+	})
+
+	t.Run("null sso_connection_uuid produces nil", func(t *testing.T) {
+		domainsList, _ := types.ListValue(types.StringType, []attr.Value{})
+		obj := buildAuthObj(t, map[string]attr.Value{
+			"password_protection": types.BoolValue(false),
+			"google_sso":          types.BoolValue(false),
+			"saml_sso":            types.BoolValue(false),
+			"allowed_domains":     domainsList,
+			"sso_connection_uuid": types.StringNull(),
+		})
+
+		var d diag.Diagnostics
+		result := extractAuthSettings(context.Background(), obj, &d)
+
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+		if result.SSOConnectionUUID != nil {
+			t.Errorf("expected nil SSOConnectionUUID, got %q", *result.SSOConnectionUUID)
+		}
+	})
+}
+
+func TestMapSettingsToTFWithFilter_SSOConnectionUUID(t *testing.T) {
+	t.Run("non-nil sso_connection_uuid mapped", func(t *testing.T) {
+		val := "uuid-abc"
+		settings := client.StatusPageSettings{
+			Name:            "Test",
+			DefaultLanguage: "en",
+			Theme:           "light",
+			Font:            "inter",
+			AccentColor:     "#3B82F6",
+			LogoHeight:      "40px",
+			Authentication: client.StatusPageAuthenticationSettings{
+				AllowedDomains:    []string{},
+				SSOConnectionUUID: &val,
+			},
+			Subscribe: client.StatusPageSubscribeSettings{},
+		}
+
+		var diags diag.Diagnostics
+		result := mapSettingsToTFWithFilter(settings, nil, &diags)
+		if diags.HasError() {
+			t.Fatalf("unexpected error: %v", diags.Errors())
+		}
+
+		attrs := result.Attributes()
+		authObj, _ := attrs["authentication"].(types.Object)
+		authAttrs := authObj.Attributes()
+		ssoVal, _ := authAttrs["sso_connection_uuid"].(types.String)
+		if ssoVal.IsNull() {
+			t.Error("expected non-null sso_connection_uuid")
+		}
+		if ssoVal.ValueString() != "uuid-abc" {
+			t.Errorf("expected 'uuid-abc', got %q", ssoVal.ValueString())
+		}
+	})
+
+	t.Run("nil sso_connection_uuid mapped as null", func(t *testing.T) {
+		settings := client.StatusPageSettings{
+			Name:            "Test",
+			DefaultLanguage: "en",
+			Theme:           "light",
+			Font:            "inter",
+			AccentColor:     "#3B82F6",
+			LogoHeight:      "40px",
+			Authentication: client.StatusPageAuthenticationSettings{
+				AllowedDomains: []string{},
+			},
+			Subscribe: client.StatusPageSubscribeSettings{},
+		}
+
+		var diags diag.Diagnostics
+		result := mapSettingsToTFWithFilter(settings, nil, &diags)
+		if diags.HasError() {
+			t.Fatalf("unexpected error: %v", diags.Errors())
+		}
+
+		attrs := result.Attributes()
+		authObj, _ := attrs["authentication"].(types.Object)
+		authAttrs := authObj.Attributes()
+		ssoVal, _ := authAttrs["sso_connection_uuid"].(types.String)
+		if !ssoVal.IsNull() {
+			t.Errorf("expected null sso_connection_uuid, got %q", ssoVal.ValueString())
+		}
+	})
+}
+
+// =============================================================================
+// Service description mapping tests
+// =============================================================================
+
+func TestMapServiceToTFWithFilter_Description(t *testing.T) {
+	t.Run("description populated", func(t *testing.T) {
+		svc := client.StatusPageService{
+			ID:          "svc_1",
+			UUID:        "mon_1",
+			Name:        map[string]string{"en": "API"},
+			Description: map[string]string{"en": "My API"},
+		}
+
+		var d diag.Diagnostics
+		tfObj := mapServiceToTFWithFilter(svc, nil, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+
+		attrs := tfObj.Attributes()
+		descMap, ok := attrs["description"].(types.Map)
+		if !ok {
+			t.Fatal("expected description to be types.Map")
+		}
+		if descMap.IsNull() {
+			t.Fatal("expected non-null description")
+		}
+		elems := descMap.Elements()
+		enVal, _ := elems["en"].(types.String)
+		if enVal.ValueString() != "My API" {
+			t.Errorf("expected 'My API', got %q", enVal.ValueString())
+		}
+	})
+
+	t.Run("nil description", func(t *testing.T) {
+		svc := client.StatusPageService{
+			ID:   "svc_1",
+			UUID: "mon_1",
+			Name: map[string]string{"en": "API"},
+		}
+
+		var d diag.Diagnostics
+		tfObj := mapServiceToTFWithFilter(svc, nil, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+
+		attrs := tfObj.Attributes()
+		descMap, _ := attrs["description"].(types.Map)
+		if !descMap.IsNull() {
+			t.Error("expected null description for nil input")
+		}
+	})
+}
+
+func TestMapNestedServicesToTF_Description(t *testing.T) {
+	t.Run("description populated", func(t *testing.T) {
+		svc := client.StatusPageService{
+			ID:          "svc_1",
+			UUID:        "mon_1",
+			Name:        map[string]string{"en": "Nested"},
+			Description: map[string]string{"en": "Nested svc"},
+		}
+
+		var d diag.Diagnostics
+		result := mapNestedServicesToTF([]client.StatusPageService{svc}, nil, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+
+		obj, _ := result.Elements()[0].(types.Object)
+		attrs := obj.Attributes()
+		descMap, _ := attrs["description"].(types.Map)
+		if descMap.IsNull() {
+			t.Fatal("expected non-null description")
+		}
+		elems := descMap.Elements()
+		enVal, _ := elems["en"].(types.String)
+		if enVal.ValueString() != "Nested svc" {
+			t.Errorf("expected 'Nested svc', got %q", enVal.ValueString())
+		}
+	})
+
+	t.Run("nil description", func(t *testing.T) {
+		svc := client.StatusPageService{
+			ID:   "svc_1",
+			UUID: "mon_1",
+			Name: map[string]string{"en": "Nested"},
+		}
+
+		var d diag.Diagnostics
+		result := mapNestedServicesToTF([]client.StatusPageService{svc}, nil, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+
+		obj, _ := result.Elements()[0].(types.Object)
+		attrs := obj.Attributes()
+		descMap, _ := attrs["description"].(types.Map)
+		if !descMap.IsNull() {
+			t.Error("expected null description for nil input")
+		}
+	})
+}
+
+func TestMapTFToService_Description(t *testing.T) {
+	t.Run("en description extracted", func(t *testing.T) {
+		obj := types.ObjectValueMust(ServiceAttrTypes(), map[string]attr.Value{
+			"id":   types.StringNull(),
+			"uuid": types.StringValue("mon_1"),
+			"name": types.MapValueMust(types.StringType, map[string]attr.Value{
+				"en": types.StringValue("API"),
+			}),
+			"is_group":            types.BoolValue(false),
+			"show_uptime":         types.BoolNull(),
+			"show_response_times": types.BoolNull(),
+			"description": types.MapValueMust(types.StringType, map[string]attr.Value{
+				"en": types.StringValue("English desc"),
+			}),
+			"services": types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
+		})
+
+		var d diag.Diagnostics
+		result := mapTFToService(obj, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+		if result.Description == nil || *result.Description != "English desc" {
+			t.Errorf("expected 'English desc', got %v", result.Description)
+		}
+	})
+
+	t.Run("fallback to non-en language", func(t *testing.T) {
+		obj := types.ObjectValueMust(ServiceAttrTypes(), map[string]attr.Value{
+			"id":                  types.StringNull(),
+			"uuid":                types.StringValue("mon_1"),
+			"name":                types.MapNull(types.StringType),
+			"is_group":            types.BoolValue(false),
+			"show_uptime":         types.BoolNull(),
+			"show_response_times": types.BoolNull(),
+			"description": types.MapValueMust(types.StringType, map[string]attr.Value{
+				"fr": types.StringValue("French desc"),
+			}),
+			"services": types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
+		})
+
+		var d diag.Diagnostics
+		result := mapTFToService(obj, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+		if result.Description == nil || *result.Description != "French desc" {
+			t.Errorf("expected 'French desc', got %v", result.Description)
+		}
+	})
+
+	t.Run("null description produces nil", func(t *testing.T) {
+		obj := types.ObjectValueMust(ServiceAttrTypes(), map[string]attr.Value{
+			"id":                  types.StringNull(),
+			"uuid":                types.StringValue("mon_1"),
+			"name":                types.MapNull(types.StringType),
+			"is_group":            types.BoolValue(false),
+			"show_uptime":         types.BoolNull(),
+			"show_response_times": types.BoolNull(),
+			"description":         types.MapNull(types.StringType),
+			"services":            types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}),
+		})
+
+		var d diag.Diagnostics
+		result := mapTFToService(obj, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+		if result.Description != nil {
+			t.Errorf("expected nil description, got %q", *result.Description)
+		}
+	})
+}
+
+func TestMapTFToNestedServices_Description(t *testing.T) {
+	t.Run("description extracted", func(t *testing.T) {
+		obj := types.ObjectValueMust(NestedServiceAttrTypes(), map[string]attr.Value{
+			"id":                  types.StringNull(),
+			"uuid":                types.StringValue("mon_1"),
+			"name":                types.MapNull(types.StringType),
+			"is_group":            types.BoolValue(false),
+			"show_uptime":         types.BoolValue(false),
+			"show_response_times": types.BoolValue(false),
+			"description": types.MapValueMust(types.StringType, map[string]attr.Value{
+				"en": types.StringValue("Nested desc"),
+			}),
+		})
+		list, _ := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, []attr.Value{obj})
+
+		var d diag.Diagnostics
+		result := mapTFToNestedServices(list, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+		if len(result) != 1 {
+			t.Fatalf("expected 1 service, got %d", len(result))
+		}
+		if result[0].Description == nil || *result[0].Description != "Nested desc" {
+			t.Errorf("expected 'Nested desc', got %v", result[0].Description)
+		}
+	})
+
+	t.Run("null description produces nil", func(t *testing.T) {
+		obj := types.ObjectValueMust(NestedServiceAttrTypes(), map[string]attr.Value{
+			"id":                  types.StringNull(),
+			"uuid":                types.StringValue("mon_1"),
+			"name":                types.MapNull(types.StringType),
+			"is_group":            types.BoolValue(false),
+			"show_uptime":         types.BoolValue(false),
+			"show_response_times": types.BoolValue(false),
+			"description":         types.MapNull(types.StringType),
+		})
+		list, _ := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, []attr.Value{obj})
+
+		var d diag.Diagnostics
+		result := mapTFToNestedServices(list, &d)
+		if d.HasError() {
+			t.Fatalf("unexpected error: %v", d.Errors())
+		}
+		if result[0].Description != nil {
+			t.Errorf("expected nil description, got %q", *result[0].Description)
+		}
+	})
 }

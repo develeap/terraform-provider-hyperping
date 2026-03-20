@@ -239,6 +239,7 @@ Optional:
 - `google_sso` (Boolean) Enable Google SSO
 - `password_protection` (Boolean) Enable password protection
 - `saml_sso` (Boolean) Enable SAML SSO
+- `sso_connection_uuid` (String) SSO connection UUID for SAML SSO integration
 
 
 <a id="nestedatt--settings--subscribe"></a>
@@ -271,6 +272,7 @@ Optional:
 
 Optional:
 
+- `description` (Map of String) Localized service description (language code -> text). On write, only the default language value is sent as a plain string.
 - `is_group` (Boolean) Whether this service is a group containing nested services
 - `name` (Map of String) Localized service name (language code -> text)
 - `services` (Attributes List) Nested monitor services within this group. Required when is_group=true; must contain at least one entry. Ignored when is_group=false. (see [below for nested schema](#nestedatt--sections--services--services))
@@ -287,6 +289,7 @@ Read-Only:
 
 Optional:
 
+- `description` (Map of String) Localized service description (language code -> text)
 - `is_group` (Boolean) Whether this nested service is a group
 - `name` (Map of String) Localized service name (language code -> text)
 - `show_response_times` (Boolean) Show response times

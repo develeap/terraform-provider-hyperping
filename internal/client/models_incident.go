@@ -31,12 +31,13 @@ type IncidentUpdate struct {
 // CreateIncidentRequest represents a request to create an incident.
 // API: POST /v3/incidents
 type CreateIncidentRequest struct {
-	Title              LocalizedText `json:"title"`
-	Text               LocalizedText `json:"text"`
-	Type               string        `json:"type"`
-	AffectedComponents []string      `json:"affectedComponents,omitempty"`
-	StatusPages        []string      `json:"statuspages"`
-	Date               string        `json:"date,omitempty"`
+	Title              LocalizedText              `json:"title"`
+	Text               LocalizedText              `json:"text"`
+	Type               string                     `json:"type"`
+	AffectedComponents []string                   `json:"affectedComponents,omitempty"`
+	StatusPages        []string                   `json:"statuspages"`
+	Date               string                     `json:"date,omitempty"`
+	Updates            []AddIncidentUpdateRequest `json:"updates,omitempty"`
 }
 
 // Validate checks input lengths on CreateIncidentRequest fields.
@@ -53,10 +54,11 @@ func (r CreateIncidentRequest) Validate() error {
 // UpdateIncidentRequest represents a request to update an incident.
 // API: PUT /v3/incidents/{uuid}
 type UpdateIncidentRequest struct {
-	Title              *LocalizedText `json:"title,omitempty"`
-	Type               *string        `json:"type,omitempty"`
-	AffectedComponents *[]string      `json:"affectedComponents,omitempty"`
-	StatusPages        *[]string      `json:"statuspages,omitempty"`
+	Title              *LocalizedText             `json:"title,omitempty"`
+	Type               *string                    `json:"type,omitempty"`
+	AffectedComponents *[]string                  `json:"affectedComponents,omitempty"`
+	StatusPages        *[]string                  `json:"statuspages,omitempty"`
+	Updates            []AddIncidentUpdateRequest `json:"updates,omitempty"`
 }
 
 // AddIncidentUpdateRequest represents a request to add an update to an incident.

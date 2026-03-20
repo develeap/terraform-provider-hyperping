@@ -65,12 +65,12 @@ func TestServiceIDToString(t *testing.T) {
 // TestNestedServiceAttrTypes
 // =============================================================================
 
-// TestNestedServiceAttrTypes verifies the returned map has exactly 6 keys
+// TestNestedServiceAttrTypes verifies the returned map has exactly 7 keys
 // and does NOT include "services" (unlike ServiceAttrTypes).
 func TestNestedServiceAttrTypes(t *testing.T) {
 	attrs := NestedServiceAttrTypes()
 
-	expectedKeys := []string{"id", "uuid", "name", "is_group", "show_uptime", "show_response_times"}
+	expectedKeys := []string{"id", "uuid", "name", "is_group", "show_uptime", "show_response_times", "description"}
 
 	if len(attrs) != len(expectedKeys) {
 		t.Errorf("expected %d keys, got %d: %v", len(expectedKeys), len(attrs), keysOf(attrs))
@@ -570,6 +570,7 @@ func buildNestedServiceObj(t *testing.T, uuid string, name map[string]string) ty
 		"is_group":            types.BoolValue(false),
 		"show_uptime":         types.BoolValue(false),
 		"show_response_times": types.BoolValue(false),
+		"description":         types.MapNull(types.StringType),
 	})
 }
 
@@ -609,6 +610,7 @@ func buildTopLevelServiceObj(
 		"is_group":            types.BoolValue(isGroup),
 		"show_uptime":         types.BoolValue(false),
 		"show_response_times": types.BoolValue(false),
+		"description":         types.MapNull(types.StringType),
 		"services":            nestedServices,
 	})
 }
@@ -712,6 +714,7 @@ func TestServiceIDNeverSentToAPI(t *testing.T) {
 		Name:              result.Name,
 		ShowUptime:        result.ShowUptime,
 		ShowResponseTimes: result.ShowResponseTimes,
+		Description:       result.Description,
 		IsGroup:           result.IsGroup,
 		Services:          result.Services,
 	}
