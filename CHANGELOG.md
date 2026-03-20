@@ -10,6 +10,22 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-03-20
+
+### Added
+- Incident `updates` array on `CreateIncidentRequest` and `UpdateIncidentRequest` — allows setting initial updates inline at creation time
+- StatusPage `sso_connection_uuid` attribute on authentication settings — enables SAML/SSO connection configuration via Terraform
+- StatusPage service `description` attribute (write-plain/read-localized) — supports per-service descriptions on status pages
+- 7 new client model serialization tests and 8 new provider mapping round-trip tests
+
+## [1.7.3] - 2026-03-20
+
+### Fixed
+- 9 missing monitor regions: `paris`, `amsterdam`, `seoul`, `mumbai`, `bangalore`, `california`, `sanfrancisco`, `nyc`, `toronto` (fixes #90)
+- `notification_option = "none"` rejected — API default was missing from `AllowedNotificationOptions`, causing perpetual drift
+- Status page `languages` synced with API spec (`[en,fr,de,ru,nl,pl,sv]`) — removed 5 unsupported, added 2 missing
+- Cloud region identifiers corrected to DigitalOcean datacenter codes
+
 ## [1.7.2] - 2026-03-19
 
 ### Security
@@ -928,7 +944,9 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.2...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.3...v1.8.0
+[1.7.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.2...v1.7.3
 [1.7.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.1...v1.7.2
 [1.7.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.6.0...v1.7.0
