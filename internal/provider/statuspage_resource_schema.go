@@ -228,6 +228,11 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 								Optional:            true,
 								Computed:            true,
 							},
+							"sso_connection_uuid": schema.StringAttribute{
+								MarkdownDescription: "SSO connection UUID for SAML SSO integration",
+								Optional:            true,
+								Computed:            true,
+							},
 						},
 					},
 				},
@@ -284,6 +289,12 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 										Optional:            true,
 										Computed:            true,
 									},
+									"description": schema.MapAttribute{
+										MarkdownDescription: "Localized service description (language code -> text). On write, only the default language value is sent as a plain string.",
+										ElementType:         types.StringType,
+										Optional:            true,
+										Computed:            true,
+									},
 									"services": schema.ListNestedAttribute{
 										MarkdownDescription: "Nested monitor services within this group. Required when is_group=true; must contain at least one entry. Ignored when is_group=false.",
 										Optional:            true,
@@ -317,6 +328,12 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 												},
 												"show_response_times": schema.BoolAttribute{
 													MarkdownDescription: "Show response times",
+													Optional:            true,
+													Computed:            true,
+												},
+												"description": schema.MapAttribute{
+													MarkdownDescription: "Localized service description (language code -> text)",
+													ElementType:         types.StringType,
 													Optional:            true,
 													Computed:            true,
 												},

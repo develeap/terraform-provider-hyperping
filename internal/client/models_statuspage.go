@@ -57,6 +57,7 @@ type StatusPageAuthenticationSettings struct {
 	GoogleSSO          bool     `json:"google_sso"`
 	SAMLSSO            bool     `json:"saml_sso"`
 	AllowedDomains     []string `json:"google_allowed_domains"`
+	SSOConnectionUUID  *string  `json:"sso_connection_uuid"`
 }
 
 // StatusPageSection represents a section on a status page.
@@ -83,6 +84,7 @@ type StatusPageService struct {
 	IsGroup           bool                `json:"is_group"`
 	ShowUptime        bool                `json:"show_uptime"`
 	ShowResponseTimes bool                `json:"show_response_times"`
+	Description       map[string]string   `json:"description,omitempty"`
 	Services          []StatusPageService `json:"services,omitempty"` // nested services if is_group
 }
 
@@ -139,6 +141,7 @@ type CreateStatusPageAuthenticationSettings struct {
 	GoogleSSO          *bool    `json:"google_sso,omitempty"`
 	SAMLSSO            *bool    `json:"saml_sso,omitempty"`
 	AllowedDomains     []string `json:"google_allowed_domains,omitempty"`
+	SSOConnectionUUID  *string  `json:"sso_connection_uuid,omitempty"`
 }
 
 // CreateStatusPageSection represents a section in create requests.
@@ -160,6 +163,7 @@ type CreateStatusPageService struct {
 	Name              map[string]string         `json:"name,omitempty"`         // nested child display name (localized map)
 	ShowUptime        *bool                     `json:"show_uptime,omitempty"`
 	ShowResponseTimes *bool                     `json:"show_response_times,omitempty"`
+	Description       *string                   `json:"description,omitempty"`
 	IsGroup           *bool                     `json:"is_group,omitempty"`
 	Services          []CreateStatusPageService `json:"services,omitempty"` // nested services
 }

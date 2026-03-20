@@ -184,6 +184,10 @@ func (d *StatusPageDataSource) Schema(ctx context.Context, req datasource.Schema
 								ElementType:         types.StringType,
 								Computed:            true,
 							},
+							"sso_connection_uuid": schema.StringAttribute{
+								MarkdownDescription: "SSO connection UUID",
+								Computed:            true,
+							},
 						},
 					},
 				},
@@ -232,6 +236,11 @@ func (d *StatusPageDataSource) Schema(ctx context.Context, req datasource.Schema
 										MarkdownDescription: "Show response times",
 										Computed:            true,
 									},
+									"description": schema.MapAttribute{
+										MarkdownDescription: "Localized service description",
+										ElementType:         types.StringType,
+										Computed:            true,
+									},
 									"services": schema.ListNestedAttribute{
 										MarkdownDescription: "Nested monitor services within this group",
 										Computed:            true,
@@ -260,6 +269,11 @@ func (d *StatusPageDataSource) Schema(ctx context.Context, req datasource.Schema
 												},
 												"show_response_times": schema.BoolAttribute{
 													MarkdownDescription: "Show response times",
+													Computed:            true,
+												},
+												"description": schema.MapAttribute{
+													MarkdownDescription: "Localized service description",
+													ElementType:         types.StringType,
 													Computed:            true,
 												},
 											},

@@ -100,6 +100,9 @@ func TestExtractSubscribeSettings(t *testing.T) {
 // buildAuthObj is a helper that constructs an AuthenticationSettings object for tests.
 func buildAuthObj(t *testing.T, attrs map[string]attr.Value) types.Object {
 	t.Helper()
+	if _, ok := attrs["sso_connection_uuid"]; !ok {
+		attrs["sso_connection_uuid"] = types.StringNull()
+	}
 	obj, diags := types.ObjectValue(AuthenticationSettingsAttrTypes(), attrs)
 	if diags.HasError() {
 		t.Fatalf("failed to build auth test object: %v", diags.Errors())

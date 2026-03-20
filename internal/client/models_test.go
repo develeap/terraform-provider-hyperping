@@ -322,3 +322,226 @@ func TestUpdateMonitorRequest_DNSRecordTypeOmittedWhenNil(t *testing.T) {
 		t.Errorf("expected dns_record_type to be omitted when nil, got: %s", body)
 	}
 }
+
+// =============================================================================
+// Gap 1: Incident updates array
+// =============================================================================
+
+func TestCreateIncidentRequest_WithUpdates_JSON(t *testing.T) {
+	req := CreateIncidentRequest{
+		Title:       LocalizedText{En: "Incident"},
+		Text:        LocalizedText{En: "Details"},
+		Type:        "investigating",
+		StatusPages: []string{"sp_1"},
+		Updates: []AddIncidentUpdateRequest{
+			{
+				Text: LocalizedText{En: "Investigating..."},
+				Type: "investigating",
+				Date: "2026-03-20T10:00:00Z",
+			},
+		},
+	}
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	body := string(b)
+
+	if !strings.Contains(body, `"updates"`) {
+		t.Errorf("expected JSON to contain 'updates' key, got: %s", body)
+	}
+	if !strings.Contains(body, `"investigating"`) {
+		t.Errorf("expected JSON to contain update type, got: %s", body)
+	}
+}
+
+func TestUpdateIncidentRequest_WithUpdates_JSON(t *testing.T) {
+	req := UpdateIncidentRequest{
+		Updates: []AddIncidentUpdateRequest{
+			{
+				Text: LocalizedText{En: "Resolved"},
+				Type: "resolved",
+				Date: "2026-03-20T12:00:00Z",
+			},
+		},
+	}
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	body := string(b)
+
+	if !strings.Contains(body, `"updates"`) {
+		t.Errorf("expected JSON to contain 'updates' key, got: %s", body)
+	}
+}
+
+func TestCreateIncidentRequest_WithoutUpdates_OmitsField(t *testing.T) {
+	t.Run("nil updates omitted", func(t *testing.T) {
+		req := CreateIncidentRequest{
+			Title:       LocalizedText{En: "Incident"},
+			Text:        LocalizedText{En: "Details"},
+			Type:        "investigating",
+			StatusPages: []string{"sp_1"},
+		}
+
+		b, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("unexpected marshal error: %v", err)
+		}
+		if strings.Contains(string(b), `"updates"`) {
+			t.Errorf("expected 'updates' to be omitted when nil, got: %s", string(b))
+		}
+	})
+
+	t.Run("empty updates omitted", func(t *testing.T) {
+		req := CreateIncidentRequest{
+			Title:       LocalizedText{En: "Incident"},
+			Text:        LocalizedText{En: "Details"},
+			Type:        "investigating",
+			StatusPages: []string{"sp_1"},
+			Updates:     []AddIncidentUpdateRequest{},
+		}
+
+		b, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("unexpected marshal error: %v", err)
+		}
+		if strings.Contains(string(b), `"updates"`) {
+			t.Errorf("expected 'updates' to be omitted when empty, got: %s", string(b))
+		}
+	})
+}
+
+// =============================================================================
+// Gap 2: StatusPage sso_connection_uuid
+// =============================================================================
+
+func TestStatusPageAuthenticationSettings_SSOConnectionUUID_JSON(t *testing.T) {
+	t.Run("null sso_connection_uuid", func(t *testing.T) {
+		data := []byte(`{"password_protection":false,"google_sso":false,"saml_sso":false,"google_allowed_domains":[],"sso_connection_uuid":null}`)
+		var auth StatusPageAuthenticationSettings
+		if err := json.Unmarshal(data, &auth); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if auth.SSOConnectionUUID != nil {
+			t.Errorf("expected nil SSOConnectionUUID, got %q", *auth.SSOConnectionUUID)
+		}
+	})
+
+	t.Run("string sso_connection_uuid", func(t *testing.T) {
+		data := []byte(`{"password_protection":false,"google_sso":false,"saml_sso":false,"google_allowed_domains":[],"sso_connection_uuid":"uuid-abc"}`)
+		var auth StatusPageAuthenticationSettings
+		if err := json.Unmarshal(data, &auth); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if auth.SSOConnectionUUID == nil {
+			t.Fatal("expected non-nil SSOConnectionUUID")
+		}
+		if *auth.SSOConnectionUUID != "uuid-abc" {
+			t.Errorf("expected 'uuid-abc', got %q", *auth.SSOConnectionUUID)
+		}
+	})
+
+	t.Run("absent sso_connection_uuid", func(t *testing.T) {
+		data := []byte(`{"password_protection":false,"google_sso":false,"saml_sso":false,"google_allowed_domains":[]}`)
+		var auth StatusPageAuthenticationSettings
+		if err := json.Unmarshal(data, &auth); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if auth.SSOConnectionUUID != nil {
+			t.Errorf("expected nil SSOConnectionUUID for absent field, got %q", *auth.SSOConnectionUUID)
+		}
+	})
+}
+
+func TestCreateStatusPageAuthenticationSettings_SSOConnectionUUID_JSON(t *testing.T) {
+	t.Run("nil omits field", func(t *testing.T) {
+		auth := CreateStatusPageAuthenticationSettings{}
+		b, err := json.Marshal(auth)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		if strings.Contains(string(b), "sso_connection_uuid") {
+			t.Errorf("expected sso_connection_uuid to be omitted when nil, got: %s", string(b))
+		}
+	})
+
+	t.Run("non-nil includes field", func(t *testing.T) {
+		val := "uuid-abc"
+		auth := CreateStatusPageAuthenticationSettings{SSOConnectionUUID: &val}
+		b, err := json.Marshal(auth)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		if !strings.Contains(string(b), `"sso_connection_uuid":"uuid-abc"`) {
+			t.Errorf("expected sso_connection_uuid in output, got: %s", string(b))
+		}
+	})
+}
+
+// =============================================================================
+// Gap 3: StatusPage service description
+// =============================================================================
+
+func TestStatusPageService_Description_JSON(t *testing.T) {
+	t.Run("localized description map", func(t *testing.T) {
+		data := []byte(`{"uuid":"svc_1","name":{"en":"API"},"is_group":false,"show_uptime":false,"show_response_times":false,"description":{"en":"My service"}}`)
+		var svc StatusPageService
+		if err := json.Unmarshal(data, &svc); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if svc.Description["en"] != "My service" {
+			t.Errorf("expected description[en]='My service', got %q", svc.Description["en"])
+		}
+	})
+
+	t.Run("multi-language description", func(t *testing.T) {
+		data := []byte(`{"uuid":"svc_1","name":{"en":"API"},"is_group":false,"show_uptime":false,"show_response_times":false,"description":{"en":"English","fr":"French"}}`)
+		var svc StatusPageService
+		if err := json.Unmarshal(data, &svc); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if len(svc.Description) != 2 {
+			t.Errorf("expected 2 description entries, got %d", len(svc.Description))
+		}
+	})
+
+	t.Run("absent description", func(t *testing.T) {
+		data := []byte(`{"uuid":"svc_1","name":{"en":"API"},"is_group":false,"show_uptime":false,"show_response_times":false}`)
+		var svc StatusPageService
+		if err := json.Unmarshal(data, &svc); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if svc.Description != nil {
+			t.Errorf("expected nil description for absent field, got %v", svc.Description)
+		}
+	})
+}
+
+func TestCreateStatusPageService_Description_JSON(t *testing.T) {
+	t.Run("nil omits field", func(t *testing.T) {
+		svc := CreateStatusPageService{}
+		b, err := json.Marshal(svc)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		if strings.Contains(string(b), "description") {
+			t.Errorf("expected description to be omitted when nil, got: %s", string(b))
+		}
+	})
+
+	t.Run("non-nil includes field as string", func(t *testing.T) {
+		val := "Service desc"
+		svc := CreateStatusPageService{Description: &val}
+		b, err := json.Marshal(svc)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		if !strings.Contains(string(b), `"description":"Service desc"`) {
+			t.Errorf("expected description in output, got: %s", string(b))
+		}
+	})
+}

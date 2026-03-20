@@ -118,12 +118,21 @@ func mapSettingsToTFWithFilter(settings client.StatusPageSettings, configuredLan
 	})
 	diags.Append(subDiags...)
 
+	// Handle optional sso_connection_uuid
+	var ssoConnectionUUIDValue types.String
+	if settings.Authentication.SSOConnectionUUID != nil {
+		ssoConnectionUUIDValue = types.StringValue(*settings.Authentication.SSOConnectionUUID)
+	} else {
+		ssoConnectionUUIDValue = types.StringNull()
+	}
+
 	// Map authentication settings
 	authObj, authDiags := types.ObjectValue(AuthenticationSettingsAttrTypes(), map[string]attr.Value{
 		"password_protection": types.BoolValue(settings.Authentication.PasswordProtection),
 		"google_sso":          types.BoolValue(settings.Authentication.GoogleSSO),
 		"saml_sso":            types.BoolValue(settings.Authentication.SAMLSSO),
 		"allowed_domains":     mapStringSliceToList(settings.Authentication.AllowedDomains, diags),
+		"sso_connection_uuid": ssoConnectionUUIDValue,
 	})
 	diags.Append(authDiags...)
 
@@ -265,6 +274,10 @@ func extractAuthSettings(ctx context.Context, obj types.Object, diags *diag.Diag
 		diags.Append(allowedDomains.ElementsAs(ctx, &domains, false)...)
 		authentication.AllowedDomains = domains
 	}
+	if ssoUUID, ok := attrs["sso_connection_uuid"].(types.String); ok && !ssoUUID.IsNull() && !ssoUUID.IsUnknown() {
+		val := ssoUUID.ValueString()
+		authentication.SSOConnectionUUID = &val
+	}
 
 	return authentication
 }
@@ -359,6 +372,9 @@ func mapServiceToTFWithFilter(service client.StatusPageService, configuredLangs 
 		nestedServicesList = types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()})
 	}
 
+	filteredDesc := filterLocalizedMap(service.Description, configuredLangs)
+	descMap := mapStringMapToTF(filteredDesc, diags)
+
 	serviceObj, serviceDiags := types.ObjectValue(ServiceAttrTypes(), map[string]attr.Value{
 		"id":                  types.StringValue(serviceIDToString(service.ID)),
 		"uuid":                types.StringValue(service.UUID),
@@ -366,6 +382,7 @@ func mapServiceToTFWithFilter(service client.StatusPageService, configuredLangs 
 		"is_group":            types.BoolValue(service.IsGroup),
 		"show_uptime":         types.BoolValue(service.ShowUptime),
 		"show_response_times": types.BoolValue(service.ShowResponseTimes),
+		"description":         descMap,
 		"services":            nestedServicesList,
 	})
 	diags.Append(serviceDiags...)
@@ -384,6 +401,9 @@ func mapNestedServicesToTF(services []client.StatusPageService, configuredLangs 
 		filteredName := filterLocalizedMap(svc.Name, configuredLangs)
 		nameMap := mapStringMapToTF(filteredName, diags)
 
+		filteredDesc := filterLocalizedMap(svc.Description, configuredLangs)
+		descMap := mapStringMapToTF(filteredDesc, diags)
+
 		obj, objDiags := types.ObjectValue(NestedServiceAttrTypes(), map[string]attr.Value{
 			"id":                  types.StringValue(serviceIDToString(svc.ID)),
 			"uuid":                types.StringValue(svc.UUID),
@@ -391,6 +411,7 @@ func mapNestedServicesToTF(services []client.StatusPageService, configuredLangs 
 			"is_group":            types.BoolValue(svc.IsGroup),
 			"show_uptime":         types.BoolValue(svc.ShowUptime),
 			"show_response_times": types.BoolValue(svc.ShowResponseTimes),
+			"description":         descMap,
 		})
 		diags.Append(objDiags...)
 		values[i] = obj
@@ -546,6 +567,21 @@ func mapTFToService(elem attr.Value, diags *diag.Diagnostics) client.CreateStatu
 		service.ShowResponseTimes = &val
 	}
 
+	// Extract description (write as plain string from localized map)
+	if descMap, ok := attrs["description"].(types.Map); ok && !descMap.IsNull() {
+		descStrMap := mapTFToStringMap(descMap, diags)
+		if enDesc, ok := descStrMap["en"]; ok && enDesc != "" {
+			service.Description = &enDesc
+		} else {
+			for _, v := range descStrMap {
+				if v != "" {
+					service.Description = &v
+					break
+				}
+			}
+		}
+	}
+
 	// Extract nested services for group entries
 	if isGroupVal {
 		if servicesList, ok := attrs["services"].(types.List); ok && !servicesList.IsNull() {
@@ -583,6 +619,21 @@ func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []client.Cr
 		// Nested services use name as a localized map (not name_shown string)
 		if nameMap, ok := attrs["name"].(types.Map); ok && !nameMap.IsNull() {
 			svc.Name = mapTFToStringMap(nameMap, diags)
+		}
+
+		// Extract description (write as plain string from localized map)
+		if descMap, ok := attrs["description"].(types.Map); ok && !descMap.IsNull() {
+			descStrMap := mapTFToStringMap(descMap, diags)
+			if enDesc, ok := descStrMap["en"]; ok && enDesc != "" {
+				svc.Description = &enDesc
+			} else {
+				for _, v := range descStrMap {
+					if v != "" {
+						svc.Description = &v
+						break
+					}
+				}
+			}
 		}
 
 		// Note: show_uptime and show_response_times are group-level settings.

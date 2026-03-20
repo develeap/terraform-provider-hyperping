@@ -95,6 +95,7 @@ Read-Only:
 
 Read-Only:
 
+- `description` (Map of String) Localized service description
 - `id` (String) Service ID
 - `is_group` (Boolean) Service is a group
 - `name` (Map of String) Localized service name
@@ -108,6 +109,7 @@ Read-Only:
 
 Read-Only:
 
+- `description` (Map of String) Localized service description
 - `id` (String) Service ID (computed)
 - `is_group` (Boolean) Service is a group
 - `name` (Map of String) Localized service name
@@ -151,6 +153,7 @@ Read-Only:
 - `google_sso` (Boolean) Google SSO enabled
 - `password_protection` (Boolean) Password protection enabled
 - `saml_sso` (Boolean) SAML SSO enabled
+- `sso_connection_uuid` (String) SSO connection UUID
 
 
 <a id="nestedatt--settings--subscribe"></a>

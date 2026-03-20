@@ -117,6 +117,7 @@ func AuthenticationSettingsAttrTypes() map[string]attr.Type {
 		"google_sso":          types.BoolType,
 		"saml_sso":            types.BoolType,
 		"allowed_domains":     types.ListType{ElemType: types.StringType},
+		"sso_connection_uuid": types.StringType,
 	}
 }
 
@@ -139,6 +140,7 @@ func NestedServiceAttrTypes() map[string]attr.Type {
 		"is_group":            types.BoolType,
 		"show_uptime":         types.BoolType,
 		"show_response_times": types.BoolType,
+		"description":         types.MapType{ElemType: types.StringType},
 	}
 }
 
@@ -152,6 +154,7 @@ func ServiceAttrTypes() map[string]attr.Type {
 		"is_group":            types.BoolType,
 		"show_uptime":         types.BoolType,
 		"show_response_times": types.BoolType,
+		"description":         types.MapType{ElemType: types.StringType},
 		"services":            types.ListType{ElemType: types.ObjectType{AttrTypes: NestedServiceAttrTypes()}},
 	}
 }
