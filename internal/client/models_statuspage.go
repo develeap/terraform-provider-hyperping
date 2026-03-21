@@ -163,7 +163,7 @@ type CreateStatusPageService struct {
 	Name              map[string]string         `json:"name,omitempty"`         // nested child display name (localized map)
 	ShowUptime        *bool                     `json:"show_uptime,omitempty"`
 	ShowResponseTimes *bool                     `json:"show_response_times,omitempty"`
-	Description       *string                   `json:"description,omitempty"`
+	Description       interface{}               `json:"description,omitempty"` // top-level: *string, nested: map[string]string
 	IsGroup           *bool                     `json:"is_group,omitempty"`
 	Services          []CreateStatusPageService `json:"services,omitempty"` // nested services
 }
