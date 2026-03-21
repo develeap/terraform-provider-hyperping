@@ -97,8 +97,16 @@ func (r *StatusPageResource) Create(ctx context.Context, req resource.CreateRequ
 	// Translate numeric IDs back to mon_xxx for state
 	translateResponseNumericIDsToUUIDs(statusPage, maps.numericIDToUUID, &resp.Diagnostics)
 
+	// Save plan sections before mapping (contains write-only nested service fields)
+	planSections := plan.Sections
+
 	// Map response to state
 	r.mapStatusPageToModel(ctx, statusPage, &plan, &resp.Diagnostics)
+
+	// Restore write-only fields on nested services that the API doesn't return.
+	// The API accepts description and show_response_times on write but may not
+	// return them (or returns defaults) on read for deeply nested services.
+	plan.Sections = preserveNestedServiceWriteOnlyFields(planSections, plan.Sections)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -115,6 +123,7 @@ func (r *StatusPageResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	// Preserve write-only fields not returned by the API
 	priorPassword := state.Password
+	priorSections := state.Sections
 
 	// Get status page from API
 	statusPage, err := r.client.GetStatusPage(ctx, state.ID.ValueString())
@@ -140,10 +149,12 @@ func (r *StatusPageResource) Read(ctx context.Context, req resource.ReadRequest,
 	r.mapStatusPageToModel(ctx, statusPage, &state, &resp.Diagnostics)
 
 	// Restore password: API never returns this field, so preserve prior state value
-	// to prevent perpetual drift on every plan/apply cycle.
 	if !priorPassword.IsNull() {
 		state.Password = priorPassword
 	}
+
+	// Restore write-only fields on nested services
+	state.Sections = preserveNestedServiceWriteOnlyFields(priorSections, state.Sections)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -189,17 +200,20 @@ func (r *StatusPageResource) Update(ctx context.Context, req resource.UpdateRequ
 	// Translate numeric IDs back to mon_xxx for state
 	translateResponseNumericIDsToUUIDs(statusPage, maps.numericIDToUUID, &resp.Diagnostics)
 
-	// Preserve password from plan before mapping (write-only field, API never returns it)
+	// Preserve write-only fields from plan before mapping
 	planPassword := plan.Password
+	planSections := plan.Sections
 
 	// Map response to state
 	r.mapStatusPageToModel(ctx, statusPage, &plan, &resp.Diagnostics)
 
 	// Restore password: API never returns this field, so preserve plan value
-	// to prevent perpetual drift on every plan/apply cycle.
 	if !planPassword.IsNull() {
 		plan.Password = planPassword
 	}
+
+	// Restore write-only fields on nested services
+	plan.Sections = preserveNestedServiceWriteOnlyFields(planSections, plan.Sections)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -223,6 +237,173 @@ func (r *StatusPageResource) Delete(ctx context.Context, req resource.DeleteRequ
 		}
 		// Already deleted, continue
 	}
+}
+
+// preserveNestedServiceWriteOnlyFields restores write-only fields on nested
+// services (inside groups) from the plan/state. The Hyperping API accepts
+// `description` and `show_response_times` on write for nested services but
+// may not return them (or returns defaults) on read, causing Terraform's
+// "inconsistent result after apply" error.
+//
+// This walks the sections -> services -> nested services tree and copies
+// `description` and `show_response_times` from the configured values when
+// the API response has null/default values.
+func preserveNestedServiceWriteOnlyFields(configured, fromAPI types.List) types.List {
+	if configured.IsNull() || configured.IsUnknown() || fromAPI.IsNull() || fromAPI.IsUnknown() {
+		return fromAPI
+	}
+
+	configuredElems := configured.Elements()
+	apiElems := fromAPI.Elements()
+
+	if len(configuredElems) != len(apiElems) {
+		return fromAPI
+	}
+
+	modified := false
+	newElems := make([]attr.Value, len(apiElems))
+	copy(newElems, apiElems)
+
+	for i := range apiElems {
+		configSection, ok1 := configuredElems[i].(types.Object)
+		apiSection, ok2 := apiElems[i].(types.Object)
+		if !ok1 || !ok2 {
+			continue
+		}
+
+		configServices, ok1 := configSection.Attributes()["services"].(types.List)
+		apiServices, ok2 := apiSection.Attributes()["services"].(types.List)
+		if !ok1 || !ok2 || configServices.IsNull() || apiServices.IsNull() {
+			continue
+		}
+
+		configSvcElems := configServices.Elements()
+		apiSvcElems := apiServices.Elements()
+		if len(configSvcElems) != len(apiSvcElems) {
+			continue
+		}
+
+		svcModified := false
+		newSvcElems := make([]attr.Value, len(apiSvcElems))
+		copy(newSvcElems, apiSvcElems)
+
+		for j := range apiSvcElems {
+			configSvc, ok1 := configSvcElems[j].(types.Object)
+			apiSvc, ok2 := apiSvcElems[j].(types.Object)
+			if !ok1 || !ok2 {
+				continue
+			}
+
+			configSvcAttrs := configSvc.Attributes()
+			apiSvcAttrs := apiSvc.Attributes()
+
+			// Preserve top-level service description if API doesn't return it
+			configSvcDesc, hasConfigSvcDesc := configSvcAttrs["description"].(types.Map)
+			apiSvcDesc, hasAPISvcDesc := apiSvcAttrs["description"].(types.Map)
+			if hasConfigSvcDesc && !configSvcDesc.IsNull() && (!hasAPISvcDesc || apiSvcDesc.IsNull()) {
+				newTopAttrs := make(map[string]attr.Value, len(apiSvcAttrs))
+				for key, val := range apiSvcAttrs {
+					newTopAttrs[key] = val
+				}
+				newTopAttrs["description"] = configSvcDesc
+				newSvcObj, _ := types.ObjectValue(ServiceAttrTypes(), newTopAttrs)
+				newSvcElems[j] = newSvcObj
+				// Re-read apiSvc from the updated element for nested processing
+				apiSvc = newSvcObj
+				apiSvcAttrs = apiSvc.Attributes()
+				svcModified = true
+			}
+
+			configNested, ok1 := configSvcAttrs["services"].(types.List)
+			apiNested, ok2 := apiSvcAttrs["services"].(types.List)
+			if !ok1 || !ok2 || configNested.IsNull() || apiNested.IsNull() {
+				continue
+			}
+
+			configNestedElems := configNested.Elements()
+			apiNestedElems := apiNested.Elements()
+			if len(configNestedElems) != len(apiNestedElems) {
+				continue
+			}
+
+			nestedModified := false
+			newNestedElems := make([]attr.Value, len(apiNestedElems))
+			copy(newNestedElems, apiNestedElems)
+
+			for k := range apiNestedElems {
+				configChild, ok1 := configNestedElems[k].(types.Object)
+				apiChild, ok2 := apiNestedElems[k].(types.Object)
+				if !ok1 || !ok2 {
+					continue
+				}
+
+				configAttrs := configChild.Attributes()
+				apiAttrs := apiChild.Attributes()
+				newAttrs := make(map[string]attr.Value, len(apiAttrs))
+				for key, val := range apiAttrs {
+					newAttrs[key] = val
+				}
+
+				childModified := false
+
+				// Preserve description: API may not return it for nested services
+				configDesc, hasConfigDesc := configAttrs["description"].(types.Map)
+				apiDesc, hasAPIDesc := apiAttrs["description"].(types.Map)
+				if hasConfigDesc && !configDesc.IsNull() && (!hasAPIDesc || apiDesc.IsNull()) {
+					newAttrs["description"] = configDesc
+					childModified = true
+				}
+
+				// Preserve show_response_times: API may return wrong default for nested services
+				configSRT, hasConfigSRT := configAttrs["show_response_times"].(types.Bool)
+				apiSRT, hasAPISRT := apiAttrs["show_response_times"].(types.Bool)
+				if hasConfigSRT && !configSRT.IsNull() && !configSRT.IsUnknown() &&
+					hasAPISRT && configSRT.ValueBool() != apiSRT.ValueBool() {
+					newAttrs["show_response_times"] = configSRT
+					childModified = true
+				}
+
+				if childModified {
+					newObj, _ := types.ObjectValue(NestedServiceAttrTypes(), newAttrs)
+					newNestedElems[k] = newObj
+					nestedModified = true
+				}
+			}
+
+			if nestedModified {
+				newNestedList, _ := types.ListValue(types.ObjectType{AttrTypes: NestedServiceAttrTypes()}, newNestedElems)
+				// Rebuild the parent service with updated nested services
+				svcAttrs := make(map[string]attr.Value, len(apiSvc.Attributes()))
+				for key, val := range apiSvc.Attributes() {
+					svcAttrs[key] = val
+				}
+				svcAttrs["services"] = newNestedList
+				newSvcObj, _ := types.ObjectValue(ServiceAttrTypes(), svcAttrs)
+				newSvcElems[j] = newSvcObj
+				svcModified = true
+			}
+		}
+
+		if svcModified {
+			newSvcList, _ := types.ListValue(types.ObjectType{AttrTypes: ServiceAttrTypes()}, newSvcElems)
+			// Rebuild the section with updated services
+			secAttrs := make(map[string]attr.Value, len(apiSection.Attributes()))
+			for key, val := range apiSection.Attributes() {
+				secAttrs[key] = val
+			}
+			secAttrs["services"] = newSvcList
+			newSecObj, _ := types.ObjectValue(SectionAttrTypes(), secAttrs)
+			newElems[i] = newSecObj
+			modified = true
+		}
+	}
+
+	if !modified {
+		return fromAPI
+	}
+
+	newList, _ := types.ListValue(types.ObjectType{AttrTypes: SectionAttrTypes()}, newElems)
+	return newList
 }
 
 func (r *StatusPageResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {

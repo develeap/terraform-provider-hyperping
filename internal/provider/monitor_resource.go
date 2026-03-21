@@ -304,8 +304,9 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// Save and restore HTTP fields for non-HTTP monitors (ISS-ICMP-002)
+	// Save write-only fields before mapping (API doesn't return these)
 	saved := saveHTTPFields(&plan)
+	planRequiredKeyword := plan.RequiredKeyword
 
 	// Map API response to Terraform state
 	r.mapMonitorToModel(monitor, &plan, &resp.Diagnostics)
@@ -314,6 +315,11 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	restoreHTTPFieldsForNonHTTP(monitor.Protocol, &plan, saved)
+
+	// Restore required_keyword: API accepts on write but doesn't return on GET
+	if !planRequiredKeyword.IsNull() && plan.RequiredKeyword.IsNull() {
+		plan.RequiredKeyword = planRequiredKeyword
+	}
 
 	// Handle pause state via separate API call if needed
 	if wantPaused {
@@ -345,8 +351,9 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	// Save and restore HTTP fields for non-HTTP monitors (ISS-ICMP-002)
+	// Save write-only fields before mapping (API doesn't return these)
 	saved := saveHTTPFields(&state)
+	priorRequiredKeyword := state.RequiredKeyword
 
 	r.mapMonitorToModel(monitor, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
@@ -354,6 +361,11 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	restoreHTTPFieldsForNonHTTP(monitor.Protocol, &state, saved)
+
+	// Restore required_keyword: API accepts on write but doesn't return on GET
+	if !priorRequiredKeyword.IsNull() && state.RequiredKeyword.IsNull() {
+		state.RequiredKeyword = priorRequiredKeyword
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
@@ -382,8 +394,9 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	// Save and restore HTTP fields for non-HTTP monitors (ISS-ICMP-002)
+	// Save write-only fields before mapping (API doesn't return these)
 	saved := saveHTTPFields(&plan)
+	planRequiredKeyword := plan.RequiredKeyword
 
 	// Map API response to Terraform state
 	r.mapMonitorToModel(monitor, &plan, &resp.Diagnostics)
@@ -392,6 +405,11 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	restoreHTTPFieldsForNonHTTP(monitor.Protocol, &plan, saved)
+
+	// Restore required_keyword: API accepts on write but doesn't return on GET
+	if !planRequiredKeyword.IsNull() && plan.RequiredKeyword.IsNull() {
+		plan.RequiredKeyword = planRequiredKeyword
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
