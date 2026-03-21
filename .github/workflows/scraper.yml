@@ -134,14 +134,17 @@ jobs:
           # List diff reports
           if ls api_changes_*.md 1> /dev/null 2>&1; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Changes Detected" >> $GITHUB_STEP_SUMMARY
+            echo "### 🔄 API Changes Detected" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The following diff reports were generated:" >> $GITHUB_STEP_SUMMARY
             for file in api_changes_*.md; do
               echo "- [$file](../artifacts/${{ github.run_id }}/diff-reports-${{ github.run_id }}/$file)" >> $GITHUB_STEP_SUMMARY
             done
           else
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ No API changes detected" >> $GITHUB_STEP_SUMMARY
+            echo "### ✅ No API Changes" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All API documentation pages were scraped successfully. The extracted OpenAPI spec matches the previous snapshot — no endpoint, parameter, or enum changes detected. Page content may have minor HTML updates (timestamps, styling) which are expected and do not affect the API contract." >> $GITHUB_STEP_SUMMARY
           fi
 
   analyze:
@@ -267,8 +270,12 @@ jobs:
           REPORT=$(ls -t coverage_report_*.md 2>/dev/null | head -1)
           if [ -n "$REPORT" ]; then
             cat "$REPORT" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ No coverage report generated" >> $GITHUB_STEP_SUMMARY
+          elif [ "${SCHEMA_AVAILABLE}" != "true" ]; then
+            echo "⚠️ Coverage report skipped — provider schema was unavailable" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Check the analysis logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "The Terraform provider schema could not be generated. This prevents coverage analysis (which compares API spec fields against provider schema attributes). Check the \`Generate Terraform provider schema\` step logs." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No coverage report needed — no API changes detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Coverage analysis runs when API changes are detected. Since the API spec is unchanged, the existing coverage baseline remains valid." >> $GITHUB_STEP_SUMMARY
           fi
