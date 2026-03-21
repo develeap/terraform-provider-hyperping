@@ -636,8 +636,17 @@ func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []client.Cr
 			}
 		}
 
-		// Note: show_uptime and show_response_times are group-level settings.
-		// The Hyperping API ignores these fields on nested child services.
+		// Extract show_uptime and show_response_times for nested services.
+		// The API may ignore these on write but we must send them to prevent
+		// "inconsistent result after apply" when the plan has explicit values.
+		if showUptime, ok := attrs["show_uptime"].(types.Bool); ok && !showUptime.IsNull() {
+			val := showUptime.ValueBool()
+			svc.ShowUptime = &val
+		}
+		if showResponseTimes, ok := attrs["show_response_times"].(types.Bool); ok && !showResponseTimes.IsNull() {
+			val := showResponseTimes.ValueBool()
+			svc.ShowResponseTimes = &val
+		}
 
 		services = append(services, svc)
 	}

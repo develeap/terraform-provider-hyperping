@@ -293,7 +293,6 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 										MarkdownDescription: "Localized service description (language code -> text). On write, only the default language value is sent as a plain string.",
 										ElementType:         types.StringType,
 										Optional:            true,
-										Computed:            true,
 									},
 									"services": schema.ListNestedAttribute{
 										MarkdownDescription: "Nested monitor services within this group. Required when is_group=true; must contain at least one entry. Ignored when is_group=false.",
@@ -335,7 +334,6 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 													MarkdownDescription: "Localized service description (language code -> text)",
 													ElementType:         types.StringType,
 													Optional:            true,
-													Computed:            true,
 												},
 											},
 										},
