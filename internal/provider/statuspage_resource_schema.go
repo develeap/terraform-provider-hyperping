@@ -331,7 +331,7 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 													Computed:            true,
 												},
 												"description": schema.MapAttribute{
-													MarkdownDescription: "Localized service description (language code -> text)",
+													MarkdownDescription: "Localized service description (language code -> text). **Note:** The Hyperping API does not currently persist descriptions on nested services inside groups. The value is accepted by Terraform but will not appear on the rendered status page. Use descriptions on top-level (non-group) services instead.",
 													ElementType:         types.StringType,
 													Optional:            true,
 												},

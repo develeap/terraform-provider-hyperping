@@ -17,8 +17,11 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &StatusPageResource{}
-var _ resource.ResourceWithImportState = &StatusPageResource{}
+var (
+	_ resource.Resource                = &StatusPageResource{}
+	_ resource.ResourceWithImportState = &StatusPageResource{}
+	_ resource.ResourceWithModifyPlan  = &StatusPageResource{}
+)
 
 func NewStatusPageResource() resource.Resource {
 	return &StatusPageResource{}
@@ -39,6 +42,58 @@ type StatusPageResourceModel struct {
 	Password        types.String `tfsdk:"password"`
 	Settings        types.Object `tfsdk:"settings"`
 	Sections        types.List   `tfsdk:"sections"`
+}
+
+// ModifyPlan warns when description is set on nested services inside groups,
+// since the Hyperping API does not persist descriptions at that nesting level.
+func (r *StatusPageResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return // destroy plan
+	}
+
+	var plan StatusPageResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() || plan.Sections.IsNull() || plan.Sections.IsUnknown() {
+		return
+	}
+
+	for _, secElem := range plan.Sections.Elements() {
+		secObj, ok := secElem.(types.Object)
+		if !ok {
+			continue
+		}
+		svcList, ok := secObj.Attributes()["services"].(types.List)
+		if !ok || svcList.IsNull() || svcList.IsUnknown() {
+			continue
+		}
+		for _, svcElem := range svcList.Elements() {
+			svcObj, ok := svcElem.(types.Object)
+			if !ok {
+				continue
+			}
+			nestedList, ok := svcObj.Attributes()["services"].(types.List)
+			if !ok || nestedList.IsNull() || nestedList.IsUnknown() {
+				continue
+			}
+			for _, nestedElem := range nestedList.Elements() {
+				nestedObj, ok := nestedElem.(types.Object)
+				if !ok {
+					continue
+				}
+				desc, ok := nestedObj.Attributes()["description"].(types.Map)
+				if ok && !desc.IsNull() && !desc.IsUnknown() && len(desc.Elements()) > 0 {
+					resp.Diagnostics.AddWarning(
+						"Nested Service Description Not Supported by API",
+						"The Hyperping API does not persist descriptions on services nested inside groups "+
+							"(sections[].services[].services[].description). The value will be preserved in "+
+							"Terraform state but will not appear on the rendered status page. "+
+							"Use descriptions on top-level services (not inside groups) instead.",
+					)
+					return // one warning is enough
+				}
+			}
+		}
+	}
 }
 
 func (r *StatusPageResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

@@ -289,7 +289,7 @@ Read-Only:
 
 Optional:
 
-- `description` (Map of String) Localized service description (language code -> text)
+- `description` (Map of String) Localized service description (language code -> text). **Note:** The Hyperping API does not currently persist descriptions on nested services inside groups. The value is accepted by Terraform but will not appear on the rendered status page. Use descriptions on top-level (non-group) services instead.
 - `is_group` (Boolean) Whether this nested service is a group
 - `name` (Map of String) Localized service name (language code -> text)
 - `show_response_times` (Boolean) Show response times
