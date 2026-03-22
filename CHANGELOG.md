@@ -10,6 +10,25 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-03-22
+
+### Changed
+- Plan-time warning when `description` is set on nested services inside groups (API limitation — not persisted)
+- Schema docs updated to note nested service description limitation
+
+## [1.8.2] - 2026-03-22
+
+### Fixed
+- Nested service descriptions now sent as localized map `{"en": "text"}` instead of plain string — matches API's expected format for nested services (same pattern as `name` field)
+
+## [1.8.1] - 2026-03-21
+
+### Fixed
+- Nested service `description` preserved from plan/state when API returns null (write-only field workaround)
+- Nested service `show_response_times` now sent on write (was skipped) and preserved when API returns wrong default
+- Top-level service `description` preservation extended to non-group services
+- Monitor `required_keyword` preserved in Create, Read, and Update — API doesn't return it on GET (bug since v1.2.1, hidden by mock tests)
+
 ## [1.8.0] - 2026-03-20
 
 ### Added
@@ -944,7 +963,10 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.3...HEAD
+[1.8.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.2...v1.8.3
+[1.8.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.1...v1.8.2
+[1.8.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.3...v1.8.0
 [1.7.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.2...v1.7.3
 [1.7.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.7.1...v1.7.2
