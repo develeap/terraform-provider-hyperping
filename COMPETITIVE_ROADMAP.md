@@ -45,7 +45,7 @@ Unified backlog combining competitive analysis (7 providers), API gap audit, and
 | B20 | **Monitor `group_id` and `sort_order`** — if monitor groups become user-visible | Schema gap | 0.5 day | VCR cassette audit |
 | B21 | **Maintenance notification tracking** — `scheduledNotificationStatus/SentAt/Breakdown` | Schema gap | 0.5 day | VCR cassette audit |
 
-### P3 — Documentation & Modules
+### P3 — Documentation, Modules & Future
 
 | ID | Item | Type | Effort | Source |
 |----|------|------|--------|--------|
@@ -56,6 +56,13 @@ Unified backlog combining competitive analysis (7 providers), API gap audit, and
 | B26 | **Status page DNS CNAME output** — help users set up custom domains with other providers | Feature | 0.5 day | Creative |
 | B27 | **Healthcheck `slug`, `logs`** — human-readable ID and ping history | Schema gap | 0.5 day | VCR cassette audit |
 | B28 | **Status page `sso_connection` full object** — expose beyond just UUID | Schema gap | 0.5 day | VCR cassette audit |
+| B29 | **Escalation Policies resource** — CRUD for `/v2/escalation-policies`, currently referenced by UUID only | New resource | 2-3 days | API audit (API_COMPLETENESS_AUDIT.md) |
+| B30 | **Notification Channels / Integrations resource** — Slack, PagerDuty, Webhook, Email, SMS | New resource | 3-5 days | API audit (API_COMPLETENESS_AUDIT.md) |
+| B31 | **Projects / Workspaces resource** — `projectUuid` already in monitor model | New resource | 1-2 days | API audit (API_COMPLETENESS_AUDIT.md) |
+| B32 | **Team Management resource** — user/RBAC management | New resource | 3-5 days | API audit (API_COMPLETENESS_AUDIT.md) |
+| B33 | **E2E stress test: 50+ monitors** — large-scale scenario for performance validation | Testing | 1 day | test/e2e/README.md |
+| B34 | **Migration CLI: visual progress indicators** — better UX for large migrations | Enhancement | 1 day | MIGRATION_CERTIFICATION.md |
+| B35 | **Migration CLI: batch mode** — handle very large account migrations | Enhancement | 1-2 days | MIGRATION_CERTIFICATION.md |
 
 ---
 
