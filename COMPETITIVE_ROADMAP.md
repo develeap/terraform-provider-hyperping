@@ -1,562 +1,106 @@
-# Competitive Roadmap: Terraform Provider Hyperping
+# Provider Backlog: Terraform Provider Hyperping
 
-Competitive analysis of 7 providers: Better Uptime (32 res), Checkly (22 res), Datadog (126 res), Site24x7 (39 res), Uptime.com (60 res), StatusCake (6 res), UptimeRobot (3 res).
+Unified backlog combining competitive analysis (7 providers), API gap audit, and undocumented API field discovery.
 
-Constraint: No Hyperping server-side API changes. All improvements are provider-side only.
-
----
-
-## Phase 1: Provider-Level Configuration
-
-**Branch:** `feat/provider-config`
-**Source:** Better Uptime, Uptime.com
-
-### Problem
-
-Provider only accepts `api_key` and `base_url`. Retry count (3), backoff (1s-30s), and timeout are hardcoded. Enterprise users behind proxies or on different API tiers cannot tune behavior without forking.
-
-### Changes
-
-- Add optional `max_retries` (int, default 3, range 0-10) to provider schema
-- Add optional `retry_wait_min` (string/duration, default "1s") to provider schema
-- Add optional `retry_wait_max` (string/duration, default "30s") to provider schema
-- Add optional `request_timeout` (string/duration, default "60s") to provider schema
-- Add optional `rate_limit` (float, default 0 = disabled) to provider schema
-- Pass these values through to `client.NewClient()` via a config struct
-- Update client constructor to accept configurable retry/timeout/rate values
-- Add acceptance tests for provider config validation
-- Update `docs/index.md` with new provider attributes
-
-### Competitive Reference
-
-```hcl
-# Better Uptime pattern:
-provider "better_uptime" {
-  api_token       = var.token
-  api_retry_max   = 4
-  api_retry_wait_min = 10
-  api_retry_wait_max = 300
-  api_timeout     = 60
-  api_rate_limit  = 8
-}
-
-# Uptime.com pattern:
-provider "uptime" {
-  token      = var.token
-  rate_limit = 0.5
-}
-```
+**Current version:** v1.8.3
+**Last updated:** 2026-03-22
 
 ---
 
-## Phase 2: User-Agent Versioning -- DONE (v1.4.x)
+## Unified Backlog
 
-**Branch:** `feat/user-agent-version`
-**Source:** StatusCake, Better Uptime
-**Shipped:** v1.4.x
+### P0 — Ship Next
 
-### Delivered
+| ID | Item | Type | Effort | Source |
+|----|------|------|--------|--------|
+| B01 | **Add `capetown` to AllowedRegions** — exists in real API responses, missing from provider | Bug fix | 1 line | VCR cassette audit |
+| B02 | **Report data source: expose MTTR** — `mttr` + `mttr_formatted` in Go struct, not in TF schema | Bug fix | ~20 lines | API audit |
+| B03 | **Provider-level configuration** — `max_retries`, `retry_wait_min/max`, `request_timeout`, `rate_limit` | Feature | 2-3 days | Competitive (Better Uptime, Uptime.com) |
 
-- Provider version injected via `WithVersion()` functional option in `client.go`
-- User-Agent header set to `terraform-provider-hyperping/{version}` via `buildUserAgent()` in transport layer
-- User-Agent blocked from override by `ReservedHeaderName` validator
+### P1 — High Value Enhancements
 
----
+| ID | Item | Type | Effort | Source |
+|----|------|------|--------|--------|
+| B04 | **Outage: expose `confirmed_locations`, `acknowledged_at`** — already in Go struct | Schema gap | ~30 lines | API audit |
+| B05 | **Maintenance: expose `status`** (upcoming/ongoing/completed) — already parsed | Schema gap | ~15 lines | API audit |
+| B06 | **Maintenance: expose `timezone`, `created_at`, `created_by`, `updates`** | Schema gap | 1 day | API audit |
+| B07 | **Report data source: outage details + SLA convenience fields** (`sla_nines`, `downtime_human`, `mttr`) | Feature | 1 day | Competitive (Uptime.com, Datadog) |
+| B08 | **Outage lifecycle: `desired_state`** (acknowledged/resolved/escalated) via existing client methods | Feature | 1-2 days | API audit |
+| B09 | **Healthcheck: expose `lastDowntime`, `due_date`** — operational visibility | Schema gap | 0.5 day | VCR cassette audit |
+| B10 | **Healthcheck: writable `is_paused`** via pause/resume API | Feature | 0.5 day | API audit |
+| B11 | **Error diagnostics: doc URL links** — append Hyperping docs link to error messages | Feature | 0.5 day | Competitive (Datadog, StatusCake) |
+| B12 | **Outage: expose `alertedChannels`, `errorHeader`** — incident response data | Schema gap | 0.5 day | VCR cassette audit |
+| B13 | **Cross-resource UUID validation** — validate monitor UUIDs in status pages/maintenance at plan time | Feature | 1 day | Creative |
 
-## Phase 3: Monitoring Locations Data Source -- DONE (v1.5.0)
+### P2 — Architecture & DX
 
-**Branch:** `feat/locations-datasource`
-**Source:** StatusCake, Uptime.com
-**Shipped:** v1.5.0 (PR #82)
+| ID | Item | Type | Effort | Source |
+|----|------|------|--------|--------|
+| B14 | **Schema attribute helpers** — DRY factory functions for common attributes | Refactor | 2-3 days | Competitive (Uptime.com, Checkly) |
+| B15 | **PlanValuePreserver interface** — centralize write-only field handling | Refactor | 1-2 days | Competitive (Uptime.com) |
+| B16 | **Import generator data source** — generate `terraform import` commands/blocks | Feature | 2-3 days | Unique advantage |
+| B17 | **Maintenance recurrence** — investigate API support for recurring windows | Feature | 1-2 days | Competitive (Checkly, StatusCake, Uptime.com, Datadog) |
+| B18 | **Status page enhancements** — section ordering, component count, subscription domain filtering | Feature | 1-2 days | Competitive (Better Uptime, Uptime.com) |
+| B19 | **Escalation config enrichment** — expose escalation policy details from monitor GET | Feature | 1-2 days | Competitive (Uptime.com, Better Uptime, Checkly) |
+| B20 | **Monitor `group_id` and `sort_order`** — if monitor groups become user-visible | Schema gap | 0.5 day | VCR cassette audit |
+| B21 | **Maintenance notification tracking** — `scheduledNotificationStatus/SentAt/Breakdown` | Schema gap | 0.5 day | VCR cassette audit |
 
-### Delivered
+### P3 — Documentation & Modules
 
-- `hyperping_monitoring_locations` static data source with 8 regions
-- Schema: `locations` (list with `id`, `name`, `continent`, `cloud_region`) + `ids` convenience list
-- No `filter` block — users can filter with Terraform expressions (`[for loc in ... : loc.id if loc.continent == "Europe"]`)
-
-### Example
-
-```hcl
-data "hyperping_monitoring_locations" "all" {}
-
-resource "hyperping_monitor" "web" {
-  name    = "Website"
-  url     = "https://example.com"
-  regions = data.hyperping_monitoring_locations.all.ids
-}
-```
-
----
-
-## Phase 4: Schema Attribute Helpers (DRY)
-
-**Branch:** `refactor/schema-helpers`
-**Source:** Uptime.com, Checkly
-
-### Problem
-
-Schema definitions are repeated across 8 resources. Same `id`, `name`, validators, plan modifiers copy-pasted. Uptime.com uses `IDSchemaAttribute()`, `NameSchemaAttribute()` factory functions. Checkly uses `makeFrequencyAttributeSchema()`.
-
-### Changes
-
-- Create `internal/provider/schema_helpers.go` with reusable attribute builders:
-  - `IDAttribute()` - computed string with UseStateForUnknown
-  - `NameAttribute(maxLen int)` - required string with StringLength + NoControlCharacters
-  - `UUIDAttribute(description string)` - optional string with UUIDFormat validator
-  - `UUIDListAttribute(description string)` - optional list of UUIDs
-  - `PausedAttribute()` - optional bool with default false
-  - `CreatedAtAttribute()` - computed string with UseStateForUnknown
-  - `ISO8601Attribute(name, description string)` - required string with ISO8601 validator
-- Refactor existing resources to use helpers (no behavioral changes)
-- Verify all existing tests still pass
-
-### Benefit
-
-Adding a new resource goes from ~50 lines of boilerplate schema to ~10.
+| ID | Item | Type | Effort | Source |
+|----|------|------|--------|--------|
+| B22 | **Security & validation docs** — document our competitive advantages | Documentation | 1 day | Competitive analysis |
+| B23 | **SLA tracking guide** — examples combining reports + outputs | Documentation | 0.5 day | Competitive (Uptime.com) |
+| B24 | **Official Terraform modules** — `hyperping-monitored-service`, `hyperping-statuspage-complete` | Modules | 2-3 days | Creative |
+| B25 | **Monitor fleet management examples** — YAML-driven `for_each` patterns | Examples | 0.5 day | Creative |
+| B26 | **Status page DNS CNAME output** — help users set up custom domains with other providers | Feature | 0.5 day | Creative |
+| B27 | **Healthcheck `slug`, `logs`** — human-readable ID and ping history | Schema gap | 0.5 day | VCR cassette audit |
+| B28 | **Status page `sso_connection` full object** — expose beyond just UUID | Schema gap | 0.5 day | VCR cassette audit |
 
 ---
 
-## Phase 5: Cross-Field Schema Validators -- DONE (v1.5.0 + v1.7.1 + v1.7.2)
+## Completed Items
 
-**Branch:** `feat/cross-field-validators`
-**Source:** Better Uptime, StatusCake, Datadog
-**Shipped:** v1.5.0 (monitor), v1.7.1 (maintenance), v1.7.2 (healthcheck)
-
-### Delivered
-
-- **Monitor** `ValidateConfig()` (v1.5.0, PR #82):
-  - ICMP/port protocols reject HTTP-only fields (`http_method`, `expected_status_code`, `follow_redirects`, `request_headers`, `request_body`, `required_keyword`)
-  - Port protocol requires `port` field; HTTP/ICMP reject `port` field
-  - 513 lines of unit tests covering all protocol/field combinations
-- **Maintenance** `ValidateConfig()` (v1.7.1, PR #88):
-  - `end_date` must be after `start_date` at plan time
-  - Handles unknown/null values for module composition
-  - 15 unit tests (valid ranges, reversed dates, equal dates, timezone handling)
-- **Healthcheck** `ValidateConfig()` (v1.7.2, PR #89):
-  - `cron` and `period_value` are mutually exclusive
-  - Neither set is also an error
-  - Handles unknown values for module composition
-  - 7 unit tests
-
-### Competitive Reference
-
-```go
-// StatusCake pattern:
-ExactlyOneOf: []string{"dns_check", "http_check", "icmp_check", "tcp_check"}
-
-// Datadog pattern:
-resp.Diagnostics.Append(resourcevalidator.ConflictsWith(
-    path.MatchRoot("one_time_schedule"),
-    path.MatchRoot("recurring_schedule"),
-).ValidateResource(ctx, req)...)
-```
+| ID | Item | Version | Date |
+|----|------|---------|------|
+| ~~Phase 2~~ | User-Agent versioning | v1.4.x | 2026-02 |
+| ~~Phase 3~~ | Monitoring locations data source (17 regions) | v1.5.0 / v1.7.3 | 2026-03-16 / 2026-03-20 |
+| ~~Phase 5~~ | Cross-field validators (monitor, maintenance, healthcheck) | v1.5.0 / v1.7.1 / v1.7.2 | 2026-03-16 / 2026-03-18 / 2026-03-19 |
+| ~~Phase 6~~ | Enhanced error diagnostics (mostly done, doc URLs remaining → B11) | v1.5.0 / v1.7.1 | 2026-03-16 / 2026-03-18 |
+| ~~Phase 8~~ | Bulk data source enhancements (`total`, `ids`) | v1.5.0 | 2026-03-16 |
+| ~~Phase 15~~ | Cassette-based VCR testing (42 cassettes) | v1.6.0 | 2026-03-16 |
+| ~~PR #88~~ | Maintenance update fields, dead code removal | v1.7.1 | 2026-03-18 |
+| ~~PR #89~~ | Comprehensive review fixes (19 changes, security hardening) | v1.7.2 | 2026-03-19 |
+| ~~PR #90~~ | 9 missing regions, notification_option "none", languages sync | v1.7.3 | 2026-03-20 |
+| ~~PR #93~~ | API gaps: incident updates, sso_connection_uuid, service description | v1.8.0 | 2026-03-20 |
+| ~~PR #94~~ | Write-only field preservation (nested services, required_keyword) | v1.8.1 | 2026-03-21 |
+| ~~PR #95~~ | Nested service description localized map format | v1.8.2 | 2026-03-22 |
+| ~~PR #96~~ | Plan-time warning for nested service description API limitation | v1.8.3 | 2026-03-22 |
 
 ---
 
-## Phase 6: Enhanced Error Diagnostics -- MOSTLY DONE (v1.5.0 + v1.7.1)
-
-**Branch:** `feat/error-diagnostics`
-**Source:** Datadog, StatusCake
-**Shipped:** v1.5.0 (valid value tables), v1.7.1 (context-aware troubleshooting)
-
-### Delivered
-
-- `ValidValueReference()` — formatted valid value tables appended to API error messages (v1.5.0)
-- `*WithContext` error helpers — `NewCreateErrorWithContext`, `NewReadErrorWithContext`, etc. with context-specific troubleshooting steps based on error type (404, 401/403, 429, 5xx, validation, circuit breaker) (v1.7.1)
-- `DetectErrorContext()` — auto-classifies errors into actionable categories
-- `BuildTroubleshootingSteps()` — generates resource-specific and error-type-specific guidance
-- `error_diagnostics.go` + `error_context.go` + comprehensive tests
-
-### Remaining
-
-- Add doc URL constants per resource (e.g., `https://docs.hyperping.io/api#monitors`)
-- Append doc URL as diagnostic detail in error messages
-- Add `DiagnosticWithDocLink()` helper
-
-### Example (current)
-
-```
-Error: failed to create monitor
-
-  API error: invalid check_frequency
-
-  Quick Reference (valid values):
-    protocol:             http, icmp, port
-    http_method:          GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
-    check_frequency:      30, 60, 120, 300, 600, 900, 1800
-    ...
-```
-
----
-
-## Phase 7: PlanValuePreserver Interface
-
-**Branch:** `refactor/plan-value-preserver`
-**Source:** Uptime.com
-
-### Problem
-
-Write-only fields (`required_keyword`, `escalation_policy`, `text` on incidents) require manual state preservation logic scattered across Read functions. Uptime.com has a clean `PlanValuePreserver` interface.
-
-### Changes
-
-- Define `PlanValuePreserver` interface in `internal/provider/`:
-  ```go
-  type PlanValuePreserver interface {
-      PreserveFromPlan(ctx context.Context, plan, state tfsdk.Plan) diag.Diagnostics
-  }
-  ```
-- Implement for monitor resource (preserves `required_keyword`, `escalation_policy`, `request_body`, `request_headers`)
-- Implement for incident resource (preserves `text`)
-- Implement for healthcheck resource (preserves `escalation_policy`)
-- Remove duplicated preservation logic from individual Read functions
-- Add unit tests for preservation behavior
-
-### Benefit
-
-Centralizes write-only field handling. Adding new write-only fields requires one line instead of scattered Read/Update logic.
-
----
-
-## Phase 8: Bulk Data Source Enhancements -- DONE (v1.5.0)
-
-**Branch:** `feat/datasource-enhancements`
-**Source:** Datadog, Uptime.com
-**Shipped:** v1.5.0 (PR #82)
-
-### Delivered
-
-- `total` (int64) and `ids` (list of strings) on all 7 list data sources: monitors, incidents, maintenance_windows, outages, healthchecks, statuspages, statuspage_subscribers
-- Used `total` instead of `count` because `count` is a reserved Terraform meta-argument
-- Acceptance and unit tests for all data sources
-
-### Example
-
-```hcl
-data "hyperping_monitors" "production" {
-  filter {
-    name_regex = "^prod-"
-  }
-}
-
-output "production_count" {
-  value = data.hyperping_monitors.production.total
-}
-
-# Use IDs in other resources
-resource "hyperping_maintenance" "deploy" {
-  monitors = data.hyperping_monitors.production.ids
-}
-```
-
----
-
-## Phase 9: Maintenance Window Recurrence
-
-**Branch:** `feat/maintenance-recurrence`
-**Source:** Checkly, StatusCake, Uptime.com, Datadog
-
-### Problem
-
-Our `hyperping_maintenance` has only `start_date` and `end_date`. Competitors support recurring schedules (daily, weekly, monthly). Deploy windows are typically weekly.
-
-### Changes
-
-- Investigate if Hyperping API accepts recurrence parameters (check API docs/responses)
-- If API supports recurrence:
-  - Add `repeat_interval` field (string: "never", "daily", "weekly", "monthly")
-  - Add `repeat_ends_at` field (optional ISO8601 datetime)
-  - Add validators for recurrence fields
-- If API does not support recurrence:
-  - Document limitation clearly
-  - Add example showing how to use `count` or `for_each` with `timeadd()` for manual recurrence
-  - Consider client-side computed recurrence as future enhancement
-- Add acceptance tests for new fields
-
----
-
-## Phase 10: Status Page Enhancement
-
-**Branch:** `feat/statuspage-enhancements`
-**Source:** Better Uptime, Uptime.com
-
-### Problem
-
-Our status page resource is functional but competitors offer richer features: subscription domain allow/block lists, component ordering, custom metrics display, incident templates.
-
-### Changes
-
-- Add `position` optional field to status page sections for explicit ordering
-- Add computed `component_count` to status page for quick visibility
-- Investigate API support for:
-  - Subscription domain filtering (allow/block email domains)
-  - Custom CSS/branding fields beyond current settings
-  - History period configuration (Better Uptime: 7-365 days)
-- Enhance status page data source with `search` filter support
-- Add examples for complex multi-section status pages
-
----
-
-## Phase 11: Monitor Escalation Config Enhancement
-
-**Branch:** `feat/escalation-enhancements`
-**Source:** Uptime.com, Better Uptime, Checkly
-
-### Problem
-
-Our monitor has `alerts_wait` (delay before alerting) and `escalation_policy` (UUID reference). Competitors expose richer escalation configuration:
-- Multi-level escalation with different contacts per level (Uptime.com)
-- `confirmation_period` / `recovery_period` (Better Uptime)
-- `num_repeats` for re-alerting (Uptime.com)
-- Run-based vs time-based escalation types (Checkly)
-
-### Changes
-
-- Investigate Hyperping API escalation_policy response to find unexposed fields
-- Add computed fields to monitor resource for escalation policy details:
-  - `escalation_policy_name` (computed) - human-readable name from API
-  - `escalation_levels` (computed, list) - levels within referenced policy
-- Add `recovery_period` field to monitor if API supports it (seconds before auto-resolving)
-- Add `confirmation_period` field if API supports it (seconds to confirm down status)
-- If API returns escalation details on monitor GET, expose as computed nested block
-- Document escalation patterns with examples showing policy + monitor relationship
-- Add acceptance tests for new escalation fields
-
-### Competitive Reference
-
-```hcl
-# Uptime.com escalation pattern:
-resource "uptime_check_escalations" "web" {
-  check_id = uptime_check_http.web.id
-  escalation {
-    wait_time      = 300    # 5 minutes
-    num_repeats    = 3      # re-alert 3 times
-    contact_groups = ["ops-team"]
-  }
-  escalation {
-    wait_time      = 900    # 15 minutes
-    num_repeats    = 0      # infinite until resolved
-    contact_groups = ["management"]
-  }
-}
-
-# Better Uptime pattern:
-resource "betteruptime_monitor" "web" {
-  url                = "https://example.com"
-  confirmation_period = 180   # 3 min to confirm down
-  recovery_period    = 180    # 3 min up before resolved
-  team_wait          = 60     # escalate after 60s
-}
-```
-
----
-
-## Phase 12: SLA/Uptime Report Enhancement
-
-**Branch:** `feat/sla-report-enhancement`
-**Source:** Uptime.com, Datadog
-
-### Problem
-
-We already have `hyperping_monitor_report` and `hyperping_monitor_reports` data sources with `uptime_percentage`, but this is underdocumented. Competitors (Uptime.com) have dedicated SLA report resources and SLA target attributes on checks. We can better leverage what we have.
-
-### Changes
-
-- Add SLA-focused computed fields to monitor report data source:
-  - `sla_met` (computed bool) - true if uptime_percentage >= target (if configurable)
-  - `downtime_human` (computed string) - human-readable downtime (e.g., "2h 15m")
-  - `availability_nines` (computed string) - "99.9%" style representation
-- Add `docs/guides/sla-tracking.md` guide showing:
-  - How to use monitor reports for SLA tracking
-  - Example: monthly uptime report with thresholds
-  - Example: multi-monitor SLA dashboard via outputs
-  - Comparison with competitor SLA features
-- Add examples showing SLA monitoring patterns:
-
-```hcl
-data "hyperping_monitor_report" "api" {
-  uuid = hyperping_monitor.api.id
-  from = "2024-01-01T00:00:00Z"
-  to   = "2024-01-31T23:59:59Z"
-}
-
-output "api_sla" {
-  value = {
-    uptime     = data.hyperping_monitor_report.api.uptime_percentage
-    checks     = data.hyperping_monitor_report.api.checks_total
-    downtime   = data.hyperping_monitor_report.api.downtime_total
-  }
-}
-```
-
-### Competitive Position
-
-Only Uptime.com has dedicated `sla_report` resources. We can match the use case with better documentation and computed convenience fields on our existing data sources.
-
----
-
-## Phase 13: Validation Library Documentation
-
-**Branch:** `docs/validation-advantages`
-**Source:** Competitive analysis results
-
-### Problem
-
-Our provider has the strongest security posture AND the most comprehensive validation library of all 8 analyzed, but neither is documented or marketed.
-
-### Changes
-
-- Add `docs/guides/security.md` documenting security features:
-  - Error message sanitization (API keys redacted from all error output)
-  - Circuit breaker (prevents cascading failures during outages)
-  - TLS enforcement (non-localhost targets must use HTTPS)
-  - Control character injection prevention (CR/LF/NULL blocked in headers)
-  - Reserved header blocking (Authorization, Host, Cookie blocked in custom headers)
-  - Response body size limit (10MB OOM protection)
-  - Connection pool limits (per-host idle/total limits)
-  - Resource ID validation (path traversal prevention)
-  - API key format validation (sk_ prefix enforcement)
-  - Base URL domain whitelist (*.hyperping.io only)
-- Add `docs/guides/validation.md` documenting our custom validator library:
-  - `StatusCodePattern()` - accepts "200", "2xx", "1xx-3xx" (unique to us)
-  - `CronExpression()` - validates cron syntax (only us and Checkly)
-  - `NoControlCharacters()` - prevents header injection (nobody else does this)
-  - `ReservedHeaderName()` - blocks dangerous headers (nobody else)
-  - `AlertsWait()` - domain-specific validation
-  - `ISO8601()` - date format validation
-  - `Timezone()` - IANA timezone validation
-  - `PortRange()` - port number validation
-  - `HexColor()` - color format validation
-  - `EmailFormat()` - email validation
-  - `RequiredWhenValueIs()` - conditional field requirements
-- Add security and validation comparison tables vs competitors
-- Reference both guides from main `docs/index.md`
-
-### Competitive Position
-
-| Security Feature | Us | Better Uptime | Checkly | Datadog | Others |
-|-----------------|-----|---------------|---------|---------|--------|
-| Error sanitization | Yes | No | No | No | No |
-| Circuit breaker | Yes | No | No | No | No |
-| TLS enforcement | Yes | No | No | No | No |
-| Header injection prevention | Yes | No | No | No | No |
-| Response size limit | Yes | No | No | No | No |
-| Connection pool limits | Yes | No | No | No | No |
-
-| Validator | Us | Checkly | StatusCake | Datadog | Others |
-|-----------|-----|---------|------------|---------|--------|
-| Status code patterns (2xx) | Yes | No | No | No | No |
-| Cron expression | Yes | No | No | No | No |
-| Control char blocking | Yes | No | No | No | No |
-| Reserved header blocking | Yes | No | No | No | No |
-| Conditional required fields | Yes | No | No | No | No |
-| ISO8601 datetime | Yes | No | Yes (RFC3339) | Yes | Partial |
-
----
-
-## Phase 14: Import Generator Data Source
-
-**Branch:** `feat/import-generator`
-**Source:** Unique competitive advantage
-
-### Problem
-
-We have migration CLI tools (betterstack, uptimerobot, pingdom) which are unique among all competitors. But there is no Terraform-native way to discover existing resources and generate import commands for adopting the provider on an existing Hyperping account.
-
-### Changes
-
-- Add `hyperping_import_commands` data source that generates import commands for all existing resources:
-  - `resource_type` (optional, filter by type: "monitor", "healthcheck", "statuspage", etc.)
-  - `commands` (computed, list of objects):
-    - `resource_address` - suggested Terraform address (e.g., `hyperping_monitor.my_api_check`)
-    - `import_id` - the UUID to import
-    - `import_command` - full `terraform import` command string
-    - `resource_name` - original name from Hyperping
-- Generate safe Terraform resource names from Hyperping display names (slugify)
-- Add documentation with adoption workflow example
-
-### Example
-
-```hcl
-data "hyperping_import_commands" "all" {}
-
-output "import_script" {
-  value = join("\n", data.hyperping_import_commands.all.commands[*].import_command)
-}
-
-# Output:
-# terraform import hyperping_monitor.my_api_check abc-123-def
-# terraform import hyperping_monitor.website_prod xyz-456-ghi
-# terraform import hyperping_healthcheck.cron_job mno-789-pqr
-# terraform import hyperping_statuspage.public_page stu-012-vwx
-```
-
-### Competitive Position
-
-No other provider offers this. Combined with our existing migration CLI tools, this makes Hyperping the easiest provider to adopt.
-
----
-
-## Phase 15: Cassette-Based Testing -- DONE (v1.6.0)
-
-**Branch:** `feat/cassette-testing`
-**Source:** Datadog
-**Shipped:** v1.6.0
-
-### Delivered
-
-- 42 VCR cassettes recorded from live Hyperping API at `internal/client/testdata/cassettes/`
-- `testutil/vcr.go` — `NewVCRRecorder()` with three modes: Record, Replay, Auto
-- Credential masking: Authorization headers, `sk_*` API keys, Set-Cookie all redacted
-- Cassettes cover: CRUD cycles, list operations, auth scenarios, error conditions, pagination, subscriber operations
-- Contract test suite using VCR for deterministic replay without API keys
-- CI runs in replay mode (no API key needed), re-record with `HYPERPING_API_KEY` + record mode
-
----
-
-## Execution Order
-
-| Phase | Branch | Priority | Effort | Status |
-|-------|--------|----------|--------|--------|
-| 1 | `feat/provider-config` | P0 | 2-3 days | **TODO** — only remaining P0 |
-| 2 | `feat/user-agent-version` | P0 | -- | **DONE** (v1.4.x) |
-| 3 | `feat/locations-datasource` | P0 | -- | **DONE** (v1.5.0) |
-| 4 | `refactor/schema-helpers` | P1 | 2-3 days | TODO |
-| 5 | `feat/cross-field-validators` | P1 | -- | **DONE** (v1.5.0 + v1.7.1 + v1.7.2) |
-| 6 | `feat/error-diagnostics` | P1 | ~0.5 day | **MOSTLY DONE** — doc URL links remaining |
-| 7 | `refactor/plan-value-preserver` | P2 | 1-2 days | TODO (depends on Phase 4) |
-| 8 | `feat/datasource-enhancements` | P2 | -- | **DONE** (v1.5.0) |
-| 9 | `feat/maintenance-recurrence` | P2 | 1-2 days | TODO (requires API investigation) |
-| 10 | `feat/statuspage-enhancements` | P2 | 1-2 days | TODO (requires API investigation) |
-| 11 | `feat/escalation-enhancements` | P2 | 1-2 days | TODO (requires API investigation) |
-| 12 | `feat/sla-report-enhancement` | P2 | 1-2 days | TODO (docs + computed fields, no API dep) |
-| 13 | `docs/validation-advantages` | P3 | 1 day | TODO |
-| 14 | `feat/import-generator` | P3 | 2-3 days | TODO |
-| 15 | `feat/cassette-testing` | P3 | -- | **DONE** (v1.6.0) |
-
-**Completed: 7/15 phases** (2, 3, 5, 8, 15 fully done; 6 mostly done; plus all P0 items except Phase 1).
-
-Phase 1 is the only remaining P0 item.
-Phase 4 + Phase 6 remainder are the P1 items.
-Phase 7 depends on Phase 4.
-Phases 9-12 are independent P2 items (9-11 require API investigation).
-Phases 13-14 are independent P3 docs/tooling items.
-
----
-
-## Out of Scope (Requires Server API Changes)
-
-These features were identified in competitors but require Hyperping API additions:
-- New monitor types (DNS, TCP content matching, SMTP, IMAP, SSH, FTP, NTP, WHOIS)
-- New integration resources (Slack, PagerDuty, Opsgenie, webhook destinations)
-- SLO/SLA target resources (Datadog pattern)
-- On-call calendar/rotation resources (Better Uptime)
-- Contact group management resources
+## API Limitations (Requires Hyperping Server Changes)
+
+These cannot be fixed provider-side:
+
+| Bug # | Issue | Workaround |
+|-------|-------|------------|
+| #1 | Renderer uses v1 numeric IDs for status | UUID-to-numeric translation on every write |
+| #6/#7 | Incident/maintenance `text` not returned on GET | Plan value preservation |
+| #17 | `settings.name` overridden by `resource.name` on read | `replaceSettingsName()` restoration |
+| #20 | Nested service description not persisted | Plan-time warning (v1.8.3) + state preservation |
+| #21 | Nested service `show_response_times` defaults to true | Send on write + state preservation |
+| #22 | Monitor `required_keyword` not returned on GET (possible regression) | State preservation (v1.8.1) |
+
+## Out of Scope (Requires New API Endpoints)
+
+- New monitor types (SMTP, IMAP, SSH, FTP, NTP, WHOIS)
+- Integration resources (Slack, PagerDuty, Opsgenie, webhook destinations)
+- SLO/SLA target resources
+- On-call calendar/rotation resources
+- Contact group management
 - Severity/priority level resources
-- Browser/transaction check support (Checkly, Better Uptime)
-- Real User Monitoring (Uptime.com)
-- Multi-account/subaccount support (Uptime.com)
-- Dashboard/reporting resources (Uptime.com, Datadog)
-
-These should be tracked as server-side feature requests separately.
+- Browser/transaction check support
+- Real User Monitoring
+- Multi-account/subaccount support
+- Dashboard/reporting resources
