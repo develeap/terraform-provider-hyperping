@@ -1599,7 +1599,7 @@ func TestMapTFToService_Description(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
-		if result.Description == nil || *result.Description != "English desc" {
+		if descStr, ok := result.Description.(*string); !ok || descStr == nil || *descStr != "English desc" {
 			t.Errorf("expected 'English desc', got %v", result.Description)
 		}
 	})
@@ -1623,7 +1623,7 @@ func TestMapTFToService_Description(t *testing.T) {
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
-		if result.Description == nil || *result.Description != "French desc" {
+		if descStr, ok := result.Description.(*string); !ok || descStr == nil || *descStr != "French desc" {
 			t.Errorf("expected 'French desc', got %v", result.Description)
 		}
 	})
@@ -1646,7 +1646,7 @@ func TestMapTFToService_Description(t *testing.T) {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
 		if result.Description != nil {
-			t.Errorf("expected nil description, got %q", *result.Description)
+			t.Errorf("expected nil description, got %q", result.Description)
 		}
 	})
 }
@@ -1674,7 +1674,7 @@ func TestMapTFToNestedServices_Description(t *testing.T) {
 		if len(result) != 1 {
 			t.Fatalf("expected 1 service, got %d", len(result))
 		}
-		if result[0].Description == nil || *result[0].Description != "Nested desc" {
+		if descMap, ok := result[0].Description.(map[string]string); !ok || descMap["en"] != "Nested desc" {
 			t.Errorf("expected 'Nested desc', got %v", result[0].Description)
 		}
 	})
@@ -1697,7 +1697,7 @@ func TestMapTFToNestedServices_Description(t *testing.T) {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
 		if result[0].Description != nil {
-			t.Errorf("expected nil description, got %q", *result[0].Description)
+			t.Errorf("expected nil description, got %q", result[0].Description)
 		}
 	})
 }

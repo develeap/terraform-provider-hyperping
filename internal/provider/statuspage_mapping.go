@@ -621,19 +621,11 @@ func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []client.Cr
 			svc.Name = mapTFToStringMap(nameMap, diags)
 		}
 
-		// Extract description (write as plain string from localized map)
+		// Extract description as localized map for nested services.
+		// The API expects nested service descriptions as maps (like "name"),
+		// unlike top-level services which use plain strings (like "name_shown").
 		if descMap, ok := attrs["description"].(types.Map); ok && !descMap.IsNull() {
-			descStrMap := mapTFToStringMap(descMap, diags)
-			if enDesc, ok := descStrMap["en"]; ok && enDesc != "" {
-				svc.Description = &enDesc
-			} else {
-				for _, v := range descStrMap {
-					if v != "" {
-						svc.Description = &v
-						break
-					}
-				}
-			}
+			svc.Description = mapTFToStringMap(descMap, diags)
 		}
 
 		// Extract show_uptime and show_response_times for nested services.
