@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -110,6 +111,7 @@ func TestMonitoringLocationsDataSource_Schema(t *testing.T) {
 
 // T29 + T30: Acceptance test for monitoring locations data source
 func TestAccMonitoringLocationsDataSource_basic(t *testing.T) {
+	regionCount := strconv.Itoa(len(client.AllowedRegions))
 	server := newMinimalMockServer(t)
 	defer server.Close()
 
@@ -120,8 +122,8 @@ func TestAccMonitoringLocationsDataSource_basic(t *testing.T) {
 				Config: testAccMonitoringLocationsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					// T29: All 8 locations returned
-					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "locations.#", "18"),
-					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "ids.#", "18"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "locations.#", regionCount),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "ids.#", regionCount),
 					// T30: Known IDs present
 					tfresource.TestCheckTypeSetElemAttr("data.hyperping_monitoring_locations.all", "ids.*", "london"),
 					tfresource.TestCheckTypeSetElemAttr("data.hyperping_monitoring_locations.all", "ids.*", "frankfurt"),

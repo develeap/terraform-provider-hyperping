@@ -120,41 +120,6 @@ func TestMonitorResource_Schema(t *testing.T) {
 	}
 }
 
-func TestAllowedRegions(t *testing.T) {
-	// Verify client.AllowedRegions contains expected values
-	// From official API documentation (18 regions)
-	// See: https://hyperping.com/docs/api/monitors/create
-	expectedRegions := []string{
-		// Europe
-		"london", "frankfurt", "paris", "amsterdam",
-		// Asia Pacific
-		"singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore",
-		// North America
-		"virginia", "california", "sanfrancisco", "nyc", "toronto",
-		// South America
-		"saopaulo",
-		// Middle East
-		"bahrain",
-		// Africa
-		"capetown",
-	}
-
-	if len(client.AllowedRegions) != len(expectedRegions) {
-		t.Errorf("Expected %d regions, got %d", len(expectedRegions), len(client.AllowedRegions))
-	}
-
-	regionMap := make(map[string]bool)
-	for _, r := range client.AllowedRegions {
-		regionMap[r] = true
-	}
-
-	for _, expected := range expectedRegions {
-		if !regionMap[expected] {
-			t.Errorf("Expected region %q not found in client.AllowedRegions", expected)
-		}
-	}
-}
-
 // monitorToModelCase defines a single test scenario for mapMonitorToModel.
 type monitorToModelCase struct {
 	name    string

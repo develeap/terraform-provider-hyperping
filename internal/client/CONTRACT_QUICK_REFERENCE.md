@@ -160,7 +160,7 @@ RunContractTest(t, ContractTestConfig{
 ### Monitor
 
 ```go
-AllowedProtocols = []string{"http", "port", "icmp"}
+AllowedProtocols = []string{"http", "port", "icmp", "dns"}
 AllowedMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 AllowedRegions = []string{"london", "frankfurt", "paris", "amsterdam", "singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore", "virginia", "california", "sanfrancisco", "nyc", "toronto", "saopaulo", "bahrain", "capetown"}
 AllowedFrequencies = []int{10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400}
@@ -176,7 +176,7 @@ AllowedIncidentUpdateTypes = []string{"investigating", "identified", "update", "
 ### Maintenance
 
 ```go
-AllowedNotificationOptions = []string{"scheduled", "immediate"}
+AllowedNotificationOptions = []string{"none", "scheduled", "immediate"}
 ```
 
 ### Status Page
@@ -184,7 +184,7 @@ AllowedNotificationOptions = []string{"scheduled", "immediate"}
 ```go
 AllowedStatusPageThemes = []string{"light", "dark", "system"}
 AllowedStatusPageFonts = []string{"system-ui", "Lato", "Manrope", "Inter", "Open Sans", "Montserrat", "Poppins", "Roboto", "Raleway", "Nunito", "Merriweather", "DM Sans", "Work Sans"}
-AllowedLanguages = []string{"en", "fr", "de", "ru", "nl", "es", "it", "pt", "ja", "zh"}
+AllowedLanguages = []string{"en", "fr", "de", "ru", "nl", "pl", "sv"}
 ```
 
 ### Subscriber
