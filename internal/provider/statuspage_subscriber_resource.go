@@ -83,7 +83,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				MarkdownDescription: "Subscriber type: email, sms, or teams (slack not supported via API)",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf("email", "sms", "teams"),
+					stringvalidator.OneOf(client.AllowedSubscriberTypes...),
 					NoSlackSubscriberType(),
 				},
 				PlanModifiers: []planmodifier.String{

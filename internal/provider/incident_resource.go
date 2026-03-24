@@ -82,7 +82,7 @@ func (r *IncidentResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 			},
 			"type": schema.StringAttribute{
-				MarkdownDescription: "The type of incident. Valid values: `outage`, `incident`. Defaults to `incident`.",
+				MarkdownDescription: "The type of incident. Valid values: " + formatValidValues(client.AllowedIncidentTypes) + ". Defaults to `incident`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("incident"),

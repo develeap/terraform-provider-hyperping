@@ -81,7 +81,7 @@ func (r *IncidentUpdateResource) Schema(_ context.Context, _ resource.SchemaRequ
 				},
 			},
 			"type": schema.StringAttribute{
-				MarkdownDescription: "The type of update. Valid values: `investigating`, `identified`, `update`, `monitoring`, `resolved`.",
+				MarkdownDescription: "The type of update. Valid values: " + formatValidValues(client.AllowedIncidentUpdateTypes) + ".",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(client.AllowedIncidentUpdateTypes...),

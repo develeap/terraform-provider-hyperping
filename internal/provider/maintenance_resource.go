@@ -123,7 +123,7 @@ func (r *MaintenanceResource) Schema(_ context.Context, _ resource.SchemaRequest
 				ElementType:         types.StringType,
 			},
 			"notification_option": schema.StringAttribute{
-				MarkdownDescription: "When to notify subscribers. Valid values: `scheduled`, `immediate`. Defaults to `scheduled`.",
+				MarkdownDescription: "When to notify subscribers. Valid values: " + formatValidValues(client.AllowedNotificationOptions) + ". Defaults to `scheduled`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("scheduled"),

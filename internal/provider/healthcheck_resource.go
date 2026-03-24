@@ -109,7 +109,7 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:            true,
 			},
 			"period_type": schema.StringAttribute{
-				MarkdownDescription: "Unit for `period_value`. Valid values: `seconds`, `minutes`, `hours`, `days`.",
+				MarkdownDescription: "Unit for `period_value`. Valid values: " + formatValidValues(client.AllowedPeriodTypes) + ".",
 				Optional:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(client.AllowedPeriodTypes...),
@@ -120,7 +120,7 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Required:            true,
 			},
 			"grace_period_type": schema.StringAttribute{
-				MarkdownDescription: "Unit for `grace_period_value`. Valid values: `seconds`, `minutes`, `hours`, `days`.",
+				MarkdownDescription: "Unit for `grace_period_value`. Valid values: " + formatValidValues(client.AllowedPeriodTypes) + ".",
 				Required:            true,
 				Validators: []validator.String{
 					stringvalidator.OneOf(client.AllowedPeriodTypes...),

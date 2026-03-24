@@ -102,7 +102,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"protocol": schema.StringAttribute{
-				MarkdownDescription: "The protocol type. Valid values: `http`, `port`, `icmp`, `dns`. Defaults to `http`.",
+				MarkdownDescription: "The protocol type. Valid values: " + formatValidValues(client.AllowedProtocols) + ". Defaults to `http`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("http"),
@@ -111,7 +111,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"http_method": schema.StringAttribute{
-				MarkdownDescription: "HTTP method to use. Only valid when protocol is `http`. Valid values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`. Defaults to `GET`.",
+				MarkdownDescription: "HTTP method to use. Only valid when protocol is `http`. Valid values: " + formatValidValues(client.AllowedMethods) + ". Defaults to `GET`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             stringdefault.StaticString("GET"),
@@ -120,12 +120,12 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"check_frequency": schema.Int64Attribute{
-				MarkdownDescription: "Check frequency in seconds. Valid values: `10`, `20`, `30`, `60`, `120`, `180`, `300`, `600`, `1800`, `3600`, `21600`, `43200`, `86400`. Defaults to `60`.",
+				MarkdownDescription: "Check frequency in seconds. Valid values: " + formatValidInts(client.AllowedFrequencies) + ". Defaults to `60`.",
 				Optional:            true,
 				Computed:            true,
 				Default:             int64default.StaticInt64(client.DefaultMonitorFrequency),
 				Validators: []validator.Int64{
-					int64validator.OneOf(10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400),
+					int64validator.OneOf(toInt64Slice(client.AllowedFrequencies)...),
 				},
 			},
 			"regions": schema.ListAttribute{
@@ -211,7 +211,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"dns_record_type": schema.StringAttribute{
 				MarkdownDescription: "DNS record type to check. Only valid when protocol is `dns`. " +
-					"Valid values: `A`, `AAAA`, `CNAME`, `MX`, `NS`, `TXT`, `SOA`, `SRV`, `CAA`, `PTR`. " +
+					"Valid values: " + formatValidValues(client.AllowedDNSRecordTypes) + ". " +
 					"Defaults to `A` (set by the API if omitted).",
 				Optional: true,
 				Computed: true,

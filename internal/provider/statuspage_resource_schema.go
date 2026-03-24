@@ -105,7 +105,7 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 						Computed:            true,
 						Default:             stringdefault.StaticString("system"),
 						Validators: []validator.String{
-							stringvalidator.OneOf("light", "dark", "system"),
+							stringvalidator.OneOf(client.AllowedStatusPageThemes...),
 						},
 					},
 					"font": schema.StringAttribute{
@@ -114,11 +114,7 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 						Computed:            true,
 						Default:             stringdefault.StaticString("Inter"),
 						Validators: []validator.String{
-							stringvalidator.OneOf(
-								"system-ui", "Lato", "Manrope", "Inter", "Open Sans",
-								"Montserrat", "Poppins", "Roboto", "Raleway", "Nunito",
-								"Merriweather", "DM Sans", "Work Sans",
-							),
+							stringvalidator.OneOf(client.AllowedStatusPageFonts...),
 						},
 					},
 					"accent_color": schema.StringAttribute{
