@@ -184,6 +184,8 @@ var (
 		"saopaulo",
 		// Middle East
 		"bahrain",
+		// Africa
+		"capetown",
 	}
 
 	// AllowedIncidentTypes contains valid incident type values.

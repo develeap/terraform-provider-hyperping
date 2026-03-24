@@ -120,8 +120,8 @@ func TestAccMonitoringLocationsDataSource_basic(t *testing.T) {
 				Config: testAccMonitoringLocationsDataSourceConfig(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					// T29: All 8 locations returned
-					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "locations.#", "17"),
-					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "ids.#", "17"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "locations.#", "18"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitoring_locations.all", "ids.#", "18"),
 					// T30: Known IDs present
 					tfresource.TestCheckTypeSetElemAttr("data.hyperping_monitoring_locations.all", "ids.*", "london"),
 					tfresource.TestCheckTypeSetElemAttr("data.hyperping_monitoring_locations.all", "ids.*", "frankfurt"),
