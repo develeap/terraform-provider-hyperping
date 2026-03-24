@@ -1,10 +1,14 @@
 name: API Documentation Scraper
 
 on:
-  # Run twice daily at 2 AM and 2 PM UTC
+  # Run every 4 hours to detect API changes before users do
   schedule:
-    - cron: '0 2 * * *'
-    - cron: '0 14 * * *'
+    - cron: '17 1 * * *'
+    - cron: '17 5 * * *'
+    - cron: '17 9 * * *'
+    - cron: '17 13 * * *'
+    - cron: '17 17 * * *'
+    - cron: '17 21 * * *'
 
   # Allow manual trigger
   workflow_dispatch:
