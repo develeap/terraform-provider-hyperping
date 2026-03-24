@@ -10,6 +10,21 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-03-24
+
+### Fixed
+- Subscriber `language` returns empty string from API — normalized to `"en"` (schema default) on read-back
+- Maintenance `notification_option` schema default changed from `"scheduled"` to `"none"` to match API default
+
+### Changed
+- API scraper frequency increased from every 12 hours to every 4 hours
+
+## [1.9.0] - 2026-03-24
+
+### Added
+- `capetown` monitor region (closes #98) — Cape Town, South Africa added to 18 supported regions
+- Outage `severity` and `summary` fields (closes #99) — new optional attributes on resource and data sources
+
 ## [1.8.3] - 2026-03-22
 
 ### Changed
@@ -963,7 +978,9 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.3...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.0...v1.9.1
+[1.9.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.3...v1.9.0
 [1.8.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.2...v1.8.3
 [1.8.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.0...v1.8.1
