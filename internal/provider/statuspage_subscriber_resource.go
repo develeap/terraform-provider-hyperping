@@ -229,7 +229,7 @@ func (r *StatusPageSubscriberResource) Read(ctx context.Context, req resource.Re
 		subscriberType = &t
 	}
 	var foundSubscriber *client.StatusPageSubscriber
-	page := 1
+	page := 0 // API uses 0-indexed pages
 	for {
 		pageNum := page
 		paginatedResp, err := r.client.ListSubscribers(ctx, state.StatusPageUUID.ValueString(), &pageNum, subscriberType)
