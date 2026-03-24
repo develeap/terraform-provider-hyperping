@@ -10,6 +10,11 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.9.2] - 2026-03-24
+
+### Fixed
+- Subscriber Read pagination off-by-one — started at page 1 but API is 0-indexed, skipping all subscribers on page 0. Broke import and refresh for accounts with fewer than 20 subscribers.
+
 ## [1.9.1] - 2026-03-24
 
 ### Fixed
@@ -978,7 +983,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.1...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.2...HEAD
+[1.9.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.3...v1.9.0
 [1.8.3]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.2...v1.8.3
