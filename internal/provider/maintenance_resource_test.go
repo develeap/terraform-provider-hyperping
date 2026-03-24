@@ -64,7 +64,7 @@ func TestAccMaintenanceResource_full(t *testing.T) {
 		EndDate:             endStr,
 		Monitors:            []string{"mon_123", "mon_456"},
 		StatusPages:         []string{"sp_main"},
-		NotificationOption:  "scheduled",
+		NotificationOption:  "none",
 		NotificationMinutes: 120,
 	}
 
@@ -81,7 +81,7 @@ func TestAccMaintenanceResource_full(t *testing.T) {
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "id", "mw_full_123"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "name", "Full Maintenance"),
-					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_option", "scheduled"),
+					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_option", "none"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_minutes", "120"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "monitors.#", "2"),
 				),
@@ -332,7 +332,7 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 			EndDate:             &endDate,
 			Monitors:            []string{"mon-1", "mon-2"},
 			StatusPages:         []string{"sp-1"},
-			NotificationOption:  "scheduled",
+			NotificationOption:  "none",
 			NotificationMinutes: &notifyMinutes,
 		}
 

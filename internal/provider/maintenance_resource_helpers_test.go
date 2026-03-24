@@ -51,8 +51,8 @@ func (f *maintenanceTestFixture) toAPIResponse() map[string]interface{} {
 	if f.NotificationOption != "" {
 		resp["notificationOption"] = f.NotificationOption
 	} else {
-		// Default to "scheduled" if not set
-		resp["notificationOption"] = "scheduled"
+		// Default to "none" to match API behavior (and schema default)
+		resp["notificationOption"] = "none"
 	}
 	if f.NotificationMinutes > 0 {
 		resp["notificationMinutes"] = f.NotificationMinutes

@@ -187,7 +187,7 @@ func TestAccMaintenanceResource_driftDetection_notificationChange(t *testing.T) 
 		StartDate:           startStr,
 		EndDate:             endStr,
 		Monitors:            []string{"mon_123"},
-		NotificationOption:  "scheduled",
+		NotificationOption:  "none",
 		NotificationMinutes: 60,
 	}
 
@@ -205,7 +205,7 @@ func TestAccMaintenanceResource_driftDetection_notificationChange(t *testing.T) 
 			{
 				Config: generateMaintenanceConfigFull(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors, fixture.StatusPages, fixture.NotificationOption, fixture.NotificationMinutes),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
-					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_option", "scheduled"),
+					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_option", "none"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_minutes", "60"),
 					tfresource.TestCheckResourceAttrSet("hyperping_maintenance.test", "id"),
 					// Externally change notification settings

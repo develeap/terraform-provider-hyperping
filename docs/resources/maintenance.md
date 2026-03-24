@@ -72,7 +72,7 @@ output "maintenance_name" {
 ### Optional
 
 - `notification_minutes` (Number) Number of minutes before the maintenance to notify subscribers. Defaults to `60`. Only used when notification_option is `scheduled`. Must be at least 1.
-- `notification_option` (String) When to notify subscribers. Valid values: `scheduled`, `immediate`. Defaults to `scheduled`.
+- `notification_option` (String) When to notify subscribers. Valid values: `none`, `scheduled`, `immediate`. Defaults to `none` (no notification).
 - `status_pages` (List of String) List of status page UUIDs to display this maintenance on.
 - `text` (String) The description text of the maintenance (English).
 - `title` (String) The public title of the maintenance window (English).
