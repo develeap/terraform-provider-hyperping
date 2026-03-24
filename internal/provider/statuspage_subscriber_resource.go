@@ -399,7 +399,13 @@ func (r *StatusPageSubscriberResource) mapSubscriberToModel(sub *client.StatusPa
 	model.ID = types.Int64Value(int64(sub.ID))
 	model.Type = types.StringValue(sub.Type)
 	model.Value = types.StringValue(sub.Value)
-	model.Language = types.StringValue(sub.Language)
+	// API returns empty string for language when not explicitly set.
+	// Normalize to "en" (the schema default) to prevent drift.
+	if sub.Language != "" {
+		model.Language = types.StringValue(sub.Language)
+	} else {
+		model.Language = types.StringValue("en")
+	}
 	model.CreatedAt = types.StringValue(sub.CreatedAt)
 
 	// Map optional fields

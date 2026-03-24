@@ -68,7 +68,7 @@ func TestAccMaintenanceResource_importFull(t *testing.T) {
 		EndDate:             endStr,
 		Monitors:            []string{"mon_123", "mon_456"},
 		StatusPages:         []string{"sp_main"},
-		NotificationOption:  "scheduled",
+		NotificationOption:  "none",
 		NotificationMinutes: 120,
 	}
 
@@ -85,7 +85,7 @@ func TestAccMaintenanceResource_importFull(t *testing.T) {
 				Config: generateMaintenanceConfigFull(server.URL, fixture.Name, fixture.Title, fixture.Text, startStr, endStr, fixture.Monitors, fixture.StatusPages, fixture.NotificationOption, fixture.NotificationMinutes),
 				Check: tfresource.ComposeTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "id", "mw_import_full_123"),
-					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_option", "scheduled"),
+					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_option", "none"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "notification_minutes", "120"),
 					tfresource.TestCheckResourceAttr("hyperping_maintenance.test", "monitors.#", "2"),
 				),
