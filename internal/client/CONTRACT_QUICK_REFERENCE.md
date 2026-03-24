@@ -162,7 +162,7 @@ RunContractTest(t, ContractTestConfig{
 ```go
 AllowedProtocols = []string{"http", "port", "icmp"}
 AllowedMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
-AllowedRegions = []string{"london", "frankfurt", "paris", "amsterdam", "singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore", "virginia", "california", "sanfrancisco", "nyc", "toronto", "saopaulo", "bahrain"}
+AllowedRegions = []string{"london", "frankfurt", "paris", "amsterdam", "singapore", "sydney", "tokyo", "seoul", "mumbai", "bangalore", "virginia", "california", "sanfrancisco", "nyc", "toronto", "saopaulo", "bahrain", "capetown"}
 AllowedFrequencies = []int{10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400}
 ```
 

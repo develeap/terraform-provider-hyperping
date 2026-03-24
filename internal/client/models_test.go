@@ -521,6 +521,88 @@ func TestStatusPageService_Description_JSON(t *testing.T) {
 	})
 }
 
+// =============================================================================
+// Outage severity and summary fields
+// =============================================================================
+
+func TestOutage_SeverityAndSummary_Unmarshal(t *testing.T) {
+	t.Run("both fields present", func(t *testing.T) {
+		data := []byte(`{"uuid":"out_1","startDate":"2026-03-20T10:00:00Z","statusCode":500,"description":"down","outageType":"manual","isResolved":false,"detectedLocation":"us-east","confirmedLocations":"us-east","monitor":{"uuid":"mon_1","name":"test","url":"https://example.com","protocol":"HTTPS"},"severity":"critical","summary":"Server outage"}`)
+		var outage Outage
+		if err := json.Unmarshal(data, &outage); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if outage.Severity != "critical" {
+			t.Errorf("expected severity 'critical', got %q", outage.Severity)
+		}
+		if outage.Summary != "Server outage" {
+			t.Errorf("expected summary 'Server outage', got %q", outage.Summary)
+		}
+	})
+
+	t.Run("fields absent", func(t *testing.T) {
+		data := []byte(`{"uuid":"out_1","startDate":"2026-03-20T10:00:00Z","statusCode":500,"description":"down","outageType":"manual","isResolved":false,"detectedLocation":"us-east","confirmedLocations":"us-east","monitor":{"uuid":"mon_1","name":"test","url":"https://example.com","protocol":"HTTPS"}}`)
+		var outage Outage
+		if err := json.Unmarshal(data, &outage); err != nil {
+			t.Fatalf("unmarshal error: %v", err)
+		}
+		if outage.Severity != "" {
+			t.Errorf("expected empty severity, got %q", outage.Severity)
+		}
+		if outage.Summary != "" {
+			t.Errorf("expected empty summary, got %q", outage.Summary)
+		}
+	})
+}
+
+func TestCreateOutageRequest_SeverityAndSummary_Marshal(t *testing.T) {
+	t.Run("nil omits fields", func(t *testing.T) {
+		req := CreateOutageRequest{
+			MonitorUUID: "mon_1",
+			StartDate:   "2026-03-20T10:00:00Z",
+			StatusCode:  500,
+			Description: "down",
+			OutageType:  "manual",
+		}
+		b, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		body := string(b)
+		if strings.Contains(body, "severity") {
+			t.Errorf("expected severity to be omitted when nil, got: %s", body)
+		}
+		if strings.Contains(body, "summary") {
+			t.Errorf("expected summary to be omitted when nil, got: %s", body)
+		}
+	})
+
+	t.Run("non-nil includes fields", func(t *testing.T) {
+		sev := "critical"
+		sum := "Server outage"
+		req := CreateOutageRequest{
+			MonitorUUID: "mon_1",
+			StartDate:   "2026-03-20T10:00:00Z",
+			StatusCode:  500,
+			Description: "down",
+			OutageType:  "manual",
+			Severity:    &sev,
+			Summary:     &sum,
+		}
+		b, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("marshal error: %v", err)
+		}
+		body := string(b)
+		if !strings.Contains(body, `"severity":"critical"`) {
+			t.Errorf("expected severity in output, got: %s", body)
+		}
+		if !strings.Contains(body, `"summary":"Server outage"`) {
+			t.Errorf("expected summary in output, got: %s", body)
+		}
+	})
+}
+
 func TestCreateStatusPageService_Description_JSON(t *testing.T) {
 	t.Run("nil omits field", func(t *testing.T) {
 		svc := CreateStatusPageService{}

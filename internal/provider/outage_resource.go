@@ -53,6 +53,8 @@ type OutageResourceModel struct {
 	IsResolved           types.Bool   `tfsdk:"is_resolved"`
 	DurationMs           types.Int64  `tfsdk:"duration_ms"`
 	DetectedLocation     types.String `tfsdk:"detected_location"`
+	Severity             types.String `tfsdk:"severity"`
+	Summary              types.String `tfsdk:"summary"`
 	Monitor              types.Object `tfsdk:"monitor"`
 	AcknowledgedBy       types.Object `tfsdk:"acknowledged_by"`
 }
@@ -118,6 +120,22 @@ func (r *OutageResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"description": schema.StringAttribute{
 				MarkdownDescription: "Description of the outage (error message or reason).",
 				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"severity": schema.StringAttribute{
+				MarkdownDescription: "Severity level of the outage.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"summary": schema.StringAttribute{
+				MarkdownDescription: "Summary description of the outage.",
+				Optional:            true,
+				Computed:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -235,6 +253,16 @@ func (r *OutageResource) Create(ctx context.Context, req resource.CreateRequest,
 	if !plan.EscalationPolicyUUID.IsNull() {
 		escPolicyUUID := plan.EscalationPolicyUUID.ValueString()
 		createReq.EscalationPolicyUUID = &escPolicyUUID
+	}
+
+	if !plan.Severity.IsNull() {
+		severity := plan.Severity.ValueString()
+		createReq.Severity = &severity
+	}
+
+	if !plan.Summary.IsNull() {
+		summary := plan.Summary.ValueString()
+		createReq.Summary = &summary
 	}
 
 	created, err := r.client.CreateOutage(ctx, createReq)
@@ -357,6 +385,18 @@ func (r *OutageResource) mapOutageToModel(outage *client.Outage, model *OutageRe
 	// If the API returns empty string (shouldn't happen), map it truthfully to maintain
 	// consistency with data sources.
 	model.OutageType = types.StringValue(outage.OutageType)
+
+	if outage.Severity != "" {
+		model.Severity = types.StringValue(outage.Severity)
+	} else {
+		model.Severity = types.StringNull()
+	}
+
+	if outage.Summary != "" {
+		model.Summary = types.StringValue(outage.Summary)
+	} else {
+		model.Summary = types.StringNull()
+	}
 
 	if outage.EndDate != nil {
 		model.EndDate = types.StringValue(*outage.EndDate)

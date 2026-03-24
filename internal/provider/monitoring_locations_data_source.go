@@ -75,6 +75,8 @@ var monitoringLocations = map[string]monitoringLocationMetadata{
 	"saopaulo": {Name: "Sao Paulo, BR", Continent: "South America", CloudRegion: "nyc1"},
 	// Middle East
 	"bahrain": {Name: "Bahrain, ME", Continent: "Middle East", CloudRegion: "blr1"},
+	// Africa
+	"capetown": {Name: "Cape Town, ZA", Continent: "Africa", CloudRegion: "cpt1"},
 }
 
 // Metadata returns the data source type name.

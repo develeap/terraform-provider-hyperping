@@ -32,6 +32,8 @@ type Outage struct {
 	AcknowledgedBy     *AcknowledgedByUser        `json:"acknowledgedBy"`     // User who acknowledged
 	Monitor            MonitorReference           `json:"monitor"`            // Associated monitor
 	EscalationPolicy   *EscalationPolicyReference `json:"escalationPolicy"`   // Linked escalation policy
+	Severity           string                     `json:"severity,omitempty"`
+	Summary            string                     `json:"summary,omitempty"`
 }
 
 // AcknowledgedByUser represents the user who acknowledged an outage.
@@ -74,6 +76,8 @@ type CreateOutageRequest struct {
 	Description          string  `json:"description"`
 	OutageType           string  `json:"outageType"`                     // "manual" for manually created outages
 	EscalationPolicyUUID *string `json:"escalationPolicyUuid,omitempty"` // UUID of escalation policy to trigger
+	Severity             *string `json:"severity,omitempty"`
+	Summary              *string `json:"summary,omitempty"`
 }
 
 // Validate checks input lengths on CreateOutageRequest fields.
