@@ -43,6 +43,8 @@ type OutageDataSourceModel struct {
 	IsResolved       types.Bool   `tfsdk:"is_resolved"`
 	DurationMs       types.Int64  `tfsdk:"duration_ms"`
 	DetectedLocation types.String `tfsdk:"detected_location"`
+	Severity         types.String `tfsdk:"severity"`
+	Summary          types.String `tfsdk:"summary"`
 	Monitor          types.Object `tfsdk:"monitor"`
 	AcknowledgedBy   types.Object `tfsdk:"acknowledged_by"`
 }
@@ -96,6 +98,14 @@ func (d *OutageDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"detected_location": schema.StringAttribute{
 				MarkdownDescription: "The location that detected the outage.",
+				Computed:            true,
+			},
+			"severity": schema.StringAttribute{
+				MarkdownDescription: "Severity level of the outage.",
+				Computed:            true,
+			},
+			"summary": schema.StringAttribute{
+				MarkdownDescription: "Summary description of the outage.",
 				Computed:            true,
 			},
 			"monitor": schema.SingleNestedAttribute{
@@ -200,6 +210,18 @@ func mapOutageToDataSourceModel(outage *client.Outage, model *OutageDataSourceMo
 	model.IsResolved = types.BoolValue(outage.IsResolved)
 	model.DurationMs = types.Int64Value(int64(outage.DurationMs))
 	model.DetectedLocation = types.StringValue(outage.DetectedLocation)
+
+	if outage.Severity != "" {
+		model.Severity = types.StringValue(outage.Severity)
+	} else {
+		model.Severity = types.StringNull()
+	}
+
+	if outage.Summary != "" {
+		model.Summary = types.StringValue(outage.Summary)
+	} else {
+		model.Summary = types.StringNull()
+	}
 
 	if outage.EndDate != nil {
 		model.EndDate = types.StringValue(*outage.EndDate)

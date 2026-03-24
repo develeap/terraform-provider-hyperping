@@ -49,8 +49,10 @@ output "incident_details" {
 - `monitor` (Attributes) The monitor associated with this outage. (see [below for nested schema](#nestedatt--monitor))
 - `monitor_uuid` (String) The UUID of the monitor associated with this outage.
 - `outage_type` (String) The type of outage (e.g. `manual` or `automatic`).
+- `severity` (String) Severity level of the outage.
 - `start_date` (String) The start date of the outage in ISO 8601 format.
 - `status_code` (Number) The HTTP status code that caused the outage.
+- `summary` (String) Summary description of the outage.
 
 <a id="nestedatt--acknowledged_by"></a>
 ### Nested Schema for `acknowledged_by`
