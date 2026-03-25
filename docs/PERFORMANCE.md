@@ -75,7 +75,7 @@ All benchmarks run on:
 - CPU: Intel i7-12700H (20 cores)
 - Memory: 16GB DDR4
 - OS: Linux 6.6.87 (WSL2)
-- Go: 1.21+
+- Go: 1.26.1+
 
 ### Better Stack
 

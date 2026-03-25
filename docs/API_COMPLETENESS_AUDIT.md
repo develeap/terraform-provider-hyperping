@@ -1,8 +1,10 @@
 # API Completeness Audit
 
 **Date:** 2026-02-13
-**Version:** v1.0.7
+**Version:** v1.0.7 (audit baseline)
 **Auditor:** terraform-provider-hyperping team
+
+> **Note:** This audit was performed at v1.0.7. The provider has since grown significantly (v1.9.2, 8 resources, 16 data sources). See COMPETITIVE_ROADMAP.md for the current backlog.
 
 ## Executive Summary
 

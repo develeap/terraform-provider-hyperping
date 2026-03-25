@@ -407,7 +407,7 @@ HTTP monitors have fields (http_method, expected_status_code) that don't apply t
 ## Dependencies
 
 ### Core
-- `terraform-plugin-framework` v1.17.0 - Provider framework
+- `terraform-plugin-framework` v1.19.0 - Provider framework
 - `terraform-plugin-go` v0.29.0 - Plugin protocol
 - `terraform-plugin-testing` v1.14.0 - Acceptance testing
 
@@ -437,6 +437,7 @@ HTTP monitors have fields (http_method, expected_status_code) that don't apply t
 - **v1.2.1** (2026-02-15): Bug fix for `required_keyword` state drift
 - **v1.2.2** (2026-02-16): Production hardening — 73 new acceptance tests, QA initiative, gosec clean
 - **v1.2.3** (2026-02-17): Code quality — cyclomatic complexity reduced to CC≤15 across entire codebase (gocyclo 100%)
+- *(... continued releases through v1.9.2 — see CHANGELOG.md for full history)*
 
 ## Getting Help
 

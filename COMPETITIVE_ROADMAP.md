@@ -2,8 +2,8 @@
 
 Unified backlog combining competitive analysis (7 providers), API gap audit, and undocumented API field discovery.
 
-**Current version:** v1.8.3
-**Last updated:** 2026-03-22
+**Current version:** v1.9.2
+**Last updated:** 2026-03-25
 
 ---
 
@@ -13,7 +13,6 @@ Unified backlog combining competitive analysis (7 providers), API gap audit, and
 
 | ID | Item | Type | Effort | Source |
 |----|------|------|--------|--------|
-| B01 | **Add `capetown` to AllowedRegions** — exists in real API responses, missing from provider | Bug fix | 1 line | VCR cassette audit |
 | B02 | **Report data source: expose MTTR** — `mttr` + `mttr_formatted` in Go struct, not in TF schema | Bug fix | ~20 lines | API audit |
 | B03 | **Provider-level configuration** — `max_retries`, `retry_wait_min/max`, `request_timeout`, `rate_limit` | Feature | 2-3 days | Competitive (Better Uptime, Uptime.com) |
 
@@ -83,6 +82,10 @@ Unified backlog combining competitive analysis (7 providers), API gap audit, and
 | ~~PR #94~~ | Write-only field preservation (nested services, required_keyword) | v1.8.1 | 2026-03-21 |
 | ~~PR #95~~ | Nested service description localized map format | v1.8.2 | 2026-03-22 |
 | ~~PR #96~~ | Plan-time warning for nested service description API limitation | v1.8.3 | 2026-03-22 |
+| ~~B01~~ | Add `capetown` to AllowedRegions (18 regions) | v1.9.0 | 2026-03-23 |
+| — | Outage severity/summary fields | v1.9.0 | 2026-03-23 |
+| — | Language/notification_option enum defaults | v1.9.1 | 2026-03-24 |
+| — | Subscriber pagination fix | v1.9.2 | 2026-03-25 |
 
 ---
 

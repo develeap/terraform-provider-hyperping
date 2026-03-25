@@ -599,7 +599,7 @@ jq '.summary.success_count' import-results.json
 
 ### Test Environment
 
-- **Provider:** terraform-provider-hyperping v1.0.7
+- **Provider:** terraform-provider-hyperping v1.9.2
 - **Terraform:** v1.8.0
 - **CPU:** 8 cores
 - **Network:** 100 Mbps

@@ -48,12 +48,22 @@ provider "hyperping" {
 
 ## Data Sources
 
-- [hyperping_monitors](data-sources/monitors.md) - List all monitors
 - [hyperping_monitor](data-sources/monitor.md) - Get a single monitor
-- [hyperping_healthchecks](data-sources/healthchecks.md) - List all healthchecks
+- [hyperping_monitors](data-sources/monitors.md) - List all monitors
+- [hyperping_incident](data-sources/incident.md) - Get a single incident
 - [hyperping_incidents](data-sources/incidents.md) - List incidents
-- [hyperping_statuspages](data-sources/statuspages.md) - List status pages
+- [hyperping_maintenance_window](data-sources/maintenance_window.md) - Get a single maintenance window
+- [hyperping_maintenance_windows](data-sources/maintenance_windows.md) - List maintenance windows
+- [hyperping_healthcheck](data-sources/healthcheck.md) - Get a single healthcheck
+- [hyperping_healthchecks](data-sources/healthchecks.md) - List all healthchecks
+- [hyperping_outage](data-sources/outage.md) - Get a single outage
 - [hyperping_outages](data-sources/outages.md) - List outages
+- [hyperping_statuspage](data-sources/statuspage.md) - Get a single status page
+- [hyperping_statuspages](data-sources/statuspages.md) - List status pages
+- [hyperping_statuspage_subscribers](data-sources/statuspage_subscribers.md) - List status page subscribers
+- [hyperping_monitor_report](data-sources/monitor_report.md) - Get a monitor report
+- [hyperping_monitor_reports](data-sources/monitor_reports.md) - List monitor reports
+- [hyperping_monitoring_locations](data-sources/monitoring_locations.md) - List monitoring locations
 
 ## Getting Started
 
