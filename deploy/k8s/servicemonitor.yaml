@@ -1,0 +1,25 @@
+# Prometheus Operator ServiceMonitor
+# Requires: kube-prometheus-stack or prometheus-operator installed
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hyperping-exporter
+  namespace: monitoring
+  labels:
+    app: hyperping-exporter
+    # Must match your Prometheus operator's serviceMonitorSelector labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: hyperping-exporter
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      path: /metrics
+      scheme: http
+      interval: 60s      # Match the exporter's --cache-ttl
+      scrapeTimeout: 30s
+      honorLabels: false

@@ -1,0 +1,70 @@
+groups:
+  - name: hyperping_fleet
+    interval: 1m
+    rules:
+      # Pre-aggregate fleet-wide counts for fast dashboard queries.
+      - record: hyperping:fleet:monitors_total
+        expr: count(hyperping_monitor_up)
+
+      - record: hyperping:fleet:monitors_up
+        expr: count(hyperping_monitor_up == 1)
+
+      - record: hyperping:fleet:monitors_down
+        expr: count(hyperping_monitor_up == 0 and hyperping_monitor_paused == 0)
+
+      - record: hyperping:fleet:monitors_paused
+        expr: count(hyperping_monitor_paused == 1)
+
+      - record: hyperping:fleet:active_outages
+        expr: hyperping_tenant_active_outages
+
+  - name: hyperping_tier
+    interval: 1m
+    rules:
+      # Per-tier availability — join monitor status with tier info.
+      - record: hyperping:tier:monitors_up
+        expr: |
+          count by (tier) (
+            hyperping_monitor_up * on(uuid, name) group_left(tier)
+              hyperping_monitor_escalation_tier
+          ) / count by (tier) (
+            hyperping_monitor_up * on(uuid, name) group_left(tier)
+              hyperping_monitor_escalation_tier
+          )
+
+      - record: hyperping:tier:avg_sla_30d
+        expr: |
+          avg by (tier) (
+            hyperping_monitor_sla_ratio{period="30d"} * on(uuid, name) group_left(tier)
+              hyperping_monitor_escalation_tier
+          )
+
+      - record: hyperping:tier:avg_sla_7d
+        expr: |
+          avg by (tier) (
+            hyperping_monitor_sla_ratio{period="7d"} * on(uuid, name) group_left(tier)
+              hyperping_monitor_escalation_tier
+          )
+
+  - name: hyperping_sla_aggregates
+    interval: 5m
+    rules:
+      # Average SLA per period across all monitors.
+      - record: hyperping:sla:avg_24h
+        expr: avg(hyperping_monitor_sla_ratio{period="24h"})
+
+      - record: hyperping:sla:avg_7d
+        expr: avg(hyperping_monitor_sla_ratio{period="7d"})
+
+      - record: hyperping:sla:avg_30d
+        expr: avg(hyperping_monitor_sla_ratio{period="30d"})
+
+      # Monitors breaching 99.9% SLA in each period.
+      - record: hyperping:sla:breach_count_24h
+        expr: count(hyperping_monitor_sla_ratio{period="24h"} < 0.999)
+
+      - record: hyperping:sla:breach_count_7d
+        expr: count(hyperping_monitor_sla_ratio{period="7d"} < 0.999)
+
+      - record: hyperping:sla:breach_count_30d
+        expr: count(hyperping_monitor_sla_ratio{period="30d"} < 0.999)

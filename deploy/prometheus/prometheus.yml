@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    cluster: hyperping-monitoring
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+  - /etc/prometheus/recording-rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            # - alertmanager:9093
+
+scrape_configs:
+  - job_name: hyperping-exporter
+    scrape_interval: 60s   # Respect the exporter's 60s cache TTL
+    scrape_timeout: 30s
+    static_configs:
+      - targets:
+          - hyperping-exporter:9312
+    metric_relabel_configs:
+      # Drop high-cardinality Go runtime metrics not needed for dashboards.
+      - source_labels: [__name__]
+        regex: "go_gc_duration_seconds.*"
+        action: drop

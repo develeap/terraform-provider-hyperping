@@ -1,0 +1,174 @@
+groups:
+  - name: hyperping_monitor_availability
+    interval: 1m
+    rules:
+      - alert: HyperpingMonitorDown
+        expr: hyperping_monitor_up == 0 and hyperping_monitor_paused == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Monitor {{ $labels.name }} is DOWN"
+          description: "Monitor {{ $labels.name }} ({{ $labels.uuid }}) has been down for more than 2 minutes."
+          runbook: "https://wiki.internal/runbooks/hyperping-monitor-down"
+
+      - alert: HyperpingMonitorActiveOutage
+        expr: hyperping_monitor_outage_active == 1
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Active outage on {{ $labels.name }}"
+          description: >-
+            Monitor {{ $labels.name }} ({{ $labels.uuid }}) has an active unresolved outage.
+            Last HTTP status code: {{ query "hyperping_monitor_active_outage_status_code{uuid=\"{{ $labels.uuid }}\"}" | first | value }}.
+
+      - alert: HyperpingMultipleActiveOutages
+        expr: hyperping_tenant_active_outages > 3
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $value | humanize }} concurrent active outages"
+          description: >-
+            {{ $value }} monitors are currently experiencing active outages.
+            This may indicate a shared infrastructure issue. Check OPS-38 dashboard.
+
+      - alert: HyperpingCoreMonitorDown
+        # Requires OPS-39 tier label via metric join
+        expr: |
+          hyperping_monitor_up * on(uuid, name) group_left(tier)
+            hyperping_monitor_escalation_tier{tier="core"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: core
+        annotations:
+          summary: "CORE monitor {{ $labels.name }} is DOWN"
+          description: "Core (escalated) monitor {{ $labels.name }} is down. Escalation policy should trigger."
+
+  - name: hyperping_monitor_ssl
+    interval: 1h
+    rules:
+      - alert: HyperpingSSLExpiryWarning
+        expr: hyperping_monitor_ssl_expiration_days < 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSL certificate for {{ $labels.name }} expires in {{ $value | humanize }} days"
+          description: >-
+            The SSL certificate for monitor {{ $labels.name }} ({{ $labels.uuid }})
+            expires in {{ $value | humanize }} days. Renew before it hits 7 days.
+
+      - alert: HyperpingSSLExpiryCritical
+        expr: hyperping_monitor_ssl_expiration_days < 3
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SSL certificate for {{ $labels.name }} expires in {{ $value | humanize }} days — URGENT"
+          description: >-
+            The SSL certificate for monitor {{ $labels.name }} expires in under 3 days.
+            Immediate renewal required.
+
+  - name: hyperping_sla
+    interval: 5m
+    rules:
+      - alert: HyperpingMonitorSLABreach24h
+        expr: hyperping_monitor_sla_ratio{period="24h"} < 0.99
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} SLA below 99% over last 24h ({{ $value | humanizePercentage }})"
+          description: >-
+            Monitor {{ $labels.name }} 24-hour SLA is {{ $value | humanizePercentage }},
+            below the 99% threshold.
+
+      - alert: HyperpingMonitorSLABreach7d
+        expr: hyperping_monitor_sla_ratio{period="7d"} < 0.995
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} 7-day SLA below 99.5% ({{ $value | humanizePercentage }})"
+          description: >-
+            Monitor {{ $labels.name }} 7-day SLA is {{ $value | humanizePercentage }},
+            below the 99.5% target.
+
+      - alert: HyperpingTenantSLADegraded
+        expr: hyperping_tenant_avg_sla_ratio{period="24h"} < 0.95
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fleet-wide 24h average SLA below 95% ({{ $value | humanizePercentage }})"
+          description: >-
+            The average SLA across all monitors has dropped below 95% over the last 24 hours.
+            This may indicate a widespread infrastructure issue.
+
+  - name: hyperping_healthchecks
+    interval: 1m
+    rules:
+      - alert: HyperpingHealthcheckDown
+        expr: hyperping_healthcheck_up == 0 and hyperping_healthcheck_paused == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Healthcheck {{ $labels.name }} has not pinged"
+          description: >-
+            Healthcheck {{ $labels.name }} ({{ $labels.uuid }}) has not pinged within
+            its expected period for more than 5 minutes. Check if the associated cron job is running.
+
+  - name: hyperping_tenant_health
+    interval: 2m
+    rules:
+      - alert: HyperpingTenantHealthDegraded
+        expr: hyperping_tenant_health_score < 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tenant health score degraded: {{ $value | humanize }}/100"
+          description: >-
+            The composite tenant health score has dropped to {{ $value | humanize }}.
+            Check the Fleet Overview dashboard for details.
+
+      - alert: HyperpingTenantHealthCritical
+        expr: hyperping_tenant_health_score < 60
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Tenant health score critical: {{ $value | humanize }}/100"
+          description: >-
+            The composite tenant health score has dropped to {{ $value | humanize }},
+            indicating severe service degradation.
+
+  - name: hyperping_exporter
+    interval: 1m
+    rules:
+      - alert: HyperpingExporterScrapeFailure
+        expr: hyperping_scrape_success == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Hyperping exporter cannot reach the API"
+          description: >-
+            The hyperping-exporter has failed to scrape the Hyperping API for 5+ minutes.
+            Metrics are stale. Check API key validity and network connectivity.
+
+      - alert: HyperpingDataStale
+        # OPS-35 watchdog: alert when data hasn't refreshed in 2× the cache TTL (default 120s)
+        expr: hyperping_data_age_seconds > 120
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Hyperping metrics data is stale ({{ $value | humanizeDuration }} old)"
+          description: >-
+            The hyperping-exporter cache has not been refreshed in {{ $value | humanizeDuration }}.
+            The exporter may be stalled. Restart if the issue persists.

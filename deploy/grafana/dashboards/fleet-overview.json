@@ -1,0 +1,554 @@
+{
+  "title": "Hyperping Fleet Overview",
+  "uid": "hyperping-fleet-overview",
+  "description": "Live UP/DOWN stats, active outages, and tier SLA comparison for on-call use. Requires OPS-32, OPS-33, OPS-39.",
+  "tags": ["hyperping", "fleet", "on-call"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "editable": true,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Monitors UP",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "count(hyperping_monitor_up == 1) or vector(0)",
+          "legendFormat": "UP",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Monitors DOWN",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "count(hyperping_monitor_up == 0 and hyperping_monitor_paused == 0) or vector(0)",
+          "legendFormat": "DOWN",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Active Outages",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_tenant_active_outages",
+          "legendFormat": "Outages",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "gauge",
+      "title": "Tenant Health Score",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 60 },
+              { "color": "yellow", "value": 80 },
+              { "color": "green", "value": 95 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_tenant_health_score",
+          "legendFormat": "Score",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Avg SLA (24h)",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.95 },
+              { "color": "yellow", "value": 0.99 },
+              { "color": "green", "value": 0.999 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_tenant_avg_sla_ratio{period=\"24h\"}",
+          "legendFormat": "24h SLA",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Data Age",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "red", "value": 180 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_data_age_seconds",
+          "legendFormat": "Age",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Monitor Status",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "All Monitors",
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 10 },
+      "options": {
+        "sortBy": [{ "displayName": "Status", "desc": false }],
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "filterable": true } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } },
+                  { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Active Outage" },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "1": { "text": "YES", "color": "red" } } },
+                  { "type": "value", "options": { "0": { "text": "no", "color": "green" } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "SLA 24h" },
+            "properties": [
+              { "id": "unit", "value": "percentunit" },
+              { "id": "decimals", "value": 3 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "orange", "value": 0.95 },
+                    { "color": "yellow", "value": 0.99 },
+                    { "color": "green", "value": 0.999 }
+                  ]
+                }
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "SLA 30d" },
+            "properties": [
+              { "id": "unit", "value": "percentunit" },
+              { "id": "decimals", "value": 3 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "orange", "value": 0.99 },
+                    { "color": "yellow", "value": 0.999 },
+                    { "color": "green", "value": 0.9999 }
+                  ]
+                }
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A": "Status",
+              "Value #B": "Active Outage",
+              "Value #C": "SLA 24h",
+              "Value #D": "SLA 30d",
+              "Value #E": "Tier"
+            },
+            "excludeByName": {
+              "Time": true,
+              "job": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_up",
+          "legendFormat": "{{name}}",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_outage_active",
+          "legendFormat": "{{name}}",
+          "instant": true,
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_sla_ratio{period=\"24h\"}",
+          "legendFormat": "{{name}}",
+          "instant": true,
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_sla_ratio{period=\"30d\"}",
+          "legendFormat": "{{name}}",
+          "instant": true,
+          "refId": "D"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_escalation_tier",
+          "legendFormat": "{{name}}",
+          "instant": true,
+          "refId": "E"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Active Outages",
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "Monitors With Active Outages",
+      "gridPos": { "x": 0, "y": 16, "w": 14, "h": 6 },
+      "options": { "footer": { "show": false } },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "HTTP Status" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "0": { "text": "N/A" } } },
+                  { "type": "range", "options": { "from": 500, "to": 599, "result": { "color": "red" } } },
+                  { "type": "range", "options": { "from": 400, "to": 499, "result": { "color": "orange" } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              { "fieldName": "Value #A", "config": { "id": "equal", "options": { "value": 1 } } }
+            ],
+            "type": "include",
+            "match": "all"
+          }
+        },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A": "Active",
+              "Value #B": "HTTP Status"
+            },
+            "excludeByName": { "Time": true, "job": true, "Active": true }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_outage_active",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_active_outage_status_code",
+          "instant": true,
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Active Outage Count Over Time",
+      "gridPos": { "x": 14, "y": 16, "w": 10, "h": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_tenant_active_outages",
+          "legendFormat": "Active Outages"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "SLA by Tier (OPS-39)",
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 31,
+      "type": "bargauge",
+      "title": "30-Day SLA by Tier",
+      "gridPos": { "x": 0, "y": 23, "w": 12, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "min": 0.9,
+          "max": 1.0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.99 },
+              { "color": "yellow", "value": 0.999 },
+              { "color": "green", "value": 0.9999 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping:tier:avg_sla_30d",
+          "legendFormat": "{{tier}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "bargauge",
+      "title": "7-Day SLA by Tier",
+      "gridPos": { "x": 12, "y": 23, "w": 12, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "min": 0.9,
+          "max": 1.0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.99 },
+              { "color": "yellow", "value": 0.999 },
+              { "color": "green", "value": 0.9999 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping:tier:avg_sla_7d",
+          "legendFormat": "{{tier}}",
+          "instant": true
+        }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "annotations": {
+    "list": [
+      {
+        "name": "Active Outages",
+        "datasource": { "type": "prometheus" },
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "expr": "changes(hyperping_tenant_active_outages[1m]) > 0",
+        "step": "60s",
+        "titleFormat": "Outage count changed"
+      }
+    ]
+  }
+}

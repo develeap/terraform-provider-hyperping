@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyperping-exporter
+  namespace: monitoring
+  labels:
+    app: hyperping-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyperping-exporter
+  template:
+    metadata:
+      labels:
+        app: hyperping-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9312"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: hyperping-exporter
+          image: ghcr.io/develeap/hyperping-exporter:latest
+          args:
+            - "--cache-ttl=60s"
+            - "--log-format=json"
+          env:
+            - name: HYPERPING_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hyperping-credentials
+                  key: api-key
+          ports:
+            - name: metrics
+              containerPort: 9312
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            capabilities:
+              drop: ["ALL"]
+      securityContext:
+        fsGroup: 65534
+      terminationGracePeriodSeconds: 15
+---
+# Secret template — apply with actual value:
+# kubectl create secret generic hyperping-credentials \
+#   --from-literal=api-key=<YOUR_KEY> -n monitoring
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hyperping-credentials
+  namespace: monitoring
+type: Opaque
+stringData:
+  api-key: "REPLACE_WITH_ACTUAL_KEY"

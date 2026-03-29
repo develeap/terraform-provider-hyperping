@@ -1,0 +1,59 @@
+services:
+  hyperping-exporter:
+    image: ghcr.io/develeap/hyperping-exporter:latest
+    build:
+      context: ..
+      dockerfile: cmd/hyperping-exporter/Dockerfile
+    environment:
+      HYPERPING_API_KEY: "${HYPERPING_API_KEY}"
+    command:
+      - "--cache-ttl=60s"
+      - "--log-format=json"
+    ports:
+      - "9312:9312"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9312/readyz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    depends_on:
+      - hyperping-exporter
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_FEATURE_TOGGLES_ENABLE: "publicDashboards"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:

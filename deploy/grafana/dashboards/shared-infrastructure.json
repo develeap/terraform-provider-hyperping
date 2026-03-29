@@ -1,0 +1,382 @@
+{
+  "title": "Hyperping Shared Infrastructure",
+  "uid": "hyperping-shared-infra",
+  "description": "Error code breakdown, cross-monitor pattern visibility, and 422 anomaly detection for ops debugging. Requires OPS-32, OPS-39.",
+  "tags": ["hyperping", "infrastructure", "debugging"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "editable": true,
+  "templating": {
+    "list": [
+      {
+        "name": "tier",
+        "label": "Tier",
+        "type": "custom",
+        "query": "core,noncore",
+        "current": { "value": "$__all", "text": "All" },
+        "includeAll": true,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Monitors With 5xx Errors",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "count(hyperping_monitor_active_outage_status_code >= 500 and hyperping_monitor_active_outage_status_code < 600) or vector(0)",
+          "legendFormat": "5xx",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Monitors With 4xx Errors",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 3 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "count(hyperping_monitor_active_outage_status_code >= 400 and hyperping_monitor_active_outage_status_code < 500) or vector(0)",
+          "legendFormat": "4xx",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "422 Unprocessable (Pattern Alert)",
+      "description": "422 errors often indicate a schema or validation change in a shared API layer.",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "count(hyperping_monitor_active_outage_status_code == 422) or vector(0)",
+          "legendFormat": "422",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Core Tier Active Outages",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "count(hyperping_monitor_outage_active * on(uuid, name) group_left(tier) hyperping_monitor_escalation_tier{tier=\"core\"} == 1) or vector(0)",
+          "legendFormat": "Core Outages",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Error Code Breakdown",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 11,
+      "type": "piechart",
+      "title": "Active Outage Status Codes Distribution",
+      "description": "Distribution of HTTP status codes across all active outages. 0 = monitor down without HTTP error.",
+      "gridPos": { "x": 0, "y": 5, "w": 10, "h": 8 },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "value"],
+        "legend": { "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "count by (status_code) (label_replace(hyperping_monitor_active_outage_status_code > 0, \"status_code\", \"$1\", \"__name__\", \".+\") * hyperping_monitor_active_outage_status_code > 0)",
+          "legendFormat": "{{status_code}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Active Outages — Error Code Detail",
+      "gridPos": { "x": 10, "y": 5, "w": 14, "h": 8 },
+      "options": {
+        "sortBy": [{ "displayName": "HTTP Status", "desc": true }],
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "HTTP Status" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "0":   { "text": "No Response" } } },
+                  { "type": "value", "options": { "422": { "text": "422 Unprocessable", "color": "orange" } } },
+                  { "type": "range", "options": { "from": 500, "to": 599, "result": { "color": "red" } } },
+                  { "type": "range", "options": { "from": 400, "to": 499, "result": { "color": "orange" } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Tier" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "core":    { "text": "CORE",    "color": "red" } } },
+                  { "type": "value", "options": { "noncore": { "text": "noncore", "color": "blue" } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [{ "fieldName": "Value #A", "config": { "id": "equal", "options": { "value": 1 } } }],
+            "type": "include",
+            "match": "all"
+          }
+        },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A": "Active",
+              "Value #B": "HTTP Status",
+              "Value #C": "Tier"
+            },
+            "excludeByName": { "Time": true, "job": true, "Active": true }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_outage_active",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_active_outage_status_code",
+          "instant": true,
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_escalation_tier",
+          "instant": true,
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "SLA Comparison by Tier",
+      "gridPos": { "x": 0, "y": 13, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Core vs Non-Core Average SLA (24h window)",
+      "description": "Divergence between core and noncore tiers may indicate selective infrastructure issues.",
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0.8,
+          "max": 1.0,
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "core" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "noncore" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping:tier:avg_sla_7d",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "Outage History by Monitor",
+      "gridPos": { "x": 0, "y": 21, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 31,
+      "type": "table",
+      "title": "24h Outage Count per Monitor (with tier)",
+      "description": "Monitors with the most outages in the last 24h. Useful for identifying flapping or degraded infrastructure.",
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 },
+      "options": {
+        "sortBy": [{ "displayName": "Outage Count", "desc": true }],
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Tier" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "core":    { "text": "CORE",    "color": "red" } } },
+                  { "type": "value", "options": { "noncore": { "text": "noncore", "color": "blue" } } }
+                ]
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Total Downtime" },
+            "properties": [{ "id": "unit", "value": "s" }]
+          }
+        ]
+      },
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A": "Outage Count",
+              "Value #B": "Total Downtime",
+              "Value #C": "Tier"
+            },
+            "excludeByName": { "Time": true, "job": true, "period": true }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_outage_count{period=\"24h\"} > 0",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_downtime_seconds{period=\"24h\"} > 0",
+          "instant": true,
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus" },
+          "expr": "hyperping_monitor_escalation_tier",
+          "instant": true,
+          "refId": "C"
+        }
+      ]
+    }
+  ],
+  "annotations": { "list": [] }
+}
