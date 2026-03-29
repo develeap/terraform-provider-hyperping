@@ -14,14 +14,15 @@ groups:
 
       - alert: HyperpingMonitorActiveOutage
         expr: hyperping_monitor_outage_active == 1
-        for: 0m
+        for: 1m
         labels:
           severity: critical
         annotations:
           summary: "Active outage on {{ $labels.name }}"
           description: >-
-            Monitor {{ $labels.name }} ({{ $labels.uuid }}) has an active unresolved outage.
-            Last HTTP status code: {{ query "hyperping_monitor_active_outage_status_code{uuid=\"{{ $labels.uuid }}\"}" | first | value }}.
+            Monitor {{ $labels.name }} ({{ $labels.uuid }}) has had an active unresolved outage
+            for at least 1 minute. Check hyperping_monitor_active_outage_status_code for the
+            HTTP status code.
 
       - alert: HyperpingMultipleActiveOutages
         expr: hyperping_tenant_active_outages > 3

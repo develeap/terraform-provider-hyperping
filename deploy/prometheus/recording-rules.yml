@@ -21,11 +21,11 @@ groups:
   - name: hyperping_tier
     interval: 1m
     rules:
-      # Per-tier availability — join monitor status with tier info.
-      - record: hyperping:tier:monitors_up
+      # Per-tier up-ratio: monitors UP divided by total monitors per tier.
+      - record: hyperping:tier:monitors_up_ratio
         expr: |
           count by (tier) (
-            hyperping_monitor_up * on(uuid, name) group_left(tier)
+            (hyperping_monitor_up == 1) * on(uuid, name) group_left(tier)
               hyperping_monitor_escalation_tier
           ) / count by (tier) (
             hyperping_monitor_up * on(uuid, name) group_left(tier)

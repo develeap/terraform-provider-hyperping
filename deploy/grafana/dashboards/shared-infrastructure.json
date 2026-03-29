@@ -359,7 +359,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus" },
-          "expr": "hyperping_monitor_outage_count{period=\"24h\"} > 0",
+          "expr": "hyperping_monitor_outages{period=\"24h\"} > 0",
           "instant": true,
           "refId": "A"
         },

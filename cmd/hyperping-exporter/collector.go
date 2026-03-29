@@ -93,8 +93,8 @@ var _ prometheus.Collector = (*Collector)(nil)
 
 // NewCollector creates a new Hyperping metrics collector.
 func NewCollector(api HyperpingAPI, cacheTTL time.Duration, logger *slog.Logger) *Collector {
-	ml := []string{"uuid", "name"}
-	mpl := []string{"uuid", "name", "period"}
+	monitorLabels := []string{"uuid", "name"}
+	monitorPeriodLabels := []string{"uuid", "name", "period"}
 
 	return &Collector{
 		api:             api,
@@ -105,22 +105,22 @@ func NewCollector(api HyperpingAPI, cacheTTL time.Duration, logger *slog.Logger)
 		monitorUp: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "up"),
 			"Whether the monitor is up (1) or down (0).",
-			ml, nil,
+			monitorLabels, nil,
 		),
 		monitorPaused: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "paused"),
 			"Whether the monitor is paused (1) or active (0).",
-			ml, nil,
+			monitorLabels, nil,
 		),
 		monitorSSLExpDays: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "ssl_expiration_days"),
 			"Days until SSL certificate expiration.",
-			ml, nil,
+			monitorLabels, nil,
 		),
 		monitorCheckInterval: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "check_interval_seconds"),
 			"Monitor check frequency in seconds.",
-			ml, nil,
+			monitorLabels, nil,
 		),
 		monitorInfo: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "info"),
@@ -170,37 +170,37 @@ func NewCollector(api HyperpingAPI, cacheTTL time.Duration, logger *slog.Logger)
 		monitorOutageActive: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "outage_active"),
 			"Whether the monitor has an active (unresolved) outage (1) or not (0).",
-			ml, nil,
+			monitorLabels, nil,
 		),
 		monitorActiveOutageStatus: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "active_outage_status_code"),
 			"HTTP status code of the current active outage; 0 when no active outage.",
-			ml, nil,
+			monitorLabels, nil,
 		),
 		monitorSLA: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "sla_ratio"),
 			"Monitor SLA as a ratio (0–1) over the labelled period.",
-			mpl, nil,
+			monitorPeriodLabels, nil,
 		),
 		monitorOutages: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "outages"),
 			"Number of outages over the labelled period.",
-			mpl, nil,
+			monitorPeriodLabels, nil,
 		),
 		monitorDowntime: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "downtime_seconds"),
 			"Total downtime in seconds over the labelled period.",
-			mpl, nil,
+			monitorPeriodLabels, nil,
 		),
 		monitorLongestOutage: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "longest_outage_seconds"),
 			"Duration of the longest single outage in seconds over the labelled period.",
-			mpl, nil,
+			monitorPeriodLabels, nil,
 		),
 		monitorMTTR: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "monitor", "mttr_seconds"),
 			"Mean Time To Recovery in seconds over the labelled period.",
-			mpl, nil,
+			monitorPeriodLabels, nil,
 		),
 		tenantHealthScore: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "tenant", "health_score"),
@@ -330,7 +330,11 @@ func (c *Collector) Refresh(ctx context.Context) {
 
 	c.monitors = monitors
 	c.healthchecks = healthchecks
-	c.reportsByPeriod = reportResults
+	// Merge successful period results into the cache; periods that failed this
+	// cycle retain their previous data rather than being dropped entirely.
+	for period, reports := range reportResults {
+		c.reportsByPeriod[period] = reports
+	}
 	c.lastScrapeOK = true
 	c.lastSuccessTime = time.Now()
 
@@ -478,12 +482,16 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	if len(c.monitors) > 0 {
 		upRatio = float64(upCount) / float64(len(c.monitors))
 	}
-	avg30dSLA := avgSLAForPeriod(c.reportsByPeriod["30d"])
-	ch <- prometheus.MustNewConstMetric(c.tenantHealthScore, prometheus.GaugeValue,
-		computeHealthScore(upRatio, avg30dSLA, len(activeOutageByMonitor), len(c.monitors)))
 	ch <- prometheus.MustNewConstMetric(c.tenantUpRatio, prometheus.GaugeValue, upRatio)
 	ch <- prometheus.MustNewConstMetric(c.tenantActiveOutages, prometheus.GaugeValue,
 		float64(len(activeOutageByMonitor)))
+	// Health score requires 30d SLA data; omit until reports are loaded to avoid
+	// misleadingly low scores (upRatio×60 + 0×40 = 60 even for a healthy fleet).
+	if reports30d := c.reportsByPeriod["30d"]; len(reports30d) > 0 {
+		avg30dSLA := avgSLAForPeriod(reports30d)
+		ch <- prometheus.MustNewConstMetric(c.tenantHealthScore, prometheus.GaugeValue,
+			computeHealthScore(upRatio, avg30dSLA, len(activeOutageByMonitor), len(c.monitors)))
+	}
 }
 
 // buildActiveOutageIndex returns a map of monitor UUID → active Outage.
@@ -498,7 +506,10 @@ func buildActiveOutageIndex(outages []client.Outage) map[string]client.Outage {
 	return idx
 }
 
-// escalationTier returns "core" when the monitor has an escalation policy, "noncore" otherwise.
+// escalationTier returns "core" when the monitor has an escalation policy set,
+// "noncore" otherwise. The binary classification is intentional: the Hyperping
+// API does not expose a "shared infrastructure" concept at the monitor level;
+// tenant grouping is a concern of the Python automation layer, not this exporter.
 func escalationTier(m client.Monitor) string {
 	if m.EscalationPolicy != nil && *m.EscalationPolicy != "" {
 		return "core"

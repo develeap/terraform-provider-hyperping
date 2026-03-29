@@ -156,10 +156,10 @@ func TestRefresh_PreservesOldCacheOnError(t *testing.T) {
 
 	// Old monitor data remains; lastSuccessTime was set on first scrape so data_age IS emitted.
 	// Per monitor: up + paused + check_interval + info + outage_active + status_code + tier = 7
-	// Summary: 4, Tenant: health_score + up_ratio + active_outages + data_age = 4
-	// Total: 7 + 4 + 4 = 15
+	// Summary: 4, Tenant: up_ratio + active_outages + data_age = 3 (health_score omitted: no reports)
+	// Total: 7 + 4 + 3 = 14
 	count := testutil.CollectAndCount(c)
-	assert.Equal(t, 15, count)
+	assert.Equal(t, 14, count)
 }
 
 func TestCollect_WithMonitorsAndHealthchecks(t *testing.T) {
@@ -201,18 +201,18 @@ func TestCollect_WithMonitorsAndHealthchecks(t *testing.T) {
 	// mon_2: up + paused + interval + info + outage_active + status_code + tier = 7
 	// hc: up + paused + period = 3
 	// Summary: monitors + healthchecks + scrape_duration + scrape_success = 4
-	// Tenant: health_score + up_ratio + active_outages + data_age = 4
-	// Total = 26
+	// Tenant: up_ratio + active_outages + data_age = 3 (health_score omitted: no reports in mock)
+	// Total = 25
 	count := testutil.CollectAndCount(c)
-	assert.Equal(t, 26, count)
+	assert.Equal(t, 25, count)
 }
 
 func TestCollect_EmptyCache(t *testing.T) {
 	c := NewCollector(&mockAPI{}, 60*time.Second, newTestLogger())
 
-	// No refresh: only 4 summary + 3 tenant (no data_age, no avg_sla) = 7
+	// No refresh: 4 summary + 2 tenant (up_ratio + active_outages; no data_age, no health_score) = 6
 	count := testutil.CollectAndCount(c)
-	assert.Equal(t, 7, count)
+	assert.Equal(t, 6, count)
 }
 
 func TestCollect_NoSSLExpiration(t *testing.T) {
@@ -234,10 +234,10 @@ func TestCollect_NoSSLExpiration(t *testing.T) {
 	c.Refresh(context.Background())
 
 	// Monitor: up + paused + interval + info + outage_active + status_code + tier = 7
-	// Summary: 4, Tenant: 4 (with data_age after successful scrape)
-	// Total = 15
+	// Summary: 4, Tenant: up_ratio + active_outages + data_age = 3 (health_score omitted: no reports)
+	// Total = 14
 	count := testutil.CollectAndCount(c)
-	assert.Equal(t, 15, count)
+	assert.Equal(t, 14, count)
 }
 
 func TestCollect_SummaryMetricValues(t *testing.T) {
