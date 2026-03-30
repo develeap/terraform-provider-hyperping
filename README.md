@@ -259,7 +259,6 @@ See [docs/INTEGRATION_TESTING.md](docs/INTEGRATION_TESTING.md) for complete docu
 
 - **Security:** TLS 1.2+, credential sanitization, HTTPS enforcement
 - **Reliability:** Circuit breaker, exponential backoff, rate limit handling
-- **Observability:** Optional metrics integration (Prometheus, CloudWatch, Datadog)
 - **Testing:** 50.8% code coverage, race condition testing
 
 Enable debug logging:
@@ -280,6 +279,10 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## Support
 
 - [Issue Tracker](https://github.com/develeap/terraform-provider-hyperping/issues)
+
+## Related Projects
+
+- **[hyperping-exporter](https://github.com/develeap/hyperping-exporter)** — Prometheus exporter for Hyperping monitoring metrics. Standalone Go service with Grafana dashboards, alerting rules, and Kubernetes manifests.
 
 ## License
 
