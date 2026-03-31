@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -28,11 +29,12 @@ import (
 
 // Command line flags.
 var (
-	analyzeMode bool
-	syncCheck   bool
-	snapshotDir string
-	cassetteDir string
-	schemaFile  string // path to `terraform providers schema -json` output
+	analyzeMode   bool
+	syncCheck     bool
+	snapshotDir   string
+	cassetteDir   string
+	schemaFile    string // path to `terraform providers schema -json` output
+	forceBaseline bool   // bypass enum-regression guard; use when API genuinely removed a value
 )
 
 func main() {
@@ -41,6 +43,7 @@ func main() {
 	flag.StringVar(&snapshotDir, "snapshot-dir", "./snapshots", "Path to snapshot directory")
 	flag.StringVar(&cassetteDir, "cassette-dir", "", "Path to VCR cassettes for contract testing (optional)")
 	flag.StringVar(&schemaFile, "schema-file", "", "Path to 'terraform providers schema -json' output (required for -analyze/-sync)")
+	flag.BoolVar(&forceBaseline, "force-baseline", false, "Accept new snapshot even if enum regression is detected (use when the API has genuinely removed a value)")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -177,27 +180,64 @@ func runScrape(ctx context.Context) int {
 
 	// Guard: if enum values shrank vs. the previous baseline the scrape was likely
 	// degraded (lazy-loaded DOM nodes not yet visible when HTML was captured).
-	// In that case, refuse to overwrite the good baseline and skip the diff so no
-	// false-positive issue is filed. The next scheduled run will re-scrape cleanly.
+	// We track consecutive degraded runs; once the count reaches DegradedAcceptThreshold
+	// we accept the snapshot as a genuine API change so real removals are never
+	// silenced permanently. Use -force-baseline to accept immediately.
 	isDegraded := false
-	if prevErr == nil {
+	if prevErr == nil && !forceBaseline {
 		regressions, regErr := DetectEnumRegression(prevSpecPath, spec)
 		if regErr != nil {
-			log.Printf("⚠️  Enum regression check failed (skipping guard): %v\n", regErr)
+			// Proceed without the guard rather than blocking on a corrupt prev spec.
+			log.Printf("⚠️  Enum regression check failed (proceeding without guard): %v\n", regErr)
 		} else if len(regressions) > 0 {
-			isDegraded = true
-			log.Printf("⚠️  Degraded scrape detected — %d enum shrinkage(s); baseline NOT updated:\n", len(regressions))
-			for _, r := range regressions {
-				log.Printf("   %s %s .%s: was [%s] → now [%s] (missing: %s)\n",
-					r.Method, r.Path, r.Field,
-					strings.Join(r.OldValues, ", "),
-					strings.Join(r.NewValues, ", "),
-					strings.Join(missingEnumValues(r.OldValues, r.NewValues), ", "),
-				)
+			state, stateErr := snapshotMgr.LoadDegradedState()
+			if stateErr != nil {
+				log.Printf("⚠️  Could not load degraded state (%v) — resetting counter\n", stateErr)
+				state = &DegradedState{}
 			}
-			log.Println("   ℹ️  Root cause: likely lazy-loaded content not fully rendered.")
-			log.Println("   ℹ️  Diff and GitHub notification skipped. Will retry next run.")
+
+			// Distinguish "same regression persisting" from "new regression pattern".
+			if regressionSetsMatch(state.Regressions, regressions) {
+				state.ConsecutiveCount++
+			} else {
+				state.ConsecutiveCount = 1
+			}
+			state.Regressions = regressions
+
+			if saveErr := snapshotMgr.SaveDegradedState(state); saveErr != nil {
+				log.Printf("⚠️  Failed to persist degraded state: %v\n", saveErr)
+			}
+
+			if state.ConsecutiveCount >= DegradedAcceptThreshold {
+				// Seen consistently — accept as genuine API change, notify for human review.
+				log.Printf("⚠️  Enum regression seen for %d consecutive runs — accepting as genuine API change\n",
+					state.ConsecutiveCount)
+				log.Println("   ℹ️  Review the diff carefully; use -force-baseline to suppress the guard if this is a scrape issue.")
+				if resetErr := snapshotMgr.ResetDegradedState(); resetErr != nil {
+					log.Printf("⚠️  Failed to reset degraded state: %v\n", resetErr)
+				}
+				// isDegraded stays false — snapshot will be saved and diff run normally.
+			} else {
+				isDegraded = true
+				log.Printf("⚠️  Degraded scrape (%d/%d consecutive) — baseline NOT updated:\n",
+					state.ConsecutiveCount, DegradedAcceptThreshold)
+				for _, r := range regressions {
+					log.Printf("   %s %s .%s: missing [%s]\n",
+						r.Method, r.Path, r.Field,
+						strings.Join(missingEnumValues(r.OldValues, r.NewValues), ", "))
+				}
+				log.Println("   ℹ️  Root cause: likely lazy-loaded content not fully rendered.")
+				log.Printf("   ℹ️  Diff skipped. Will accept after %d total consecutive runs, or use -force-baseline.\n",
+					DegradedAcceptThreshold)
+			}
+		} else {
+			// Clean run — reset any accumulated degraded count.
+			if resetErr := snapshotMgr.ResetDegradedState(); resetErr != nil {
+				log.Printf("⚠️  Failed to reset degraded state: %v\n", resetErr)
+			}
 		}
+	} else if forceBaseline {
+		log.Println("   ℹ️  -force-baseline set: enum regression guard bypassed.")
 	}
 
 	if !isDegraded {
@@ -343,6 +383,32 @@ func saveResults(discovered []discovery.DiscoveredURL, stats ScrapeStats, newCac
 	if err := SaveCache(cacheFile, newCache); err != nil {
 		log.Printf("⚠️  Cache save failed: %v\n", err)
 	}
+}
+
+// regressionSetsMatch returns true when prev and curr describe the same set of
+// enum regressions (same path/method/field/missing-values, order-independent).
+// Used to decide whether to increment the consecutive counter or reset it.
+func regressionSetsMatch(prev, curr []EnumRegression) bool {
+	if len(prev) != len(curr) {
+		return false
+	}
+	prevSigs := make(map[string]bool, len(prev))
+	for _, r := range prev {
+		prevSigs[regressionSig(r)] = true
+	}
+	for _, r := range curr {
+		if !prevSigs[regressionSig(r)] {
+			return false
+		}
+	}
+	return true
+}
+
+// regressionSig builds a stable, order-independent key for an EnumRegression.
+func regressionSig(r EnumRegression) string {
+	missing := missingEnumValues(r.OldValues, r.NewValues)
+	sort.Strings(missing)
+	return fmt.Sprintf("%s\x00%s\x00%s\x00%s", r.Path, r.Method, r.Field, strings.Join(missing, ","))
 }
 
 // missingEnumValues returns values present in old but absent in new.

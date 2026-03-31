@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -147,9 +148,69 @@ type EnumRegression struct {
 	NewValues []string
 }
 
+// DegradedAcceptThreshold is the number of consecutive degraded scrape runs after
+// which a regression is accepted as a genuine API change rather than a scrape
+// failure. At the weekly schedule that equals 3 weeks of persistence.
+const DegradedAcceptThreshold = 3
+
+// degradedStateFile is stored inside BaseDir alongside the timestamped snapshot
+// directories so it survives CI cache restores with the same key.
+const degradedStateFile = "degraded_state.json"
+
+// DegradedState persists the consecutive-degraded counter across CI invocations.
+type DegradedState struct {
+	ConsecutiveCount int              `json:"consecutive_count"`
+	Regressions      []EnumRegression `json:"regressions,omitempty"`
+	UpdatedAt        time.Time        `json:"updated_at"`
+}
+
+// LoadDegradedState reads the persisted counter. Returns an empty state (count=0)
+// if the file does not exist yet — i.e. on a fresh run or after a reset.
+func (sm *SnapshotManager) LoadDegradedState() (*DegradedState, error) {
+	data, err := os.ReadFile(filepath.Join(sm.BaseDir, degradedStateFile))
+	if os.IsNotExist(err) {
+		return &DegradedState{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("degraded state: read: %w", err)
+	}
+	var state DegradedState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return nil, fmt.Errorf("degraded state: parse: %w", err)
+	}
+	return &state, nil
+}
+
+// SaveDegradedState persists the counter to disk atomically.
+func (sm *SnapshotManager) SaveDegradedState(state *DegradedState) error {
+	if err := os.MkdirAll(sm.BaseDir, 0o750); err != nil {
+		return fmt.Errorf("degraded state: mkdir: %w", err)
+	}
+	state.UpdatedAt = time.Now()
+	data, err := json.Marshal(state)
+	if err != nil {
+		return fmt.Errorf("degraded state: marshal: %w", err)
+	}
+	return utils.AtomicWriteFile(filepath.Join(sm.BaseDir, degradedStateFile), data, utils.FilePermPrivate)
+}
+
+// ResetDegradedState removes the persisted counter (e.g. after a clean run or
+// after the threshold is reached and the snapshot has been accepted).
+func (sm *SnapshotManager) ResetDegradedState() error {
+	err := os.Remove(filepath.Join(sm.BaseDir, degradedStateFile))
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("degraded state: reset: %w", err)
+	}
+	return nil
+}
+
 // DetectEnumRegression loads the spec at prevPath and compares its enum values
 // against newSpec. It returns one EnumRegression for every request-body property
 // whose enum has fewer values in newSpec than in the previous snapshot.
+//
+// Only request-body properties are checked; path/query parameters with enum values
+// are not currently used in the Hyperping API, so no coverage gap exists in
+// practice. Extend the pair loop to op.Parameters if that changes.
 //
 // Enum shrinkage almost always indicates a degraded scrape (lazy-loaded content
 // not fully rendered) rather than a genuine API change. Callers should refuse to

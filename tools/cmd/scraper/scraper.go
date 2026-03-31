@@ -97,39 +97,49 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 // callbacks fire for every element, forcing full DOM materialisation on lazy-rendered
 // pages (e.g. Hyperping's Notion-based API docs).
 //
-// Strategy: scroll by stepPx every stepWait ms for up to maxSteps iterations, then
-// reset to the top. 25 × 800 px = 20 000 px covers any realistic docs page while
-// adding at most ~5 s to a single page scrape.
+// A dedicated 8 s sub-context caps scroll time so the outer page timeout is not
+// exhausted. Scrolling stops as soon as the page bottom is reached, so short pages
+// (the common case) finish in well under 1 s instead of always spending ~5 s.
 func scrollToRevealContent(ctx context.Context, page *rod.Page) {
-	const (
-		stepPx   = 800
-		stepWait = 200 * time.Millisecond
-		maxSteps = 25
-	)
+	// Cap scroll budget independently of the outer page timeout.
+	// 8 s allows up to 40 × 200 ms steps before giving up.
+	scrollCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
 
-	for i := range maxSteps {
-		if ctx.Err() != nil {
+	const stepPx = 800
+
+	for {
+		if scrollCtx.Err() != nil {
 			return
 		}
-		if _, err := page.Eval(fmt.Sprintf(`() => window.scrollBy(0, %d)`, stepPx)); err != nil {
-			log.Printf("  ⚠️  Scroll step %d failed: %v\n", i+1, err)
+		if _, err := page.Context(scrollCtx).Eval(fmt.Sprintf(`() => window.scrollBy(0, %d)`, stepPx)); err != nil {
+			log.Printf("  ⚠️  Scroll step failed: %v\n", err)
 			return
 		}
+
+		// Wait for IntersectionObserver callbacks triggered by the scroll.
 		select {
-		case <-time.After(stepWait):
-		case <-ctx.Done():
+		case <-time.After(200 * time.Millisecond):
+		case <-scrollCtx.Done():
 			return
+		}
+
+		// Stop once we've reached the bottom — avoids wasting time on short pages.
+		ret, err := page.Context(scrollCtx).Eval(
+			`() => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 10`)
+		if err == nil && ret.Value.Bool() {
+			break
 		}
 	}
 
-	// Return to top so downstream HTML extraction sees a predictable DOM state.
-	if _, err := page.Eval(`() => window.scrollTo(0, 0)`); err != nil {
+	// Return to top so downstream HTML extraction starts from a known position.
+	if _, err := page.Context(scrollCtx).Eval(`() => window.scrollTo(0, 0)`); err != nil {
 		log.Printf("  ⚠️  Scroll reset failed: %v\n", err)
 	}
 	// Brief settle to allow any trailing renders triggered by the scroll reset.
 	select {
 	case <-time.After(300 * time.Millisecond):
-	case <-ctx.Done():
+	case <-scrollCtx.Done():
 	}
 }
 
