@@ -109,7 +109,7 @@ func BuildCacheFromDisk(dir string) (Cache, error) {
 		}
 
 		var pageData extractor.PageData
-		if err := json.Unmarshal(data, &pageData); err != nil {
+		if err = json.Unmarshal(data, &pageData); err != nil {
 			log.Printf("   ⚠️  Failed to parse %s: %v\n", filename, err)
 			continue
 		}

@@ -7,9 +7,15 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
+	tfjson "github.com/hashicorp/terraform-json"
+	"golang.org/x/time/rate"
 
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/analyzer"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/contract"
@@ -20,19 +26,16 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/notify"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/openapi"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
-	tfjson "github.com/hashicorp/terraform-json"
-	"golang.org/x/time/rate"
 )
 
 // Command line flags.
 var (
-	analyzeMode bool
-	syncCheck   bool
-	snapshotDir string
-	cassetteDir string
-	schemaFile  string // path to `terraform providers schema -json` output
+	analyzeMode   bool
+	syncCheck     bool
+	snapshotDir   string
+	cassetteDir   string
+	schemaFile    string // path to `terraform providers schema -json` output
+	forceBaseline bool   // bypass enum-regression guard; use when API genuinely removed a value
 )
 
 func main() {
@@ -41,6 +44,7 @@ func main() {
 	flag.StringVar(&snapshotDir, "snapshot-dir", "./snapshots", "Path to snapshot directory")
 	flag.StringVar(&cassetteDir, "cassette-dir", "", "Path to VCR cassettes for contract testing (optional)")
 	flag.StringVar(&schemaFile, "schema-file", "", "Path to 'terraform providers schema -json' output (required for -analyze/-sync)")
+	flag.BoolVar(&forceBaseline, "force-baseline", false, "Accept new snapshot even if enum regression is detected (use when the API has genuinely removed a value)")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -63,7 +67,7 @@ func main() {
 	default:
 		code = runScrape(ctx)
 	}
-	os.Exit(code)
+	os.Exit(code) //nolint:gocritic // exitAfterDefer: cancel() is a no-op after os.Exit anyway
 }
 
 // runSyncCheck exits 0 if coverage ≥ 80%, otherwise exits 1.
@@ -128,7 +132,7 @@ func runScrape(ctx context.Context) int {
 	fmt.Println(strings.Repeat("=", 60))
 
 	config := DefaultConfig()
-	if err := os.MkdirAll(config.OutputDir, 0750); err != nil {
+	if err := os.MkdirAll(config.OutputDir, 0o750); err != nil {
 		log.Printf("❌ Failed to create output dir: %v\n", err)
 		return 1
 	}
@@ -175,36 +179,105 @@ func runScrape(ctx context.Context) int {
 	// the freshly generated spec against the most recent cached snapshot.
 	prevSpecPath, prevErr := snapshotMgr.GetLatestSnapshot()
 
-	if err := snapshotMgr.SaveSnapshot(time.Now(), spec); err != nil {
-		log.Printf("⚠️  Snapshot save failed: %v\n", err)
+	// Guard: if enum values shrank vs. the previous baseline the scrape was likely
+	// degraded (lazy-loaded DOM nodes not yet visible when HTML was captured).
+	// We track consecutive degraded runs; once the count reaches DegradedAcceptThreshold
+	// we accept the snapshot as a genuine API change so real removals are never
+	// silenced permanently. Use -force-baseline to accept immediately.
+	isDegraded := false
+	if prevErr == nil && !forceBaseline {
+		regressions, regErr := DetectEnumRegression(prevSpecPath, spec)
+		switch {
+		case regErr != nil:
+			// Proceed without the guard rather than blocking on a corrupt prev spec.
+			log.Printf("⚠️  Enum regression check failed (proceeding without guard): %v\n", regErr)
+		case len(regressions) > 0:
+			state, stateErr := snapshotMgr.LoadDegradedState()
+			if stateErr != nil {
+				log.Printf("⚠️  Could not load degraded state (%v) — resetting counter\n", stateErr)
+				state = &DegradedState{}
+			}
+
+			// Distinguish "same regression persisting" from "new regression pattern".
+			if regressionSetsMatch(state.Regressions, regressions) {
+				state.ConsecutiveCount++
+			} else {
+				state.ConsecutiveCount = 1
+			}
+			state.Regressions = regressions
+
+			if saveErr := snapshotMgr.SaveDegradedState(state); saveErr != nil {
+				log.Printf("⚠️  Failed to persist degraded state: %v\n", saveErr)
+			}
+
+			if state.ConsecutiveCount >= DegradedAcceptThreshold {
+				// Seen consistently — accept as genuine API change, notify for human review.
+				log.Printf("⚠️  Enum regression seen for %d consecutive runs — accepting as genuine API change\n",
+					state.ConsecutiveCount)
+				log.Println("   ℹ️  Review the diff carefully; use -force-baseline to suppress the guard if this is a scrape issue.")
+				if resetErr := snapshotMgr.ResetDegradedState(); resetErr != nil {
+					log.Printf("⚠️  Failed to reset degraded state: %v\n", resetErr)
+				}
+				// isDegraded stays false — snapshot will be saved and diff run normally.
+			} else {
+				isDegraded = true
+				log.Printf("⚠️  Degraded scrape (%d/%d consecutive) — baseline NOT updated:\n",
+					state.ConsecutiveCount, DegradedAcceptThreshold)
+				for _, r := range regressions {
+					log.Printf("   %s %s .%s: missing [%s]\n",
+						r.Method, r.Path, r.Field,
+						strings.Join(missingEnumValues(r.OldValues, r.NewValues), ", "))
+				}
+				log.Println("   ℹ️  Root cause: likely lazy-loaded content not fully rendered.")
+				log.Printf("   ℹ️  Diff skipped. Will accept after %d total consecutive runs, or use -force-baseline.\n",
+					DegradedAcceptThreshold)
+			}
+		default:
+			// Clean run — reset any accumulated degraded count.
+			if resetErr := snapshotMgr.ResetDegradedState(); resetErr != nil {
+				log.Printf("⚠️  Failed to reset degraded state: %v\n", resetErr)
+			}
+		}
+	} else if forceBaseline {
+		log.Println("   ℹ️  -force-baseline set: enum regression guard bypassed.")
 	}
+
+	if !isDegraded {
+		if err := snapshotMgr.SaveSnapshot(time.Now(), spec); err != nil {
+			log.Printf("⚠️  Snapshot save failed: %v\n", err)
+		}
+	}
+
+	// Always write the latest OAS copy for CI inspection, even on degraded runs.
 	if err := SaveLatestOpenAPI(spec, config.OutputDir); err != nil {
 		log.Printf("⚠️  Failed to save latest OAS: %v\n", err)
 	}
 
-	// Diff the freshly saved snapshot against the previous one.
-	newSpecPath, newErr := snapshotMgr.GetLatestSnapshot()
-	if prevErr == nil && newErr == nil && prevSpecPath != newSpecPath {
-		if result, err := diff.Compare(prevSpecPath, newSpecPath); err != nil {
-			log.Printf("⚠️  Diff failed: %v\n", err)
-		} else if result.HasChanges {
-			log.Println("\n📝 API changes detected:")
-			fmt.Println(result.Summary)
-			if result.HasPathChanges {
-				notifyAPIChange(result)
+	// Diff only when the snapshot was successfully updated.
+	if !isDegraded {
+		newSpecPath, newErr := snapshotMgr.GetLatestSnapshot()
+		if prevErr == nil && newErr == nil && prevSpecPath != newSpecPath {
+			if result, err := diff.Compare(prevSpecPath, newSpecPath); err != nil {
+				log.Printf("⚠️  Diff failed: %v\n", err)
+			} else if result.HasChanges {
+				log.Println("\n📝 API changes detected:")
+				fmt.Println(result.Summary)
+				if result.HasPathChanges {
+					notifyAPIChange(result)
+				} else {
+					log.Println("   ⏭️  Metadata-only changes — skipping GitHub issue creation")
+				}
 			} else {
-				log.Println("   ⏭️  Metadata-only changes — skipping GitHub issue creation")
+				log.Println("\n✅ No API changes detected")
 			}
-		} else {
-			log.Println("\n✅ No API changes detected")
+		} else if prevErr != nil {
+			log.Println("   ℹ️  No previous snapshot found — skipping diff (first run?)")
 		}
-	} else if prevErr != nil {
-		log.Println("   ℹ️  No previous snapshot found — skipping diff (first run?)")
 	}
 
 	// Contract validation (optional).
 	if cassetteDir != "" {
-		latestSpec, _ := snapshotMgr.GetLatestSnapshot()
+		latestSpec, _ := snapshotMgr.GetLatestSnapshot() //nolint:errcheck
 		if errs, err := contract.ValidateCassettes(latestSpec, cassetteDir); err != nil {
 			log.Printf("⚠️  Contract validation error: %v\n", err)
 		} else {
@@ -312,6 +385,47 @@ func saveResults(discovered []discovery.DiscoveredURL, stats ScrapeStats, newCac
 	if err := SaveCache(cacheFile, newCache); err != nil {
 		log.Printf("⚠️  Cache save failed: %v\n", err)
 	}
+}
+
+// regressionSetsMatch returns true when prev and curr describe the same set of
+// enum regressions (same path/method/field/missing-values, order-independent).
+// Used to decide whether to increment the consecutive counter or reset it.
+func regressionSetsMatch(prev, curr []EnumRegression) bool {
+	if len(prev) != len(curr) {
+		return false
+	}
+	prevSigs := make(map[string]bool, len(prev))
+	for _, r := range prev {
+		prevSigs[regressionSig(r)] = true
+	}
+	for _, r := range curr {
+		if !prevSigs[regressionSig(r)] {
+			return false
+		}
+	}
+	return true
+}
+
+// regressionSig builds a stable, order-independent key for an EnumRegression.
+func regressionSig(r EnumRegression) string {
+	missing := missingEnumValues(r.OldValues, r.NewValues)
+	sort.Strings(missing)
+	return fmt.Sprintf("%s\x00%s\x00%s\x00%s", r.Path, r.Method, r.Field, strings.Join(missing, ","))
+}
+
+// missingEnumValues returns values present in old but absent in curr.
+func missingEnumValues(old, curr []string) []string {
+	newSet := make(map[string]bool, len(curr))
+	for _, v := range curr {
+		newSet[v] = true
+	}
+	var missing []string
+	for _, v := range old {
+		if !newSet[v] {
+			missing = append(missing, v)
+		}
+	}
+	return missing
 }
 
 func notifyAPIChange(result *diff.Result) {

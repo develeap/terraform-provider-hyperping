@@ -8,7 +8,7 @@
 // It requires a schema JSON file produced by:
 //
 //	terraform providers schema -json > schema.json
-package coverage
+package coverage //nolint:revive // var-naming: package name "coverage" is intentional
 
 import (
 	"encoding/json"
@@ -75,17 +75,17 @@ func Analyze(spec *openapi.Spec, schemas *tfjson.ProviderSchemas) *Report {
 
 		gaps, covered, missing, stale := compareFields(mapping, apiFields, tfAttrs)
 
-		// Count only comparable (non-skipped) API fields in the denominator.
+		// Count only nonSkipped (non-skipped) API fields in the denominator.
 		// Skipped fields (dotted paths like "subscribe.email", "sections[].name")
 		// are never checked against the TF schema, so including them inflates the
 		// denominator and deflates the coverage percentage.
-		comparable := 0
+		nonSkipped := 0
 		for _, f := range apiFields {
 			if !analyzer.IsSkippedField(f) {
-				comparable++
+				nonSkipped++
 			}
 		}
-		report.TotalAPIFields += comparable
+		report.TotalAPIFields += nonSkipped
 		report.CoveredFields += covered
 		report.MissingFields += missing
 		report.StaleFields += stale

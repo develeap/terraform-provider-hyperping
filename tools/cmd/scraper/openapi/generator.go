@@ -8,9 +8,10 @@ import (
 	"os"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
-	"gopkg.in/yaml.v3"
 )
 
 // --- OpenAPI 3.0 data structures ---
@@ -195,11 +196,12 @@ func buildOperation(m *EndpointMapping, params []extractor.APIParameter) *Operat
 func classifyParams(oasPath string, params []extractor.APIParameter) (body, path, query []extractor.APIParameter) {
 	for _, p := range params {
 		placeholder := "{" + p.Name + "}"
-		if strings.Contains(oasPath, placeholder) {
+		switch {
+		case strings.Contains(oasPath, placeholder):
 			path = append(path, p)
-		} else if isQueryMethod(oasPath) {
+		case isQueryMethod(oasPath):
 			query = append(query, p)
-		} else {
+		default:
 			body = append(body, p)
 		}
 	}

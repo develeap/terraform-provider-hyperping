@@ -1,0 +1,45 @@
+name: Scraper CI
+
+# Runs only when scraper source files change.
+# The provider test suite (test.yml) excludes tools/** so these are complementary.
+on:
+  pull_request:
+    paths:
+      - 'tools/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'tools/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/cmd/scraper
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version-file: tools/cmd/scraper/go.mod
+          cache-dependency-path: tools/cmd/scraper/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race ./...
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: v2.10.1
+          working-directory: tools/cmd/scraper

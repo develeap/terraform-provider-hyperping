@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 	"github.com/go-rod/rod"
+
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 )
 
 // scrapeWithRetry attempts to scrape a page with exponential backoff.
@@ -60,6 +61,12 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 		log.Printf("  ⚠️  Page stability timeout (continuing)\n")
 	}
 
+	// Scroll incrementally to trigger IntersectionObserver callbacks on Notion-based
+	// docs pages. Without this, lazily-rendered elements (e.g. enum option nodes near
+	// the bottom of a long parameter list) are never added to the DOM and are missed
+	// by the HTML extractor.
+	scrollToRevealContent(timeoutCtx, page)
+
 	// Remove noise elements. Failure here is non-fatal; the page can still be scraped.
 	if _, err := page.Eval(`() => { document.querySelectorAll('script,style,noscript').forEach(e=>e.remove()); }`); err != nil {
 		GetLogger().Warn("DOM cleanup eval failed", map[string]interface{}{"error": err.Error()})
@@ -67,11 +74,11 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 
 	title := ""
 	if el, err := page.Timeout(5 * time.Second).Element("title"); err == nil {
-		title, _ = el.Text()
+		title, _ = el.Text() //nolint:errcheck
 	}
 	body := ""
 	if el, err := page.Timeout(5 * time.Second).Element("body"); err == nil {
-		body, _ = el.Text()
+		body, _ = el.Text() //nolint:errcheck
 	}
 	html, err := page.HTML()
 	if err != nil {
@@ -85,6 +92,56 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 		HTML:      html,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil
+}
+
+// scrollToRevealContent scrolls the page incrementally so that IntersectionObserver
+// callbacks fire for every element, forcing full DOM materialisation on lazy-rendered
+// pages (e.g. Hyperping's Notion-based API docs).
+//
+// A dedicated 8 s sub-context caps scroll time so the outer page timeout is not
+// exhausted. Scrolling stops as soon as the page bottom is reached, so short pages
+// (the common case) finish in well under 1 s instead of always spending ~5 s.
+func scrollToRevealContent(ctx context.Context, page *rod.Page) {
+	// Cap scroll budget independently of the outer page timeout.
+	// 8 s allows up to 40 × 200 ms steps before giving up.
+	scrollCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+
+	const stepPx = 800
+
+	for {
+		if scrollCtx.Err() != nil {
+			return
+		}
+		if _, err := page.Context(scrollCtx).Eval(fmt.Sprintf(`() => window.scrollBy(0, %d)`, stepPx)); err != nil {
+			log.Printf("  ⚠️  Scroll step failed: %v\n", err)
+			return
+		}
+
+		// Wait for IntersectionObserver callbacks triggered by the scroll.
+		select {
+		case <-time.After(200 * time.Millisecond):
+		case <-scrollCtx.Done():
+			return
+		}
+
+		// Stop once we've reached the bottom — avoids wasting time on short pages.
+		ret, err := page.Context(scrollCtx).Eval(
+			`() => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 10`)
+		if err == nil && ret.Value.Bool() {
+			break
+		}
+	}
+
+	// Return to top so downstream HTML extraction starts from a known position.
+	if _, err := page.Context(scrollCtx).Eval(`() => window.scrollTo(0, 0)`); err != nil {
+		log.Printf("  ⚠️  Scroll reset failed: %v\n", err)
+	}
+	// Brief settle to allow any trailing renders triggered by the scroll reset.
+	select {
+	case <-time.After(300 * time.Millisecond):
+	case <-scrollCtx.Done():
+	}
 }
 
 // isRetryableError returns false for client errors (4xx) that should not be retried.

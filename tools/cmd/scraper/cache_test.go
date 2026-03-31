@@ -218,7 +218,8 @@ func TestSaveCache(t *testing.T) {
 	}
 
 	// Verify file exists
-	if _, err := os.Stat(cacheFile); os.IsNotExist(err) {
+	_, statErr := os.Stat(cacheFile)
+	if os.IsNotExist(statErr) {
 		t.Errorf("Expected cache file to exist at %s", cacheFile)
 	}
 

@@ -59,7 +59,7 @@ func main() {
 	fmt.Printf("\nGenerated spec with %d paths\n", len(spec.Paths))
 
 	snapshotDir := filepath.Join(snapshotBaseDir, time.Now().Format("2006-01-02_15-04-05"))
-	if err := os.MkdirAll(snapshotDir, 0750); err != nil {
+	if err := os.MkdirAll(snapshotDir, 0o750); err != nil {
 		fmt.Fprintf(os.Stderr, "mkdir: %v\n", err)
 		os.Exit(1)
 	}

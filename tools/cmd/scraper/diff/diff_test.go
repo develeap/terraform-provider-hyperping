@@ -439,7 +439,7 @@ func TestFormatMarkdown_MultiplePathsSorted(t *testing.T) {
 	if idx1 < 0 || idx2 < 0 || idx3 < 0 {
 		t.Fatalf("expected all three paths in output, got: %s", result)
 	}
-	if !(idx1 < idx2 && idx2 < idx3) {
+	if idx1 >= idx2 || idx2 >= idx3 {
 		t.Errorf("expected paths in alphabetical order, got indices: healthchecks=%d, monitors=%d, monitors/{uuid}=%d", idx1, idx2, idx3)
 	}
 }
