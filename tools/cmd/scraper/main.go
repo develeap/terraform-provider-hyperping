@@ -175,31 +175,62 @@ func runScrape(ctx context.Context) int {
 	// the freshly generated spec against the most recent cached snapshot.
 	prevSpecPath, prevErr := snapshotMgr.GetLatestSnapshot()
 
-	if err := snapshotMgr.SaveSnapshot(time.Now(), spec); err != nil {
-		log.Printf("⚠️  Snapshot save failed: %v\n", err)
+	// Guard: if enum values shrank vs. the previous baseline the scrape was likely
+	// degraded (lazy-loaded DOM nodes not yet visible when HTML was captured).
+	// In that case, refuse to overwrite the good baseline and skip the diff so no
+	// false-positive issue is filed. The next scheduled run will re-scrape cleanly.
+	isDegraded := false
+	if prevErr == nil {
+		regressions, regErr := DetectEnumRegression(prevSpecPath, spec)
+		if regErr != nil {
+			log.Printf("⚠️  Enum regression check failed (skipping guard): %v\n", regErr)
+		} else if len(regressions) > 0 {
+			isDegraded = true
+			log.Printf("⚠️  Degraded scrape detected — %d enum shrinkage(s); baseline NOT updated:\n", len(regressions))
+			for _, r := range regressions {
+				log.Printf("   %s %s .%s: was [%s] → now [%s] (missing: %s)\n",
+					r.Method, r.Path, r.Field,
+					strings.Join(r.OldValues, ", "),
+					strings.Join(r.NewValues, ", "),
+					strings.Join(missingEnumValues(r.OldValues, r.NewValues), ", "),
+				)
+			}
+			log.Println("   ℹ️  Root cause: likely lazy-loaded content not fully rendered.")
+			log.Println("   ℹ️  Diff and GitHub notification skipped. Will retry next run.")
+		}
 	}
+
+	if !isDegraded {
+		if err := snapshotMgr.SaveSnapshot(time.Now(), spec); err != nil {
+			log.Printf("⚠️  Snapshot save failed: %v\n", err)
+		}
+	}
+
+	// Always write the latest OAS copy for CI inspection, even on degraded runs.
 	if err := SaveLatestOpenAPI(spec, config.OutputDir); err != nil {
 		log.Printf("⚠️  Failed to save latest OAS: %v\n", err)
 	}
 
-	// Diff the freshly saved snapshot against the previous one.
-	newSpecPath, newErr := snapshotMgr.GetLatestSnapshot()
-	if prevErr == nil && newErr == nil && prevSpecPath != newSpecPath {
-		if result, err := diff.Compare(prevSpecPath, newSpecPath); err != nil {
-			log.Printf("⚠️  Diff failed: %v\n", err)
-		} else if result.HasChanges {
-			log.Println("\n📝 API changes detected:")
-			fmt.Println(result.Summary)
-			if result.HasPathChanges {
-				notifyAPIChange(result)
+	// Diff only when the snapshot was successfully updated.
+	if !isDegraded {
+		newSpecPath, newErr := snapshotMgr.GetLatestSnapshot()
+		if prevErr == nil && newErr == nil && prevSpecPath != newSpecPath {
+			if result, err := diff.Compare(prevSpecPath, newSpecPath); err != nil {
+				log.Printf("⚠️  Diff failed: %v\n", err)
+			} else if result.HasChanges {
+				log.Println("\n📝 API changes detected:")
+				fmt.Println(result.Summary)
+				if result.HasPathChanges {
+					notifyAPIChange(result)
+				} else {
+					log.Println("   ⏭️  Metadata-only changes — skipping GitHub issue creation")
+				}
 			} else {
-				log.Println("   ⏭️  Metadata-only changes — skipping GitHub issue creation")
+				log.Println("\n✅ No API changes detected")
 			}
-		} else {
-			log.Println("\n✅ No API changes detected")
+		} else if prevErr != nil {
+			log.Println("   ℹ️  No previous snapshot found — skipping diff (first run?)")
 		}
-	} else if prevErr != nil {
-		log.Println("   ℹ️  No previous snapshot found — skipping diff (first run?)")
 	}
 
 	// Contract validation (optional).
@@ -312,6 +343,21 @@ func saveResults(discovered []discovery.DiscoveredURL, stats ScrapeStats, newCac
 	if err := SaveCache(cacheFile, newCache); err != nil {
 		log.Printf("⚠️  Cache save failed: %v\n", err)
 	}
+}
+
+// missingEnumValues returns values present in old but absent in new.
+func missingEnumValues(old, new []string) []string {
+	newSet := make(map[string]bool, len(new))
+	for _, v := range new {
+		newSet[v] = true
+	}
+	var missing []string
+	for _, v := range old {
+		if !newSet[v] {
+			missing = append(missing, v)
+		}
+	}
+	return missing
 }
 
 func notifyAPIChange(result *diff.Result) {

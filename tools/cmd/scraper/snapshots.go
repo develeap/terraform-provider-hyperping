@@ -138,6 +138,79 @@ func (sm *SnapshotManager) CleanupOldSnapshots(retainCount int) error {
 	return nil
 }
 
+// EnumRegression records a single field whose enum shrank between two snapshots.
+type EnumRegression struct {
+	Path      string // OAS path, e.g. "/v1/monitors"
+	Method    string // HTTP method, e.g. "POST"
+	Field     string // property name, e.g. "regions"
+	OldValues []string
+	NewValues []string
+}
+
+// DetectEnumRegression loads the spec at prevPath and compares its enum values
+// against newSpec. It returns one EnumRegression for every request-body property
+// whose enum has fewer values in newSpec than in the previous snapshot.
+//
+// Enum shrinkage almost always indicates a degraded scrape (lazy-loaded content
+// not fully rendered) rather than a genuine API change. Callers should refuse to
+// save newSpec as a baseline when regressions are present.
+func DetectEnumRegression(prevPath string, newSpec *openapi.Spec) ([]EnumRegression, error) {
+	prevSpec, err := openapi.Load(prevPath)
+	if err != nil {
+		return nil, fmt.Errorf("enum regression: load prev spec %s: %w", prevPath, err)
+	}
+
+	var regressions []EnumRegression
+
+	for path, prevItem := range prevSpec.Paths {
+		newItem, ok := newSpec.Paths[path]
+		if !ok {
+			continue
+		}
+		for _, pair := range []struct {
+			method string
+			prev   *openapi.Operation
+			curr   *openapi.Operation
+		}{
+			{"POST", prevItem.Post, newItem.Post},
+			{"PUT", prevItem.Put, newItem.Put},
+			{"PATCH", prevItem.Patch, newItem.Patch},
+		} {
+			if pair.prev == nil || pair.curr == nil {
+				continue
+			}
+			if pair.prev.RequestBody == nil || pair.curr.RequestBody == nil {
+				continue
+			}
+			prevMT, ok := pair.prev.RequestBody.Content["application/json"]
+			if !ok {
+				continue
+			}
+			newMT, ok := pair.curr.RequestBody.Content["application/json"]
+			if !ok {
+				continue
+			}
+			for field, prevSchema := range prevMT.Schema.Properties {
+				if len(prevSchema.Enum) == 0 {
+					continue
+				}
+				newSchema := newMT.Schema.Properties[field]
+				if len(newSchema.Enum) < len(prevSchema.Enum) {
+					regressions = append(regressions, EnumRegression{
+						Path:      path,
+						Method:    pair.method,
+						Field:     field,
+						OldValues: prevSchema.Enum,
+						NewValues: newSchema.Enum,
+					})
+				}
+			}
+		}
+	}
+
+	return regressions, nil
+}
+
 // SaveLatestOpenAPI writes an always-current copy to docs_scraped/openapi/ for CI.
 func SaveLatestOpenAPI(spec *openapi.Spec, outputDir string) error {
 	dir := filepath.Join(outputDir, "openapi")

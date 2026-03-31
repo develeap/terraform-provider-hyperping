@@ -60,6 +60,12 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 		log.Printf("  ⚠️  Page stability timeout (continuing)\n")
 	}
 
+	// Scroll incrementally to trigger IntersectionObserver callbacks on Notion-based
+	// docs pages. Without this, lazily-rendered elements (e.g. enum option nodes near
+	// the bottom of a long parameter list) are never added to the DOM and are missed
+	// by the HTML extractor.
+	scrollToRevealContent(timeoutCtx, page)
+
 	// Remove noise elements. Failure here is non-fatal; the page can still be scraped.
 	if _, err := page.Eval(`() => { document.querySelectorAll('script,style,noscript').forEach(e=>e.remove()); }`); err != nil {
 		GetLogger().Warn("DOM cleanup eval failed", map[string]interface{}{"error": err.Error()})
@@ -85,6 +91,46 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 		HTML:      html,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}, nil
+}
+
+// scrollToRevealContent scrolls the page incrementally so that IntersectionObserver
+// callbacks fire for every element, forcing full DOM materialisation on lazy-rendered
+// pages (e.g. Hyperping's Notion-based API docs).
+//
+// Strategy: scroll by stepPx every stepWait ms for up to maxSteps iterations, then
+// reset to the top. 25 × 800 px = 20 000 px covers any realistic docs page while
+// adding at most ~5 s to a single page scrape.
+func scrollToRevealContent(ctx context.Context, page *rod.Page) {
+	const (
+		stepPx   = 800
+		stepWait = 200 * time.Millisecond
+		maxSteps = 25
+	)
+
+	for i := range maxSteps {
+		if ctx.Err() != nil {
+			return
+		}
+		if _, err := page.Eval(fmt.Sprintf(`() => window.scrollBy(0, %d)`, stepPx)); err != nil {
+			log.Printf("  ⚠️  Scroll step %d failed: %v\n", i+1, err)
+			return
+		}
+		select {
+		case <-time.After(stepWait):
+		case <-ctx.Done():
+			return
+		}
+	}
+
+	// Return to top so downstream HTML extraction sees a predictable DOM state.
+	if _, err := page.Eval(`() => window.scrollTo(0, 0)`); err != nil {
+		log.Printf("  ⚠️  Scroll reset failed: %v\n", err)
+	}
+	// Brief settle to allow any trailing renders triggered by the scroll reset.
+	select {
+	case <-time.After(300 * time.Millisecond):
+	case <-ctx.Done():
+	}
 }
 
 // isRetryableError returns false for client errors (4xx) that should not be retried.
