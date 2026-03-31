@@ -232,7 +232,8 @@ func TestDegradedState_RoundTrip(t *testing.T) {
 		{Path: "/v1/monitors", Method: "POST", Field: "regions",
 			OldValues: []string{"a", "b"}, NewValues: []string{"a"}},
 	}
-	if err := sm.SaveDegradedState(state); err != nil {
+	err = sm.SaveDegradedState(state)
+	if err != nil {
 		t.Fatalf("SaveDegradedState: %v", err)
 	}
 
@@ -248,7 +249,8 @@ func TestDegradedState_RoundTrip(t *testing.T) {
 	}
 
 	// Reset clears the file.
-	if err := sm.ResetDegradedState(); err != nil {
+	err = sm.ResetDegradedState()
+	if err != nil {
 		t.Fatalf("ResetDegradedState: %v", err)
 	}
 	after, err := sm.LoadDegradedState()

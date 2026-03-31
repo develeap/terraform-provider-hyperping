@@ -29,7 +29,7 @@ func NewSnapshotManager(baseDir string) *SnapshotManager {
 func (sm *SnapshotManager) SaveSnapshot(timestamp time.Time, spec *openapi.Spec) error {
 	snapshotDir := filepath.Join(sm.BaseDir, timestamp.Format("2006-01-02_15-04-05"))
 
-	if err := os.MkdirAll(snapshotDir, 0750); err != nil {
+	if err := os.MkdirAll(snapshotDir, 0o750); err != nil {
 		return fmt.Errorf("snapshot: create dir %s: %w", snapshotDir, err)
 	}
 
@@ -275,7 +275,7 @@ func DetectEnumRegression(prevPath string, newSpec *openapi.Spec) ([]EnumRegress
 // SaveLatestOpenAPI writes an always-current copy to docs_scraped/openapi/ for CI.
 func SaveLatestOpenAPI(spec *openapi.Spec, outputDir string) error {
 	dir := filepath.Join(outputDir, "openapi")
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("snapshot: create openapi dir: %w", err)
 	}
 

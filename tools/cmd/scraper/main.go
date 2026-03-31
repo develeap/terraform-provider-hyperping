@@ -12,6 +12,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
+	tfjson "github.com/hashicorp/terraform-json"
+	"golang.org/x/time/rate"
+
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/analyzer"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/contract"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/coverage"
@@ -21,10 +26,6 @@ import (
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/notify"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/openapi"
 	"github.com/develeap/terraform-provider-hyperping/tools/scraper/utils"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
-	tfjson "github.com/hashicorp/terraform-json"
-	"golang.org/x/time/rate"
 )
 
 // Command line flags.
@@ -66,7 +67,7 @@ func main() {
 	default:
 		code = runScrape(ctx)
 	}
-	os.Exit(code)
+	os.Exit(code) //nolint:gocritic // exitAfterDefer: cancel() is a no-op after os.Exit anyway
 }
 
 // runSyncCheck exits 0 if coverage ≥ 80%, otherwise exits 1.
@@ -131,7 +132,7 @@ func runScrape(ctx context.Context) int {
 	fmt.Println(strings.Repeat("=", 60))
 
 	config := DefaultConfig()
-	if err := os.MkdirAll(config.OutputDir, 0750); err != nil {
+	if err := os.MkdirAll(config.OutputDir, 0o750); err != nil {
 		log.Printf("❌ Failed to create output dir: %v\n", err)
 		return 1
 	}
@@ -186,10 +187,11 @@ func runScrape(ctx context.Context) int {
 	isDegraded := false
 	if prevErr == nil && !forceBaseline {
 		regressions, regErr := DetectEnumRegression(prevSpecPath, spec)
-		if regErr != nil {
+		switch {
+		case regErr != nil:
 			// Proceed without the guard rather than blocking on a corrupt prev spec.
 			log.Printf("⚠️  Enum regression check failed (proceeding without guard): %v\n", regErr)
-		} else if len(regressions) > 0 {
+		case len(regressions) > 0:
 			state, stateErr := snapshotMgr.LoadDegradedState()
 			if stateErr != nil {
 				log.Printf("⚠️  Could not load degraded state (%v) — resetting counter\n", stateErr)
@@ -230,7 +232,7 @@ func runScrape(ctx context.Context) int {
 				log.Printf("   ℹ️  Diff skipped. Will accept after %d total consecutive runs, or use -force-baseline.\n",
 					DegradedAcceptThreshold)
 			}
-		} else {
+		default:
 			// Clean run — reset any accumulated degraded count.
 			if resetErr := snapshotMgr.ResetDegradedState(); resetErr != nil {
 				log.Printf("⚠️  Failed to reset degraded state: %v\n", resetErr)
@@ -275,7 +277,7 @@ func runScrape(ctx context.Context) int {
 
 	// Contract validation (optional).
 	if cassetteDir != "" {
-		latestSpec, _ := snapshotMgr.GetLatestSnapshot()
+		latestSpec, _ := snapshotMgr.GetLatestSnapshot() //nolint:errcheck
 		if errs, err := contract.ValidateCassettes(latestSpec, cassetteDir); err != nil {
 			log.Printf("⚠️  Contract validation error: %v\n", err)
 		} else {
@@ -411,10 +413,10 @@ func regressionSig(r EnumRegression) string {
 	return fmt.Sprintf("%s\x00%s\x00%s\x00%s", r.Path, r.Method, r.Field, strings.Join(missing, ","))
 }
 
-// missingEnumValues returns values present in old but absent in new.
-func missingEnumValues(old, new []string) []string {
-	newSet := make(map[string]bool, len(new))
-	for _, v := range new {
+// missingEnumValues returns values present in old but absent in curr.
+func missingEnumValues(old, curr []string) []string {
+	newSet := make(map[string]bool, len(curr))
+	for _, v := range curr {
 		newSet[v] = true
 	}
 	var missing []string

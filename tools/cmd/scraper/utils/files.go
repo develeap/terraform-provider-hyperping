@@ -9,13 +9,13 @@ import (
 
 // File permission constants
 const (
-	FilePermPublic  = 0644 // Public docs, reports
-	FilePermPrivate = 0600 // Cache, snapshots, logs (sensitive data)
+	FilePermPublic  = 0o644 // Public docs, reports
+	FilePermPrivate = 0o600 // Cache, snapshots, logs (sensitive data)
 )
 
 // FileExists checks if a file exists
-func FileExists(filepath string) bool {
-	_, err := os.Stat(filepath)
+func FileExists(fpath string) bool {
+	_, err := os.Stat(fpath)
 	return err == nil
 }
 
@@ -78,12 +78,12 @@ func AtomicWriteFile(filename string, data []byte, perm os.FileMode) error {
 	}
 
 	// Set permissions
-	if err := os.Chmod(tmpPath, perm); err != nil {
+	if err := os.Chmod(tmpPath, perm); err != nil { //nolint:gosec // G703: tmpPath is a temp file we created, not user-controlled
 		return fmt.Errorf("chmod: %w", err)
 	}
 
 	// Atomic rename (this is the atomic operation on Unix)
-	if err := os.Rename(tmpPath, filename); err != nil {
+	if err := os.Rename(tmpPath, filename); err != nil { //nolint:gosec // G703: tmpPath is a temp file we created, not user-controlled
 		return fmt.Errorf("rename: %w", err)
 	}
 

@@ -18,7 +18,7 @@ const docsScrapedDir = "./docs_scraped"
 
 // loadDocsScraped reads all *.json files from dir and returns
 // a map of docPath (e.g. "monitors/create") → *PageData.
-func loadDocsScraped(dir string) (map[string]*extractor.PageData, error) {
+func loadDocsScraped(dir string) (map[string]*extractor.PageData, error) { //nolint:unparam
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -155,7 +155,8 @@ func TestE2E_SnapshotRoundtrip(t *testing.T) {
 
 	// Save snapshot.
 	ts := time.Now()
-	if err := sm.SaveSnapshot(ts, spec); err != nil {
+	err = sm.SaveSnapshot(ts, spec)
+	if err != nil {
 		t.Fatalf("SaveSnapshot: %v", err)
 	}
 
@@ -199,11 +200,13 @@ func TestE2E_DiffNoChange(t *testing.T) {
 
 	// Save the same snapshot twice (different timestamps to create two dirs).
 	t1 := time.Now()
-	if err := sm.SaveSnapshot(t1, spec); err != nil {
+	err = sm.SaveSnapshot(t1, spec)
+	if err != nil {
 		t.Fatal(err)
 	}
 	t2 := t1.Add(time.Second)
-	if err := sm.SaveSnapshot(t2, spec); err != nil {
+	err = sm.SaveSnapshot(t2, spec)
+	if err != nil {
 		t.Fatal(err)
 	}
 

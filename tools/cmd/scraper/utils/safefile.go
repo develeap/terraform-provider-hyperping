@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Develeap
 // SPDX-License-Identifier: MPL-2.0
 
-package utils
+package utils //nolint:revive // var-naming: package name "utils" is intentional
 
 import (
 	"fmt"

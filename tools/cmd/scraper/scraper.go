@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 	"github.com/go-rod/rod"
+
+	"github.com/develeap/terraform-provider-hyperping/tools/scraper/extractor"
 )
 
 // scrapeWithRetry attempts to scrape a page with exponential backoff.
@@ -73,11 +74,11 @@ func scrapePage(ctx context.Context, page *rod.Page, url string, timeout time.Du
 
 	title := ""
 	if el, err := page.Timeout(5 * time.Second).Element("title"); err == nil {
-		title, _ = el.Text()
+		title, _ = el.Text() //nolint:errcheck
 	}
 	body := ""
 	if el, err := page.Timeout(5 * time.Second).Element("body"); err == nil {
-		body, _ = el.Text()
+		body, _ = el.Text() //nolint:errcheck
 	}
 	html, err := page.HTML()
 	if err != nil {
