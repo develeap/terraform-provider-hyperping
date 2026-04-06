@@ -13,14 +13,10 @@ updates:
       "terraform-plugin":
         patterns:
           - "github.com/hashicorp/terraform-plugin-*"
-  - package-ecosystem: "gomod"
-    directory: "/tools"
-    schedule:
-      interval: "daily"
-  - package-ecosystem: "gomod"
-    directory: "/tools/cmd/scraper"
-    schedule:
-      interval: "daily"
+      # Keep the shared Go client up to date automatically
+      "hyperping-go":
+        patterns:
+          - "github.com/develeap/hyperping-go"
   - package-ecosystem: "github-actions"
     directory: "/"
     groups:
