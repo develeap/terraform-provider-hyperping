@@ -233,8 +233,8 @@ jobs:
              [ "${{ needs.integration-uptimerobot.result }}" = "cancelled" ] || \
              [ "${{ needs.integration-pingdom.result }}" = "failure" ] || \
              [ "${{ needs.integration-pingdom.result }}" = "cancelled" ]; then
-            echo "❌ One or more integration test jobs failed or were cancelled"
+            echo "FAIL: One or more integration test jobs failed or were cancelled"
             exit 1
           fi
 
-          echo "✅ All integration tests passed or were skipped"
+          echo "OK: All integration tests passed or were skipped"

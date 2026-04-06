@@ -67,7 +67,7 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m hyperping.Monitor)
 	sb.WriteString(buildOptionalIntField("alerts_wait", m.AlertsWait, 0))
 
 	if m.EscalationPolicy != nil && m.EscalationPolicy.UUID != "" {
-		fmt.Fprintf(sb, "  escalation_policy_uuid = %q\n", m.EscalationPolicy.UUID)
+		fmt.Fprintf(sb, "  escalation_policy = %q\n", m.EscalationPolicy.UUID)
 	}
 
 	if len(m.RequestHeaders) > 0 {
