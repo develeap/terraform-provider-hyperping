@@ -10,7 +10,6 @@ on:
       - 'docs/**'
       - 'examples/**'
       - '*.md'
-      - 'tools/**'   # scraper has its own workflow (scraper-ci.yml)
   push:
     branches:
       - main
@@ -19,7 +18,6 @@ on:
       - 'docs/**'
       - 'examples/**'
       - '*.md'
-      - 'tools/**'   # scraper has its own workflow (scraper-ci.yml)
 
 # Testing only needs permissions to read the repository contents.
 permissions:
@@ -107,7 +105,7 @@ jobs:
       - name: Run gosec
         uses: securego/gosec@223e19b8856e00f02cc67804499a83f77e208f3c # v2.25.0
         with:
-          args: -no-fail -exclude-generated -exclude-dir=tools -fmt sarif -out gosec-results.sarif ./...
+          args: -no-fail -exclude-generated -fmt sarif -out gosec-results.sarif ./...
       - name: Upload gosec results to GitHub Security
         uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
         if: always() && hashFiles('gosec-results.sarif') != ''
@@ -144,7 +142,7 @@ jobs:
           terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
 
-      # VCR cassettes are committed to the repo — no caching needed.
+      # VCR cassettes are committed to the repo. No caching needed.
       # A prior cache step here was overwriting checked-out cassettes with
       # stale cached versions, causing test failures when cassettes changed.
 
@@ -166,7 +164,7 @@ jobs:
           # Use filtered coverage if it has content, otherwise keep original
           if [ -s coverage_filtered.out ]; then
             mv coverage_filtered.out coverage.out
-            echo "✅ Excluded test infrastructure from coverage"
+            echo "OK: Excluded test infrastructure from coverage"
           fi
       - name: Check coverage threshold
         run: |
@@ -199,10 +197,10 @@ jobs:
 
           # Threshold: 50% (production code only, excluding test infrastructure)
           if [ $(echo "$TOTAL_COVERAGE < 50" | bc -l) -eq 1 ]; then
-            echo "❌ Coverage ${TOTAL_COVERAGE}% is below 50% threshold"
+            echo "FAIL: Coverage ${TOTAL_COVERAGE}% is below 50% threshold"
             exit 1
           fi
-          echo "✅ Production code coverage ${TOTAL_COVERAGE}% meets 50% threshold"
+          echo "OK: Production code coverage ${TOTAL_COVERAGE}% meets 50% threshold"
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
@@ -230,7 +228,7 @@ jobs:
         env:
           HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
         run: |
-          echo "⚠️  Acceptance tests skipped - HYPERPING_API_KEY not available"
+          echo "WARN: Acceptance tests skipped - HYPERPING_API_KEY not available"
           echo "This is expected for:"
           echo "  - Pull requests from forks"
           echo "  - First-time contributors"
