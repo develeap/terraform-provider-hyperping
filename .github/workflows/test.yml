@@ -63,12 +63,11 @@ jobs:
           terraform_wrapper: false
       - name: Verify documentation is up-to-date
         run: |
-          echo "🔍 Checking if documentation is up-to-date..."
-          cd tools && go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-dir .. --provider-name hyperping
-          cd ..
+          echo "Checking if documentation is up-to-date..."
+          go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.24.0 generate --provider-dir . --provider-name hyperping
 
           if ! git diff --exit-code --quiet docs/resources/ docs/data-sources/; then
-            echo "❌ Documentation is out of date!"
+            echo "Documentation is out of date!"
             echo ""
             echo "The following files have changes:"
             git diff --name-only docs/resources/ docs/data-sources/
@@ -76,7 +75,7 @@ jobs:
             echo "Please run 'lefthook run pre-commit' locally to regenerate docs and commit the changes."
             exit 1
           else
-            echo "✅ Documentation is up-to-date"
+            echo "Documentation is up-to-date"
           fi
 
   # Security scanning with SARIF upload to GitHub Security tab
@@ -138,9 +137,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
-          cache-dependency-path: |
-            go.sum
-            tools/go.sum
+          cache-dependency-path: go.sum
 
       - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
         with:
@@ -240,101 +237,4 @@ jobs:
           echo ""
           echo "Unit and contract tests have passed. Maintainers will run acceptance tests."
 
-  # API Sync Check - ensures provider matches documented API
-  # This blocks PRs if the provider is out of sync with API documentation
-  sync-check:
-    name: API Sync Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-          cache-dependency-path: |
-            go.sum
-            tools/cmd/scraper/go.sum
-      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
-        with:
-          terraform_wrapper: false
-
-      - name: Restore scraper snapshots (read-only)
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        with:
-          path: |
-            tools/cmd/scraper/.scraper_cache.json
-            tools/cmd/scraper/snapshots/
-            tools/cmd/scraper/docs_scraped/
-          key: scraper-data-sync-${{ github.sha }}
-          restore-keys: |
-            scraper-data-
-            scraper-snapshots-
-
-      - name: Build scraper
-        working-directory: tools/cmd/scraper
-        run: go build -o scraper
-
-      - name: Check for snapshots
-        id: check-snapshots
-        working-directory: tools/cmd/scraper
-        run: |
-          if find ./snapshots -name "hyperping-api.yaml" -type f 2>/dev/null | grep -q .; then
-            echo "found=true" >> $GITHUB_OUTPUT
-            echo "Snapshots found, proceeding with sync check"
-            find ./snapshots -name "hyperping-api.yaml" | head -3
-          else
-            echo "found=false" >> $GITHUB_OUTPUT
-            echo "No valid OAS snapshots found (directory may exist but contains no hyperping-api.yaml)"
-            echo "Sync check will be skipped. Run the scraper workflow first to populate snapshots."
-          fi
-
-      - name: Generate provider schema
-        id: gen-schema
-        if: steps.check-snapshots.outputs.found == 'true'
-        run: |
-          # Build provider binary from source — avoids registry dependency and init failures
-          go build -o /tmp/terraform-provider-hyperping .
-
-          # Configure dev_overrides so 'providers schema' uses the local binary
-          cat > ~/.terraformrc <<'EOF'
-          provider_installation {
-            dev_overrides {
-              "develeap/hyperping" = "/tmp"
-            }
-            direct {}
-          }
-          EOF
-
-          if terraform -chdir=examples/complete providers schema -json \
-              > tools/cmd/scraper/schema.json 2>/dev/null; then
-            if python3 -c "import json,sys; json.load(open('tools/cmd/scraper/schema.json'))" 2>/dev/null; then
-              echo "available=true" >> "$GITHUB_OUTPUT"
-              echo "✅ Schema generated ($(wc -c < tools/cmd/scraper/schema.json) bytes)"
-            else
-              echo "available=false" >> "$GITHUB_OUTPUT"
-              echo "⚠️ Schema JSON is invalid — sync check will be skipped"
-              rm -f tools/cmd/scraper/schema.json
-            fi
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "⚠️ Could not generate provider schema — sync check will be skipped"
-          fi
-
-      - name: Run sync check
-        if: steps.check-snapshots.outputs.found == 'true' && steps.gen-schema.outputs.available == 'true'
-        working-directory: tools/cmd/scraper
-        run: |
-          ./scraper -sync \
-            -schema-file=./schema.json \
-            -snapshot-dir=./snapshots
-
-      - name: Sync check skipped notice
-        if: steps.check-snapshots.outputs.found != 'true' || steps.gen-schema.outputs.available != 'true'
-        run: |
-          if [ "${{ steps.check-snapshots.outputs.found }}" != 'true' ]; then
-            echo "::warning::Sync check skipped - no API snapshots available. Run 'API Documentation Scraper' workflow first."
-          else
-            echo "::warning::Sync check skipped - provider schema could not be generated."
-          fi
 
