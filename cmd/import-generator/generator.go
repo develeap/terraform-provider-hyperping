@@ -9,17 +9,17 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // APIClient defines the interface for fetching Hyperping resources.
 type APIClient interface {
-	ListMonitors(ctx context.Context) ([]client.Monitor, error)
-	ListHealthchecks(ctx context.Context) ([]client.Healthcheck, error)
-	ListStatusPages(ctx context.Context, page *int, search *string) (*client.StatusPagePaginatedResponse, error)
-	ListIncidents(ctx context.Context) ([]client.Incident, error)
-	ListMaintenance(ctx context.Context) ([]client.Maintenance, error)
-	ListOutages(ctx context.Context) ([]client.Outage, error)
+	ListMonitors(ctx context.Context) ([]hyperping.Monitor, error)
+	ListHealthchecks(ctx context.Context) ([]hyperping.Healthcheck, error)
+	ListStatusPages(ctx context.Context, page *int, search *string) (*hyperping.StatusPagePaginatedResponse, error)
+	ListIncidents(ctx context.Context) ([]hyperping.Incident, error)
+	ListMaintenance(ctx context.Context) ([]hyperping.Maintenance, error)
+	ListOutages(ctx context.Context) ([]hyperping.Outage, error)
 }
 
 // Generator generates Terraform import commands and HCL from Hyperping resources.
@@ -34,12 +34,12 @@ type Generator struct {
 
 // ResourceData holds fetched resource data for generation.
 type ResourceData struct {
-	Monitors     []client.Monitor
-	Healthchecks []client.Healthcheck
-	StatusPages  []client.StatusPage
-	Incidents    []client.Incident
-	Maintenance  []client.Maintenance
-	Outages      []client.Outage
+	Monitors     []hyperping.Monitor
+	Healthchecks []hyperping.Healthcheck
+	StatusPages  []hyperping.StatusPage
+	Incidents    []hyperping.Incident
+	Maintenance  []hyperping.Maintenance
+	Outages      []hyperping.Outage
 }
 
 // Generate fetches resources and generates output in the specified format.

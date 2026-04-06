@@ -10,14 +10,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // TestMapSectionsToTF tests sections mapping
 func TestMapSectionsToTF(t *testing.T) {
 	tests := []struct {
 		name  string
-		input []client.StatusPageSection
+		input []hyperping.StatusPageSection
 	}{
 		{
 			name:  "nil sections",
@@ -25,32 +26,32 @@ func TestMapSectionsToTF(t *testing.T) {
 		},
 		{
 			name:  "empty sections",
-			input: []client.StatusPageSection{},
+			input: []hyperping.StatusPageSection{},
 		},
 		{
 			name: "single section",
-			input: []client.StatusPageSection{
+			input: []hyperping.StatusPageSection{
 				{
 					Name: map[string]string{
 						"en": "API Services",
 					},
 					IsSplit:  false,
-					Services: []client.StatusPageService{},
+					Services: []hyperping.StatusPageService{},
 				},
 			},
 		},
 		{
 			name: "multiple sections with services",
-			input: []client.StatusPageSection{
+			input: []hyperping.StatusPageSection{
 				{
 					Name: map[string]string{
 						"en": "Frontend",
 						"fr": "Interface",
 					},
 					IsSplit: true,
-					Services: []client.StatusPageService{
+					Services: []hyperping.StatusPageService{
 						{
-							ID:         "svc_1",
+							ID:         testutil.Ptr(hyperping.FlexibleString("svc_1")),
 							UUID:       "mon_web",
 							Name:       map[string]string{"en": "Web App"},
 							ShowUptime: true,
@@ -62,9 +63,9 @@ func TestMapSectionsToTF(t *testing.T) {
 						"en": "Backend",
 					},
 					IsSplit: false,
-					Services: []client.StatusPageService{
+					Services: []hyperping.StatusPageService{
 						{
-							ID:   "svc_2",
+							ID:   testutil.Ptr(hyperping.FlexibleString("svc_2")),
 							UUID: "mon_api",
 							Name: map[string]string{"en": "API"},
 						},
@@ -74,26 +75,26 @@ func TestMapSectionsToTF(t *testing.T) {
 		},
 		{
 			name: "nested service groups",
-			input: []client.StatusPageSection{
+			input: []hyperping.StatusPageSection{
 				{
 					Name: map[string]string{
 						"en": "Databases",
 					},
 					IsSplit: false,
-					Services: []client.StatusPageService{
+					Services: []hyperping.StatusPageService{
 						{
-							ID:      "grp_1",
+							ID:      testutil.Ptr(hyperping.FlexibleString("grp_1")),
 							UUID:    "mon_db_primary",
 							Name:    map[string]string{"en": "Primary DB"},
 							IsGroup: true,
-							Services: []client.StatusPageService{
+							Services: []hyperping.StatusPageService{
 								{
-									ID:   "svc_db1",
+									ID:   testutil.Ptr(hyperping.FlexibleString("svc_db1")),
 									UUID: "mon_db1",
 									Name: map[string]string{"en": "DB Node 1"},
 								},
 								{
-									ID:   "svc_db2",
+									ID:   testutil.Ptr(hyperping.FlexibleString("svc_db2")),
 									UUID: "mon_db2",
 									Name: map[string]string{"en": "DB Node 2"},
 								},
@@ -229,7 +230,7 @@ type serviceTestCase struct {
 	name      string
 	input     attr.Value
 	wantError bool
-	verify    func(*testing.T, client.CreateStatusPageService)
+	verify    func(*testing.T, hyperping.CreateStatusPageService)
 }
 
 func buildServiceTestCases() []serviceTestCase {
@@ -248,7 +249,7 @@ func buildServiceTestCases() []serviceTestCase {
 			name:      "invalid element type returns error",
 			input:     types.StringValue("not an object"),
 			wantError: true,
-			verify: func(t *testing.T, s client.CreateStatusPageService) {
+			verify: func(t *testing.T, s hyperping.CreateStatusPageService) {
 				t.Helper()
 				if s.MonitorUUID != nil {
 					t.Error("expected nil MonitorUUID for error case")
@@ -286,7 +287,7 @@ func buildMinimalServiceObj() types.Object {
 	})
 }
 
-func verifyFullService(t *testing.T, result client.CreateStatusPageService) {
+func verifyFullService(t *testing.T, result hyperping.CreateStatusPageService) {
 	t.Helper()
 	if result.MonitorUUID == nil || *result.MonitorUUID != "mon_123" {
 		t.Errorf("expected MonitorUUID 'mon_123', got %v", result.MonitorUUID)
@@ -305,7 +306,7 @@ func verifyFullService(t *testing.T, result client.CreateStatusPageService) {
 	}
 }
 
-func verifyMinimalService(t *testing.T, result client.CreateStatusPageService) {
+func verifyMinimalService(t *testing.T, result hyperping.CreateStatusPageService) {
 	t.Helper()
 	if result.MonitorUUID == nil || *result.MonitorUUID != "mon_minimal" {
 		t.Errorf("expected MonitorUUID 'mon_minimal', got %v", result.MonitorUUID)

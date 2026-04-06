@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Test RequestHeaderAttrTypes returns expected keys
@@ -96,7 +96,7 @@ func TestMapStringSliceToList_Comprehensive(t *testing.T) {
 func TestMapRequestHeadersToTFList_Comprehensive(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    []client.RequestHeader
+		input    []hyperping.RequestHeader
 		wantNull bool
 		wantLen  int
 	}{
@@ -107,12 +107,12 @@ func TestMapRequestHeadersToTFList_Comprehensive(t *testing.T) {
 		},
 		{
 			name:     "empty",
-			input:    []client.RequestHeader{},
+			input:    []hyperping.RequestHeader{},
 			wantNull: true,
 		},
 		{
 			name: "single",
-			input: []client.RequestHeader{
+			input: []hyperping.RequestHeader{
 				{Name: "Authorization", Value: "Bearer token"},
 			},
 			wantNull: false,
@@ -120,7 +120,7 @@ func TestMapRequestHeadersToTFList_Comprehensive(t *testing.T) {
 		},
 		{
 			name: "multiple",
-			input: []client.RequestHeader{
+			input: []hyperping.RequestHeader{
 				{Name: "Authorization", Value: "Bearer token"},
 				{Name: "Accept", Value: "application/json"},
 				{Name: "X-Custom", Value: "value"},
@@ -130,7 +130,7 @@ func TestMapRequestHeadersToTFList_Comprehensive(t *testing.T) {
 		},
 		{
 			name: "with special characters",
-			input: []client.RequestHeader{
+			input: []hyperping.RequestHeader{
 				{Name: "X-Test", Value: "value with spaces"},
 				{Name: "X-Unicode", Value: "测试值"},
 			},
@@ -167,11 +167,11 @@ func TestMapMonitorCommonFields_Comprehensive(t *testing.T) {
 	port443 := 443
 	port8080 := 8080
 	requiredKeyword := "success"
-	escalationPolicy := "ep_123"
+	escalationPolicy := hyperping.EscalationPolicyRef{UUID: "ep_123"}
 
 	tests := []struct {
 		name            string
-		input           *client.Monitor
+		input           *hyperping.Monitor
 		checkPort       bool
 		wantPort        int64
 		checkKeyword    bool
@@ -179,7 +179,7 @@ func TestMapMonitorCommonFields_Comprehensive(t *testing.T) {
 	}{
 		{
 			name: "with port",
-			input: &client.Monitor{
+			input: &hyperping.Monitor{
 				UUID:               "mon_port",
 				Name:               "With Port",
 				URL:                "tcp://example.com",
@@ -195,7 +195,7 @@ func TestMapMonitorCommonFields_Comprehensive(t *testing.T) {
 		},
 		{
 			name: "with custom port",
-			input: &client.Monitor{
+			input: &hyperping.Monitor{
 				UUID:               "mon_custom_port",
 				Name:               "Custom Port",
 				URL:                "tcp://example.com",
@@ -211,7 +211,7 @@ func TestMapMonitorCommonFields_Comprehensive(t *testing.T) {
 		},
 		{
 			name: "with required keyword",
-			input: &client.Monitor{
+			input: &hyperping.Monitor{
 				UUID:               "mon_keyword",
 				Name:               "With Keyword",
 				URL:                "https://example.com",
@@ -226,7 +226,7 @@ func TestMapMonitorCommonFields_Comprehensive(t *testing.T) {
 		},
 		{
 			name: "with escalation policy",
-			input: &client.Monitor{
+			input: &hyperping.Monitor{
 				UUID:               "mon_ep",
 				Name:               "With EP",
 				URL:                "https://example.com",
@@ -241,7 +241,7 @@ func TestMapMonitorCommonFields_Comprehensive(t *testing.T) {
 		},
 		{
 			name: "minimal (no optionals)",
-			input: &client.Monitor{
+			input: &hyperping.Monitor{
 				UUID:               "mon_minimal",
 				Name:               "Minimal",
 				URL:                "https://example.com",
@@ -300,7 +300,7 @@ func TestMapMonitorCommonFields_Comprehensive(t *testing.T) {
 // Test MapHealthcheckCommonFields with all field combinations
 func TestMapHealthcheckCommonFields_AllFields(t *testing.T) {
 	periodValue := 60
-	hcFull := &client.Healthcheck{
+	hcFull := &hyperping.Healthcheck{
 		UUID:             "hc_full",
 		Name:             "Full Healthcheck",
 		PingURL:          "https://ping.example.com/hc_full",
@@ -316,7 +316,7 @@ func TestMapHealthcheckCommonFields_AllFields(t *testing.T) {
 		GracePeriod:      120,
 		LastPing:         "2026-02-10T15:30:00Z",
 		CreatedAt:        "2026-01-01T00:00:00Z",
-		EscalationPolicy: &client.EscalationPolicyReference{UUID: "ep_test"},
+		EscalationPolicy: &hyperping.EscalationPolicyReference{UUID: "ep_test"},
 	}
 
 	result := MapHealthcheckCommonFields(hcFull)
@@ -346,21 +346,21 @@ func TestMapHealthcheckCommonFields_AllFields(t *testing.T) {
 func TestMapOutageNestedObjects_MonitorStates(t *testing.T) {
 	tests := []struct {
 		name            string
-		outage          *client.Outage
+		outage          *hyperping.Outage
 		wantMonitorNull bool
 		wantAckNull     bool
 	}{
 		{
 			name: "full monitor and ack",
-			outage: &client.Outage{
+			outage: &hyperping.Outage{
 				UUID: "out_full",
-				Monitor: client.MonitorReference{
+				Monitor: hyperping.MonitorReference{
 					UUID:     "mon_123",
 					Name:     "API Monitor",
 					URL:      "https://api.example.com",
 					Protocol: "HTTPS",
 				},
-				AcknowledgedBy: &client.AcknowledgedByUser{
+				AcknowledgedBy: &hyperping.AcknowledgedByUser{
 					UUID:  "user_1",
 					Email: "ops@example.com",
 					Name:  "Ops Team",
@@ -371,9 +371,9 @@ func TestMapOutageNestedObjects_MonitorStates(t *testing.T) {
 		},
 		{
 			name: "monitor only",
-			outage: &client.Outage{
+			outage: &hyperping.Outage{
 				UUID: "out_mon_only",
-				Monitor: client.MonitorReference{
+				Monitor: hyperping.MonitorReference{
 					UUID:     "mon_456",
 					Name:     "DB Monitor",
 					URL:      "postgres://db.example.com",
@@ -385,9 +385,9 @@ func TestMapOutageNestedObjects_MonitorStates(t *testing.T) {
 		},
 		{
 			name: "partial monitor (just uuid and name)",
-			outage: &client.Outage{
+			outage: &hyperping.Outage{
 				UUID: "out_partial",
-				Monitor: client.MonitorReference{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon_789",
 					Name: "Partial",
 				},

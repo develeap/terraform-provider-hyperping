@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -28,7 +28,7 @@ func NewMonitorReportsDataSource() datasource.DataSource {
 
 // MonitorReportsDataSource defines the data source implementation.
 type MonitorReportsDataSource struct {
-	client client.ReportsAPI
+	client hyperping.ReportsAPI
 }
 
 // MonitorReportsDataSourceModel describes the data source data model.
@@ -139,11 +139,11 @@ func (d *MonitorReportsDataSource) Configure(_ context.Context, req datasource.C
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -184,8 +184,8 @@ func (d *MonitorReportsDataSource) Read(ctx context.Context, req datasource.Read
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }
 
-// mapReportsToListItems maps a slice of client.MonitorReport to MonitorReportListItemModel slice.
-func mapReportsToListItems(reports []client.MonitorReport) []MonitorReportListItemModel {
+// mapReportsToListItems maps a slice of hyperping.MonitorReport to MonitorReportListItemModel slice.
+func mapReportsToListItems(reports []hyperping.MonitorReport) []MonitorReportListItemModel {
 	items := make([]MonitorReportListItemModel, len(reports))
 	for i, r := range reports {
 		items[i] = MonitorReportListItemModel{

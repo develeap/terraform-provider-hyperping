@@ -9,7 +9,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // sweepOutages deletes all test outages (those with title prefixed with "tf-acc-test-")
@@ -31,7 +31,7 @@ func sweepOutages(_ string) error {
 		if strings.HasPrefix(outage.Monitor.Name, "tf-acc-test-") {
 			log.Printf("[INFO] Deleting outage: %s (UUID: %s, Monitor: %s)", outage.Description, outage.UUID, outage.Monitor.Name)
 			if err := c.DeleteOutage(ctx, outage.UUID); err != nil {
-				if client.IsNotFound(err) {
+				if hyperping.IsNotFound(err) {
 					log.Printf("[WARN] Outage %s already deleted", outage.UUID)
 					continue
 				}

@@ -9,7 +9,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // sweepMaintenance deletes all test maintenance windows (those with name prefixed with "tf-acc-test-")
@@ -30,7 +30,7 @@ func sweepMaintenance(_ string) error {
 		if strings.HasPrefix(maint.Name, "tf-acc-test-") {
 			log.Printf("[INFO] Deleting maintenance window: %s (UUID: %s)", maint.Name, maint.UUID)
 			if err := c.DeleteMaintenance(ctx, maint.UUID); err != nil {
-				if client.IsNotFound(err) {
+				if hyperping.IsNotFound(err) {
 					log.Printf("[WARN] Maintenance window %s already deleted", maint.UUID)
 					continue
 				}

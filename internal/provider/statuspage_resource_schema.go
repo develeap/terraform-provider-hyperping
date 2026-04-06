@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -87,7 +87,7 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 						ElementType:         types.StringType,
 						Required:            true,
 						Validators: []validator.List{
-							listvalidator.ValueStringsAre(stringvalidator.OneOf(client.AllowedLanguages...)),
+							listvalidator.ValueStringsAre(stringvalidator.OneOf(hyperping.AllowedLanguages...)),
 						},
 					},
 					"default_language": schema.StringAttribute{
@@ -96,7 +96,7 @@ func (r *StatusPageResource) Schema(ctx context.Context, req resource.SchemaRequ
 						Computed:            true,
 						Default:             stringdefault.StaticString("en"),
 						Validators: []validator.String{
-							stringvalidator.OneOf(client.AllowedLanguages...),
+							stringvalidator.OneOf(hyperping.AllowedLanguages...),
 						},
 					},
 					"theme": schema.StringAttribute{

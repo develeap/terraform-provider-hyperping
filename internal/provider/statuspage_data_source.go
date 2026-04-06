@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -23,7 +23,7 @@ func NewStatusPageDataSource() datasource.DataSource {
 
 // StatusPageDataSource defines the data source implementation.
 type StatusPageDataSource struct {
-	client client.HyperpingAPI
+	client hyperping.HyperpingAPI
 }
 
 // StatusPageDataSourceModel describes the data source data model.
@@ -294,11 +294,11 @@ func (d *StatusPageDataSource) Configure(ctx context.Context, req datasource.Con
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(client.HyperpingAPI)
+	apiClient, ok := req.ProviderData.(hyperping.HyperpingAPI)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected client.HyperpingAPI, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected hyperping.HyperpingAPI, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -316,7 +316,7 @@ func (d *StatusPageDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	}
 
 	// Validate UUID format
-	if err := client.ValidateResourceID(config.ID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(config.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError(
 			"Invalid Status Page ID",
 			fmt.Sprintf("Status page ID must be a valid UUID: %s", err.Error()),
@@ -339,7 +339,7 @@ func (d *StatusPageDataSource) Read(ctx context.Context, req datasource.ReadRequ
 }
 
 // mapStatusPageToModel maps API response to data source model.
-func (d *StatusPageDataSource) mapStatusPageToModel(sp *client.StatusPage, model *StatusPageDataSourceModel, resp *datasource.ReadResponse) {
+func (d *StatusPageDataSource) mapStatusPageToModel(sp *hyperping.StatusPage, model *StatusPageDataSourceModel, resp *datasource.ReadResponse) {
 	warnUnresolvedNumericUUIDs(sp, &resp.Diagnostics)
 	commonFields := MapStatusPageCommonFields(sp, &resp.Diagnostics)
 	model.ID = commonFields.ID

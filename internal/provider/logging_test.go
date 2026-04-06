@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewTFLogAdapter(t *testing.T) {
@@ -30,5 +30,5 @@ func TestTFLogAdapter_Debug(t *testing.T) {
 }
 
 func TestTFLogAdapter_ImplementsLogger(t *testing.T) {
-	var _ client.Logger = (*TFLogAdapter)(nil)
+	var _ hyperping.Logger = (*TFLogAdapter)(nil)
 }

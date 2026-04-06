@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewHealthcheckDataSource(t *testing.T) {
@@ -64,7 +64,7 @@ func TestHealthcheckDataSource_Schema(t *testing.T) {
 func TestHealthcheckDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &HealthcheckDataSource{}
-		c := &client.Client{}
+		c := &hyperping.Client{}
 
 		req := datasource.ConfigureRequest{
 			ProviderData: c,
@@ -116,7 +116,7 @@ func TestHealthcheckDataSource_Configure(t *testing.T) {
 func TestMapHealthcheckToDataSourceModel(t *testing.T) {
 	t.Run("all fields populated", func(t *testing.T) {
 		periodVal := 60
-		hc := &client.Healthcheck{
+		hc := &hyperping.Healthcheck{
 			UUID:             "hc-full",
 			Name:             "Full Healthcheck",
 			PingURL:          "https://ping.hyperping.io/full",
@@ -126,7 +126,7 @@ func TestMapHealthcheckToDataSourceModel(t *testing.T) {
 			PeriodType:       "minutes",
 			GracePeriodValue: 10,
 			GracePeriodType:  "minutes",
-			EscalationPolicy: &client.EscalationPolicyReference{
+			EscalationPolicy: &hyperping.EscalationPolicyReference{
 				UUID: "ep-789",
 				Name: "Test Policy",
 			},
@@ -159,7 +159,7 @@ func TestMapHealthcheckToDataSourceModel(t *testing.T) {
 	})
 
 	t.Run("minimal fields", func(t *testing.T) {
-		hc := &client.Healthcheck{
+		hc := &hyperping.Healthcheck{
 			UUID:             "hc-min",
 			Name:             "Minimal",
 			PingURL:          "https://ping.hyperping.io/min",
@@ -183,7 +183,7 @@ func TestMapHealthcheckToDataSourceModel(t *testing.T) {
 	})
 
 	t.Run("null escalation policy", func(t *testing.T) {
-		hc := &client.Healthcheck{
+		hc := &hyperping.Healthcheck{
 			UUID:             "hc-no-ep",
 			Name:             "No Escalation Policy",
 			PingURL:          "https://ping.hyperping.io/no-ep",

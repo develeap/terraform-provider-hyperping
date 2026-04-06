@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
@@ -176,7 +176,7 @@ func TestMapTFToStringMap(t *testing.T) {
 func TestMapStatusPageCommonFields(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    *client.StatusPage
+		input    *hyperping.StatusPage
 		wantNull bool
 	}{
 		{
@@ -186,45 +186,45 @@ func TestMapStatusPageCommonFields(t *testing.T) {
 		},
 		{
 			name: "minimal status page",
-			input: &client.StatusPage{
+			input: &hyperping.StatusPage{
 				UUID:            "sp_abc123",
 				Name:            "Production Status",
 				HostedSubdomain: "status",
 				URL:             "https://status.hyperping.app",
-				Settings: client.StatusPageSettings{
+				Settings: hyperping.StatusPageSettings{
 					Theme:       "dark",
 					Font:        "Inter",
 					AccentColor: "#36b27e",
 					Languages:   []string{"en"},
 				},
-				Sections: []client.StatusPageSection{},
+				Sections: []hyperping.StatusPageSection{},
 			},
 			wantNull: false,
 		},
 		{
 			name: "full status page with hostname",
-			input: &client.StatusPage{
+			input: &hyperping.StatusPage{
 				UUID:            "sp_full123",
 				Name:            "Full Status",
 				Hostname:        testutil.Ptr("status.example.com"),
 				HostedSubdomain: "status",
 				URL:             "https://status.example.com",
-				Settings: client.StatusPageSettings{
+				Settings: hyperping.StatusPageSettings{
 					Theme:       "light",
 					Font:        "Roboto",
 					AccentColor: "#0066cc",
 					Languages:   []string{"en", "fr"},
 				},
-				Sections: []client.StatusPageSection{
+				Sections: []hyperping.StatusPageSection{
 					{
 						Name: map[string]string{
 							"en": "API Services",
 							"fr": "Services API",
 						},
 						IsSplit: true,
-						Services: []client.StatusPageService{
+						Services: []hyperping.StatusPageService{
 							{
-								ID:                "svc_1",
+								ID:                testutil.Ptr(hyperping.FlexibleString("svc_1")),
 								UUID:              "mon_abc123",
 								Name:              map[string]string{"en": "Main API"},
 								ShowUptime:        true,

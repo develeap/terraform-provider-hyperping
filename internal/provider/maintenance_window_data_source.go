@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -28,7 +28,7 @@ func NewMaintenanceWindowDataSource() datasource.DataSource {
 
 // MaintenanceWindowDataSource defines the data source implementation for a single maintenance window.
 type MaintenanceWindowDataSource struct {
-	client client.MaintenanceAPI
+	client hyperping.MaintenanceAPI
 }
 
 // MaintenanceWindowDataSourceModel describes the data source data model.
@@ -108,11 +108,11 @@ func (d *MaintenanceWindowDataSource) Configure(_ context.Context, req datasourc
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -129,7 +129,7 @@ func (d *MaintenanceWindowDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
-	if err := client.ValidateResourceID(config.ID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(config.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Invalid Maintenance Window ID", fmt.Sprintf("Cannot look up maintenance window: %s", err))
 		return
 	}
@@ -148,8 +148,8 @@ func (d *MaintenanceWindowDataSource) Read(ctx context.Context, req datasource.R
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }
 
-// mapMaintenanceToDataSourceModel maps a client.Maintenance to the data source model.
-func (d *MaintenanceWindowDataSource) mapMaintenanceToDataSourceModel(maint *client.Maintenance, model *MaintenanceWindowDataSourceModel, diags *diag.Diagnostics) {
+// mapMaintenanceToDataSourceModel maps a hyperping.Maintenance to the data source model.
+func (d *MaintenanceWindowDataSource) mapMaintenanceToDataSourceModel(maint *hyperping.Maintenance, model *MaintenanceWindowDataSourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(maint.UUID)
 	model.Name = types.StringValue(maint.Name)
 	model.Title = types.StringValue(maint.Title.En)

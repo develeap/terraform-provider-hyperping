@@ -6,7 +6,7 @@ package main
 import (
 	"testing"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestFilterConfig_NewFilterConfig(t *testing.T) {
@@ -55,7 +55,7 @@ func TestFilterConfig_NewFilterConfig(t *testing.T) {
 }
 
 func TestFilterConfig_FilterMonitors(t *testing.T) {
-	monitors := []client.Monitor{
+	monitors := []hyperping.Monitor{
 		{UUID: "mon_1", Name: "PROD-API-Health"},
 		{UUID: "mon_2", Name: "PROD-Database"},
 		{UUID: "mon_3", Name: "DEV-API-Test"},

@@ -9,7 +9,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // sweepStatusPages deletes all test status pages (those with name prefixed with "tf-acc-test-")
@@ -31,7 +31,7 @@ func sweepStatusPages(_ string) error {
 		if strings.HasPrefix(sp.Name, "tf-acc-test-") {
 			log.Printf("[INFO] Deleting status page: %s (UUID: %s)", sp.Name, sp.UUID)
 			if err := c.DeleteStatusPage(ctx, sp.UUID); err != nil {
-				if client.IsNotFound(err) {
+				if hyperping.IsNotFound(err) {
 					log.Printf("[WARN] Status page %s already deleted", sp.UUID)
 					continue
 				}

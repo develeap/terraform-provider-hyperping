@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -33,7 +33,7 @@ func NewIncidentUpdateResource() resource.Resource {
 
 // IncidentUpdateResource defines the resource implementation.
 type IncidentUpdateResource struct {
-	client client.IncidentAPI
+	client hyperping.IncidentAPI
 }
 
 // IncidentUpdateResourceModel describes the resource data model.
@@ -84,7 +84,7 @@ func (r *IncidentUpdateResource) Schema(_ context.Context, _ resource.SchemaRequ
 				MarkdownDescription: "The type of update. Valid values: `investigating`, `identified`, `update`, `monitoring`, `resolved`.",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedIncidentUpdateTypes...),
+					stringvalidator.OneOf(hyperping.AllowedIncidentUpdateTypes...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -108,9 +108,9 @@ func (r *IncidentUpdateResource) Configure(_ context.Context, req resource.Confi
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperping.Client", req.ProviderData))
 		return
 	}
 
@@ -127,8 +127,8 @@ func (r *IncidentUpdateResource) Create(ctx context.Context, req resource.Create
 	}
 
 	// Build the request
-	addReq := client.AddIncidentUpdateRequest{
-		Text: client.LocalizedText{En: plan.Text.ValueString()},
+	addReq := hyperping.AddIncidentUpdateRequest{
+		Text: hyperping.LocalizedText{En: plan.Text.ValueString()},
 		Type: plan.Type.ValueString(),
 	}
 
@@ -199,7 +199,7 @@ func (r *IncidentUpdateResource) Read(ctx context.Context, req resource.ReadRequ
 	// Fetch the incident to find the update
 	incident, err := r.client.GetIncident(ctx, incidentID)
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -294,11 +294,11 @@ func (r *IncidentUpdateResource) ImportState(ctx context.Context, req resource.I
 	}
 
 	// Validate both ID components before setting state (VULN-015)
-	if err := client.ValidateResourceID(incidentID); err != nil {
+	if err := hyperping.ValidateResourceID(incidentID); err != nil {
 		resp.Diagnostics.AddError("Invalid Import ID", fmt.Sprintf("Cannot import incident update — invalid incident ID: %s", err))
 		return
 	}
-	if err := client.ValidateResourceID(updateID); err != nil {
+	if err := hyperping.ValidateResourceID(updateID); err != nil {
 		resp.Diagnostics.AddError("Invalid Import ID", fmt.Sprintf("Cannot import incident update — invalid update ID: %s", err))
 		return
 	}

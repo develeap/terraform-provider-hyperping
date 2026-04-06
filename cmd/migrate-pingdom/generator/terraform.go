@@ -8,9 +8,9 @@ import (
 	"regexp"
 	"strings"
 
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/converter"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
 	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
@@ -67,7 +67,7 @@ func (g *TerraformGenerator) GenerateHCL(checks []pingdom.Check, results []conve
 	return sb.String()
 }
 
-func (g *TerraformGenerator) generateMonitorHCL(sb *strings.Builder, _ pingdom.Check, monitor *client.CreateMonitorRequest) {
+func (g *TerraformGenerator) generateMonitorHCL(sb *strings.Builder, _ pingdom.Check, monitor *hyperping.CreateMonitorRequest) {
 	tfName := g.terraformName(monitor.Name)
 
 	fmt.Fprintf(sb, "resource \"hyperping_monitor\" %q {\n", tfName)
@@ -90,7 +90,7 @@ func (g *TerraformGenerator) generateMonitorHCL(sb *strings.Builder, _ pingdom.C
 }
 
 // buildOptionalHTTPMethod returns the http_method line if non-default.
-func buildOptionalHTTPMethod(monitor *client.CreateMonitorRequest) string {
+func buildOptionalHTTPMethod(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.HTTPMethod == "" || monitor.HTTPMethod == "GET" {
 		return ""
 	}
@@ -98,7 +98,7 @@ func buildOptionalHTTPMethod(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalCheckFrequency returns the check_frequency line if non-default.
-func buildOptionalCheckFrequency(monitor *client.CreateMonitorRequest) string {
+func buildOptionalCheckFrequency(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.CheckFrequency == 60 {
 		return ""
 	}
@@ -106,7 +106,7 @@ func buildOptionalCheckFrequency(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalRegions returns the regions line if non-empty.
-func buildOptionalRegions(monitor *client.CreateMonitorRequest) string {
+func buildOptionalRegions(monitor *hyperping.CreateMonitorRequest) string {
 	if len(monitor.Regions) == 0 {
 		return ""
 	}
@@ -114,7 +114,7 @@ func buildOptionalRegions(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalPort returns the port line if non-zero.
-func buildOptionalPort(monitor *client.CreateMonitorRequest) string {
+func buildOptionalPort(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.Port == nil || *monitor.Port == 0 {
 		return ""
 	}
@@ -122,7 +122,7 @@ func buildOptionalPort(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalFollowRedirects returns the follow_redirects line if explicitly false.
-func buildOptionalFollowRedirects(monitor *client.CreateMonitorRequest) string {
+func buildOptionalFollowRedirects(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.FollowRedirects == nil || *monitor.FollowRedirects {
 		return ""
 	}
@@ -130,7 +130,7 @@ func buildOptionalFollowRedirects(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalExpectedStatus returns the expected_status_code line if non-default.
-func buildOptionalExpectedStatus(monitor *client.CreateMonitorRequest) string {
+func buildOptionalExpectedStatus(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.ExpectedStatusCode == "" || monitor.ExpectedStatusCode == "200" {
 		return ""
 	}
@@ -138,7 +138,7 @@ func buildOptionalExpectedStatus(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalRequiredKeyword returns the required_keyword line if set.
-func buildOptionalRequiredKeyword(monitor *client.CreateMonitorRequest) string {
+func buildOptionalRequiredKeyword(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.RequiredKeyword == nil || *monitor.RequiredKeyword == "" {
 		return ""
 	}
@@ -146,7 +146,7 @@ func buildOptionalRequiredKeyword(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalRequestHeaders returns the request_headers block if non-empty.
-func buildOptionalRequestHeaders(monitor *client.CreateMonitorRequest) string {
+func buildOptionalRequestHeaders(monitor *hyperping.CreateMonitorRequest) string {
 	if len(monitor.RequestHeaders) == 0 {
 		return ""
 	}
@@ -160,7 +160,7 @@ func buildOptionalRequestHeaders(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalRequestBody returns the request_body line if set.
-func buildOptionalRequestBody(monitor *client.CreateMonitorRequest) string {
+func buildOptionalRequestBody(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.RequestBody == nil || *monitor.RequestBody == "" {
 		return ""
 	}
@@ -168,7 +168,7 @@ func buildOptionalRequestBody(monitor *client.CreateMonitorRequest) string {
 }
 
 // buildOptionalPaused returns the paused line if true.
-func buildOptionalPaused(monitor *client.CreateMonitorRequest) string {
+func buildOptionalPaused(monitor *hyperping.CreateMonitorRequest) string {
 	if !monitor.Paused {
 		return ""
 	}

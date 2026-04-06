@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -29,7 +29,7 @@ func NewStatusPageResource() resource.Resource {
 
 // StatusPageResource defines the resource implementation.
 type StatusPageResource struct {
-	client client.HyperpingAPI
+	client hyperping.HyperpingAPI
 }
 
 // StatusPageResourceModel describes the resource data model.
@@ -105,9 +105,9 @@ func (r *StatusPageResource) Configure(ctx context.Context, req resource.Configu
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(client.HyperpingAPI)
+	apiClient, ok := req.ProviderData.(hyperping.HyperpingAPI)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("client.HyperpingAPI", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("hyperping.HyperpingAPI", req.ProviderData))
 		return
 	}
 
@@ -183,7 +183,7 @@ func (r *StatusPageResource) Read(ctx context.Context, req resource.ReadRequest,
 	// Get status page from API
 	statusPage, err := r.client.GetStatusPage(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			// Status page was deleted outside Terraform
 			resp.State.RemoveResource(ctx)
 			return
@@ -286,7 +286,7 @@ func (r *StatusPageResource) Delete(ctx context.Context, req resource.DeleteRequ
 	// Delete status page via API
 	err := r.client.DeleteStatusPage(ctx, state.ID.ValueString())
 	if err != nil {
-		if !client.IsNotFound(err) {
+		if !hyperping.IsNotFound(err) {
 			resp.Diagnostics.AddError("Error deleting status page", err.Error())
 			return
 		}
@@ -463,7 +463,7 @@ func preserveNestedServiceWriteOnlyFields(configured, fromAPI types.List) types.
 
 func (r *StatusPageResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Validate UUID format
-	if err := client.ValidateResourceID(req.ID); err != nil {
+	if err := hyperping.ValidateResourceID(req.ID); err != nil {
 		resp.Diagnostics.AddError(
 			"Invalid Status Page ID",
 			fmt.Sprintf("Status page ID must be a valid UUID (e.g., sp_abc123): %s", err.Error()),
@@ -477,7 +477,7 @@ func (r *StatusPageResource) ImportState(ctx context.Context, req resource.Impor
 // mapStatusPageToModel maps API response to Terraform model.
 // It extracts configured languages from the model's settings to filter API response localized fields,
 // preventing drift from API auto-population of all supported languages.
-func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *client.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
+func (r *StatusPageResource) mapStatusPageToModel(_ context.Context, sp *hyperping.StatusPage, model *StatusPageResourceModel, diags *diag.Diagnostics) {
 	// Extract configured languages from the model's settings
 	// This is used to filter localized fields in the API response
 	configuredLangs := r.extractConfiguredLanguages(model.Settings, diags)
@@ -553,8 +553,8 @@ func (r *StatusPageResource) replaceSettingsName(settings types.Object, name typ
 }
 
 // buildCreateRequest builds a CreateStatusPageRequest from the Terraform plan.
-func (r *StatusPageResource) buildCreateRequest(ctx context.Context, plan *StatusPageResourceModel, diags *diag.Diagnostics) *client.CreateStatusPageRequest {
-	req := &client.CreateStatusPageRequest{
+func (r *StatusPageResource) buildCreateRequest(ctx context.Context, plan *StatusPageResourceModel, diags *diag.Diagnostics) *hyperping.CreateStatusPageRequest {
+	req := &hyperping.CreateStatusPageRequest{
 		Name: plan.Name.ValueString(),
 	}
 
@@ -591,8 +591,8 @@ func (r *StatusPageResource) buildCreateRequest(ctx context.Context, plan *Statu
 }
 
 // buildUpdateRequest builds an UpdateStatusPageRequest from the Terraform plan.
-func (r *StatusPageResource) buildUpdateRequest(ctx context.Context, plan *StatusPageResourceModel, diags *diag.Diagnostics) *client.UpdateStatusPageRequest {
-	req := &client.UpdateStatusPageRequest{}
+func (r *StatusPageResource) buildUpdateRequest(ctx context.Context, plan *StatusPageResourceModel, diags *diag.Diagnostics) *hyperping.UpdateStatusPageRequest {
+	req := &hyperping.UpdateStatusPageRequest{}
 
 	req.Name = tfStringToPtr(plan.Name)
 	req.Subdomain = tfStringToPtr(plan.HostedSubdomain)
@@ -643,8 +643,8 @@ type statusPageSettingsTarget struct {
 	Description           **string
 	Languages             *[]string
 	DefaultLanguage       **string
-	Subscribe             **client.CreateStatusPageSubscribeSettings
-	Authentication        **client.CreateStatusPageAuthenticationSettings
+	Subscribe             **hyperping.CreateStatusPageSubscribeSettings
+	Authentication        **hyperping.CreateStatusPageAuthenticationSettings
 }
 
 // populateSettingsFields extracts all settings fields and populates the target request.

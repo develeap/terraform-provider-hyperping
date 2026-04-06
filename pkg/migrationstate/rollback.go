@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/pkg/checkpoint"
 	"github.com/develeap/terraform-provider-hyperping/pkg/recovery"
 )
@@ -46,7 +46,7 @@ func PerformRollback(migrationID string, hyperpingAPIKey string, force bool, log
 		}
 	}
 
-	hpClient := client.NewClient(hyperpingAPIKey)
+	hpClient := hyperping.NewClient(hyperpingAPIKey)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -78,7 +78,7 @@ func confirmRollback(resources []checkpoint.CreatedResource) bool {
 func deleteResources(
 	ctx context.Context,
 	resources []checkpoint.CreatedResource,
-	hpClient *client.Client,
+	hpClient *hyperping.Client,
 	backoff *recovery.ExponentialBackoff,
 	logger *recovery.Logger,
 ) (deletedCount, failedCount int) {
@@ -106,7 +106,7 @@ func deleteResources(
 }
 
 // deleteByType dispatches the delete call based on the resource type.
-func deleteByType(ctx context.Context, hpClient *client.Client, r checkpoint.CreatedResource) error {
+func deleteByType(ctx context.Context, hpClient *hyperping.Client, r checkpoint.CreatedResource) error {
 	switch r.Type {
 	case "healthcheck":
 		return hpClient.DeleteHealthcheck(ctx, r.UUID)

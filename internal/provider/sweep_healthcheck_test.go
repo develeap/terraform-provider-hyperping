@@ -9,7 +9,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // sweepHealthchecks deletes all test healthchecks (those with name prefixed with "tf-acc-test-")
@@ -30,7 +30,7 @@ func sweepHealthchecks(_ string) error {
 		if strings.HasPrefix(hc.Name, "tf-acc-test-") {
 			log.Printf("[INFO] Deleting healthcheck: %s (UUID: %s)", hc.Name, hc.UUID)
 			if err := c.DeleteHealthcheck(ctx, hc.UUID); err != nil {
-				if client.IsNotFound(err) {
+				if hyperping.IsNotFound(err) {
 					log.Printf("[WARN] Healthcheck %s already deleted", hc.UUID)
 					continue
 				}

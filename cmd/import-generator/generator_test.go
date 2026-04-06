@@ -9,17 +9,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // mockClient implements APIClient for testing.
 type mockClient struct {
-	monitors     []client.Monitor
-	healthchecks []client.Healthcheck
-	statusPages  []client.StatusPage
-	incidents    []client.Incident
-	maintenance  []client.Maintenance
-	outages      []client.Outage
+	monitors     []hyperping.Monitor
+	healthchecks []hyperping.Healthcheck
+	statusPages  []hyperping.StatusPage
+	incidents    []hyperping.Incident
+	maintenance  []hyperping.Maintenance
+	outages      []hyperping.Outage
 
 	monitorsErr     error
 	healthchecksErr error
@@ -29,30 +29,30 @@ type mockClient struct {
 	outagesErr      error
 }
 
-func (m *mockClient) ListMonitors(_ context.Context) ([]client.Monitor, error) {
+func (m *mockClient) ListMonitors(_ context.Context) ([]hyperping.Monitor, error) {
 	return m.monitors, m.monitorsErr
 }
 
-func (m *mockClient) ListHealthchecks(_ context.Context) ([]client.Healthcheck, error) {
+func (m *mockClient) ListHealthchecks(_ context.Context) ([]hyperping.Healthcheck, error) {
 	return m.healthchecks, m.healthchecksErr
 }
 
-func (m *mockClient) ListStatusPages(_ context.Context, _ *int, _ *string) (*client.StatusPagePaginatedResponse, error) {
+func (m *mockClient) ListStatusPages(_ context.Context, _ *int, _ *string) (*hyperping.StatusPagePaginatedResponse, error) {
 	if m.statusPagesErr != nil {
 		return nil, m.statusPagesErr
 	}
-	return &client.StatusPagePaginatedResponse{StatusPages: m.statusPages}, nil
+	return &hyperping.StatusPagePaginatedResponse{StatusPages: m.statusPages}, nil
 }
 
-func (m *mockClient) ListIncidents(_ context.Context) ([]client.Incident, error) {
+func (m *mockClient) ListIncidents(_ context.Context) ([]hyperping.Incident, error) {
 	return m.incidents, m.incidentsErr
 }
 
-func (m *mockClient) ListMaintenance(_ context.Context) ([]client.Maintenance, error) {
+func (m *mockClient) ListMaintenance(_ context.Context) ([]hyperping.Maintenance, error) {
 	return m.maintenance, m.maintenanceErr
 }
 
-func (m *mockClient) ListOutages(_ context.Context) ([]client.Outage, error) {
+func (m *mockClient) ListOutages(_ context.Context) ([]hyperping.Outage, error) {
 	return m.outages, m.outagesErr
 }
 
@@ -193,7 +193,7 @@ func TestFormatStringList(t *testing.T) {
 
 func TestGenerate_ImportFormat(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Test Monitor"},
 		},
 	}
@@ -218,7 +218,7 @@ func TestGenerate_ImportFormat(t *testing.T) {
 
 func TestGenerate_HCLFormat(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Test Monitor", URL: "https://example.com", Protocol: "http"},
 		},
 	}
@@ -243,7 +243,7 @@ func TestGenerate_HCLFormat(t *testing.T) {
 
 func TestGenerate_BothFormat(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Test Monitor", URL: "https://example.com", Protocol: "http"},
 		},
 	}
@@ -309,12 +309,12 @@ func TestGenerate_EmptyResources(t *testing.T) {
 
 func TestFetchResources_AllTypes(t *testing.T) {
 	mock := &mockClient{
-		monitors:     []client.Monitor{{UUID: "mon_1", Name: "Monitor"}},
-		healthchecks: []client.Healthcheck{{UUID: "hc_1", Name: "Healthcheck"}},
-		statusPages:  []client.StatusPage{{UUID: "sp_1", Name: "Status Page"}},
-		incidents:    []client.Incident{{UUID: "inc_1", Title: client.LocalizedText{En: "Incident"}}},
-		maintenance:  []client.Maintenance{{UUID: "maint_1", Name: "Maintenance"}},
-		outages:      []client.Outage{{UUID: "out_1", Monitor: client.MonitorReference{Name: "Monitor"}}},
+		monitors:     []hyperping.Monitor{{UUID: "mon_1", Name: "Monitor"}},
+		healthchecks: []hyperping.Healthcheck{{UUID: "hc_1", Name: "Healthcheck"}},
+		statusPages:  []hyperping.StatusPage{{UUID: "sp_1", Name: "Status Page"}},
+		incidents:    []hyperping.Incident{{UUID: "inc_1", Title: hyperping.LocalizedText{En: "Incident"}}},
+		maintenance:  []hyperping.Maintenance{{UUID: "maint_1", Name: "Maintenance"}},
+		outages:      []hyperping.Outage{{UUID: "out_1", Monitor: hyperping.MonitorReference{Name: "Monitor"}}},
 	}
 
 	g := &Generator{
@@ -470,23 +470,23 @@ func TestGenerateImports_AllResourceTypes(t *testing.T) {
 	var sb strings.Builder
 
 	data := &ResourceData{
-		Monitors: []client.Monitor{
+		Monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Test Monitor"},
 		},
-		Healthchecks: []client.Healthcheck{
+		Healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_456", Name: "Backup Job"},
 		},
-		StatusPages: []client.StatusPage{
+		StatusPages: []hyperping.StatusPage{
 			{UUID: "sp_789", Name: "Main Status"},
 		},
-		Incidents: []client.Incident{
-			{UUID: "inc_abc", Title: client.LocalizedText{En: "API Outage"}},
+		Incidents: []hyperping.Incident{
+			{UUID: "inc_abc", Title: hyperping.LocalizedText{En: "API Outage"}},
 		},
-		Maintenance: []client.Maintenance{
-			{UUID: "maint_def", Title: client.LocalizedText{En: "DB Maintenance"}},
+		Maintenance: []hyperping.Maintenance{
+			{UUID: "maint_def", Title: hyperping.LocalizedText{En: "DB Maintenance"}},
 		},
-		Outages: []client.Outage{
-			{UUID: "out_ghi", Monitor: client.MonitorReference{Name: "API Monitor"}},
+		Outages: []hyperping.Outage{
+			{UUID: "out_ghi", Monitor: hyperping.MonitorReference{Name: "API Monitor"}},
 		},
 	}
 
@@ -514,8 +514,8 @@ func TestGenerateImports_MaintenanceFallbackToName(t *testing.T) {
 	var sb strings.Builder
 
 	data := &ResourceData{
-		Maintenance: []client.Maintenance{
-			{UUID: "maint_1", Name: "Fallback Name", Title: client.LocalizedText{En: ""}},
+		Maintenance: []hyperping.Maintenance{
+			{UUID: "maint_1", Name: "Fallback Name", Title: hyperping.LocalizedText{En: ""}},
 		},
 	}
 
@@ -532,7 +532,7 @@ func TestGenerateImports_WithPrefix(t *testing.T) {
 	var sb strings.Builder
 
 	data := &ResourceData{
-		Monitors: []client.Monitor{
+		Monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "API"},
 		},
 	}
@@ -553,7 +553,7 @@ func TestGenerateMonitorHCL_Basic(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	monitor := client.Monitor{
+	monitor := hyperping.Monitor{
 		UUID:           "mon_123",
 		Name:           "Test Monitor",
 		URL:            "https://example.com",
@@ -591,8 +591,8 @@ func TestGenerateMonitorHCL_AllOptionalFields(t *testing.T) {
 
 	port := 8080
 	keyword := "healthy"
-	policy := "esc_123"
-	monitor := client.Monitor{
+	policy := hyperping.EscalationPolicyRef{UUID: "esc_123"}
+	monitor := hyperping.Monitor{
 		UUID:             "mon_123",
 		Name:             "Full Monitor",
 		URL:              "https://example.com/api",
@@ -606,7 +606,7 @@ func TestGenerateMonitorHCL_AllOptionalFields(t *testing.T) {
 		Paused:           true,
 		AlertsWait:       5,
 		EscalationPolicy: &policy,
-		RequestHeaders:   []client.RequestHeader{{Name: "Auth", Value: "Bearer token"}},
+		RequestHeaders:   []hyperping.RequestHeader{{Name: "Auth", Value: "Bearer token"}},
 		RequestBody:      `{"test": true}`,
 	}
 
@@ -639,7 +639,7 @@ func TestGenerateMonitorHCL_NilPointers(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	monitor := client.Monitor{
+	monitor := hyperping.Monitor{
 		UUID:             "mon_123",
 		Name:             "Minimal",
 		URL:              "https://example.com",
@@ -670,7 +670,7 @@ func TestGenerateMonitorHCL_ZeroPort(t *testing.T) {
 	var sb strings.Builder
 
 	port := 0
-	monitor := client.Monitor{
+	monitor := hyperping.Monitor{
 		UUID:     "mon_123",
 		Name:     "Test",
 		URL:      "https://example.com",
@@ -695,7 +695,7 @@ func TestGenerateHealthcheckHCL_WithCron(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	healthcheck := client.Healthcheck{
+	healthcheck := hyperping.Healthcheck{
 		UUID:        "hc_123",
 		Name:        "Backup Job",
 		Cron:        "0 0 * * *",
@@ -728,7 +728,7 @@ func TestGenerateHealthcheckHCL_WithPeriod(t *testing.T) {
 	var sb strings.Builder
 
 	periodValue := 5
-	healthcheck := client.Healthcheck{
+	healthcheck := hyperping.Healthcheck{
 		UUID:        "hc_123",
 		Name:        "Heartbeat",
 		PeriodValue: &periodValue,
@@ -759,7 +759,7 @@ func TestGenerateHealthcheckHCL_Minimal(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	healthcheck := client.Healthcheck{
+	healthcheck := hyperping.Healthcheck{
 		UUID: "hc_123",
 		Name: "Simple",
 	}
@@ -791,11 +791,11 @@ func TestGenerateStatusPageHCL_Basic(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	statusPage := client.StatusPage{
+	statusPage := hyperping.StatusPage{
 		UUID:            "sp_123",
 		Name:            "Main Status",
 		HostedSubdomain: "status",
-		Settings: client.StatusPageSettings{
+		Settings: hyperping.StatusPageSettings{
 			Languages: []string{"en"},
 		},
 	}
@@ -824,12 +824,12 @@ func TestGenerateStatusPageHCL_WithHostname(t *testing.T) {
 	var sb strings.Builder
 
 	hostname := "status.example.com"
-	statusPage := client.StatusPage{
+	statusPage := hyperping.StatusPage{
 		UUID:            "sp_123",
 		Name:            "Custom Status",
 		HostedSubdomain: "custom",
 		Hostname:        &hostname,
-		Settings: client.StatusPageSettings{
+		Settings: hyperping.StatusPageSettings{
 			Languages:   []string{"en", "fr"},
 			Theme:       "dark",
 			Font:        "Roboto",
@@ -859,14 +859,14 @@ func TestGenerateStatusPageHCL_WithSections(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	statusPage := client.StatusPage{
+	statusPage := hyperping.StatusPage{
 		UUID:            "sp_123",
 		Name:            "With Sections",
 		HostedSubdomain: "status",
-		Settings: client.StatusPageSettings{
+		Settings: hyperping.StatusPageSettings{
 			Languages: []string{"en"},
 		},
-		Sections: []client.StatusPageSection{
+		Sections: []hyperping.StatusPageSection{
 			{Name: map[string]string{"en": "API"}},
 		},
 	}
@@ -883,11 +883,11 @@ func TestGenerateStatusPageHCL_DefaultSettings(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	statusPage := client.StatusPage{
+	statusPage := hyperping.StatusPage{
 		UUID:            "sp_123",
 		Name:            "Default",
 		HostedSubdomain: "default",
-		Settings: client.StatusPageSettings{
+		Settings: hyperping.StatusPageSettings{
 			Theme:       "system",
 			Font:        "Inter",
 			AccentColor: "#36b27e",
@@ -917,10 +917,10 @@ func TestGenerateIncidentHCL_Basic(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	incident := client.Incident{
+	incident := hyperping.Incident{
 		UUID:  "inc_123",
-		Title: client.LocalizedText{En: "API Outage"},
-		Text:  client.LocalizedText{En: "Investigating the issue"},
+		Title: hyperping.LocalizedText{En: "API Outage"},
+		Text:  hyperping.LocalizedText{En: "Investigating the issue"},
 	}
 
 	g.generateIncidentHCL(&sb, incident)
@@ -943,10 +943,10 @@ func TestGenerateIncidentHCL_AllFields(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	incident := client.Incident{
+	incident := hyperping.Incident{
 		UUID:               "inc_123",
-		Title:              client.LocalizedText{En: "Major Outage"},
-		Text:               client.LocalizedText{En: "All systems down"},
+		Title:              hyperping.LocalizedText{En: "Major Outage"},
+		Text:               hyperping.LocalizedText{En: "All systems down"},
 		Type:               "maintenance",
 		StatusPages:        []string{"sp_1", "sp_2"},
 		AffectedComponents: []string{"api", "web"},
@@ -972,9 +972,9 @@ func TestGenerateIncidentHCL_DefaultType(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	incident := client.Incident{
+	incident := hyperping.Incident{
 		UUID:  "inc_123",
-		Title: client.LocalizedText{En: "Test"},
+		Title: hyperping.LocalizedText{En: "Test"},
 		Type:  "incident",
 	}
 
@@ -997,10 +997,10 @@ func TestGenerateMaintenanceHCL_Basic(t *testing.T) {
 
 	startDate := "2026-01-20T02:00:00Z"
 	endDate := "2026-01-20T04:00:00Z"
-	maintenance := client.Maintenance{
+	maintenance := hyperping.Maintenance{
 		UUID:      "maint_123",
-		Title:     client.LocalizedText{En: "DB Maintenance"},
-		Text:      client.LocalizedText{En: "Routine maintenance"},
+		Title:     hyperping.LocalizedText{En: "DB Maintenance"},
+		Text:      hyperping.LocalizedText{En: "Routine maintenance"},
 		StartDate: &startDate,
 		EndDate:   &endDate,
 	}
@@ -1027,10 +1027,10 @@ func TestGenerateMaintenanceHCL_FallbackToName(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	maintenance := client.Maintenance{
+	maintenance := hyperping.Maintenance{
 		UUID:  "maint_123",
 		Name:  "Fallback Name",
-		Title: client.LocalizedText{En: ""},
+		Title: hyperping.LocalizedText{En: ""},
 	}
 
 	g.generateMaintenanceHCL(&sb, maintenance)
@@ -1048,9 +1048,9 @@ func TestGenerateMaintenanceHCL_WithStatusPages(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	maintenance := client.Maintenance{
+	maintenance := hyperping.Maintenance{
 		UUID:        "maint_123",
-		Title:       client.LocalizedText{En: "Test"},
+		Title:       hyperping.LocalizedText{En: "Test"},
 		StatusPages: []string{"sp_1", "sp_2"},
 	}
 
@@ -1070,9 +1070,9 @@ func TestGenerateOutageHCL_Basic(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	outage := client.Outage{
+	outage := hyperping.Outage{
 		UUID: "out_123",
-		Monitor: client.MonitorReference{
+		Monitor: hyperping.MonitorReference{
 			UUID: "mon_456",
 			Name: "API Monitor",
 		},
@@ -1098,10 +1098,10 @@ func TestGenerateOutageHCL_WithDescription(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	outage := client.Outage{
+	outage := hyperping.Outage{
 		UUID:        "out_123",
 		Description: "Connection timeout",
-		Monitor: client.MonitorReference{
+		Monitor: hyperping.MonitorReference{
 			UUID: "mon_456",
 			Name: "Test",
 		},
@@ -1124,11 +1124,11 @@ func TestGenerateHCL_MultipleResources(t *testing.T) {
 	var sb strings.Builder
 
 	data := &ResourceData{
-		Monitors: []client.Monitor{
+		Monitors: []hyperping.Monitor{
 			{UUID: "mon_1", Name: "Monitor 1", URL: "https://example.com", Protocol: "http"},
 			{UUID: "mon_2", Name: "Monitor 2", URL: "https://example.org", Protocol: "http"},
 		},
-		Healthchecks: []client.Healthcheck{
+		Healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_1", Name: "HC 1"},
 		},
 	}
@@ -1163,23 +1163,23 @@ func TestGenerateHCL_AllResourceTypes(t *testing.T) {
 	var sb strings.Builder
 
 	data := &ResourceData{
-		Monitors: []client.Monitor{
+		Monitors: []hyperping.Monitor{
 			{UUID: "mon_1", Name: "Monitor", URL: "https://example.com", Protocol: "http"},
 		},
-		Healthchecks: []client.Healthcheck{
+		Healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_1", Name: "HC"},
 		},
-		StatusPages: []client.StatusPage{
-			{UUID: "sp_1", Name: "Status", HostedSubdomain: "status", Settings: client.StatusPageSettings{Languages: []string{"en"}}},
+		StatusPages: []hyperping.StatusPage{
+			{UUID: "sp_1", Name: "Status", HostedSubdomain: "status", Settings: hyperping.StatusPageSettings{Languages: []string{"en"}}},
 		},
-		Incidents: []client.Incident{
-			{UUID: "inc_1", Title: client.LocalizedText{En: "Incident"}},
+		Incidents: []hyperping.Incident{
+			{UUID: "inc_1", Title: hyperping.LocalizedText{En: "Incident"}},
 		},
-		Maintenance: []client.Maintenance{
-			{UUID: "maint_1", Title: client.LocalizedText{En: "Maintenance"}},
+		Maintenance: []hyperping.Maintenance{
+			{UUID: "maint_1", Title: hyperping.LocalizedText{En: "Maintenance"}},
 		},
-		Outages: []client.Outage{
-			{UUID: "out_1", Monitor: client.MonitorReference{UUID: "mon_1", Name: "Monitor"}},
+		Outages: []hyperping.Outage{
+			{UUID: "out_1", Monitor: hyperping.MonitorReference{UUID: "mon_1", Name: "Monitor"}},
 		},
 	}
 
@@ -1253,12 +1253,12 @@ func TestGenerateMonitorHCL_ExpectedStatusCode(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	monitor := client.Monitor{
+	monitor := hyperping.Monitor{
 		UUID:               "mon_123",
 		Name:               "Test",
 		URL:                "https://example.com",
 		Protocol:           "http",
-		ExpectedStatusCode: client.FlexibleString("201"),
+		ExpectedStatusCode: hyperping.FlexibleString("201"),
 	}
 
 	g.generateMonitorHCL(&sb, monitor)
@@ -1274,7 +1274,7 @@ func TestGenerateMonitorHCL_EmptyKeyword(t *testing.T) {
 	var sb strings.Builder
 
 	emptyKeyword := ""
-	monitor := client.Monitor{
+	monitor := hyperping.Monitor{
 		UUID:            "mon_123",
 		Name:            "Test",
 		URL:             "https://example.com",
@@ -1295,8 +1295,8 @@ func TestGenerateMonitorHCL_EmptyEscalationPolicy(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	emptyPolicy := ""
-	monitor := client.Monitor{
+	emptyPolicy := hyperping.EscalationPolicyRef{UUID: ""}
+	monitor := hyperping.Monitor{
 		UUID:             "mon_123",
 		Name:             "Test",
 		URL:              "https://example.com",
@@ -1317,7 +1317,7 @@ func TestGenerateMonitorHCL_DefaultHTTPMethod(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	monitor := client.Monitor{
+	monitor := hyperping.Monitor{
 		UUID:       "mon_123",
 		Name:       "Test",
 		URL:        "https://example.com",
@@ -1338,7 +1338,7 @@ func TestGenerateMonitorHCL_EmptyHTTPMethod(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	monitor := client.Monitor{
+	monitor := hyperping.Monitor{
 		UUID:       "mon_123",
 		Name:       "Test",
 		URL:        "https://example.com",
@@ -1364,12 +1364,12 @@ func TestGenerateStatusPageHCL_EmptyHostname(t *testing.T) {
 	var sb strings.Builder
 
 	emptyHostname := ""
-	statusPage := client.StatusPage{
+	statusPage := hyperping.StatusPage{
 		UUID:            "sp_123",
 		Name:            "Test",
 		HostedSubdomain: "test",
 		Hostname:        &emptyHostname,
-		Settings: client.StatusPageSettings{
+		Settings: hyperping.StatusPageSettings{
 			Languages: []string{"en"},
 		},
 	}
@@ -1387,11 +1387,11 @@ func TestGenerateStatusPageHCL_EmptyLanguages(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	statusPage := client.StatusPage{
+	statusPage := hyperping.StatusPage{
 		UUID:            "sp_123",
 		Name:            "Test",
 		HostedSubdomain: "test",
-		Settings: client.StatusPageSettings{
+		Settings: hyperping.StatusPageSettings{
 			Languages: []string{},
 		},
 	}
@@ -1413,10 +1413,10 @@ func TestGenerateIncidentHCL_EmptyText(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	incident := client.Incident{
+	incident := hyperping.Incident{
 		UUID:  "inc_123",
-		Title: client.LocalizedText{En: "Test"},
-		Text:  client.LocalizedText{En: ""},
+		Title: hyperping.LocalizedText{En: "Test"},
+		Text:  hyperping.LocalizedText{En: ""},
 	}
 
 	g.generateIncidentHCL(&sb, incident)
@@ -1432,9 +1432,9 @@ func TestGenerateIncidentHCL_EmptyType(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	incident := client.Incident{
+	incident := hyperping.Incident{
 		UUID:  "inc_123",
-		Title: client.LocalizedText{En: "Test"},
+		Title: hyperping.LocalizedText{En: "Test"},
 		Type:  "",
 	}
 
@@ -1455,10 +1455,10 @@ func TestGenerateMaintenanceHCL_EmptyText(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	maintenance := client.Maintenance{
+	maintenance := hyperping.Maintenance{
 		UUID:  "maint_123",
-		Title: client.LocalizedText{En: "Test"},
-		Text:  client.LocalizedText{En: ""},
+		Title: hyperping.LocalizedText{En: "Test"},
+		Text:  hyperping.LocalizedText{En: ""},
 	}
 
 	g.generateMaintenanceHCL(&sb, maintenance)
@@ -1474,9 +1474,9 @@ func TestGenerateMaintenanceHCL_NilDates(t *testing.T) {
 	g := &Generator{}
 	var sb strings.Builder
 
-	maintenance := client.Maintenance{
+	maintenance := hyperping.Maintenance{
 		UUID:      "maint_123",
-		Title:     client.LocalizedText{En: "Test"},
+		Title:     hyperping.LocalizedText{En: "Test"},
 		StartDate: nil,
 		EndDate:   nil,
 	}

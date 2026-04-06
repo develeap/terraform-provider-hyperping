@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -39,7 +39,7 @@ func NewMonitorResource() resource.Resource {
 
 // MonitorResource defines the resource implementation.
 type MonitorResource struct {
-	client client.MonitorAPI
+	client hyperping.MonitorAPI
 }
 
 // MonitorResourceModel describes the resource data model.
@@ -107,7 +107,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 				Default:             stringdefault.StaticString("http"),
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedProtocols...),
+					stringvalidator.OneOf(hyperping.AllowedProtocols...),
 				},
 			},
 			"http_method": schema.StringAttribute{
@@ -116,14 +116,14 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 				Default:             stringdefault.StaticString("GET"),
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedMethods...),
+					stringvalidator.OneOf(hyperping.AllowedMethods...),
 				},
 			},
 			"check_frequency": schema.Int64Attribute{
 				MarkdownDescription: "Check frequency in seconds. Valid values: `10`, `20`, `30`, `60`, `120`, `180`, `300`, `600`, `1800`, `3600`, `21600`, `43200`, `86400`. Defaults to `60`.",
 				Optional:            true,
 				Computed:            true,
-				Default:             int64default.StaticInt64(client.DefaultMonitorFrequency),
+				Default:             int64default.StaticInt64(hyperping.DefaultMonitorFrequency),
 				Validators: []validator.Int64{
 					int64validator.OneOf(10, 20, 30, 60, 120, 180, 300, 600, 1800, 3600, 21600, 43200, 86400),
 				},
@@ -134,7 +134,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 				ElementType:         types.StringType,
 				Validators: []validator.List{
-					listvalidator.ValueStringsAre(stringvalidator.OneOf(client.AllowedRegions...)),
+					listvalidator.ValueStringsAre(stringvalidator.OneOf(hyperping.AllowedRegions...)),
 				},
 			},
 			"request_headers": schema.ListNestedAttribute{
@@ -216,7 +216,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional: true,
 				Computed: true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedDNSRecordTypes...),
+					stringvalidator.OneOf(hyperping.AllowedDNSRecordTypes...),
 				},
 			},
 			"dns_nameserver": schema.StringAttribute{
@@ -259,9 +259,9 @@ func (r *MonitorResource) Configure(_ context.Context, req resource.ConfigureReq
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperping.Client", req.ProviderData))
 		return
 	}
 
@@ -343,7 +343,7 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	monitor, err := r.client.GetMonitor(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -425,7 +425,7 @@ func (r *MonitorResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 	err := r.client.DeleteMonitor(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			// Already deleted, no error
 			return
 		}
@@ -437,7 +437,7 @@ func (r *MonitorResource) Delete(ctx context.Context, req resource.DeleteRequest
 // ImportState imports an existing resource into Terraform.
 func (r *MonitorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Validate the import ID before setting state (VULN-015)
-	if err := client.ValidateResourceID(req.ID); err != nil {
+	if err := hyperping.ValidateResourceID(req.ID); err != nil {
 		resp.Diagnostics.Append(newImportError("Monitor", err))
 		return
 	}
@@ -482,13 +482,13 @@ func restoreHTTPFieldsForNonHTTP(protocol string, model *MonitorResourceModel, s
 	}
 }
 
-// mapMonitorToModel maps a client.Monitor to the Terraform model.
+// mapMonitorToModel maps a hyperping.Monitor to the Terraform model.
 // Delegates to the shared MapMonitorCommonFields to avoid duplication with data sources.
 //
 // The field-by-field copy is intentional: MonitorResourceModel embeds additional
 // resource-only fields (e.g. Timeouts) that MonitorCommonFields doesn't have,
 // so a direct struct assignment isn't possible.
-func (r *MonitorResource) mapMonitorToModel(monitor *client.Monitor, model *MonitorResourceModel, diags *diag.Diagnostics) {
+func (r *MonitorResource) mapMonitorToModel(monitor *hyperping.Monitor, model *MonitorResourceModel, diags *diag.Diagnostics) {
 	common := MapMonitorCommonFields(monitor, diags)
 	model.ID = common.ID
 	model.Name = common.Name
@@ -516,8 +516,8 @@ func (r *MonitorResource) mapMonitorToModel(monitor *client.Monitor, model *Moni
 
 // buildCreateRequest constructs a CreateMonitorRequest from the Terraform plan.
 // Extracts all required and optional fields from the plan model.
-func (r *MonitorResource) buildCreateRequest(ctx context.Context, plan *MonitorResourceModel, diags *diag.Diagnostics) client.CreateMonitorRequest {
-	createReq := client.CreateMonitorRequest{
+func (r *MonitorResource) buildCreateRequest(ctx context.Context, plan *MonitorResourceModel, diags *diag.Diagnostics) hyperping.CreateMonitorRequest {
+	createReq := hyperping.CreateMonitorRequest{
 		Name:               plan.Name.ValueString(),
 		URL:                plan.URL.ValueString(),
 		Protocol:           plan.Protocol.ValueString(),
@@ -582,8 +582,8 @@ func (r *MonitorResource) handlePostCreatePause(ctx context.Context, monitorID s
 
 // buildUpdateRequest constructs an UpdateMonitorRequest with only changed fields.
 // Compares plan vs state and populates request with differences.
-func (r *MonitorResource) buildUpdateRequest(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, diags *diag.Diagnostics) client.UpdateMonitorRequest {
-	updateReq := client.UpdateMonitorRequest{}
+func (r *MonitorResource) buildUpdateRequest(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, diags *diag.Diagnostics) hyperping.UpdateMonitorRequest {
+	updateReq := hyperping.UpdateMonitorRequest{}
 
 	// Handle simple string and numeric fields
 	r.applySimpleFieldChanges(plan, state, &updateReq)
@@ -596,7 +596,7 @@ func (r *MonitorResource) buildUpdateRequest(ctx context.Context, plan *MonitorR
 
 // applySimpleFieldChanges detects and applies changes for simple scalar fields.
 // Includes: name, url, protocol, http_method, check_frequency, expected_status_code, follow_redirects, paused.
-func (r *MonitorResource) applySimpleFieldChanges(plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *client.UpdateMonitorRequest) {
+func (r *MonitorResource) applySimpleFieldChanges(plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *hyperping.UpdateMonitorRequest) {
 	if !plan.Name.Equal(state.Name) {
 		updateReq.Name = tfStringToPtr(plan.Name)
 	}
@@ -637,11 +637,11 @@ func (r *MonitorResource) applySimpleFieldChanges(plan *MonitorResourceModel, st
 // applyHTTPFieldChanges handles HTTP-specific field changes for monitor updates.
 // Handles: request_headers, request_body, expected_status_code (via UpdateMonitorRequest).
 // Note: http_method, follow_redirects are handled in applySimpleFieldChanges.
-func applyHTTPFieldChanges(plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *client.UpdateMonitorRequest, diags *diag.Diagnostics) {
+func applyHTTPFieldChanges(plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *hyperping.UpdateMonitorRequest, diags *diag.Diagnostics) {
 	// Handle request headers (skip if unknown)
 	if !plan.RequestHeaders.IsUnknown() && !plan.RequestHeaders.Equal(state.RequestHeaders) {
 		if plan.RequestHeaders.IsNull() {
-			emptyHeaders := []client.RequestHeader{}
+			emptyHeaders := []hyperping.RequestHeader{}
 			updateReq.RequestHeaders = &emptyHeaders
 		} else {
 			headers := mapTFListToRequestHeaders(plan.RequestHeaders, diags)
@@ -664,7 +664,7 @@ func applyHTTPFieldChanges(plan *MonitorResourceModel, state *MonitorResourceMod
 
 // applyMonitoringFieldChanges handles monitoring-behavior field changes for monitor updates.
 // Handles: regions, alerts_wait, escalation_policy, required_keyword.
-func applyMonitoringFieldChanges(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *client.UpdateMonitorRequest, diags *diag.Diagnostics) {
+func applyMonitoringFieldChanges(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *hyperping.UpdateMonitorRequest, diags *diag.Diagnostics) {
 	// Handle regions (skip if unknown)
 	if !plan.Regions.IsUnknown() && !plan.Regions.Equal(state.Regions) {
 		if plan.Regions.IsNull() {
@@ -739,7 +739,7 @@ func applyMonitoringFieldChanges(ctx context.Context, plan *MonitorResourceModel
 
 // applyComplexFieldChanges detects and applies changes for complex fields.
 // Dispatches to applyHTTPFieldChanges and applyMonitoringFieldChanges.
-func (r *MonitorResource) applyComplexFieldChanges(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *client.UpdateMonitorRequest, diags *diag.Diagnostics) {
+func (r *MonitorResource) applyComplexFieldChanges(ctx context.Context, plan *MonitorResourceModel, state *MonitorResourceModel, updateReq *hyperping.UpdateMonitorRequest, diags *diag.Diagnostics) {
 	applyHTTPFieldChanges(plan, state, updateReq, diags)
 	applyMonitoringFieldChanges(ctx, plan, state, updateReq, diags)
 }

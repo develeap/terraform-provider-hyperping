@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
@@ -17,14 +17,14 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		monitor  client.Monitor
+		monitor  hyperping.Monitor
 		filter   *MonitorFilterModel
 		expected bool
 		hasError bool
 	}{
 		{
 			name: "empty filter - includes all",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "Test Monitor",
 				Protocol: "http",
 				Paused:   false,
@@ -41,7 +41,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "name regex match",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "[PROD]-API-Health",
 				Protocol: "https",
 				Paused:   false,
@@ -58,7 +58,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "name regex no match",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "[DEV]-API-Health",
 				Protocol: "https",
 				Paused:   false,
@@ -75,7 +75,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "protocol exact match",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "Test Monitor",
 				Protocol: "https",
 				Paused:   false,
@@ -92,7 +92,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "protocol no match",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "Test Monitor",
 				Protocol: "http",
 				Paused:   false,
@@ -109,7 +109,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "paused filter match",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "Test Monitor",
 				Protocol: "http",
 				Paused:   true,
@@ -126,7 +126,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "paused filter no match",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "Test Monitor",
 				Protocol: "http",
 				Paused:   false,
@@ -143,7 +143,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "combined filters - all match",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "[PROD]-API-Monitor",
 				Protocol: "https",
 				Paused:   false,
@@ -160,7 +160,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "combined filters - name matches but protocol doesn't",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "[PROD]-API-Monitor",
 				Protocol: "http",
 				Paused:   false,
@@ -177,7 +177,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "invalid regex",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "Test Monitor",
 				Protocol: "http",
 				Paused:   false,
@@ -194,7 +194,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name: "empty name regex matches all",
-			monitor: client.Monitor{
+			monitor: hyperping.Monitor{
 				Name:     "Any Monitor Name",
 				Protocol: "tcp",
 				Paused:   true,
@@ -211,7 +211,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "status filter up matches up monitor",
-			monitor: client.Monitor{Status: "up"},
+			monitor: hyperping.Monitor{Status: "up"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),
@@ -224,7 +224,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "status filter up excludes down monitor",
-			monitor: client.Monitor{Status: "down"},
+			monitor: hyperping.Monitor{Status: "down"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),
@@ -237,7 +237,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "status filter down matches down monitor",
-			monitor: client.Monitor{Status: "down"},
+			monitor: hyperping.Monitor{Status: "down"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),
@@ -250,7 +250,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "project_uuid filter exact match",
-			monitor: client.Monitor{ProjectUUID: "proj_abc123"},
+			monitor: hyperping.Monitor{ProjectUUID: "proj_abc123"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),
@@ -263,7 +263,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "project_uuid filter no match",
-			monitor: client.Monitor{ProjectUUID: "proj_other"},
+			monitor: hyperping.Monitor{ProjectUUID: "proj_other"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),
@@ -276,7 +276,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "combined status and project_uuid both match",
-			monitor: client.Monitor{Status: "up", ProjectUUID: "proj_abc123"},
+			monitor: hyperping.Monitor{Status: "up", ProjectUUID: "proj_abc123"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),
@@ -289,7 +289,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "combined status matches but project_uuid does not",
-			monitor: client.Monitor{Status: "up", ProjectUUID: "proj_other"},
+			monitor: hyperping.Monitor{Status: "up", ProjectUUID: "proj_other"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),
@@ -302,7 +302,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "nil status filter passes through",
-			monitor: client.Monitor{Status: "down"},
+			monitor: hyperping.Monitor{Status: "down"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),
@@ -315,7 +315,7 @@ func TestMonitorsDataSource_shouldIncludeMonitor(t *testing.T) {
 		},
 		{
 			name:    "nil project_uuid filter passes through",
-			monitor: client.Monitor{ProjectUUID: "proj_any"},
+			monitor: hyperping.Monitor{ProjectUUID: "proj_any"},
 			filter: &MonitorFilterModel{
 				NameRegex:   types.StringNull(),
 				Protocol:    types.StringNull(),

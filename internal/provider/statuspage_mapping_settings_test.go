@@ -10,18 +10,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // TestMapSettingsToTF tests settings mapping
 func TestMapSettingsToTF(t *testing.T) {
 	tests := []struct {
 		name  string
-		input client.StatusPageSettings
+		input hyperping.StatusPageSettings
 	}{
 		{
 			name: "minimal settings",
-			input: client.StatusPageSettings{
+			input: hyperping.StatusPageSettings{
 				Theme:       "system",
 				Font:        "Inter",
 				AccentColor: "#36b27e",
@@ -30,12 +30,12 @@ func TestMapSettingsToTF(t *testing.T) {
 		},
 		{
 			name: "full settings with subscribe",
-			input: client.StatusPageSettings{
+			input: hyperping.StatusPageSettings{
 				Theme:       "dark",
 				Font:        "Roboto",
 				AccentColor: "#0066cc",
 				Languages:   []string{"en", "fr", "de"},
-				Subscribe: client.StatusPageSubscribeSettings{
+				Subscribe: hyperping.StatusPageSubscribeSettings{
 					Enabled: true,
 					Email:   true,
 					SMS:     true,
@@ -46,12 +46,12 @@ func TestMapSettingsToTF(t *testing.T) {
 		},
 		{
 			name: "full settings with authentication",
-			input: client.StatusPageSettings{
+			input: hyperping.StatusPageSettings{
 				Theme:       "light",
 				Font:        "Inter",
 				AccentColor: "#ff0000",
 				Languages:   []string{"en"},
-				Authentication: client.StatusPageAuthenticationSettings{
+				Authentication: hyperping.StatusPageAuthenticationSettings{
 					PasswordProtection: true,
 					GoogleSSO:          false,
 					AllowedDomains:     []string{"example.com", "test.com"},

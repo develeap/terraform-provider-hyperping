@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -35,7 +35,7 @@ func NewIncidentResource() resource.Resource {
 
 // IncidentResource defines the resource implementation.
 type IncidentResource struct {
-	client client.IncidentAPI
+	client hyperping.IncidentAPI
 }
 
 // IncidentResourceModel describes the resource data model.
@@ -87,7 +87,7 @@ func (r *IncidentResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Computed:            true,
 				Default:             stringdefault.StaticString("incident"),
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedIncidentTypes...),
+					stringvalidator.OneOf(hyperping.AllowedIncidentTypes...),
 				},
 			},
 			"affected_components": schema.ListAttribute{
@@ -123,9 +123,9 @@ func (r *IncidentResource) Configure(_ context.Context, req resource.ConfigureRe
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperping.Client", req.ProviderData))
 		return
 	}
 
@@ -142,9 +142,9 @@ func (r *IncidentResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	// Build create request with localized text
-	createReq := client.CreateIncidentRequest{
-		Title: client.LocalizedText{En: plan.Title.ValueString()},
-		Text:  client.LocalizedText{En: plan.Text.ValueString()},
+	createReq := hyperping.CreateIncidentRequest{
+		Title: hyperping.LocalizedText{En: plan.Title.ValueString()},
+		Text:  hyperping.LocalizedText{En: plan.Text.ValueString()},
 		Type:  plan.Type.ValueString(),
 	}
 
@@ -195,7 +195,7 @@ func (r *IncidentResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	incident, err := r.client.GetIncident(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -223,11 +223,11 @@ func (r *IncidentResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	// Build update request
-	updateReq := client.UpdateIncidentRequest{}
+	updateReq := hyperping.UpdateIncidentRequest{}
 
 	// Only include changed fields
 	if !plan.Title.Equal(state.Title) {
-		title := client.LocalizedText{En: plan.Title.ValueString()}
+		title := hyperping.LocalizedText{En: plan.Title.ValueString()}
 		updateReq.Title = &title
 	}
 
@@ -288,7 +288,7 @@ func (r *IncidentResource) Delete(ctx context.Context, req resource.DeleteReques
 
 	err := r.client.DeleteIncident(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			// Already deleted, no error
 			return
 		}
@@ -300,15 +300,15 @@ func (r *IncidentResource) Delete(ctx context.Context, req resource.DeleteReques
 // ImportState imports an existing resource into Terraform.
 func (r *IncidentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Validate the import ID before setting state (VULN-015)
-	if err := client.ValidateResourceID(req.ID); err != nil {
+	if err := hyperping.ValidateResourceID(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid Import ID", fmt.Sprintf("Cannot import incident: %s", err))
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// mapIncidentToModel maps a client.Incident to the Terraform model.
-func (r *IncidentResource) mapIncidentToModel(incident *client.Incident, model *IncidentResourceModel, diags *diag.Diagnostics) {
+// mapIncidentToModel maps a hyperping.Incident to the Terraform model.
+func (r *IncidentResource) mapIncidentToModel(incident *hyperping.Incident, model *IncidentResourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(incident.UUID)
 	model.Title = types.StringValue(incident.Title.En)
 

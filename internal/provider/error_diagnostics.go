@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // ValidValueReference returns a formatted reference table of valid values for
@@ -32,12 +32,12 @@ func ValidValueReference(resourceType string) string {
 func buildMonitorReference() string {
 	var b strings.Builder
 	b.WriteString("\nQuick Reference (valid values):\n")
-	fmt.Fprintf(&b, "  protocol:             %s\n", strings.Join(client.AllowedProtocols, ", "))
-	fmt.Fprintf(&b, "  http_method:          %s\n", strings.Join(client.AllowedMethods, ", "))
-	fmt.Fprintf(&b, "  check_frequency:      %s\n", formatIntSlice(client.AllowedFrequencies))
+	fmt.Fprintf(&b, "  protocol:             %s\n", strings.Join(hyperping.AllowedProtocols, ", "))
+	fmt.Fprintf(&b, "  http_method:          %s\n", strings.Join(hyperping.AllowedMethods, ", "))
+	fmt.Fprintf(&b, "  check_frequency:      %s\n", formatIntSlice(hyperping.AllowedFrequencies))
 	b.WriteString("  expected_status_code: Specific code (200), wildcard (2xx), or range (1xx-3xx)\n")
-	fmt.Fprintf(&b, "  regions:              %s\n", strings.Join(client.AllowedRegions, ", "))
-	fmt.Fprintf(&b, "  dns_record_type:      %s\n", strings.Join(client.AllowedDNSRecordTypes, ", "))
+	fmt.Fprintf(&b, "  regions:              %s\n", strings.Join(hyperping.AllowedRegions, ", "))
+	fmt.Fprintf(&b, "  dns_record_type:      %s\n", strings.Join(hyperping.AllowedDNSRecordTypes, ", "))
 	fmt.Fprintf(&b, "  alerts_wait:          %s\n", formatAlertsWaitValues())
 	return b.String()
 }
@@ -46,7 +46,7 @@ func buildMonitorReference() string {
 func buildMaintenanceReference() string {
 	var b strings.Builder
 	b.WriteString("\nQuick Reference (valid values):\n")
-	fmt.Fprintf(&b, "  notification_option:  %s\n", strings.Join(client.AllowedNotificationOptions, ", "))
+	fmt.Fprintf(&b, "  notification_option:  %s\n", strings.Join(hyperping.AllowedNotificationOptions, ", "))
 	return b.String()
 }
 
@@ -73,6 +73,6 @@ func formatAlertsWaitValues() string {
 func buildIncidentReference() string {
 	var b strings.Builder
 	b.WriteString("\nQuick Reference (valid values):\n")
-	fmt.Fprintf(&b, "  type:                 %s\n", strings.Join(client.AllowedIncidentTypes, ", "))
+	fmt.Fprintf(&b, "  type:                 %s\n", strings.Join(hyperping.AllowedIncidentTypes, ", "))
 	return b.String()
 }

@@ -11,14 +11,14 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestWarnUnresolvedNumericUUIDs_DetectsDrift(t *testing.T) {
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{UUID: "117896"},     // drifted
 					{UUID: "mon_abc123"}, // correct
 					{UUID: "118001"},     // drifted
@@ -44,10 +44,10 @@ func TestWarnUnresolvedNumericUUIDs_DetectsDrift(t *testing.T) {
 }
 
 func TestWarnUnresolvedNumericUUIDs_NoWarningWhenClean(t *testing.T) {
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{UUID: "mon_abc123"},
 					{UUID: "mon_def456"},
 				},
@@ -64,14 +64,14 @@ func TestWarnUnresolvedNumericUUIDs_NoWarningWhenClean(t *testing.T) {
 }
 
 func TestWarnUnresolvedNumericUUIDs_NestedDrift(t *testing.T) {
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{
 						IsGroup: true,
 						UUID:    "",
-						Services: []client.StatusPageService{
+						Services: []hyperping.StatusPageService{
 							{UUID: "117896"},
 						},
 					},
@@ -98,10 +98,10 @@ func TestWarnUnresolvedNumericUUIDs_NilStatusPage(t *testing.T) {
 }
 
 func TestWarnUnresolvedNumericUUIDs_EmptyUUIDSkipped(t *testing.T) {
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{UUID: "", IsGroup: true}, // group header, no UUID
 					{UUID: "mon_abc123"},
 				},
@@ -142,11 +142,11 @@ func TestIsNumericString(t *testing.T) {
 // --- Tests for buildMonitorIDMaps ---
 
 func TestBuildMonitorIDMaps_HappyPath(t *testing.T) {
-	monitors := []client.Monitor{
+	monitors := []hyperping.Monitor{
 		{ID: 117896, UUID: "mon_abc123"},
 		{ID: 118001, UUID: "mon_def456"},
 	}
-	listFn := func(_ context.Context) ([]client.Monitor, error) {
+	listFn := func(_ context.Context) ([]hyperping.Monitor, error) {
 		return monitors, nil
 	}
 
@@ -170,8 +170,8 @@ func TestBuildMonitorIDMaps_HappyPath(t *testing.T) {
 }
 
 func TestBuildMonitorIDMaps_EmptyList(t *testing.T) {
-	listFn := func(_ context.Context) ([]client.Monitor, error) {
-		return []client.Monitor{}, nil
+	listFn := func(_ context.Context) ([]hyperping.Monitor, error) {
+		return []hyperping.Monitor{}, nil
 	}
 
 	maps, err := buildMonitorIDMaps(context.Background(), listFn)
@@ -185,7 +185,7 @@ func TestBuildMonitorIDMaps_EmptyList(t *testing.T) {
 }
 
 func TestBuildMonitorIDMaps_APIError(t *testing.T) {
-	listFn := func(_ context.Context) ([]client.Monitor, error) {
+	listFn := func(_ context.Context) ([]hyperping.Monitor, error) {
 		return nil, fmt.Errorf("API unavailable")
 	}
 
@@ -210,10 +210,10 @@ func TestTranslateSectionsUUIDsToNumericIDs_TopLevel(t *testing.T) {
 	}
 	monUUID1 := "mon_abc123"
 	monUUID2 := "mon_def456"
-	sections := []client.CreateStatusPageSection{
+	sections := []hyperping.CreateStatusPageSection{
 		{
 			Name: "Services",
-			Services: []client.CreateStatusPageService{
+			Services: []hyperping.CreateStatusPageService{
 				{MonitorUUID: &monUUID1},
 				{MonitorUUID: &monUUID2},
 			},
@@ -242,13 +242,13 @@ func TestTranslateSectionsUUIDsToNumericIDs_NestedServices(t *testing.T) {
 	nestedUUID1 := "mon_nested1"
 	nestedUUID2 := "mon_nested2"
 	isGroup := true
-	sections := []client.CreateStatusPageSection{
+	sections := []hyperping.CreateStatusPageSection{
 		{
 			Name: "Groups",
-			Services: []client.CreateStatusPageService{
+			Services: []hyperping.CreateStatusPageService{
 				{
 					IsGroup: &isGroup,
-					Services: []client.CreateStatusPageService{
+					Services: []hyperping.CreateStatusPageService{
 						{UUID: &nestedUUID1},
 						{UUID: &nestedUUID2},
 					},
@@ -277,10 +277,10 @@ func TestTranslateSectionsUUIDsToNumericIDs_UnresolvableError(t *testing.T) {
 	}
 	knownUUID := "mon_abc123"
 	unknownUUID := "mon_unknown"
-	sections := []client.CreateStatusPageSection{
+	sections := []hyperping.CreateStatusPageSection{
 		{
 			Name: "Services",
-			Services: []client.CreateStatusPageService{
+			Services: []hyperping.CreateStatusPageService{
 				{MonitorUUID: &knownUUID},
 				{MonitorUUID: &unknownUUID},
 			},
@@ -323,11 +323,11 @@ func TestTranslateCreateServicesToNumericIDs_MixedFields(t *testing.T) {
 	topUUID := "mon_top"
 	nestedUUID := "mon_nested"
 	isGroup := true
-	services := []client.CreateStatusPageService{
+	services := []hyperping.CreateStatusPageService{
 		{MonitorUUID: &topUUID},
 		{
 			IsGroup: &isGroup,
-			Services: []client.CreateStatusPageService{
+			Services: []hyperping.CreateStatusPageService{
 				{UUID: &nestedUUID},
 			},
 		},
@@ -354,10 +354,10 @@ func TestTranslateResponseNumericIDsToUUIDs_NumericToMon(t *testing.T) {
 		"117896": "mon_abc123",
 		"118001": "mon_def456",
 	}
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{UUID: "117896"},
 					{UUID: "118001"},
 				},
@@ -383,10 +383,10 @@ func TestTranslateResponseNumericIDsToUUIDs_AlreadyMon(t *testing.T) {
 	idToUUID := map[string]string{
 		"117896": "mon_abc123",
 	}
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{UUID: "mon_abc123"}, // already mon_xxx, should not be touched
 				},
 			},
@@ -408,10 +408,10 @@ func TestTranslateResponseNumericIDsToUUIDs_UnresolvableWarns(t *testing.T) {
 	idToUUID := map[string]string{
 		"117896": "mon_abc123",
 	}
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{UUID: "117896"},
 					{UUID: "999999"}, // unknown numeric ID
 				},
@@ -448,14 +448,14 @@ func TestTranslateResponseNumericIDsToUUIDs_NestedServices(t *testing.T) {
 	idToUUID := map[string]string{
 		"300": "mon_nested",
 	}
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{
 						IsGroup: true,
 						UUID:    "",
-						Services: []client.StatusPageService{
+						Services: []hyperping.StatusPageService{
 							{UUID: "300"},
 						},
 					},
@@ -479,7 +479,7 @@ func TestTranslateResponseNumericIDsToUUIDs_NestedServices(t *testing.T) {
 
 func TestCollectDriftedUUIDs_EmptyServices(t *testing.T) {
 	var drifted []string
-	collectDriftedUUIDs([]client.StatusPageService{}, &drifted)
+	collectDriftedUUIDs([]hyperping.StatusPageService{}, &drifted)
 
 	if len(drifted) != 0 {
 		t.Errorf("expected 0 drifted UUIDs, got %d: %v", len(drifted), drifted)
@@ -496,7 +496,7 @@ func TestCollectDriftedUUIDs_NilServices(t *testing.T) {
 }
 
 func TestCollectDriftedUUIDs_SingleNumericUUID(t *testing.T) {
-	services := []client.StatusPageService{
+	services := []hyperping.StatusPageService{
 		{UUID: "12345"},
 	}
 
@@ -512,7 +512,7 @@ func TestCollectDriftedUUIDs_SingleNumericUUID(t *testing.T) {
 }
 
 func TestCollectDriftedUUIDs_SingleMonUUID_NotCollected(t *testing.T) {
-	services := []client.StatusPageService{
+	services := []hyperping.StatusPageService{
 		{UUID: "mon_abc123"},
 	}
 
@@ -525,7 +525,7 @@ func TestCollectDriftedUUIDs_SingleMonUUID_NotCollected(t *testing.T) {
 }
 
 func TestCollectDriftedUUIDs_MixedAtSameLevel(t *testing.T) {
-	services := []client.StatusPageService{
+	services := []hyperping.StatusPageService{
 		{UUID: "11111"},
 		{UUID: "mon_abc"},
 		{UUID: "22222"},
@@ -548,11 +548,11 @@ func TestCollectDriftedUUIDs_MixedAtSameLevel(t *testing.T) {
 }
 
 func TestCollectDriftedUUIDs_NestedGroupWithNumericChildren(t *testing.T) {
-	services := []client.StatusPageService{
+	services := []hyperping.StatusPageService{
 		{
 			UUID:    "mon_group",
 			IsGroup: true,
-			Services: []client.StatusPageService{
+			Services: []hyperping.StatusPageService{
 				{UUID: "44444"},
 				{UUID: "55555"},
 			},
@@ -571,13 +571,13 @@ func TestCollectDriftedUUIDs_NestedGroupWithNumericChildren(t *testing.T) {
 }
 
 func TestCollectDriftedUUIDs_DeepNesting(t *testing.T) {
-	services := []client.StatusPageService{
+	services := []hyperping.StatusPageService{
 		{
 			UUID: "mon_abc",
-			Services: []client.StatusPageService{
+			Services: []hyperping.StatusPageService{
 				{
 					UUID: "12345",
-					Services: []client.StatusPageService{
+					Services: []hyperping.StatusPageService{
 						{UUID: "67890"},
 						{UUID: "mon_deep"},
 					},
@@ -598,16 +598,16 @@ func TestCollectDriftedUUIDs_DeepNesting(t *testing.T) {
 }
 
 func TestCollectDriftedUUIDs_FourLevelsDeep(t *testing.T) {
-	services := []client.StatusPageService{
+	services := []hyperping.StatusPageService{
 		{
 			UUID: "mon_l1",
-			Services: []client.StatusPageService{
+			Services: []hyperping.StatusPageService{
 				{
 					UUID: "mon_l2",
-					Services: []client.StatusPageService{
+					Services: []hyperping.StatusPageService{
 						{
 							UUID: "mon_l3",
-							Services: []client.StatusPageService{
+							Services: []hyperping.StatusPageService{
 								{UUID: "99999"},
 							},
 						},
@@ -629,7 +629,7 @@ func TestCollectDriftedUUIDs_FourLevelsDeep(t *testing.T) {
 }
 
 func TestCollectDriftedUUIDs_EmptyUUIDSkipped(t *testing.T) {
-	services := []client.StatusPageService{
+	services := []hyperping.StatusPageService{
 		{UUID: ""},
 		{UUID: "mon_abc"},
 	}
@@ -678,8 +678,8 @@ func TestIsNumericString_AdditionalCases(t *testing.T) {
 // --- Additional warnUnresolvedNumericUUIDs tests ---
 
 func TestWarnUnresolvedNumericUUIDs_EmptySections(t *testing.T) {
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{},
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{},
 	}
 
 	var diags diag.Diagnostics
@@ -691,15 +691,15 @@ func TestWarnUnresolvedNumericUUIDs_EmptySections(t *testing.T) {
 }
 
 func TestWarnUnresolvedNumericUUIDs_SectionsWithDriftedUUIDs(t *testing.T) {
-	sp := &client.StatusPage{
-		Sections: []client.StatusPageSection{
+	sp := &hyperping.StatusPage{
+		Sections: []hyperping.StatusPageSection{
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{UUID: "11111"},
 				},
 			},
 			{
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{UUID: "22222"},
 				},
 			},

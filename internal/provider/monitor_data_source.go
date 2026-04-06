@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -28,7 +28,7 @@ func NewMonitorDataSource() datasource.DataSource {
 
 // MonitorDataSource defines the data source implementation for a single monitor.
 type MonitorDataSource struct {
-	client client.MonitorAPI
+	client hyperping.MonitorAPI
 }
 
 // MonitorDataSourceModel describes the data source data model.
@@ -180,11 +180,11 @@ func (d *MonitorDataSource) Configure(_ context.Context, req datasource.Configur
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -201,7 +201,7 @@ func (d *MonitorDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	if err := client.ValidateResourceID(config.ID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(config.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Invalid Monitor ID", fmt.Sprintf("Cannot look up monitor: %s", err))
 		return
 	}
@@ -220,8 +220,8 @@ func (d *MonitorDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }
 
-// mapMonitorToDataSourceModel maps a client.Monitor to the data source model.
-func (d *MonitorDataSource) mapMonitorToDataSourceModel(monitor *client.Monitor, model *MonitorDataSourceModel, diags *diag.Diagnostics) {
+// mapMonitorToDataSourceModel maps a hyperping.Monitor to the data source model.
+func (d *MonitorDataSource) mapMonitorToDataSourceModel(monitor *hyperping.Monitor, model *MonitorDataSourceModel, diags *diag.Diagnostics) {
 	fields := MapMonitorCommonFields(monitor, diags)
 
 	model.ID = fields.ID

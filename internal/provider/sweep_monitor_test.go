@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // sweepMonitors deletes all test monitors (those prefixed with "tf-acc-test-")
@@ -31,7 +31,7 @@ func sweepMonitors(region string) error {
 		if strings.HasPrefix(monitor.Name, "tf-acc-test-") {
 			log.Printf("[INFO] Deleting monitor: %s (UUID: %s)", monitor.Name, monitor.UUID)
 			if err := c.DeleteMonitor(ctx, monitor.UUID); err != nil {
-				if client.IsNotFound(err) {
+				if hyperping.IsNotFound(err) {
 					log.Printf("[WARN] Monitor %s already deleted", monitor.UUID)
 					continue
 				}
@@ -46,7 +46,7 @@ func sweepMonitors(region string) error {
 
 // sharedClientForRegion creates a Hyperping client for sweeper operations
 // region parameter is required by Sweeper interface but unused (Hyperping has no regional endpoints)
-func sharedClientForRegion(_ string) (*client.Client, error) {
+func sharedClientForRegion(_ string) (*hyperping.Client, error) {
 	apiKey := os.Getenv("HYPERPING_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("HYPERPING_API_KEY must be set for sweepers")
@@ -57,5 +57,5 @@ func sharedClientForRegion(_ string) (*client.Client, error) {
 		baseURL = "https://api.hyperping.io"
 	}
 
-	return client.NewClient(apiKey, client.WithBaseURL(baseURL)), nil
+	return hyperping.NewClient(apiKey, hyperping.WithBaseURL(baseURL)), nil
 }

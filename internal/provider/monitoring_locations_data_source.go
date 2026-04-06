@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -48,8 +48,8 @@ type monitoringLocationMetadata struct {
 	CloudRegion string
 }
 
-// monitoringLocations maps region codes from client.AllowedRegions to metadata.
-// monitoringLocations maps region codes from client.AllowedRegions to metadata.
+// monitoringLocations maps region codes from hyperping.AllowedRegions to metadata.
+// monitoringLocations maps region codes from hyperping.AllowedRegions to metadata.
 // Hyperping uses DigitalOcean infrastructure. CloudRegion values are approximate
 // DigitalOcean datacenter identifiers where available.
 var monitoringLocations = map[string]monitoringLocationMetadata{
@@ -129,16 +129,16 @@ func (d *MonitoringLocationsDataSource) Schema(_ context.Context, _ datasource.S
 func (d *MonitoringLocationsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var model MonitoringLocationsDataSourceModel
 
-	// Build locations list in a deterministic order from client.AllowedRegions
-	model.Locations = make([]MonitoringLocationModel, len(client.AllowedRegions))
-	ids := make([]string, len(client.AllowedRegions))
+	// Build locations list in a deterministic order from hyperping.AllowedRegions
+	model.Locations = make([]MonitoringLocationModel, len(hyperping.AllowedRegions))
+	ids := make([]string, len(hyperping.AllowedRegions))
 
-	for i, regionID := range client.AllowedRegions {
+	for i, regionID := range hyperping.AllowedRegions {
 		meta, ok := monitoringLocations[regionID]
 		if !ok {
 			resp.Diagnostics.Append(diag.NewWarningDiagnostic(
 				"Missing Region Metadata",
-				fmt.Sprintf("Region %q from client.AllowedRegions has no metadata entry. "+
+				fmt.Sprintf("Region %q from hyperping.AllowedRegions has no metadata entry. "+
 					"It will appear with empty name, continent, and cloud_region.", regionID),
 			))
 		}

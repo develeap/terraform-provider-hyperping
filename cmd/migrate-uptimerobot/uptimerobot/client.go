@@ -47,13 +47,13 @@ const (
 	baseURL = "https://api.uptimerobot.com/v2"
 )
 
-// Client is an UptimeRobot API client.
+// Client is an UptimeRobot API hyperping.
 type Client struct {
 	apiKey     string
 	httpClient *http.Client
 }
 
-// NewClient creates a new UptimeRobot API client.
+// NewClient creates a new UptimeRobot API hyperping.
 func NewClient(apiKey string) *Client {
 	return &Client{
 		apiKey: apiKey,

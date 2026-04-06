@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
@@ -17,14 +17,14 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		healthcheck client.Healthcheck
+		healthcheck hyperping.Healthcheck
 		filter      *HealthcheckFilterModel
 		expected    bool
 		hasError    bool
 	}{
 		{
 			name: "empty filter - includes all",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Daily Backup Check",
 				IsDown: false,
 			},
@@ -37,7 +37,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "name regex match",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Backup-DB-Daily",
 				IsDown: false,
 			},
@@ -50,7 +50,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "name regex no match",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Cron-Job-Monitor",
 				IsDown: false,
 			},
@@ -63,7 +63,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "status filter down - match",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Test Healthcheck",
 				IsDown: true,
 			},
@@ -76,7 +76,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "status filter down - no match",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Test Healthcheck",
 				IsDown: false,
 			},
@@ -89,7 +89,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "status filter up - match",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Test Healthcheck",
 				IsDown: false,
 			},
@@ -102,7 +102,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "status filter up - no match",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Test Healthcheck",
 				IsDown: true,
 			},
@@ -115,7 +115,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "combined filters - all match",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Backup-Daily-Cron",
 				IsDown: false,
 			},
@@ -128,7 +128,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "combined filters - name matches but status doesn't",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Backup-Daily-Cron",
 				IsDown: true,
 			},
@@ -141,7 +141,7 @@ func TestHealthchecksDataSource_shouldIncludeHealthcheck(t *testing.T) {
 		},
 		{
 			name: "invalid regex",
-			healthcheck: client.Healthcheck{
+			healthcheck: hyperping.Healthcheck{
 				Name:   "Test Healthcheck",
 				IsDown: false,
 			},

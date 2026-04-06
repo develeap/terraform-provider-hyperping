@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // headerScenario defines a single scenario for header mapping tests.
@@ -160,7 +160,7 @@ func assertDiagSummaryFound(t *testing.T, diags diag.Diagnostics, wantSummary st
 }
 
 // assertHeaderCount checks the number of headers in the result.
-func assertHeaderCount(t *testing.T, result []client.RequestHeader, wantCount int) {
+func assertHeaderCount(t *testing.T, result []hyperping.RequestHeader, wantCount int) {
 	t.Helper()
 	if len(result) != wantCount {
 		t.Errorf("expected %d headers, got %d", wantCount, len(result))
@@ -168,7 +168,7 @@ func assertHeaderCount(t *testing.T, result []client.RequestHeader, wantCount in
 }
 
 // assertFirstHeaderName checks the name of the first header when a name is expected.
-func assertFirstHeaderName(t *testing.T, result []client.RequestHeader, wantName string) {
+func assertFirstHeaderName(t *testing.T, result []hyperping.RequestHeader, wantName string) {
 	t.Helper()
 	if wantName == "" || len(result) == 0 {
 		return

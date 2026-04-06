@@ -10,7 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // =============================================================================
@@ -48,6 +49,21 @@ func TestServiceIDToString(t *testing.T) {
 			name:  "other type uses fmt Sprintf fallback",
 			input: true,
 			want:  "true",
+		},
+		{
+			name:  "FlexibleString pointer returns string value",
+			input: testutil.Ptr(hyperping.FlexibleString("svc_flex")),
+			want:  "svc_flex",
+		},
+		{
+			name:  "nil FlexibleString pointer returns empty string",
+			input: (*hyperping.FlexibleString)(nil),
+			want:  "",
+		},
+		{
+			name:  "FlexibleString value returns string value",
+			input: hyperping.FlexibleString("svc_val"),
+			want:  "svc_val",
 		},
 	}
 
@@ -104,7 +120,7 @@ func keysOf(m map[string]attr.Type) []string {
 func TestMapNestedServicesToTF(t *testing.T) {
 	t.Run("empty slice returns null list", func(t *testing.T) {
 		var d diag.Diagnostics
-		result := mapNestedServicesToTF([]client.StatusPageService{}, nil, &d)
+		result := mapNestedServicesToTF([]hyperping.StatusPageService{}, nil, &d)
 
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
@@ -127,8 +143,8 @@ func TestMapNestedServicesToTF(t *testing.T) {
 	})
 
 	t.Run("single nested service maps all fields", func(t *testing.T) {
-		svc := client.StatusPageService{
-			ID:                "svc_nested_1",
+		svc := hyperping.StatusPageService{
+			ID:                testutil.Ptr(hyperping.FlexibleString("svc_nested_1")),
 			UUID:              "mon_nested_uuid",
 			Name:              map[string]string{"en": "Nested Monitor"},
 			IsGroup:           false,
@@ -137,7 +153,7 @@ func TestMapNestedServicesToTF(t *testing.T) {
 		}
 
 		var d diag.Diagnostics
-		result := mapNestedServicesToTF([]client.StatusPageService{svc}, nil, &d)
+		result := mapNestedServicesToTF([]hyperping.StatusPageService{svc}, nil, &d)
 
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
@@ -159,15 +175,15 @@ func TestMapNestedServicesToTF(t *testing.T) {
 		assertNestedServiceObj(t, obj, "svc_nested_1", "mon_nested_uuid", "Nested Monitor", false, true, true)
 	})
 
-	t.Run("integer ID (float64 after JSON unmarshal) converts to string", func(t *testing.T) {
-		svc := client.StatusPageService{
-			ID:   float64(117122),
+	t.Run("integer ID converts to string", func(t *testing.T) {
+		svc := hyperping.StatusPageService{
+			ID:   testutil.Ptr(hyperping.FlexibleString("117122")),
 			UUID: "mon_int_id",
 			Name: map[string]string{"en": "Int ID Service"},
 		}
 
 		var d diag.Diagnostics
-		result := mapNestedServicesToTF([]client.StatusPageService{svc}, nil, &d)
+		result := mapNestedServicesToTF([]hyperping.StatusPageService{svc}, nil, &d)
 
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
@@ -190,14 +206,14 @@ func TestMapNestedServicesToTF(t *testing.T) {
 	})
 
 	t.Run("configuredLangs filters name map", func(t *testing.T) {
-		svc := client.StatusPageService{
-			ID:   "svc_lang",
+		svc := hyperping.StatusPageService{
+			ID:   testutil.Ptr(hyperping.FlexibleString("svc_lang")),
 			UUID: "mon_lang",
 			Name: map[string]string{"en": "English Name", "fr": "French Name"},
 		}
 
 		var d diag.Diagnostics
-		result := mapNestedServicesToTF([]client.StatusPageService{svc}, []string{"en"}, &d)
+		result := mapNestedServicesToTF([]hyperping.StatusPageService{svc}, []string{"en"}, &d)
 
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
@@ -226,8 +242,8 @@ func TestMapNestedServicesToTF(t *testing.T) {
 
 	t.Run("diags remain clean on success", func(t *testing.T) {
 		var d diag.Diagnostics
-		svc := client.StatusPageService{ID: "svc_ok", UUID: "mon_ok", Name: map[string]string{"en": "OK"}}
-		mapNestedServicesToTF([]client.StatusPageService{svc}, nil, &d)
+		svc := hyperping.StatusPageService{ID: testutil.Ptr(hyperping.FlexibleString("svc_ok")), UUID: "mon_ok", Name: map[string]string{"en": "OK"}}
+		mapNestedServicesToTF([]hyperping.StatusPageService{svc}, nil, &d)
 		if d.HasError() {
 			t.Errorf("expected clean diags, got: %v", d.Errors())
 		}
@@ -371,22 +387,22 @@ func TestMapTFToNestedServices(t *testing.T) {
 // and flat services.
 func TestNestedServiceRoundTrip(t *testing.T) {
 	t.Run("group service with nested children round-trips correctly", func(t *testing.T) {
-		child1 := client.StatusPageService{
-			ID:   float64(117122),
+		child1 := hyperping.StatusPageService{
+			ID:   testutil.Ptr(hyperping.FlexibleString("117122")),
 			UUID: "mon_child1",
 			Name: map[string]string{"en": "Child One"},
 		}
-		child2 := client.StatusPageService{
-			ID:   float64(117123),
+		child2 := hyperping.StatusPageService{
+			ID:   testutil.Ptr(hyperping.FlexibleString("117123")),
 			UUID: "mon_child2",
 			Name: map[string]string{"en": "Child Two"},
 		}
-		groupSvc := client.StatusPageService{
-			ID:       "grp_1",
+		groupSvc := hyperping.StatusPageService{
+			ID:       testutil.Ptr(hyperping.FlexibleString("grp_1")),
 			UUID:     "",
 			Name:     map[string]string{"en": "My Group"},
 			IsGroup:  true,
-			Services: []client.StatusPageService{child1, child2},
+			Services: []hyperping.StatusPageService{child1, child2},
 		}
 
 		// Step 1: API → TF (read path)
@@ -439,8 +455,8 @@ func TestNestedServiceRoundTrip(t *testing.T) {
 	})
 
 	t.Run("flat service round-trips with MonitorUUID and null nested services", func(t *testing.T) {
-		flatSvc := client.StatusPageService{
-			ID:                "svc_flat",
+		flatSvc := hyperping.StatusPageService{
+			ID:                testutil.Ptr(hyperping.FlexibleString("svc_flat")),
 			UUID:              "mon_flat_uuid",
 			Name:              map[string]string{"en": "Flat Monitor"},
 			IsGroup:           false,
@@ -707,7 +723,7 @@ func TestServiceIDNeverSentToAPI(t *testing.T) {
 	// Exhaustive field assertion: list every field of CreateStatusPageService so
 	// the compiler keeps us honest. If an ID field were added, this block would
 	// need updating — making the regression visible in review.
-	_ = client.CreateStatusPageService{
+	_ = hyperping.CreateStatusPageService{
 		MonitorUUID:       result.MonitorUUID,
 		UUID:              result.UUID,
 		NameShown:         result.NameShown,
@@ -729,8 +745,8 @@ func TestServiceIDNeverSentToAPI(t *testing.T) {
 // Terraform treats null and empty list differently in state — null means "not
 // configured" and must be preserved to avoid spurious plan diffs.
 func TestMapServiceToTFWithFilter_NonGroupHasNullServices(t *testing.T) {
-	flatSvc := client.StatusPageService{
-		ID:                "svc_flat_test",
+	flatSvc := hyperping.StatusPageService{
+		ID:                testutil.Ptr(hyperping.FlexibleString("svc_flat_test")),
 		UUID:              "mon_flat_test",
 		Name:              map[string]string{"en": "Flat Service"},
 		IsGroup:           false,

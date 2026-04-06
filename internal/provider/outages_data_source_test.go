@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewOutagesDataSource(t *testing.T) {
@@ -61,7 +61,7 @@ func TestOutagesDataSource_Schema(t *testing.T) {
 func TestOutagesDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &OutagesDataSource{}
-		c := &client.Client{}
+		c := &hyperping.Client{}
 
 		req := datasource.ConfigureRequest{
 			ProviderData: c,
@@ -116,11 +116,11 @@ func TestOutagesDataSource_mapOutageToDataModel(t *testing.T) {
 	t.Run("all fields populated", func(t *testing.T) {
 		endDate := "2026-02-01T15:00:00Z"
 
-		outage := &client.Outage{
+		outage := &hyperping.Outage{
 			UUID:      "outage-full",
 			StartDate: "2026-02-01T14:00:00Z",
 			EndDate:   &endDate,
-			Monitor: client.MonitorReference{
+			Monitor: hyperping.MonitorReference{
 				UUID:     "mon-full",
 				Name:     "Full Monitor",
 				URL:      "https://full.example.com",
@@ -132,7 +132,7 @@ func TestOutagesDataSource_mapOutageToDataModel(t *testing.T) {
 			IsResolved:       true,
 			DurationMs:       3600000,
 			DetectedLocation: "frankfurt",
-			AcknowledgedBy: &client.AcknowledgedByUser{
+			AcknowledgedBy: &hyperping.AcknowledgedByUser{
 				UUID:  "user-full",
 				Email: "user@example.com",
 				Name:  "Test User",
@@ -156,11 +156,11 @@ func TestOutagesDataSource_mapOutageToDataModel(t *testing.T) {
 	})
 
 	t.Run("minimal fields", func(t *testing.T) {
-		outage := &client.Outage{
+		outage := &hyperping.Outage{
 			UUID:      "outage-min",
 			StartDate: "2026-02-05T10:00:00Z",
 			EndDate:   nil,
-			Monitor: client.MonitorReference{
+			Monitor: hyperping.MonitorReference{
 				UUID:     "mon-min",
 				Name:     "Min",
 				URL:      "https://min.com",

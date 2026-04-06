@@ -9,7 +9,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // sweepIncidents deletes all test incidents (those with title prefixed with "tf-acc-test-")
@@ -30,7 +30,7 @@ func sweepIncidents(_ string) error {
 		if strings.HasPrefix(incident.Title.En, "tf-acc-test-") {
 			log.Printf("[INFO] Deleting incident: %s (UUID: %s)", incident.Title.En, incident.UUID)
 			if err := c.DeleteIncident(ctx, incident.UUID); err != nil {
-				if client.IsNotFound(err) {
+				if hyperping.IsNotFound(err) {
 					log.Printf("[WARN] Incident %s already deleted", incident.UUID)
 					continue
 				}

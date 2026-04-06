@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
@@ -1026,11 +1026,11 @@ func TestValidateConfig_NullURL(t *testing.T) {
 func newMinimalMockServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 		switch {
-		case r.Method == "GET" && r.URL.Path == client.MonitorsBasePath:
+		case r.Method == "GET" && r.URL.Path == hyperping.MonitorsBasePath:
 			json.NewEncoder(w).Encode([]interface{}{})
-		case r.Method == "POST" && r.URL.Path == client.MonitorsBasePath:
+		case r.Method == "POST" && r.URL.Path == hyperping.MonitorsBasePath:
 			json.NewEncoder(w).Encode(map[string]interface{}{"uuid": "test-uuid"})
 		case r.Method == "GET":
 			json.NewEncoder(w).Encode(map[string]interface{}{

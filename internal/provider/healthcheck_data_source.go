@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -27,7 +27,7 @@ func NewHealthcheckDataSource() datasource.DataSource {
 
 // HealthcheckDataSource defines the data source implementation for a single healthcheck.
 type HealthcheckDataSource struct {
-	client client.HealthcheckAPI
+	client hyperping.HealthcheckAPI
 }
 
 // HealthcheckDataSourceModel describes the data source data model.
@@ -135,11 +135,11 @@ func (d *HealthcheckDataSource) Configure(_ context.Context, req datasource.Conf
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -156,7 +156,7 @@ func (d *HealthcheckDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	if err := client.ValidateResourceID(config.ID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(config.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Invalid Healthcheck ID", fmt.Sprintf("Cannot look up healthcheck: %s", err))
 		return
 	}
@@ -172,9 +172,9 @@ func (d *HealthcheckDataSource) Read(ctx context.Context, req datasource.ReadReq
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }
 
-// mapHealthcheckToDataSourceModel maps a client.Healthcheck to the data source model
+// mapHealthcheckToDataSourceModel maps a hyperping.Healthcheck to the data source model
 // using the shared HealthcheckCommonFields mapping.
-func mapHealthcheckToDataSourceModel(hc *client.Healthcheck, model *HealthcheckDataSourceModel) {
+func mapHealthcheckToDataSourceModel(hc *hyperping.Healthcheck, model *HealthcheckDataSourceModel) {
 	f := MapHealthcheckCommonFields(hc)
 	model.ID = f.ID
 	model.Name = f.Name

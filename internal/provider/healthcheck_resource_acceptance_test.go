@@ -15,7 +15,7 @@ import (
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestAccHealthcheckResource_basic(t *testing.T) {
@@ -291,8 +291,8 @@ func newMockHealthcheckServer(t *testing.T) *mockHealthcheckServer {
 }
 
 func (m *mockHealthcheckServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.HealthchecksBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.HealthchecksBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {
@@ -381,7 +381,7 @@ func (m *mockHealthcheckServer) createHealthcheck(w http.ResponseWriter, r *http
 }
 
 func (m *mockHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.HealthchecksBasePath+"/")
 
 	healthcheck, exists := m.healthchecks[id]
 	if !exists {
@@ -399,7 +399,7 @@ func (m *mockHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Re
 }
 
 func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.HealthchecksBasePath+"/")
 
 	healthcheck, exists := m.healthchecks[id]
 	if !exists {
@@ -461,7 +461,7 @@ func (m *mockHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http
 }
 
 func (m *mockHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.HealthchecksBasePath+"/")
 
 	if _, exists := m.healthchecks[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -475,7 +475,7 @@ func (m *mockHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *http
 
 func (m *mockHealthcheckServer) pauseHealthcheck(w http.ResponseWriter, r *http.Request) {
 	// Extract UUID from path: {basePath}/{uuid}/pause
-	path := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
+	path := strings.TrimPrefix(r.URL.Path, hyperping.HealthchecksBasePath+"/")
 	id := strings.TrimSuffix(path, "/pause")
 
 	healthcheck, exists := m.healthchecks[id]
@@ -493,7 +493,7 @@ func (m *mockHealthcheckServer) pauseHealthcheck(w http.ResponseWriter, r *http.
 
 func (m *mockHealthcheckServer) resumeHealthcheck(w http.ResponseWriter, r *http.Request) {
 	// Extract UUID from path: {basePath}/{uuid}/resume
-	path := strings.TrimPrefix(r.URL.Path, client.HealthchecksBasePath+"/")
+	path := strings.TrimPrefix(r.URL.Path, hyperping.HealthchecksBasePath+"/")
 	id := strings.TrimSuffix(path, "/resume")
 
 	healthcheck, exists := m.healthchecks[id]
@@ -545,8 +545,8 @@ func (m *mockHealthcheckServerWithErrors) setUpdateError(v bool) { m.updateError
 func (m *mockHealthcheckServerWithErrors) setDeleteError(v bool) { m.deleteError = v }
 
 func (m *mockHealthcheckServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.HealthchecksBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.HealthchecksBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {

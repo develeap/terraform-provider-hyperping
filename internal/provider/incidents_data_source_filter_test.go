@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
@@ -17,15 +17,15 @@ func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		incident client.Incident
+		incident hyperping.Incident
 		filter   *IncidentFilterModel
 		expected bool
 		hasError bool
 	}{
 		{
 			name: "empty filter - includes all",
-			incident: client.Incident{
-				Title: client.LocalizedText{En: "Test Incident"},
+			incident: hyperping.Incident{
+				Title: hyperping.LocalizedText{En: "Test Incident"},
 				Type:  "outage",
 			},
 			filter: &IncidentFilterModel{
@@ -38,8 +38,8 @@ func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
 		},
 		{
 			name: "name regex match",
-			incident: client.Incident{
-				Title: client.LocalizedText{En: "Payment Gateway Outage"},
+			incident: hyperping.Incident{
+				Title: hyperping.LocalizedText{En: "Payment Gateway Outage"},
 				Type:  "outage",
 			},
 			filter: &IncidentFilterModel{
@@ -52,8 +52,8 @@ func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
 		},
 		{
 			name: "name regex no match",
-			incident: client.Incident{
-				Title: client.LocalizedText{En: "API Slow Response"},
+			incident: hyperping.Incident{
+				Title: hyperping.LocalizedText{En: "API Slow Response"},
 				Type:  "incident",
 			},
 			filter: &IncidentFilterModel{
@@ -66,8 +66,8 @@ func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
 		},
 		{
 			name: "type filter match",
-			incident: client.Incident{
-				Title: client.LocalizedText{En: "Test Incident"},
+			incident: hyperping.Incident{
+				Title: hyperping.LocalizedText{En: "Test Incident"},
 				Type:  "outage",
 			},
 			filter: &IncidentFilterModel{
@@ -80,8 +80,8 @@ func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
 		},
 		{
 			name: "type filter no match",
-			incident: client.Incident{
-				Title: client.LocalizedText{En: "Test Incident"},
+			incident: hyperping.Incident{
+				Title: hyperping.LocalizedText{En: "Test Incident"},
 				Type:  "incident",
 			},
 			filter: &IncidentFilterModel{
@@ -94,8 +94,8 @@ func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
 		},
 		{
 			name: "combined filters - all match",
-			incident: client.Incident{
-				Title: client.LocalizedText{En: "Database Outage"},
+			incident: hyperping.Incident{
+				Title: hyperping.LocalizedText{En: "Database Outage"},
 				Type:  "outage",
 			},
 			filter: &IncidentFilterModel{
@@ -108,8 +108,8 @@ func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
 		},
 		{
 			name: "combined filters - name matches but type doesn't",
-			incident: client.Incident{
-				Title: client.LocalizedText{En: "Database Issue"},
+			incident: hyperping.Incident{
+				Title: hyperping.LocalizedText{En: "Database Issue"},
 				Type:  "incident",
 			},
 			filter: &IncidentFilterModel{
@@ -122,8 +122,8 @@ func TestIncidentsDataSource_shouldIncludeIncident(t *testing.T) {
 		},
 		{
 			name: "invalid regex",
-			incident: client.Incident{
-				Title: client.LocalizedText{En: "Test Incident"},
+			incident: hyperping.Incident{
+				Title: hyperping.LocalizedText{En: "Test Incident"},
 				Type:  "outage",
 			},
 			filter: &IncidentFilterModel{

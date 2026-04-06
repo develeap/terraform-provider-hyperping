@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewOutageResource(t *testing.T) {
@@ -81,7 +81,7 @@ func TestOutageResource_ConfigureNilProviderData(t *testing.T) {
 
 func TestOutageResource_ConfigureValidClient(t *testing.T) {
 	r := &OutageResource{}
-	mockClient := &client.Client{}
+	mockClient := &hyperping.Client{}
 	req := resource.ConfigureRequest{
 		ProviderData: mockClient,
 	}

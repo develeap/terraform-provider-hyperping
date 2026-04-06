@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -359,7 +359,7 @@ func (mte *MigrationToolExecutor) GetOutputFilePath(name string) string {
 
 // HyperpingResourceManager handles Hyperping resource operations
 type HyperpingResourceManager struct {
-	client *client.Client
+	client *hyperping.Client
 	t      *testing.T
 }
 
@@ -368,13 +368,13 @@ func NewHyperpingResourceManager(t *testing.T, apiKey string) *HyperpingResource
 	t.Helper()
 
 	return &HyperpingResourceManager{
-		client: client.NewClient(apiKey),
+		client: hyperping.NewClient(apiKey),
 		t:      t,
 	}
 }
 
 // ListTestMonitors lists all monitors with test prefix
-func (hrm *HyperpingResourceManager) ListTestMonitors(ctx context.Context) ([]client.Monitor, error) {
+func (hrm *HyperpingResourceManager) ListTestMonitors(ctx context.Context) ([]hyperping.Monitor, error) {
 	hrm.t.Helper()
 
 	monitors, err := hrm.client.ListMonitors(ctx)
@@ -383,7 +383,7 @@ func (hrm *HyperpingResourceManager) ListTestMonitors(ctx context.Context) ([]cl
 	}
 
 	// Filter to test monitors only
-	var testMonitors []client.Monitor
+	var testMonitors []hyperping.Monitor
 	for _, m := range monitors {
 		if strings.HasPrefix(m.Name, testResourcePrefix) {
 			testMonitors = append(testMonitors, m)
@@ -417,7 +417,7 @@ func (hrm *HyperpingResourceManager) CleanupTestMonitors(ctx context.Context) er
 }
 
 // VerifyMonitorExists checks if a monitor with the given name exists
-func (hrm *HyperpingResourceManager) VerifyMonitorExists(ctx context.Context, name string) (*client.Monitor, error) {
+func (hrm *HyperpingResourceManager) VerifyMonitorExists(ctx context.Context, name string) (*hyperping.Monitor, error) {
 	hrm.t.Helper()
 
 	monitors, err := hrm.client.ListMonitors(ctx)

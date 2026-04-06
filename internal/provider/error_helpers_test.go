@@ -11,7 +11,7 @@ import (
 
 	"github.com/sony/gobreaker"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ func TestDetectErrorContext(t *testing.T) {
 			resourceType: "Monitor",
 			resourceID:   "mon_123",
 			operation:    "read",
-			err:          client.NewAPIError(404, "resource not found"),
+			err:          hyperping.NewAPIError(404, "resource not found"),
 			wantType:     "not_found",
 			wantStatus:   404,
 			wantMessage:  "404",
@@ -47,7 +47,7 @@ func TestDetectErrorContext(t *testing.T) {
 			resourceType: "Monitor",
 			resourceID:   "mon_123",
 			operation:    "read",
-			err:          client.NewAPIError(401, "invalid API key"),
+			err:          hyperping.NewAPIError(401, "invalid API key"),
 			wantType:     "auth_error",
 			wantStatus:   401,
 		},
@@ -56,7 +56,7 @@ func TestDetectErrorContext(t *testing.T) {
 			resourceType: "Monitor",
 			resourceID:   "mon_123",
 			operation:    "update",
-			err:          client.NewAPIError(403, "access forbidden"),
+			err:          hyperping.NewAPIError(403, "access forbidden"),
 			wantType:     "auth_error",
 			wantStatus:   403,
 		},
@@ -65,7 +65,7 @@ func TestDetectErrorContext(t *testing.T) {
 			resourceType: "Monitor",
 			resourceID:   "",
 			operation:    "create",
-			err:          client.NewRateLimitError(120),
+			err:          hyperping.NewRateLimitError(120),
 			wantType:     "rate_limit",
 			wantStatus:   429,
 			wantRetry:    120,
@@ -75,7 +75,7 @@ func TestDetectErrorContext(t *testing.T) {
 			resourceType: "Incident",
 			resourceID:   "inc_123",
 			operation:    "delete",
-			err:          client.NewAPIError(500, "internal server error"),
+			err:          hyperping.NewAPIError(500, "internal server error"),
 			wantType:     "server_error",
 			wantStatus:   500,
 		},
@@ -84,7 +84,7 @@ func TestDetectErrorContext(t *testing.T) {
 			resourceType: "Monitor",
 			resourceID:   "",
 			operation:    "create",
-			err: client.NewValidationError(400, "validation failed", []client.ValidationDetail{
+			err: hyperping.NewValidationError(400, "validation failed", []hyperping.ValidationDetail{
 				{Field: "url", Message: "Invalid URL format"},
 			}),
 			wantType:   "validation",
@@ -124,7 +124,7 @@ func TestDetectErrorContext(t *testing.T) {
 			resourceType: "Monitor",
 			resourceID:   "",
 			operation:    "create",
-			err:          client.NewAPIError(400, "validation error"),
+			err:          hyperping.NewAPIError(400, "validation error"),
 			wantType:     "validation",
 			wantStatus:   400,
 		},
@@ -166,7 +166,7 @@ func TestDetectErrorContext(t *testing.T) {
 func TestDetectErrorContext_AllFields(t *testing.T) {
 	t.Parallel()
 
-	err := client.NewRateLimitError(90)
+	err := hyperping.NewRateLimitError(90)
 	ctx := DetectErrorContext("Maintenance", "maint_456", "update", err)
 
 	if ctx.Type == "" {
@@ -206,7 +206,7 @@ func TestDetectErrorContext_DifferentOperations(t *testing.T) {
 	t.Parallel()
 
 	operations := []string{"create", "read", "update", "delete"}
-	err := client.NewAPIError(404, "not found")
+	err := hyperping.NewAPIError(404, "not found")
 
 	for _, op := range operations {
 		t.Run(op, func(t *testing.T) {
@@ -226,7 +226,7 @@ func TestDetectErrorContext_DifferentResources(t *testing.T) {
 	t.Parallel()
 
 	resources := []string{"Monitor", "Incident", "Maintenance", "Healthcheck", "Status Page"}
-	err := client.NewAPIError(401, "unauthorized")
+	err := hyperping.NewAPIError(401, "unauthorized")
 
 	for _, resource := range resources {
 		t.Run(resource, func(t *testing.T) {
@@ -249,7 +249,7 @@ func TestDetectErrorContext_ServerErrorVariants(t *testing.T) {
 	for _, code := range codes {
 		t.Run(fmt.Sprintf("status_%d", code), func(t *testing.T) {
 			t.Parallel()
-			err := client.NewAPIError(code, fmt.Sprintf("server error %d", code))
+			err := hyperping.NewAPIError(code, fmt.Sprintf("server error %d", code))
 			ctx := DetectErrorContext("Monitor", "mon_123", "read", err)
 
 			if ctx.Type != "server_error" {
@@ -269,7 +269,7 @@ func TestDetectErrorContext_ValidationErrorVariants(t *testing.T) {
 	for _, code := range codes {
 		t.Run(fmt.Sprintf("status_%d", code), func(t *testing.T) {
 			t.Parallel()
-			err := client.NewAPIError(code, fmt.Sprintf("validation %d", code))
+			err := hyperping.NewAPIError(code, fmt.Sprintf("validation %d", code))
 			ctx := DetectErrorContext("Monitor", "", "create", err)
 
 			if ctx.Type != "validation" {
@@ -457,7 +457,7 @@ func TestAllErrorHelpersReturnValidDiagnostics(t *testing.T) {
 		}},
 		{"newImportError", func() (string, string) { d := newImportError("Resource", testErr); return d.Summary(), d.Detail() }},
 		{"newUnexpectedConfigTypeError", func() (string, string) {
-			d := newUnexpectedConfigTypeError("*client.Client", 42)
+			d := newUnexpectedConfigTypeError("*hyperping.Client", 42)
 			return d.Summary(), d.Detail()
 		}},
 	}
@@ -944,7 +944,7 @@ func TestJoinSteps(t *testing.T) {
 func TestNewReadErrorWithContext(t *testing.T) {
 	t.Parallel()
 
-	err := client.NewAPIError(404, "monitor not found")
+	err := hyperping.NewAPIError(404, "monitor not found")
 	diag := NewReadErrorWithContext("Monitor", "mon_abc123", err)
 
 	if diag.Summary() != "Failed to Read Monitor" {
@@ -962,7 +962,7 @@ func TestNewReadErrorWithContext(t *testing.T) {
 func TestNewCreateErrorWithContext(t *testing.T) {
 	t.Parallel()
 
-	err := client.NewAPIError(401, "unauthorized")
+	err := hyperping.NewAPIError(401, "unauthorized")
 	diag := NewCreateErrorWithContext("Incident", err)
 
 	if diag.Summary() != "Failed to Create Incident" {
@@ -980,7 +980,7 @@ func TestNewCreateErrorWithContext(t *testing.T) {
 func TestNewUpdateErrorWithContext(t *testing.T) {
 	t.Parallel()
 
-	err := client.NewRateLimitError(90)
+	err := hyperping.NewRateLimitError(90)
 	diag := NewUpdateErrorWithContext("Monitor", "mon_xyz789", err)
 
 	if diag.Summary() != "Failed to Update Monitor" {
@@ -998,7 +998,7 @@ func TestNewUpdateErrorWithContext(t *testing.T) {
 func TestNewDeleteErrorWithContext(t *testing.T) {
 	t.Parallel()
 
-	err := client.NewAPIError(500, "internal server error")
+	err := hyperping.NewAPIError(500, "internal server error")
 	diag := NewDeleteErrorWithContext("Maintenance", "maint_test", err)
 
 	if diag.Summary() != "Failed to Delete Maintenance" {

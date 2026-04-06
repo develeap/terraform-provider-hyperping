@@ -16,7 +16,7 @@ import (
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestAccOutageResource_basic(t *testing.T) {
@@ -226,8 +226,8 @@ func newMockOutageServer(t *testing.T) *mockOutageServer {
 }
 
 func (m *mockOutageServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.OutagesBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.OutagesBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {
@@ -306,7 +306,7 @@ func (m *mockOutageServer) createOutage(w http.ResponseWriter, r *http.Request) 
 }
 
 func (m *mockOutageServer) getOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	outage, exists := m.outages[id]
 	if !exists {
@@ -324,7 +324,7 @@ func (m *mockOutageServer) getOutage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *mockOutageServer) deleteOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	if _, exists := m.outages[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -370,8 +370,8 @@ func (m *mockOutageServerWithErrors) setReadError(v bool)   { m.readError = v }
 func (m *mockOutageServerWithErrors) setDeleteError(v bool) { m.deleteError = v }
 
 func (m *mockOutageServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.OutagesBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.OutagesBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {

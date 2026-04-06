@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 var (
@@ -52,10 +52,10 @@ func DetectErrorContext(resourceType, resourceID, operation string, err error) E
 
 	// Detect error type from client package using error checking functions
 	switch {
-	case client.IsNotFound(err):
+	case hyperping.IsNotFound(err):
 		ctx.Type = "not_found"
 		ctx.HTTPStatus = 404
-	case client.IsUnauthorized(err):
+	case hyperping.IsUnauthorized(err):
 		ctx.Type = "auth_error"
 		// Determine if 401 or 403 from message
 		if strings.Contains(strings.ToLower(err.Error()), "403") {
@@ -63,16 +63,16 @@ func DetectErrorContext(resourceType, resourceID, operation string, err error) E
 		} else {
 			ctx.HTTPStatus = 401
 		}
-	case client.IsRateLimited(err):
+	case hyperping.IsRateLimited(err):
 		ctx.Type = "rate_limit"
 		ctx.HTTPStatus = 429
 		ctx.RetryAfter = extractRetryAfter(err)
-	case client.IsCircuitBreakerOpen(err):
+	case hyperping.IsCircuitBreakerOpen(err):
 		ctx.Type = "circuit_breaker"
-	case client.IsServerError(err):
+	case hyperping.IsServerError(err):
 		ctx.Type = "server_error"
 		ctx.HTTPStatus = extractStatusCode(err, 500)
-	case client.IsValidation(err):
+	case hyperping.IsValidation(err):
 		ctx.Type = "validation"
 		ctx.HTTPStatus = extractStatusCode(err, 400)
 	}

@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewMaintenanceWindowsDataSource(t *testing.T) {
@@ -61,7 +61,7 @@ func TestMaintenanceWindowsDataSource_Schema(t *testing.T) {
 func TestMaintenanceWindowsDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &MaintenanceWindowsDataSource{}
-		c := &client.Client{}
+		c := &hyperping.Client{}
 
 		req := datasource.ConfigureRequest{
 			ProviderData: c,
@@ -117,13 +117,13 @@ func TestMaintenanceWindowsDataSource_mapMaintenanceToDataModel(t *testing.T) {
 		startDate := "2026-03-01T10:00:00Z"
 		endDate := "2026-03-01T12:00:00Z"
 
-		maint := &client.Maintenance{
+		maint := &hyperping.Maintenance{
 			UUID: "maint-full",
 			Name: "Complete Maintenance",
-			Title: client.LocalizedText{
+			Title: hyperping.LocalizedText{
 				En: "Full Maintenance Window",
 			},
-			Text: client.LocalizedText{
+			Text: hyperping.LocalizedText{
 				En: "Detailed description",
 			},
 			StartDate:   &startDate,
@@ -151,13 +151,13 @@ func TestMaintenanceWindowsDataSource_mapMaintenanceToDataModel(t *testing.T) {
 	})
 
 	t.Run("minimal fields", func(t *testing.T) {
-		maint := &client.Maintenance{
+		maint := &hyperping.Maintenance{
 			UUID: "maint-min",
 			Name: "Minimal",
-			Title: client.LocalizedText{
+			Title: hyperping.LocalizedText{
 				En: "Min",
 			},
-			Text: client.LocalizedText{
+			Text: hyperping.LocalizedText{
 				En: "Short",
 			},
 			Timezone:  "UTC",

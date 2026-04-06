@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
@@ -16,11 +16,11 @@ import (
 func TestMapSubscriberToTF(t *testing.T) {
 	tests := []struct {
 		name  string
-		input *client.StatusPageSubscriber
+		input *hyperping.StatusPageSubscriber
 	}{
 		{
 			name: "email subscriber",
-			input: &client.StatusPageSubscriber{
+			input: &hyperping.StatusPageSubscriber{
 				ID:        1,
 				Type:      "email",
 				Value:     "user@example.com",
@@ -30,7 +30,7 @@ func TestMapSubscriberToTF(t *testing.T) {
 		},
 		{
 			name: "sms subscriber",
-			input: &client.StatusPageSubscriber{
+			input: &hyperping.StatusPageSubscriber{
 				ID:        2,
 				Type:      "sms",
 				Value:     "+1234567890",
@@ -40,7 +40,7 @@ func TestMapSubscriberToTF(t *testing.T) {
 		},
 		{
 			name: "teams subscriber",
-			input: &client.StatusPageSubscriber{
+			input: &hyperping.StatusPageSubscriber{
 				ID:        3,
 				Type:      "teams",
 				Value:     "https://outlook.office.com/webhook/...",
@@ -49,7 +49,7 @@ func TestMapSubscriberToTF(t *testing.T) {
 		},
 		{
 			name: "slack subscriber",
-			input: &client.StatusPageSubscriber{
+			input: &hyperping.StatusPageSubscriber{
 				ID:           4,
 				Type:         "slack",
 				Value:        "#general",

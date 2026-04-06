@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestAccMonitorsDataSource_basic(t *testing.T) {
@@ -180,7 +180,7 @@ func TestMonitorsDataSource_ConfigureWrongType(t *testing.T) {
 	d := &MonitorsDataSource{}
 
 	req := datasource.ConfigureRequest{
-		ProviderData: "wrong type - should be *client.Client",
+		ProviderData: "wrong type - should be *hyperping.Client",
 	}
 	resp := &datasource.ConfigureResponse{}
 
@@ -223,7 +223,7 @@ func TestMonitorsDataSource_ConfigureValidClient(t *testing.T) {
 	d := &MonitorsDataSource{}
 
 	// Create a real client
-	c := client.NewClient("test_api_key")
+	c := hyperping.NewClient("test_api_key")
 
 	req := datasource.ConfigureRequest{
 		ProviderData: c,
@@ -279,10 +279,10 @@ func newMockHyperpingServerForDataSource(t *testing.T) *mockHyperpingServerForDS
 }
 
 func (m *mockHyperpingServerForDS) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == client.MonitorsBasePath:
+	case r.Method == "GET" && r.URL.Path == hyperping.MonitorsBasePath:
 		m.listMonitors(w)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -491,7 +491,7 @@ func TestMonitorsDataSource_mapMonitorToDataModel(t *testing.T) {
 	d := &MonitorsDataSource{}
 
 	t.Run("all fields populated", func(t *testing.T) {
-		monitor := &client.Monitor{
+		monitor := &hyperping.Monitor{
 			UUID:               "mon-123",
 			Name:               "Test Monitor",
 			URL:                "https://example.com",
@@ -502,7 +502,7 @@ func TestMonitorsDataSource_mapMonitorToDataModel(t *testing.T) {
 			FollowRedirects:    true,
 			Paused:             false,
 			Regions:            []string{"london", "frankfurt"},
-			RequestHeaders: []client.RequestHeader{
+			RequestHeaders: []hyperping.RequestHeader{
 				{Name: "X-Custom", Value: "value"},
 			},
 			RequestBody: "test body",
@@ -524,7 +524,7 @@ func TestMonitorsDataSource_mapMonitorToDataModel(t *testing.T) {
 	})
 
 	t.Run("empty request body", func(t *testing.T) {
-		monitor := &client.Monitor{
+		monitor := &hyperping.Monitor{
 			UUID:               "mon-456",
 			Name:               "No Body",
 			URL:                "https://example.com",
@@ -549,7 +549,7 @@ func TestMonitorsDataSource_mapMonitorToDataModel(t *testing.T) {
 	})
 
 	t.Run("empty regions and headers", func(t *testing.T) {
-		monitor := &client.Monitor{
+		monitor := &hyperping.Monitor{
 			UUID:               "mon-000",
 			Name:               "Empty Collections",
 			URL:                "https://example.com",
@@ -559,7 +559,7 @@ func TestMonitorsDataSource_mapMonitorToDataModel(t *testing.T) {
 			ExpectedStatusCode: "200",
 			FollowRedirects:    true,
 			Regions:            []string{},
-			RequestHeaders:     []client.RequestHeader{},
+			RequestHeaders:     []hyperping.RequestHeader{},
 		}
 
 		model := &MonitorDataModel{}

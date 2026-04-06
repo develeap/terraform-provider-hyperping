@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -29,7 +29,7 @@ func NewMonitorReportDataSource() datasource.DataSource {
 
 // MonitorReportDataSource defines the data source implementation.
 type MonitorReportDataSource struct {
-	client client.ReportsAPI
+	client hyperping.ReportsAPI
 }
 
 // MonitorReportDataSourceModel describes the data source data model.
@@ -125,11 +125,11 @@ func (d *MonitorReportDataSource) Configure(_ context.Context, req datasource.Co
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -156,7 +156,7 @@ func (d *MonitorReportDataSource) Read(ctx context.Context, req datasource.ReadR
 		to = config.To.ValueString()
 	}
 
-	if err := client.ValidateResourceID(config.ID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(config.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Invalid Monitor ID", fmt.Sprintf("Cannot look up monitor report: %s", err))
 		return
 	}
@@ -175,8 +175,8 @@ func (d *MonitorReportDataSource) Read(ctx context.Context, req datasource.ReadR
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }
 
-// mapReportToDataSourceModel maps a client.MonitorReport to the data source model.
-func (d *MonitorReportDataSource) mapReportToDataSourceModel(report *client.MonitorReport, model *MonitorReportDataSourceModel, diags *diag.Diagnostics) {
+// mapReportToDataSourceModel maps a hyperping.MonitorReport to the data source model.
+func (d *MonitorReportDataSource) mapReportToDataSourceModel(report *hyperping.MonitorReport, model *MonitorReportDataSourceModel, diags *diag.Diagnostics) {
 	model.Name = types.StringValue(report.Name)
 	model.Protocol = types.StringValue(report.Protocol)
 	model.SLA = types.Float64Value(report.SLA)

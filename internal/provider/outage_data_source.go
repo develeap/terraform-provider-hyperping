@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -28,7 +28,7 @@ func NewOutageDataSource() datasource.DataSource {
 
 // OutageDataSource defines the data source implementation for a single outage.
 type OutageDataSource struct {
-	client client.OutageAPI
+	client hyperping.OutageAPI
 }
 
 // OutageDataSourceModel describes the data source data model.
@@ -158,11 +158,11 @@ func (d *OutageDataSource) Configure(_ context.Context, req datasource.Configure
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -179,7 +179,7 @@ func (d *OutageDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	if err := client.ValidateResourceID(config.ID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(config.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Invalid Outage ID", fmt.Sprintf("Cannot look up outage: %s", err))
 		return
 	}
@@ -198,9 +198,9 @@ func (d *OutageDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }
 
-// mapOutageToDataSourceModel maps a client.Outage to the data source model
+// mapOutageToDataSourceModel maps a hyperping.Outage to the data source model
 // using the shared MapOutageNestedObjects helper for nested monitor/acknowledged_by.
-func mapOutageToDataSourceModel(outage *client.Outage, model *OutageDataSourceModel, diags *diag.Diagnostics) {
+func mapOutageToDataSourceModel(outage *hyperping.Outage, model *OutageDataSourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(outage.UUID)
 	model.MonitorUUID = types.StringValue(outage.Monitor.UUID)
 	model.StartDate = types.StringValue(outage.StartDate)

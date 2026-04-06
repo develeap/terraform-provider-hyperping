@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -28,7 +28,7 @@ func NewMaintenanceWindowsDataSource() datasource.DataSource {
 
 // MaintenanceWindowsDataSource defines the data source implementation.
 type MaintenanceWindowsDataSource struct {
-	client client.MaintenanceAPI
+	client hyperping.MaintenanceAPI
 }
 
 // MaintenanceWindowsDataSourceModel describes the data source data model.
@@ -134,11 +134,11 @@ func (d *MaintenanceWindowsDataSource) Configure(_ context.Context, req datasour
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -167,7 +167,7 @@ func (d *MaintenanceWindowsDataSource) Read(ctx context.Context, req datasource.
 	}
 
 	// Apply client-side filtering if filter provided
-	var filteredMaintenances []client.Maintenance
+	var filteredMaintenances []hyperping.Maintenance
 	if config.Filter != nil {
 		for _, maint := range maintenances {
 			if d.shouldIncludeMaintenance(&maint, config.Filter, &resp.Diagnostics) {
@@ -205,7 +205,7 @@ func (d *MaintenanceWindowsDataSource) Read(ctx context.Context, req datasource.
 }
 
 // shouldIncludeMaintenance determines if a maintenance window matches the filter criteria.
-func (d *MaintenanceWindowsDataSource) shouldIncludeMaintenance(maint *client.Maintenance, filter *MaintenanceFilterModel, diags *diag.Diagnostics) bool {
+func (d *MaintenanceWindowsDataSource) shouldIncludeMaintenance(maint *hyperping.Maintenance, filter *MaintenanceFilterModel, diags *diag.Diagnostics) bool {
 	return ApplyAllFilters(
 		// Name regex filter (matches title or name)
 		func() bool {
@@ -233,8 +233,8 @@ func (d *MaintenanceWindowsDataSource) shouldIncludeMaintenance(maint *client.Ma
 	)
 }
 
-// mapMaintenanceToDataModel maps a client.Maintenance to the Terraform data model.
-func (d *MaintenanceWindowsDataSource) mapMaintenanceToDataModel(maint *client.Maintenance, model *MaintenanceWindowDataModel, diags *diag.Diagnostics) {
+// mapMaintenanceToDataModel maps a hyperping.Maintenance to the Terraform data model.
+func (d *MaintenanceWindowsDataSource) mapMaintenanceToDataModel(maint *hyperping.Maintenance, model *MaintenanceWindowDataModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(maint.UUID)
 	model.Name = types.StringValue(maint.Name)
 	model.Title = types.StringValue(maint.Title.En)

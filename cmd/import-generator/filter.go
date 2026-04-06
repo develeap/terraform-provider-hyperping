@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // FilterConfig holds filtering criteria for resources.
@@ -56,7 +56,7 @@ func (fc *FilterConfig) ShouldIncludeResourceType(resourceType string) bool {
 }
 
 // FilterMonitors applies filters to monitor resources.
-func (fc *FilterConfig) FilterMonitors(monitors []client.Monitor) []client.Monitor {
+func (fc *FilterConfig) FilterMonitors(monitors []hyperping.Monitor) []hyperping.Monitor {
 	if fc.IsEmpty() || !fc.ShouldIncludeResourceType("hyperping_monitor") {
 		if !fc.ShouldIncludeResourceType("hyperping_monitor") {
 			return nil
@@ -64,7 +64,7 @@ func (fc *FilterConfig) FilterMonitors(monitors []client.Monitor) []client.Monit
 		return monitors
 	}
 
-	filtered := make([]client.Monitor, 0, len(monitors))
+	filtered := make([]hyperping.Monitor, 0, len(monitors))
 	for _, m := range monitors {
 		if fc.matchesName(m.Name) {
 			filtered = append(filtered, m)
@@ -74,7 +74,7 @@ func (fc *FilterConfig) FilterMonitors(monitors []client.Monitor) []client.Monit
 }
 
 // FilterHealthchecks applies filters to healthcheck resources.
-func (fc *FilterConfig) FilterHealthchecks(healthchecks []client.Healthcheck) []client.Healthcheck {
+func (fc *FilterConfig) FilterHealthchecks(healthchecks []hyperping.Healthcheck) []hyperping.Healthcheck {
 	if fc.IsEmpty() || !fc.ShouldIncludeResourceType("hyperping_healthcheck") {
 		if !fc.ShouldIncludeResourceType("hyperping_healthcheck") {
 			return nil
@@ -82,7 +82,7 @@ func (fc *FilterConfig) FilterHealthchecks(healthchecks []client.Healthcheck) []
 		return healthchecks
 	}
 
-	filtered := make([]client.Healthcheck, 0, len(healthchecks))
+	filtered := make([]hyperping.Healthcheck, 0, len(healthchecks))
 	for _, h := range healthchecks {
 		if fc.matchesName(h.Name) {
 			filtered = append(filtered, h)
@@ -92,7 +92,7 @@ func (fc *FilterConfig) FilterHealthchecks(healthchecks []client.Healthcheck) []
 }
 
 // FilterStatusPages applies filters to status page resources.
-func (fc *FilterConfig) FilterStatusPages(pages []client.StatusPage) []client.StatusPage {
+func (fc *FilterConfig) FilterStatusPages(pages []hyperping.StatusPage) []hyperping.StatusPage {
 	if fc.IsEmpty() || !fc.ShouldIncludeResourceType("hyperping_statuspage") {
 		if !fc.ShouldIncludeResourceType("hyperping_statuspage") {
 			return nil
@@ -100,7 +100,7 @@ func (fc *FilterConfig) FilterStatusPages(pages []client.StatusPage) []client.St
 		return pages
 	}
 
-	filtered := make([]client.StatusPage, 0, len(pages))
+	filtered := make([]hyperping.StatusPage, 0, len(pages))
 	for _, p := range pages {
 		if fc.matchesName(p.Name) {
 			filtered = append(filtered, p)
@@ -110,7 +110,7 @@ func (fc *FilterConfig) FilterStatusPages(pages []client.StatusPage) []client.St
 }
 
 // FilterIncidents applies filters to incident resources.
-func (fc *FilterConfig) FilterIncidents(incidents []client.Incident) []client.Incident {
+func (fc *FilterConfig) FilterIncidents(incidents []hyperping.Incident) []hyperping.Incident {
 	if fc.IsEmpty() || !fc.ShouldIncludeResourceType("hyperping_incident") {
 		if !fc.ShouldIncludeResourceType("hyperping_incident") {
 			return nil
@@ -118,7 +118,7 @@ func (fc *FilterConfig) FilterIncidents(incidents []client.Incident) []client.In
 		return incidents
 	}
 
-	filtered := make([]client.Incident, 0, len(incidents))
+	filtered := make([]hyperping.Incident, 0, len(incidents))
 	for _, i := range incidents {
 		if fc.matchesName(i.Title.En) {
 			filtered = append(filtered, i)
@@ -128,7 +128,7 @@ func (fc *FilterConfig) FilterIncidents(incidents []client.Incident) []client.In
 }
 
 // FilterMaintenance applies filters to maintenance resources.
-func (fc *FilterConfig) FilterMaintenance(maintenance []client.Maintenance) []client.Maintenance {
+func (fc *FilterConfig) FilterMaintenance(maintenance []hyperping.Maintenance) []hyperping.Maintenance {
 	if fc.IsEmpty() || !fc.ShouldIncludeResourceType("hyperping_maintenance") {
 		if !fc.ShouldIncludeResourceType("hyperping_maintenance") {
 			return nil
@@ -136,7 +136,7 @@ func (fc *FilterConfig) FilterMaintenance(maintenance []client.Maintenance) []cl
 		return maintenance
 	}
 
-	filtered := make([]client.Maintenance, 0, len(maintenance))
+	filtered := make([]hyperping.Maintenance, 0, len(maintenance))
 	for _, m := range maintenance {
 		titleText := m.Title.En
 		if titleText == "" {
@@ -150,7 +150,7 @@ func (fc *FilterConfig) FilterMaintenance(maintenance []client.Maintenance) []cl
 }
 
 // FilterOutages applies filters to outage resources.
-func (fc *FilterConfig) FilterOutages(outages []client.Outage) []client.Outage {
+func (fc *FilterConfig) FilterOutages(outages []hyperping.Outage) []hyperping.Outage {
 	if fc.IsEmpty() || !fc.ShouldIncludeResourceType("hyperping_outage") {
 		if !fc.ShouldIncludeResourceType("hyperping_outage") {
 			return nil
@@ -158,7 +158,7 @@ func (fc *FilterConfig) FilterOutages(outages []client.Outage) []client.Outage {
 		return outages
 	}
 
-	filtered := make([]client.Outage, 0, len(outages))
+	filtered := make([]hyperping.Outage, 0, len(outages))
 	for _, o := range outages {
 		if fc.matchesName(o.Monitor.Name) {
 			filtered = append(filtered, o)

@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -28,7 +28,7 @@ func NewHealthchecksDataSource() datasource.DataSource {
 
 // HealthchecksDataSource defines the data source implementation.
 type HealthchecksDataSource struct {
-	client client.HealthcheckAPI
+	client hyperping.HealthcheckAPI
 }
 
 // HealthchecksDataSourceModel describes the data source data model.
@@ -162,11 +162,11 @@ func (d *HealthchecksDataSource) Configure(_ context.Context, req datasource.Con
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -194,7 +194,7 @@ func (d *HealthchecksDataSource) Read(ctx context.Context, req datasource.ReadRe
 	}
 
 	// Apply client-side filtering if filter provided
-	var filteredHealthchecks []client.Healthcheck
+	var filteredHealthchecks []hyperping.Healthcheck
 	if config.Filter != nil {
 		for _, hc := range healthchecks {
 			if d.shouldIncludeHealthcheck(&hc, config.Filter, &resp.Diagnostics) {
@@ -231,7 +231,7 @@ func (d *HealthchecksDataSource) Read(ctx context.Context, req datasource.ReadRe
 }
 
 // shouldIncludeHealthcheck determines if a healthcheck matches the filter criteria.
-func (d *HealthchecksDataSource) shouldIncludeHealthcheck(hc *client.Healthcheck, filter *HealthcheckFilterModel, diags *diag.Diagnostics) bool {
+func (d *HealthchecksDataSource) shouldIncludeHealthcheck(hc *hyperping.Healthcheck, filter *HealthcheckFilterModel, diags *diag.Diagnostics) bool {
 	return ApplyAllFilters(
 		// Name regex filter
 		func() bool {
@@ -265,9 +265,9 @@ func (d *HealthchecksDataSource) shouldIncludeHealthcheck(hc *client.Healthcheck
 	)
 }
 
-// mapHealthcheckToDataModel maps a client.Healthcheck to the list data model
+// mapHealthcheckToDataModel maps a hyperping.Healthcheck to the list data model
 // using the shared HealthcheckCommonFields mapping.
-func (d *HealthchecksDataSource) mapHealthcheckToDataModel(hc *client.Healthcheck, model *HealthcheckDataModel) {
+func (d *HealthchecksDataSource) mapHealthcheckToDataModel(hc *hyperping.Healthcheck, model *HealthcheckDataModel) {
 	f := MapHealthcheckCommonFields(hc)
 	model.ID = f.ID
 	model.Name = f.Name

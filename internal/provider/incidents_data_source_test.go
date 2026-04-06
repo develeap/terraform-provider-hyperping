@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewIncidentsDataSource(t *testing.T) {
@@ -61,7 +61,7 @@ func TestIncidentsDataSource_Schema(t *testing.T) {
 func TestIncidentsDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &IncidentsDataSource{}
-		c := &client.Client{}
+		c := &hyperping.Client{}
 
 		req := datasource.ConfigureRequest{
 			ProviderData: c,
@@ -114,23 +114,23 @@ func TestIncidentsDataSource_mapIncidentToDataModel(t *testing.T) {
 	d := &IncidentsDataSource{}
 
 	t.Run("all fields populated", func(t *testing.T) {
-		inc := &client.Incident{
+		inc := &hyperping.Incident{
 			UUID: "inc-full",
-			Title: client.LocalizedText{
+			Title: hyperping.LocalizedText{
 				En: "Complete Incident",
 			},
-			Text: client.LocalizedText{
+			Text: hyperping.LocalizedText{
 				En: "Full description",
 			},
 			Type:               "outage",
 			Date:               "2026-01-20T12:00:00Z",
 			AffectedComponents: []string{"comp-a", "comp-b"},
 			StatusPages:        []string{"page-x"},
-			Updates: []client.IncidentUpdate{
+			Updates: []hyperping.IncidentUpdate{
 				{
 					UUID: "upd-a",
 					Date: "2026-01-20T12:15:00Z",
-					Text: client.LocalizedText{
+					Text: hyperping.LocalizedText{
 						En: "First update",
 					},
 					Type: "investigating",
@@ -155,12 +155,12 @@ func TestIncidentsDataSource_mapIncidentToDataModel(t *testing.T) {
 	})
 
 	t.Run("minimal fields", func(t *testing.T) {
-		inc := &client.Incident{
+		inc := &hyperping.Incident{
 			UUID: "inc-min",
-			Title: client.LocalizedText{
+			Title: hyperping.LocalizedText{
 				En: "Minimal",
 			},
-			Text: client.LocalizedText{
+			Text: hyperping.LocalizedText{
 				En: "Short",
 			},
 			Type: "incident",

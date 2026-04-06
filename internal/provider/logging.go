@@ -8,10 +8,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
-// TFLogAdapter adapts the Terraform plugin logging framework to the client.Logger interface.
+// TFLogAdapter adapts the Terraform plugin logging framework to the hyperping.Logger interface.
 type TFLogAdapter struct{}
 
 // NewTFLogAdapter creates a new TFLogAdapter.
@@ -25,4 +25,4 @@ func (l *TFLogAdapter) Debug(ctx context.Context, msg string, fields map[string]
 }
 
 // Ensure TFLogAdapter implements the Logger interface.
-var _ client.Logger = (*TFLogAdapter)(nil)
+var _ hyperping.Logger = (*TFLogAdapter)(nil)

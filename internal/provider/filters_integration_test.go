@@ -14,7 +14,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // mockFilterServer is a multi-endpoint mock server used across filter integration tests.
@@ -42,20 +42,20 @@ func newMockFilterServer(t *testing.T) *mockFilterServer {
 }
 
 func (m *mockFilterServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 	switch {
-	case r.Method == http.MethodGet && r.URL.Path == client.MonitorsBasePath:
+	case r.Method == http.MethodGet && r.URL.Path == hyperping.MonitorsBasePath:
 		json.NewEncoder(w).Encode(m.monitors)
-	case r.Method == http.MethodGet && r.URL.Path == client.IncidentsBasePath:
+	case r.Method == http.MethodGet && r.URL.Path == hyperping.IncidentsBasePath:
 		json.NewEncoder(w).Encode(m.incidents)
-	case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath:
+	case r.Method == http.MethodGet && r.URL.Path == hyperping.MaintenanceBasePath:
 		json.NewEncoder(w).Encode(m.maintenanceWindows)
-	case r.Method == http.MethodGet && r.URL.Path == client.HealthchecksBasePath:
+	case r.Method == http.MethodGet && r.URL.Path == hyperping.HealthchecksBasePath:
 		json.NewEncoder(w).Encode(m.healthchecks)
-	case r.Method == http.MethodGet && r.URL.Path == client.OutagesBasePath:
+	case r.Method == http.MethodGet && r.URL.Path == hyperping.OutagesBasePath:
 		json.NewEncoder(w).Encode(m.outages)
-	case r.Method == http.MethodGet && r.URL.Path == client.StatuspagesBasePath:
+	case r.Method == http.MethodGet && r.URL.Path == hyperping.StatuspagesBasePath:
 		m.listStatusPages(w)
 	default:
 		w.WriteHeader(http.StatusNotFound)

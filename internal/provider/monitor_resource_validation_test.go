@@ -10,14 +10,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestMonitorResource_ConfigureWrongType(t *testing.T) {
 	r := &MonitorResource{}
 
 	req := resource.ConfigureRequest{
-		ProviderData: "wrong type - should be *client.Client",
+		ProviderData: "wrong type - should be *hyperping.Client",
 	}
 	resp := &resource.ConfigureResponse{}
 
@@ -60,7 +60,7 @@ func TestMonitorResource_ConfigureValidClient(t *testing.T) {
 	r := &MonitorResource{}
 
 	// Create a real client
-	c := client.NewClient("test_api_key")
+	c := hyperping.NewClient("test_api_key")
 
 	req := resource.ConfigureRequest{
 		ProviderData: c,
@@ -121,7 +121,7 @@ func TestMonitorResource_Schema(t *testing.T) {
 }
 
 func TestAllowedRegions(t *testing.T) {
-	// Verify client.AllowedRegions contains expected values
+	// Verify hyperping.AllowedRegions contains expected values
 	// From official API documentation (18 regions)
 	// See: https://hyperping.com/docs/api/monitors/create
 	expectedRegions := []string{
@@ -139,18 +139,18 @@ func TestAllowedRegions(t *testing.T) {
 		"capetown",
 	}
 
-	if len(client.AllowedRegions) != len(expectedRegions) {
-		t.Errorf("Expected %d regions, got %d", len(expectedRegions), len(client.AllowedRegions))
+	if len(hyperping.AllowedRegions) != len(expectedRegions) {
+		t.Errorf("Expected %d regions, got %d", len(expectedRegions), len(hyperping.AllowedRegions))
 	}
 
 	regionMap := make(map[string]bool)
-	for _, r := range client.AllowedRegions {
+	for _, r := range hyperping.AllowedRegions {
 		regionMap[r] = true
 	}
 
 	for _, expected := range expectedRegions {
 		if !regionMap[expected] {
-			t.Errorf("Expected region %q not found in client.AllowedRegions", expected)
+			t.Errorf("Expected region %q not found in hyperping.AllowedRegions", expected)
 		}
 	}
 }
@@ -158,19 +158,19 @@ func TestAllowedRegions(t *testing.T) {
 // monitorToModelCase defines a single test scenario for mapMonitorToModel.
 type monitorToModelCase struct {
 	name    string
-	monitor *client.Monitor
+	monitor *hyperping.Monitor
 	verify  func(*testing.T, *MonitorResourceModel)
 }
 
 func buildMonitorToModelCases() []monitorToModelCase {
 	port := 8080
-	policy := "policy_abc123"
+	policy := hyperping.EscalationPolicyRef{UUID: "policy_abc123"}
 	keyword := "HEALTHY"
 
 	return []monitorToModelCase{
 		{
 			name: "all fields populated",
-			monitor: &client.Monitor{
+			monitor: &hyperping.Monitor{
 				UUID:               "mon-123",
 				Name:               "Test Monitor",
 				URL:                "https://example.com",
@@ -181,7 +181,7 @@ func buildMonitorToModelCases() []monitorToModelCase {
 				FollowRedirects:    true,
 				Paused:             false,
 				Regions:            []string{"london", "frankfurt"},
-				RequestHeaders:     []client.RequestHeader{{Name: "X-Custom", Value: "value"}},
+				RequestHeaders:     []hyperping.RequestHeader{{Name: "X-Custom", Value: "value"}},
 				RequestBody:        "test body",
 			},
 			verify: func(t *testing.T, m *MonitorResourceModel) {
@@ -196,7 +196,7 @@ func buildMonitorToModelCases() []monitorToModelCase {
 		},
 		{
 			name: "empty body",
-			monitor: &client.Monitor{
+			monitor: &hyperping.Monitor{
 				UUID:               "mon-456",
 				Name:               "No Body",
 				URL:                "https://example.com",
@@ -216,7 +216,7 @@ func buildMonitorToModelCases() []monitorToModelCase {
 		},
 		{
 			name: "empty regions and headers",
-			monitor: &client.Monitor{
+			monitor: &hyperping.Monitor{
 				UUID:               "mon-000",
 				Name:               "Empty Collections",
 				URL:                "https://example.com",
@@ -226,7 +226,7 @@ func buildMonitorToModelCases() []monitorToModelCase {
 				ExpectedStatusCode: "200",
 				FollowRedirects:    true,
 				Regions:            []string{},
-				RequestHeaders:     []client.RequestHeader{},
+				RequestHeaders:     []hyperping.RequestHeader{},
 			},
 			verify: func(t *testing.T, m *MonitorResourceModel) {
 				t.Helper()
@@ -240,7 +240,7 @@ func buildMonitorToModelCases() []monitorToModelCase {
 		},
 		{
 			name: "new optional fields populated",
-			monitor: &client.Monitor{
+			monitor: &hyperping.Monitor{
 				UUID:               "mon-new",
 				Name:               "Monitor with New Fields",
 				URL:                "https://example.com:8080",
@@ -259,7 +259,7 @@ func buildMonitorToModelCases() []monitorToModelCase {
 		},
 		{
 			name: "new optional fields null when not set",
-			monitor: &client.Monitor{
+			monitor: &hyperping.Monitor{
 				UUID:               "mon-null",
 				Name:               "Monitor without New Fields",
 				URL:                "https://example.com",

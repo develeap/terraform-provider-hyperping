@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -29,7 +29,7 @@ func NewIncidentsDataSource() datasource.DataSource {
 
 // IncidentsDataSource defines the data source implementation.
 type IncidentsDataSource struct {
-	client client.IncidentAPI
+	client hyperping.IncidentAPI
 }
 
 // IncidentsDataSourceModel describes the data source data model.
@@ -155,11 +155,11 @@ func (d *IncidentsDataSource) Configure(_ context.Context, req datasource.Config
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -188,7 +188,7 @@ func (d *IncidentsDataSource) Read(ctx context.Context, req datasource.ReadReque
 	}
 
 	// Apply client-side filtering if filter provided
-	var filteredIncidents []client.Incident
+	var filteredIncidents []hyperping.Incident
 	if config.Filter != nil {
 		for _, incident := range incidents {
 			if d.shouldIncludeIncident(&incident, config.Filter, &resp.Diagnostics) {
@@ -226,7 +226,7 @@ func (d *IncidentsDataSource) Read(ctx context.Context, req datasource.ReadReque
 }
 
 // shouldIncludeIncident determines if an incident matches the filter criteria.
-func (d *IncidentsDataSource) shouldIncludeIncident(incident *client.Incident, filter *IncidentFilterModel, diags *diag.Diagnostics) bool {
+func (d *IncidentsDataSource) shouldIncludeIncident(incident *hyperping.Incident, filter *IncidentFilterModel, diags *diag.Diagnostics) bool {
 	return ApplyAllFilters(
 		// Name regex filter (matches title)
 		func() bool {
@@ -251,8 +251,8 @@ func (d *IncidentsDataSource) shouldIncludeIncident(incident *client.Incident, f
 	)
 }
 
-// mapIncidentToDataModel maps a client.Incident to the Terraform data model.
-func (d *IncidentsDataSource) mapIncidentToDataModel(incident *client.Incident, model *IncidentDataModel, diags *diag.Diagnostics) {
+// mapIncidentToDataModel maps a hyperping.Incident to the Terraform data model.
+func (d *IncidentsDataSource) mapIncidentToDataModel(incident *hyperping.Incident, model *IncidentDataModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(incident.UUID)
 	model.Title = types.StringValue(incident.Title.En)
 	model.Text = types.StringValue(incident.Text.En)

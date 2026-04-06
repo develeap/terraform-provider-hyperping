@@ -14,7 +14,7 @@ import (
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // TestAccHealthcheckResource_cronSchedule tests cron-based scheduling.
@@ -240,8 +240,8 @@ func newMockCronHealthcheckServer(t *testing.T) *mockCronHealthcheckServer {
 }
 
 func (m *mockCronHealthcheckServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.HealthchecksBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.HealthchecksBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {
@@ -321,7 +321,7 @@ func (m *mockCronHealthcheckServer) createHealthcheck(w http.ResponseWriter, r *
 }
 
 func (m *mockCronHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *http.Request) {
-	basePath := client.HealthchecksBasePath
+	basePath := hyperping.HealthchecksBasePath
 	id := strings.TrimPrefix(r.URL.Path, basePath+"/")
 
 	healthcheck, ok := m.healthchecks[id]
@@ -338,7 +338,7 @@ func (m *mockCronHealthcheckServer) getHealthcheck(w http.ResponseWriter, r *htt
 }
 
 func (m *mockCronHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *http.Request) {
-	basePath := client.HealthchecksBasePath
+	basePath := hyperping.HealthchecksBasePath
 	id := strings.TrimPrefix(r.URL.Path, basePath+"/")
 
 	healthcheck, ok := m.healthchecks[id]
@@ -384,7 +384,7 @@ func (m *mockCronHealthcheckServer) updateHealthcheck(w http.ResponseWriter, r *
 }
 
 func (m *mockCronHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *http.Request) {
-	basePath := client.HealthchecksBasePath
+	basePath := hyperping.HealthchecksBasePath
 	id := strings.TrimPrefix(r.URL.Path, basePath+"/")
 
 	if _, ok := m.healthchecks[id]; !ok {
@@ -398,7 +398,7 @@ func (m *mockCronHealthcheckServer) deleteHealthcheck(w http.ResponseWriter, r *
 }
 
 func (m *mockCronHealthcheckServer) pauseHealthcheck(w http.ResponseWriter, r *http.Request) {
-	basePath := client.HealthchecksBasePath
+	basePath := hyperping.HealthchecksBasePath
 	path := strings.TrimPrefix(r.URL.Path, basePath+"/")
 	id := strings.TrimSuffix(path, "/pause")
 
@@ -419,7 +419,7 @@ func (m *mockCronHealthcheckServer) pauseHealthcheck(w http.ResponseWriter, r *h
 }
 
 func (m *mockCronHealthcheckServer) resumeHealthcheck(w http.ResponseWriter, r *http.Request) {
-	basePath := client.HealthchecksBasePath
+	basePath := hyperping.HealthchecksBasePath
 	path := strings.TrimPrefix(r.URL.Path, basePath+"/")
 	id := strings.TrimSuffix(path, "/resume")
 

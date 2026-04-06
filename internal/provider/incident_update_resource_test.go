@@ -14,44 +14,44 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
-// mockIncidentUpdateAPI implements client.IncidentAPI for unit testing
+// mockIncidentUpdateAPI implements hyperping.IncidentAPI for unit testing
 // the IncidentUpdateResource CRUD methods.
 type mockIncidentUpdateAPI struct {
-	getIncidentFunc       func(ctx context.Context, id string) (*client.Incident, error)
-	addIncidentUpdateFunc func(ctx context.Context, id string, req client.AddIncidentUpdateRequest) (*client.Incident, error)
+	getIncidentFunc       func(ctx context.Context, id string) (*hyperping.Incident, error)
+	addIncidentUpdateFunc func(ctx context.Context, id string, req hyperping.AddIncidentUpdateRequest) (*hyperping.Incident, error)
 	// Unused methods required to satisfy the interface.
-	listIncidentsFunc   func(ctx context.Context) ([]client.Incident, error)
-	createIncidentFunc  func(ctx context.Context, req client.CreateIncidentRequest) (*client.Incident, error)
-	updateIncidentFunc  func(ctx context.Context, id string, req client.UpdateIncidentRequest) (*client.Incident, error)
+	listIncidentsFunc   func(ctx context.Context) ([]hyperping.Incident, error)
+	createIncidentFunc  func(ctx context.Context, req hyperping.CreateIncidentRequest) (*hyperping.Incident, error)
+	updateIncidentFunc  func(ctx context.Context, id string, req hyperping.UpdateIncidentRequest) (*hyperping.Incident, error)
 	deleteIncidentFunc  func(ctx context.Context, id string) error
-	resolveIncidentFunc func(ctx context.Context, uuid string, message string) (*client.Incident, error)
+	resolveIncidentFunc func(ctx context.Context, uuid string, message string) (*hyperping.Incident, error)
 }
 
-func (m *mockIncidentUpdateAPI) ListIncidents(ctx context.Context) ([]client.Incident, error) {
+func (m *mockIncidentUpdateAPI) ListIncidents(ctx context.Context) ([]hyperping.Incident, error) {
 	if m.listIncidentsFunc != nil {
 		return m.listIncidentsFunc(ctx)
 	}
 	return nil, errors.New("ListIncidents not implemented")
 }
 
-func (m *mockIncidentUpdateAPI) GetIncident(ctx context.Context, id string) (*client.Incident, error) {
+func (m *mockIncidentUpdateAPI) GetIncident(ctx context.Context, id string) (*hyperping.Incident, error) {
 	if m.getIncidentFunc != nil {
 		return m.getIncidentFunc(ctx, id)
 	}
 	return nil, errors.New("GetIncident not implemented")
 }
 
-func (m *mockIncidentUpdateAPI) CreateIncident(ctx context.Context, req client.CreateIncidentRequest) (*client.Incident, error) {
+func (m *mockIncidentUpdateAPI) CreateIncident(ctx context.Context, req hyperping.CreateIncidentRequest) (*hyperping.Incident, error) {
 	if m.createIncidentFunc != nil {
 		return m.createIncidentFunc(ctx, req)
 	}
 	return nil, errors.New("CreateIncident not implemented")
 }
 
-func (m *mockIncidentUpdateAPI) UpdateIncident(ctx context.Context, id string, req client.UpdateIncidentRequest) (*client.Incident, error) {
+func (m *mockIncidentUpdateAPI) UpdateIncident(ctx context.Context, id string, req hyperping.UpdateIncidentRequest) (*hyperping.Incident, error) {
 	if m.updateIncidentFunc != nil {
 		return m.updateIncidentFunc(ctx, id, req)
 	}
@@ -65,14 +65,14 @@ func (m *mockIncidentUpdateAPI) DeleteIncident(ctx context.Context, id string) e
 	return errors.New("DeleteIncident not implemented")
 }
 
-func (m *mockIncidentUpdateAPI) AddIncidentUpdate(ctx context.Context, uuid string, req client.AddIncidentUpdateRequest) (*client.Incident, error) {
+func (m *mockIncidentUpdateAPI) AddIncidentUpdate(ctx context.Context, uuid string, req hyperping.AddIncidentUpdateRequest) (*hyperping.Incident, error) {
 	if m.addIncidentUpdateFunc != nil {
 		return m.addIncidentUpdateFunc(ctx, uuid, req)
 	}
 	return nil, errors.New("AddIncidentUpdate not implemented")
 }
 
-func (m *mockIncidentUpdateAPI) ResolveIncident(ctx context.Context, uuid string, message string) (*client.Incident, error) {
+func (m *mockIncidentUpdateAPI) ResolveIncident(ctx context.Context, uuid string, message string) (*hyperping.Incident, error) {
 	if m.resolveIncidentFunc != nil {
 		return m.resolveIncidentFunc(ctx, uuid, message)
 	}
@@ -220,7 +220,7 @@ func TestIncidentUpdateResource_ConfigureNilProviderData(t *testing.T) {
 func TestIncidentUpdateResource_ConfigureValidClient(t *testing.T) {
 	r := &IncidentUpdateResource{}
 
-	c := client.NewClient("test_api_key")
+	c := hyperping.NewClient("test_api_key")
 
 	req := resource.ConfigureRequest{
 		ProviderData: c,
@@ -290,7 +290,7 @@ func TestParseIncidentUpdateID(t *testing.T) {
 
 func TestIncidentUpdateResource_Create_Success(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{
-		addIncidentUpdateFunc: func(_ context.Context, id string, req client.AddIncidentUpdateRequest) (*client.Incident, error) {
+		addIncidentUpdateFunc: func(_ context.Context, id string, req hyperping.AddIncidentUpdateRequest) (*hyperping.Incident, error) {
 			if id != "incident-uuid-1" {
 				t.Errorf("expected incident ID 'incident-uuid-1', got %q", id)
 			}
@@ -300,11 +300,11 @@ func TestIncidentUpdateResource_Create_Success(t *testing.T) {
 			if req.Type != "investigating" {
 				t.Errorf("unexpected type: %q", req.Type)
 			}
-			return &client.Incident{
+			return &hyperping.Incident{
 				UUID: "incident-uuid-1",
-				Updates: []client.IncidentUpdate{
-					{UUID: "update-uuid-old", Date: "2026-01-01T00:00:00Z", Text: client.LocalizedText{En: "Old update"}, Type: "identified"},
-					{UUID: "update-uuid-1", Date: "2026-01-02T10:00:00Z", Text: client.LocalizedText{En: "We are investigating the issue."}, Type: "investigating"},
+				Updates: []hyperping.IncidentUpdate{
+					{UUID: "update-uuid-old", Date: "2026-01-01T00:00:00Z", Text: hyperping.LocalizedText{En: "Old update"}, Type: "identified"},
+					{UUID: "update-uuid-1", Date: "2026-01-02T10:00:00Z", Text: hyperping.LocalizedText{En: "We are investigating the issue."}, Type: "investigating"},
 				},
 			}, nil
 		},
@@ -347,13 +347,13 @@ func TestIncidentUpdateResource_Create_Success(t *testing.T) {
 
 func TestIncidentUpdateResource_Create_WithDate(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{
-		addIncidentUpdateFunc: func(_ context.Context, _ string, req client.AddIncidentUpdateRequest) (*client.Incident, error) {
+		addIncidentUpdateFunc: func(_ context.Context, _ string, req hyperping.AddIncidentUpdateRequest) (*hyperping.Incident, error) {
 			if req.Date != "2026-03-15T12:00:00Z" {
 				t.Errorf("expected date '2026-03-15T12:00:00Z', got %q", req.Date)
 			}
-			return &client.Incident{
+			return &hyperping.Incident{
 				UUID: "incident-uuid-1",
-				Updates: []client.IncidentUpdate{
+				Updates: []hyperping.IncidentUpdate{
 					{UUID: "update-uuid-1", Date: "2026-03-15T12:00:00Z", Text: req.Text, Type: req.Type},
 				},
 			}, nil
@@ -389,7 +389,7 @@ func TestIncidentUpdateResource_Create_WithDate(t *testing.T) {
 
 func TestIncidentUpdateResource_Create_APIError(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{
-		addIncidentUpdateFunc: func(_ context.Context, _ string, _ client.AddIncidentUpdateRequest) (*client.Incident, error) {
+		addIncidentUpdateFunc: func(_ context.Context, _ string, _ hyperping.AddIncidentUpdateRequest) (*hyperping.Incident, error) {
 			return nil, fmt.Errorf("API connection refused")
 		},
 	}
@@ -426,13 +426,13 @@ func TestIncidentUpdateResource_Create_FallbackToLastUpdate(t *testing.T) {
 	// When no matching type+text is found (e.g., API normalizes text),
 	// the resource should fall back to the last update.
 	mock := &mockIncidentUpdateAPI{
-		addIncidentUpdateFunc: func(_ context.Context, _ string, _ client.AddIncidentUpdateRequest) (*client.Incident, error) {
-			return &client.Incident{
+		addIncidentUpdateFunc: func(_ context.Context, _ string, _ hyperping.AddIncidentUpdateRequest) (*hyperping.Incident, error) {
+			return &hyperping.Incident{
 				UUID: "incident-uuid-1",
-				Updates: []client.IncidentUpdate{
-					{UUID: "update-uuid-old", Date: "2026-01-01T00:00:00Z", Text: client.LocalizedText{En: "Old"}, Type: "investigating"},
+				Updates: []hyperping.IncidentUpdate{
+					{UUID: "update-uuid-old", Date: "2026-01-01T00:00:00Z", Text: hyperping.LocalizedText{En: "Old"}, Type: "investigating"},
 					// The API normalized the text, so it doesn't match the request exactly
-					{UUID: "update-uuid-normalized", Date: "2026-01-02T10:00:00Z", Text: client.LocalizedText{En: "Normalized text by API"}, Type: "update"},
+					{UUID: "update-uuid-normalized", Date: "2026-01-02T10:00:00Z", Text: hyperping.LocalizedText{En: "Normalized text by API"}, Type: "update"},
 				},
 			}, nil
 		},
@@ -473,10 +473,10 @@ func TestIncidentUpdateResource_Create_FallbackToLastUpdate(t *testing.T) {
 func TestIncidentUpdateResource_Create_EmptyUpdatesNoDate(t *testing.T) {
 	// Edge case: API returns incident with no updates at all.
 	mock := &mockIncidentUpdateAPI{
-		addIncidentUpdateFunc: func(_ context.Context, _ string, _ client.AddIncidentUpdateRequest) (*client.Incident, error) {
-			return &client.Incident{
+		addIncidentUpdateFunc: func(_ context.Context, _ string, _ hyperping.AddIncidentUpdateRequest) (*hyperping.Incident, error) {
+			return &hyperping.Incident{
 				UUID:    "incident-uuid-1",
-				Updates: []client.IncidentUpdate{},
+				Updates: []hyperping.IncidentUpdate{},
 			}, nil
 		},
 	}
@@ -519,15 +519,15 @@ func TestIncidentUpdateResource_Create_EmptyUpdatesNoDate(t *testing.T) {
 
 func TestIncidentUpdateResource_Read_Success(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{
-		getIncidentFunc: func(_ context.Context, id string) (*client.Incident, error) {
+		getIncidentFunc: func(_ context.Context, id string) (*hyperping.Incident, error) {
 			if id != "incident-uuid-1" {
 				t.Errorf("expected incident ID 'incident-uuid-1', got %q", id)
 			}
-			return &client.Incident{
+			return &hyperping.Incident{
 				UUID: "incident-uuid-1",
-				Updates: []client.IncidentUpdate{
-					{UUID: "update-uuid-1", Date: "2026-01-02T10:00:00Z", Text: client.LocalizedText{En: "Investigating issue"}, Type: "investigating"},
-					{UUID: "update-uuid-2", Date: "2026-01-02T11:00:00Z", Text: client.LocalizedText{En: "Found root cause"}, Type: "identified"},
+				Updates: []hyperping.IncidentUpdate{
+					{UUID: "update-uuid-1", Date: "2026-01-02T10:00:00Z", Text: hyperping.LocalizedText{En: "Investigating issue"}, Type: "investigating"},
+					{UUID: "update-uuid-2", Date: "2026-01-02T11:00:00Z", Text: hyperping.LocalizedText{En: "Found root cause"}, Type: "identified"},
 				},
 			}, nil
 		},
@@ -569,8 +569,8 @@ func TestIncidentUpdateResource_Read_Success(t *testing.T) {
 
 func TestIncidentUpdateResource_Read_IncidentNotFound(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{
-		getIncidentFunc: func(_ context.Context, _ string) (*client.Incident, error) {
-			return nil, fmt.Errorf("failed to get incident: %w", client.ErrNotFound)
+		getIncidentFunc: func(_ context.Context, _ string) (*hyperping.Incident, error) {
+			return nil, fmt.Errorf("failed to get incident: %w", hyperping.ErrNotFound)
 		},
 	}
 
@@ -600,7 +600,7 @@ func TestIncidentUpdateResource_Read_IncidentNotFound(t *testing.T) {
 
 func TestIncidentUpdateResource_Read_APIError(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{
-		getIncidentFunc: func(_ context.Context, _ string) (*client.Incident, error) {
+		getIncidentFunc: func(_ context.Context, _ string) (*hyperping.Incident, error) {
 			return nil, fmt.Errorf("internal server error")
 		},
 	}
@@ -637,11 +637,11 @@ func TestIncidentUpdateResource_Read_APIError(t *testing.T) {
 
 func TestIncidentUpdateResource_Read_UpdateNotFound(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{
-		getIncidentFunc: func(_ context.Context, _ string) (*client.Incident, error) {
-			return &client.Incident{
+		getIncidentFunc: func(_ context.Context, _ string) (*hyperping.Incident, error) {
+			return &hyperping.Incident{
 				UUID: "incident-uuid-1",
-				Updates: []client.IncidentUpdate{
-					{UUID: "update-uuid-other", Date: "2026-01-02T10:00:00Z", Text: client.LocalizedText{En: "Other update"}, Type: "investigating"},
+				Updates: []hyperping.IncidentUpdate{
+					{UUID: "update-uuid-other", Date: "2026-01-02T10:00:00Z", Text: hyperping.LocalizedText{En: "Other update"}, Type: "investigating"},
 				},
 			}, nil
 		},
@@ -706,10 +706,10 @@ func TestIncidentUpdateResource_Read_InvalidCompositeID(t *testing.T) {
 
 func TestIncidentUpdateResource_Read_EmptyUpdatesInIncident(t *testing.T) {
 	mock := &mockIncidentUpdateAPI{
-		getIncidentFunc: func(_ context.Context, _ string) (*client.Incident, error) {
-			return &client.Incident{
+		getIncidentFunc: func(_ context.Context, _ string) (*hyperping.Incident, error) {
+			return &hyperping.Incident{
 				UUID:    "incident-uuid-1",
-				Updates: []client.IncidentUpdate{},
+				Updates: []hyperping.IncidentUpdate{},
 			}, nil
 		},
 	}

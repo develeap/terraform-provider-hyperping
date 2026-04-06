@@ -9,7 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // =============================================================================
@@ -171,12 +172,12 @@ func TestMapStatusPageWithSubdomainNormalization(t *testing.T) {
 	var diags diag.Diagnostics
 
 	// API returns subdomain with .hyperping.app suffix
-	sp := &client.StatusPage{
+	sp := &hyperping.StatusPage{
 		UUID:            "sp_test123",
 		Name:            "Test Page",
 		HostedSubdomain: "mycompany.hyperping.app", // API returns full subdomain
 		URL:             "https://mycompany.hyperping.app",
-		Settings: client.StatusPageSettings{
+		Settings: hyperping.StatusPageSettings{
 			Languages: []string{"en"},
 		},
 	}
@@ -200,12 +201,12 @@ func TestMapStatusPageWithLanguageFiltering(t *testing.T) {
 	var diags diag.Diagnostics
 
 	// API returns all languages populated
-	sp := &client.StatusPage{
+	sp := &hyperping.StatusPage{
 		UUID:            "sp_test456",
 		Name:            "Test Page",
 		HostedSubdomain: "status",
 		URL:             "https://status.hyperping.app",
-		Settings: client.StatusPageSettings{
+		Settings: hyperping.StatusPageSettings{
 			Languages: []string{"en"},
 			Description: map[string]string{
 				"en": "English description",
@@ -213,16 +214,16 @@ func TestMapStatusPageWithLanguageFiltering(t *testing.T) {
 				"de": "German description (auto-populated by API)",
 			},
 		},
-		Sections: []client.StatusPageSection{
+		Sections: []hyperping.StatusPageSection{
 			{
 				Name: map[string]string{
 					"en": "API Services",
 					"fr": "Services API (auto-populated)",
 					"de": "API-Dienste (auto-populated)",
 				},
-				Services: []client.StatusPageService{
+				Services: []hyperping.StatusPageService{
 					{
-						ID:   "svc_1",
+						ID:   testutil.Ptr(hyperping.FlexibleString("svc_1")),
 						UUID: "mon_123",
 						Name: map[string]string{
 							"en": "Main API",

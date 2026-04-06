@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // =============================================================================
@@ -169,10 +169,10 @@ func TestPreserveIncidentText_WriteOnlyBehavior(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			incident := &client.Incident{
+			incident := &hyperping.Incident{
 				UUID:        "inci_test",
-				Title:       client.LocalizedText{En: "Test"},
-				Text:        client.LocalizedText{En: tt.apiText},
+				Title:       hyperping.LocalizedText{En: "Test"},
+				Text:        hyperping.LocalizedText{En: tt.apiText},
 				Type:        "incident",
 				StatusPages: []string{"sp-1"},
 			}
@@ -229,11 +229,11 @@ func TestPreserveMaintenanceText_WriteOnlyBehavior(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			maintenance := &client.Maintenance{
+			maintenance := &hyperping.Maintenance{
 				UUID:      "mw_test",
 				Name:      "Test",
-				Title:     client.LocalizedText{En: "Title"},
-				Text:      client.LocalizedText{En: tt.apiText},
+				Title:     hyperping.LocalizedText{En: "Title"},
+				Text:      hyperping.LocalizedText{En: tt.apiText},
 				StartDate: &startDate,
 				EndDate:   &endDate,
 				Monitors:  []string{"mon-1"},

@@ -15,7 +15,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Terraform configuration generators
@@ -211,13 +211,13 @@ func isSubscriberDeletePath(path string) bool {
 }
 
 func (m *mockStatusPageServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.StatuspagesBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.StatuspagesBasePath
 	basePathWithID := basePath + "/sp_"
 	isSubscriber := isSubscriberPath(r.URL.Path)
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == client.MonitorsBasePath:
+	case r.Method == "GET" && r.URL.Path == hyperping.MonitorsBasePath:
 		m.listMonitors(w)
 	case r.Method == "GET" && r.URL.Path == basePath:
 		m.listStatusPages(w, r)
@@ -632,7 +632,7 @@ func (m *mockStatusPageServer) createStatusPage(w http.ResponseWriter, r *http.R
 }
 
 func (m *mockStatusPageServer) getStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, client.StatuspagesBasePath+"/")
+	uuid := strings.TrimPrefix(r.URL.Path, hyperping.StatuspagesBasePath+"/")
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -651,7 +651,7 @@ func (m *mockStatusPageServer) getStatusPage(w http.ResponseWriter, r *http.Requ
 }
 
 func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, client.StatuspagesBasePath+"/")
+	uuid := strings.TrimPrefix(r.URL.Path, hyperping.StatuspagesBasePath+"/")
 
 	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -708,7 +708,7 @@ func (m *mockStatusPageServer) updateStatusPage(w http.ResponseWriter, r *http.R
 }
 
 func (m *mockStatusPageServer) deleteStatusPage(w http.ResponseWriter, r *http.Request) {
-	uuid := strings.TrimPrefix(r.URL.Path, client.StatuspagesBasePath+"/")
+	uuid := strings.TrimPrefix(r.URL.Path, hyperping.StatuspagesBasePath+"/")
 
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
@@ -17,16 +17,16 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		maintenance client.Maintenance
+		maintenance hyperping.Maintenance
 		filter      *MaintenanceFilterModel
 		expected    bool
 		hasError    bool
 	}{
 		{
 			name: "empty filter - includes all",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "maintenance-1",
-				Title:  client.LocalizedText{En: "Database Maintenance"},
+				Title:  hyperping.LocalizedText{En: "Database Maintenance"},
 				Status: "upcoming",
 			},
 			filter: &MaintenanceFilterModel{
@@ -38,9 +38,9 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 		},
 		{
 			name: "name regex match on title",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "maint-001",
-				Title:  client.LocalizedText{En: "Database Maintenance Window"},
+				Title:  hyperping.LocalizedText{En: "Database Maintenance Window"},
 				Status: "upcoming",
 			},
 			filter: &MaintenanceFilterModel{
@@ -52,9 +52,9 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 		},
 		{
 			name: "name regex match on name",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "db-maintenance-001",
-				Title:  client.LocalizedText{En: "Routine Maintenance"},
+				Title:  hyperping.LocalizedText{En: "Routine Maintenance"},
 				Status: "upcoming",
 			},
 			filter: &MaintenanceFilterModel{
@@ -66,9 +66,9 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 		},
 		{
 			name: "name regex no match",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "api-update",
-				Title:  client.LocalizedText{En: "API Update"},
+				Title:  hyperping.LocalizedText{En: "API Update"},
 				Status: "upcoming",
 			},
 			filter: &MaintenanceFilterModel{
@@ -80,9 +80,9 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 		},
 		{
 			name: "status filter match",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "maint-001",
-				Title:  client.LocalizedText{En: "Test Maintenance"},
+				Title:  hyperping.LocalizedText{En: "Test Maintenance"},
 				Status: "ongoing",
 			},
 			filter: &MaintenanceFilterModel{
@@ -94,9 +94,9 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 		},
 		{
 			name: "status filter no match",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "maint-001",
-				Title:  client.LocalizedText{En: "Test Maintenance"},
+				Title:  hyperping.LocalizedText{En: "Test Maintenance"},
 				Status: "upcoming",
 			},
 			filter: &MaintenanceFilterModel{
@@ -108,9 +108,9 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 		},
 		{
 			name: "combined filters - all match",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "db-maint-001",
-				Title:  client.LocalizedText{En: "Database Maintenance"},
+				Title:  hyperping.LocalizedText{En: "Database Maintenance"},
 				Status: "ongoing",
 			},
 			filter: &MaintenanceFilterModel{
@@ -122,9 +122,9 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 		},
 		{
 			name: "combined filters - name matches but status doesn't",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "db-maint-001",
-				Title:  client.LocalizedText{En: "Database Maintenance"},
+				Title:  hyperping.LocalizedText{En: "Database Maintenance"},
 				Status: "completed",
 			},
 			filter: &MaintenanceFilterModel{
@@ -136,9 +136,9 @@ func TestMaintenanceWindowsDataSource_shouldIncludeMaintenance(t *testing.T) {
 		},
 		{
 			name: "invalid regex",
-			maintenance: client.Maintenance{
+			maintenance: hyperping.Maintenance{
 				Name:   "test",
-				Title:  client.LocalizedText{En: "Test"},
+				Title:  hyperping.LocalizedText{En: "Test"},
 				Status: "upcoming",
 			},
 			filter: &MaintenanceFilterModel{

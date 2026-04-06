@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -28,7 +28,7 @@ func NewOutagesDataSource() datasource.DataSource {
 
 // OutagesDataSource defines the data source implementation.
 type OutagesDataSource struct {
-	client client.OutageAPI
+	client hyperping.OutageAPI
 }
 
 // OutagesDataSourceModel describes the data source data model.
@@ -184,11 +184,11 @@ func (d *OutagesDataSource) Configure(_ context.Context, req datasource.Configur
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -216,7 +216,7 @@ func (d *OutagesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	}
 
 	// Apply client-side filtering if filter provided
-	var filteredOutages []client.Outage
+	var filteredOutages []hyperping.Outage
 	if config.Filter != nil {
 		for _, outage := range outages {
 			if d.shouldIncludeOutage(&outage, config.Filter, &resp.Diagnostics) {
@@ -253,7 +253,7 @@ func (d *OutagesDataSource) Read(ctx context.Context, req datasource.ReadRequest
 }
 
 // shouldIncludeOutage determines if an outage matches the filter criteria.
-func (d *OutagesDataSource) shouldIncludeOutage(outage *client.Outage, filter *OutageFilterModel, diags *diag.Diagnostics) bool {
+func (d *OutagesDataSource) shouldIncludeOutage(outage *hyperping.Outage, filter *OutageFilterModel, diags *diag.Diagnostics) bool {
 	return ApplyAllFilters(
 		// Name regex filter (matches monitor name)
 		func() bool {
@@ -274,9 +274,9 @@ func (d *OutagesDataSource) shouldIncludeOutage(outage *client.Outage, filter *O
 	)
 }
 
-// mapOutageToDataModel maps a client.Outage to the list data model
+// mapOutageToDataModel maps a hyperping.Outage to the list data model
 // using the shared MapOutageNestedObjects helper for nested monitor/acknowledged_by.
-func (d *OutagesDataSource) mapOutageToDataModel(outage *client.Outage, model *OutageDataModel, diags *diag.Diagnostics) {
+func (d *OutagesDataSource) mapOutageToDataModel(outage *hyperping.Outage, model *OutageDataModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(outage.UUID)
 	model.MonitorUUID = types.StringValue(outage.Monitor.UUID)
 	model.StartDate = types.StringValue(outage.StartDate)

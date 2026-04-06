@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // warnUnresolvedNumericUUIDs checks for services that have numeric UUIDs
@@ -19,7 +19,7 @@ import (
 // (legacy drift from older provider versions or API behavior). Since we
 // store raw API values in state, the plan engine will detect these as diffs
 // against the config's mon_xxx UUIDs and trigger an apply to fix them.
-func warnUnresolvedNumericUUIDs(sp *client.StatusPage, diags *diag.Diagnostics) {
+func warnUnresolvedNumericUUIDs(sp *hyperping.StatusPage, diags *diag.Diagnostics) {
 	if sp == nil {
 		return
 	}
@@ -42,7 +42,7 @@ func warnUnresolvedNumericUUIDs(sp *client.StatusPage, diags *diag.Diagnostics) 
 }
 
 // collectDriftedUUIDs recursively collects service UUIDs that are numeric strings.
-func collectDriftedUUIDs(services []client.StatusPageService, drifted *[]string) {
+func collectDriftedUUIDs(services []hyperping.StatusPageService, drifted *[]string) {
 	for _, svc := range services {
 		if svc.UUID != "" && isNumericString(svc.UUID) {
 			*drifted = append(*drifted, svc.UUID)
@@ -69,7 +69,7 @@ type monitorIDMaps struct {
 // Takes a function argument for testability (call sites pass r.client.ListMonitors).
 func buildMonitorIDMaps(
 	ctx context.Context,
-	listMonitors func(context.Context) ([]client.Monitor, error),
+	listMonitors func(context.Context) ([]hyperping.Monitor, error),
 ) (*monitorIDMaps, error) {
 	monitors, err := listMonitors(ctx)
 	if err != nil {
@@ -90,7 +90,7 @@ func buildMonitorIDMaps(
 // translateSectionsUUIDsToNumericIDs translates mon_xxx UUIDs to numeric IDs
 // in all services within sections. Adds error diagnostic if any UUID is unresolvable.
 func translateSectionsUUIDsToNumericIDs(
-	sections []client.CreateStatusPageSection,
+	sections []hyperping.CreateStatusPageSection,
 	uuidToID map[string]string,
 	diags *diag.Diagnostics,
 ) {
@@ -110,7 +110,7 @@ func translateSectionsUUIDsToNumericIDs(
 // translateCreateServicesToNumericIDs translates UUIDs in CreateStatusPageService slice.
 // Top-level: MonitorUUID field. Nested (inside groups): UUID field.
 func translateCreateServicesToNumericIDs(
-	services []client.CreateStatusPageService,
+	services []hyperping.CreateStatusPageService,
 	uuidToID map[string]string,
 	unresolved *[]string,
 ) {
@@ -142,7 +142,7 @@ func translateCreateServicesToNumericIDs(
 // translateResponseNumericIDsToUUIDs translates numeric IDs back to mon_xxx
 // in the API response. Warns if any numeric ID can't be resolved.
 func translateResponseNumericIDsToUUIDs(
-	sp *client.StatusPage,
+	sp *hyperping.StatusPage,
 	idToUUID map[string]string,
 	diags *diag.Diagnostics,
 ) {
@@ -165,7 +165,7 @@ func translateResponseNumericIDsToUUIDs(
 
 // translateServicesToUUIDs translates StatusPageService UUIDs from numeric to mon_xxx.
 func translateServicesToUUIDs(
-	services []client.StatusPageService,
+	services []hyperping.StatusPageService,
 	idToUUID map[string]string,
 	unresolved *[]string,
 ) {

@@ -20,7 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -33,7 +33,7 @@ func NewStatusPageSubscriberResource() resource.Resource {
 
 // StatusPageSubscriberResource defines the resource implementation.
 type StatusPageSubscriberResource struct {
-	client client.HyperpingAPI
+	client hyperping.HyperpingAPI
 }
 
 // StatusPageSubscriberResourceModel describes the resource data model.
@@ -130,7 +130,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				Computed:            true,
 				Default:             stringdefault.StaticString("en"),
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedLanguages...),
+					stringvalidator.OneOf(hyperping.AllowedLanguages...),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -159,9 +159,9 @@ func (r *StatusPageSubscriberResource) Configure(ctx context.Context, req resour
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(client.HyperpingAPI)
+	apiClient, ok := req.ProviderData.(hyperping.HyperpingAPI)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("client.HyperpingAPI", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("hyperping.HyperpingAPI", req.ProviderData))
 		return
 	}
 
@@ -178,7 +178,7 @@ func (r *StatusPageSubscriberResource) Create(ctx context.Context, req resource.
 	}
 
 	// Validate status page UUID
-	if err := client.ValidateResourceID(plan.StatusPageUUID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(plan.StatusPageUUID.ValueString()); err != nil {
 		resp.Diagnostics.AddError(
 			"Invalid Status Page UUID",
 			fmt.Sprintf("Status page UUID must be valid: %s", err.Error()),
@@ -228,13 +228,13 @@ func (r *StatusPageSubscriberResource) Read(ctx context.Context, req resource.Re
 		t := state.Type.ValueString()
 		subscriberType = &t
 	}
-	var foundSubscriber *client.StatusPageSubscriber
+	var foundSubscriber *hyperping.StatusPageSubscriber
 	page := 0 // API uses 0-indexed pages
 	for {
 		pageNum := page
 		paginatedResp, err := r.client.ListSubscribers(ctx, state.StatusPageUUID.ValueString(), &pageNum, subscriberType)
 		if err != nil {
-			if client.IsNotFound(err) {
+			if hyperping.IsNotFound(err) {
 				// Status page was deleted
 				resp.State.RemoveResource(ctx)
 				return
@@ -293,7 +293,7 @@ func (r *StatusPageSubscriberResource) Delete(ctx context.Context, req resource.
 	subscriberID := int(state.ID.ValueInt64())
 	err := r.client.DeleteSubscriber(ctx, state.StatusPageUUID.ValueString(), subscriberID)
 	if err != nil {
-		if !client.IsNotFound(err) {
+		if !hyperping.IsNotFound(err) {
 			resp.Diagnostics.AddError("Error deleting subscriber", err.Error())
 			return
 		}
@@ -316,7 +316,7 @@ func (r *StatusPageSubscriberResource) ImportState(ctx context.Context, req reso
 	subscriberIDStr := parts[1]
 
 	// Validate status page UUID
-	if err := client.ValidateResourceID(statuspageUUID); err != nil {
+	if err := hyperping.ValidateResourceID(statuspageUUID); err != nil {
 		resp.Diagnostics.AddError(
 			"Invalid Status Page UUID",
 			fmt.Sprintf("Status page UUID must be valid: %s", err.Error()),
@@ -362,8 +362,8 @@ func (r *StatusPageSubscriberResource) validateConditionalFields(model *StatusPa
 }
 
 // buildAddSubscriberRequest builds an AddSubscriberRequest from the Terraform plan.
-func (r *StatusPageSubscriberResource) buildAddSubscriberRequest(plan *StatusPageSubscriberResourceModel) *client.AddSubscriberRequest {
-	req := &client.AddSubscriberRequest{
+func (r *StatusPageSubscriberResource) buildAddSubscriberRequest(plan *StatusPageSubscriberResourceModel) *hyperping.AddSubscriberRequest {
+	req := &hyperping.AddSubscriberRequest{
 		Type: plan.Type.ValueString(),
 	}
 
@@ -395,7 +395,7 @@ func (r *StatusPageSubscriberResource) buildAddSubscriberRequest(plan *StatusPag
 }
 
 // mapSubscriberToModel maps API response to Terraform model.
-func (r *StatusPageSubscriberResource) mapSubscriberToModel(sub *client.StatusPageSubscriber, model *StatusPageSubscriberResourceModel) {
+func (r *StatusPageSubscriberResource) mapSubscriberToModel(sub *hyperping.StatusPageSubscriber, model *StatusPageSubscriberResourceModel) {
 	model.ID = types.Int64Value(int64(sub.ID))
 	model.Type = types.StringValue(sub.Type)
 	model.Value = types.StringValue(sub.Value)

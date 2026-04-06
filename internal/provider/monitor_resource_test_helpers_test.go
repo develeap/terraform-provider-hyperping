@@ -19,7 +19,7 @@ import (
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Test configuration helpers (shared across test files)
@@ -371,12 +371,12 @@ func (m *mockHyperpingServerWithErrors) handlePauseError(w http.ResponseWriter, 
 
 func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
 	m.recordRequest(r)
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
-	isMonitorPath := len(r.URL.Path) > len(client.MonitorsBasePath+"/")
+	isMonitorPath := len(r.URL.Path) > len(hyperping.MonitorsBasePath+"/")
 
 	switch {
-	case r.Method == "POST" && r.URL.Path == client.MonitorsBasePath:
+	case r.Method == "POST" && r.URL.Path == hyperping.MonitorsBasePath:
 		if m.createError.Load() {
 			m.writeInternalError(w, "Internal server error")
 			return
@@ -414,18 +414,18 @@ func (m *mockHyperpingServerWithErrors) handleRequestWithErrors(w http.ResponseW
 
 func (m *mockHyperpingServer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	m.recordRequest(r)
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == client.MonitorsBasePath:
+	case r.Method == "GET" && r.URL.Path == hyperping.MonitorsBasePath:
 		m.listMonitors(w)
-	case r.Method == "POST" && r.URL.Path == client.MonitorsBasePath:
+	case r.Method == "POST" && r.URL.Path == hyperping.MonitorsBasePath:
 		m.createMonitor(w, r)
-	case r.Method == "GET" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
+	case r.Method == "GET" && len(r.URL.Path) > len(hyperping.MonitorsBasePath+"/"):
 		m.getMonitor(w, r)
-	case r.Method == "PUT" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
+	case r.Method == "PUT" && len(r.URL.Path) > len(hyperping.MonitorsBasePath+"/"):
 		m.updateMonitor(w, r)
-	case r.Method == "DELETE" && len(r.URL.Path) > len(client.MonitorsBasePath+"/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len(hyperping.MonitorsBasePath+"/"):
 		m.deleteMonitor(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -545,7 +545,7 @@ func (m *mockHyperpingServer) createMonitor(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockHyperpingServer) getMonitor(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MonitorsBasePath+"/")
 
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -672,7 +672,7 @@ func applyMonitorField(monitor map[string]interface{}, key string, value interfa
 }
 
 func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MonitorsBasePath+"/")
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -721,7 +721,7 @@ func (m *mockHyperpingServer) updateMonitor(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockHyperpingServer) deleteMonitor(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MonitorsBasePath+"/")
 
 	m.mu.Lock()
 	defer m.mu.Unlock()

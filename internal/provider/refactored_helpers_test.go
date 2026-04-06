@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // =============================================================================
@@ -223,7 +223,7 @@ func TestApplyHTTPFieldChanges_changedRequestBodyIncluded(t *testing.T) {
 		RequestBody:    types.StringNull(),
 		RequestHeaders: types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}),
 	}
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyHTTPFieldChanges(&plan, &state, &req, &diags)
 
@@ -249,7 +249,7 @@ func TestApplyHTTPFieldChanges_nullBodyClearsToEmpty(t *testing.T) {
 		RequestBody:    types.StringValue("old-body"),
 		RequestHeaders: types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}),
 	}
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyHTTPFieldChanges(&plan, &state, &req, &diags)
 
@@ -272,7 +272,7 @@ func TestApplyHTTPFieldChanges_unchangedBodyOmitted(t *testing.T) {
 		RequestHeaders: types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}),
 	}
 	state := plan
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyHTTPFieldChanges(&plan, &state, &req, &diags)
 
@@ -293,9 +293,9 @@ func TestApplyHTTPFieldChanges_nullHeadersClearsToEmpty(t *testing.T) {
 	}
 	state := MonitorResourceModel{
 		RequestBody:    types.StringNull(),
-		RequestHeaders: makeHeaderList([]client.RequestHeader{{Name: "X-Test", Value: "val"}}),
+		RequestHeaders: makeHeaderList([]hyperping.RequestHeader{{Name: "X-Test", Value: "val"}}),
 	}
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyHTTPFieldChanges(&plan, &state, &req, &diags)
 
@@ -332,7 +332,7 @@ func TestApplyMonitoringFieldChanges_changedAlertsWaitIncluded(t *testing.T) {
 		Regions:          makeStringList([]string{"london"}),
 		Port:             types.Int64Null(),
 	}
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyMonitoringFieldChanges(ctx, &plan, &state, &req, &diags)
 
@@ -365,7 +365,7 @@ func TestApplyMonitoringFieldChanges_nullAlertsWaitClearsToZero(t *testing.T) {
 		Regions:          makeStringList([]string{"london"}),
 		Port:             types.Int64Null(),
 	}
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyMonitoringFieldChanges(ctx, &plan, &state, &req, &diags)
 
@@ -398,7 +398,7 @@ func TestApplyMonitoringFieldChanges_changedEscalationPolicyIncluded(t *testing.
 		Regions:          makeStringList([]string{"london"}),
 		Port:             types.Int64Null(),
 	}
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyMonitoringFieldChanges(ctx, &plan, &state, &req, &diags)
 
@@ -431,7 +431,7 @@ func TestApplyMonitoringFieldChanges_nullEscalationPolicyClearsToNone(t *testing
 		Regions:          makeStringList([]string{"london"}),
 		Port:             types.Int64Null(),
 	}
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyMonitoringFieldChanges(ctx, &plan, &state, &req, &diags)
 
@@ -464,7 +464,7 @@ func TestApplyMonitoringFieldChanges_changedRequiredKeywordIncluded(t *testing.T
 		Regions:          makeStringList([]string{"london"}),
 		Port:             types.Int64Null(),
 	}
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyMonitoringFieldChanges(ctx, &plan, &state, &req, &diags)
 
@@ -491,7 +491,7 @@ func TestApplyMonitoringFieldChanges_unchangedFieldsOmitted(t *testing.T) {
 		Port:             types.Int64Null(),
 	}
 	state := plan
-	req := client.UpdateMonitorRequest{}
+	req := hyperping.UpdateMonitorRequest{}
 
 	applyMonitoringFieldChanges(ctx, &plan, &state, &req, &diags)
 
@@ -524,7 +524,7 @@ func TestApplyHealthcheckTimingFields_changedCronIncluded(t *testing.T) {
 		GracePeriodValue: types.Int64Value(5),
 		GracePeriodType:  types.StringValue("minutes"),
 	}
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckTimingFields(&plan, &state, &req)
 
@@ -556,7 +556,7 @@ func TestApplyHealthcheckTimingFields_nullCronClearsToEmpty(t *testing.T) {
 		GracePeriodValue: types.Int64Value(5),
 		GracePeriodType:  types.StringValue("minutes"),
 	}
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckTimingFields(&plan, &state, &req)
 
@@ -588,7 +588,7 @@ func TestApplyHealthcheckTimingFields_changedGracePeriodIncluded(t *testing.T) {
 		GracePeriodValue: types.Int64Value(5),
 		GracePeriodType:  types.StringValue("minutes"),
 	}
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckTimingFields(&plan, &state, &req)
 
@@ -613,7 +613,7 @@ func TestApplyHealthcheckTimingFields_noChangesReturnsFalse(t *testing.T) {
 		GracePeriodType:  types.StringValue("minutes"),
 	}
 	state := plan
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckTimingFields(&plan, &state, &req)
 
@@ -642,7 +642,7 @@ func TestApplyHealthcheckTimingFields_changedPeriodValueIncluded(t *testing.T) {
 		GracePeriodValue: types.Int64Value(5),
 		GracePeriodType:  types.StringValue("minutes"),
 	}
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckTimingFields(&plan, &state, &req)
 
@@ -670,7 +670,7 @@ func TestApplyHealthcheckBehaviorFields_changedNameIncluded(t *testing.T) {
 		Name:             types.StringValue("old-check"),
 		EscalationPolicy: types.StringNull(),
 	}
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckBehaviorFields(&plan, &state, &req)
 
@@ -694,7 +694,7 @@ func TestApplyHealthcheckBehaviorFields_changedEscalationPolicyIncluded(t *testi
 		Name:             types.StringValue("check"),
 		EscalationPolicy: types.StringValue("old-policy-uuid"),
 	}
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckBehaviorFields(&plan, &state, &req)
 
@@ -718,7 +718,7 @@ func TestApplyHealthcheckBehaviorFields_nullEscalationPolicyClearsToEmpty(t *tes
 		Name:             types.StringValue("check"),
 		EscalationPolicy: types.StringValue("old-policy"),
 	}
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckBehaviorFields(&plan, &state, &req)
 
@@ -739,7 +739,7 @@ func TestApplyHealthcheckBehaviorFields_noChangesReturnsFalse(t *testing.T) {
 		EscalationPolicy: types.StringValue("policy-uuid"),
 	}
 	state := plan
-	req := client.UpdateHealthcheckRequest{}
+	req := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckBehaviorFields(&plan, &state, &req)
 
@@ -822,7 +822,7 @@ func makeStringList(items []string) types.List {
 }
 
 // makeHeaderList builds a types.List of request header objects for test models.
-func makeHeaderList(headers []client.RequestHeader) types.List {
+func makeHeaderList(headers []hyperping.RequestHeader) types.List {
 	var diags diag.Diagnostics
 	if len(headers) == 0 {
 		return types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()})
@@ -830,8 +830,8 @@ func makeHeaderList(headers []client.RequestHeader) types.List {
 	return mapStringSliceToHeaders(headers, &diags)
 }
 
-// mapStringSliceToHeaders converts []client.RequestHeader to types.List for tests.
-func mapStringSliceToHeaders(headers []client.RequestHeader, diags *diag.Diagnostics) types.List {
+// mapStringSliceToHeaders converts []hyperping.RequestHeader to types.List for tests.
+func mapStringSliceToHeaders(headers []hyperping.RequestHeader, diags *diag.Diagnostics) types.List {
 	objType := types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}
 	if len(headers) == 0 {
 		return types.ListNull(objType)

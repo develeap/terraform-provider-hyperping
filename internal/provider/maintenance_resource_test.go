@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestAccMaintenanceResource_basic(t *testing.T) {
@@ -257,7 +257,7 @@ func TestMaintenanceResource_ConfigureValidClient(t *testing.T) {
 	r := &MaintenanceResource{}
 
 	// Create a real client
-	c := client.NewClient("test_api_key")
+	c := hyperping.NewClient("test_api_key")
 
 	resp := &frameworkresource.ConfigureResponse{}
 	r.Configure(context.Background(), frameworkresource.ConfigureRequest{
@@ -323,11 +323,11 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 		startDate := "2025-12-20T02:00:00.000Z"
 		endDate := "2025-12-20T06:00:00.000Z"
 		notifyMinutes := 60
-		maintenance := &client.Maintenance{
+		maintenance := &hyperping.Maintenance{
 			UUID:                "mw_123",
 			Name:                "Test Maintenance",
-			Title:               client.LocalizedText{En: "Test Title"},
-			Text:                client.LocalizedText{En: "Test Description"},
+			Title:               hyperping.LocalizedText{En: "Test Title"},
+			Text:                hyperping.LocalizedText{En: "Test Description"},
 			StartDate:           &startDate,
 			EndDate:             &endDate,
 			Monitors:            []string{"mon-1", "mon-2"},
@@ -360,11 +360,11 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 	t.Run("null title and text", func(t *testing.T) {
 		startDate := "2025-12-20T02:00:00.000Z"
 		endDate := "2025-12-20T06:00:00.000Z"
-		maintenance := &client.Maintenance{
+		maintenance := &hyperping.Maintenance{
 			UUID:      "mw_456",
 			Name:      "No Title",
-			Title:     client.LocalizedText{}, // Empty
-			Text:      client.LocalizedText{}, // Empty
+			Title:     hyperping.LocalizedText{}, // Empty
+			Text:      hyperping.LocalizedText{}, // Empty
 			StartDate: &startDate,
 			EndDate:   &endDate,
 			Monitors:  []string{"mon-1"},
@@ -388,7 +388,7 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 	t.Run("empty monitors", func(t *testing.T) {
 		startDate := "2025-12-20T02:00:00.000Z"
 		endDate := "2025-12-20T06:00:00.000Z"
-		maintenance := &client.Maintenance{
+		maintenance := &hyperping.Maintenance{
 			UUID:      "mw_789",
 			Name:      "Empty Monitors",
 			StartDate: &startDate,
@@ -409,7 +409,7 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 	})
 
 	t.Run("null dates", func(t *testing.T) {
-		maintenance := &client.Maintenance{
+		maintenance := &hyperping.Maintenance{
 			UUID:      "mw_000",
 			Name:      "Null Dates",
 			StartDate: nil,
@@ -438,11 +438,11 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 		// the API returns empty text, the existing value must be preserved.
 		startDate := "2025-12-20T02:00:00.000Z"
 		endDate := "2025-12-20T06:00:00.000Z"
-		maintenance := &client.Maintenance{
+		maintenance := &hyperping.Maintenance{
 			UUID:      "mw_wo_1",
 			Name:      "Write-only Text Test",
-			Title:     client.LocalizedText{En: "Title"},
-			Text:      client.LocalizedText{En: ""}, // API returns empty
+			Title:     hyperping.LocalizedText{En: "Title"},
+			Text:      hyperping.LocalizedText{En: ""}, // API returns empty
 			StartDate: &startDate,
 			EndDate:   &endDate,
 			Monitors:  []string{"mon-1"},
@@ -466,11 +466,11 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 		// When the API does return text, use the API value.
 		startDate := "2025-12-20T02:00:00.000Z"
 		endDate := "2025-12-20T06:00:00.000Z"
-		maintenance := &client.Maintenance{
+		maintenance := &hyperping.Maintenance{
 			UUID:      "mw_wo_2",
 			Name:      "API Text Test",
-			Title:     client.LocalizedText{En: "Title"},
-			Text:      client.LocalizedText{En: "Text from API"},
+			Title:     hyperping.LocalizedText{En: "Title"},
+			Text:      hyperping.LocalizedText{En: "Text from API"},
 			StartDate: &startDate,
 			EndDate:   &endDate,
 			Monitors:  []string{"mon-1"},
@@ -494,10 +494,10 @@ func TestMaintenanceResource_mapMaintenanceToModel(t *testing.T) {
 		// Fresh model with null Text and API returns empty.
 		startDate := "2025-12-20T02:00:00.000Z"
 		endDate := "2025-12-20T06:00:00.000Z"
-		maintenance := &client.Maintenance{
+		maintenance := &hyperping.Maintenance{
 			UUID:      "mw_wo_3",
 			Name:      "Null Text Test",
-			Text:      client.LocalizedText{En: ""},
+			Text:      hyperping.LocalizedText{En: ""},
 			StartDate: &startDate,
 			EndDate:   &endDate,
 			Monitors:  []string{"mon-1"},

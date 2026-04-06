@@ -14,14 +14,14 @@ import (
 
 const defaultBaseURL = "https://api.pingdom.com/api/3.1"
 
-// Client represents a Pingdom API client.
+// Client represents a Pingdom API hyperping.
 type Client struct {
 	apiToken   string
 	baseURL    string
 	httpClient *http.Client
 }
 
-// NewClient creates a new Pingdom API client.
+// NewClient creates a new Pingdom API hyperping.
 func NewClient(apiToken string, options ...Option) *Client {
 	c := &Client{
 		apiToken: apiToken,
@@ -48,7 +48,7 @@ func WithBaseURL(url string) Option {
 	}
 }
 
-// WithHTTPClient sets a custom HTTP client.
+// WithHTTPClient sets a custom HTTP hyperping.
 func WithHTTPClient(client *http.Client) Option {
 	return func(c *Client) {
 		c.httpClient = client

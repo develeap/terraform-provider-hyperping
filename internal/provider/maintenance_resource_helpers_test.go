@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // maintenanceTestFixture represents a maintenance window for testing
@@ -151,7 +151,7 @@ func (m *maintenanceMockServer) handleUpdate(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	for uuid, f := range m.fixtures {
-		if r.URL.Path != client.MaintenanceBasePath+"/"+uuid {
+		if r.URL.Path != hyperping.MaintenanceBasePath+"/"+uuid {
 			continue
 		}
 		if m.deleted[uuid] {
@@ -172,7 +172,7 @@ func (m *maintenanceMockServer) handleUpdate(w http.ResponseWriter, r *http.Requ
 // handleGet handles GET requests for a single maintenance window.
 func (m *maintenanceMockServer) handleGet(w http.ResponseWriter, r *http.Request) {
 	for uuid, f := range m.fixtures {
-		if r.URL.Path != client.MaintenanceBasePath+"/"+uuid {
+		if r.URL.Path != hyperping.MaintenanceBasePath+"/"+uuid {
 			continue
 		}
 		if m.deleted[uuid] {
@@ -189,7 +189,7 @@ func (m *maintenanceMockServer) handleGet(w http.ResponseWriter, r *http.Request
 // handleDelete handles DELETE requests for a maintenance window.
 func (m *maintenanceMockServer) handleDelete(w http.ResponseWriter, r *http.Request) {
 	for uuid := range m.fixtures {
-		if r.URL.Path == client.MaintenanceBasePath+"/"+uuid {
+		if r.URL.Path == hyperping.MaintenanceBasePath+"/"+uuid {
 			m.deleted[uuid] = true
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -200,7 +200,7 @@ func (m *maintenanceMockServer) handleDelete(w http.ResponseWriter, r *http.Requ
 
 func (m *maintenanceMockServer) handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 		switch r.Method {
 		case http.MethodPost:
@@ -345,20 +345,20 @@ func newMaintenanceServerWithDisappear(fixture *maintenanceTestFixture) (*httpte
 	mock.addFixture(fixture)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+		case r.Method == http.MethodPost && r.URL.Path == hyperping.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(fixture.toAPIResponse())
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
+		case r.Method == http.MethodGet && r.URL.Path == hyperping.MaintenanceBasePath+"/"+fixture.UUID:
 			if deleted {
 				w.WriteHeader(http.StatusNotFound)
 				json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
 				return
 			}
 			json.NewEncoder(w).Encode(fixture.toAPIResponse())
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
+		case r.Method == http.MethodDelete && r.URL.Path == hyperping.MaintenanceBasePath+"/"+fixture.UUID:
 			deleted = true
 			w.WriteHeader(http.StatusNoContent)
 		default:
@@ -374,13 +374,13 @@ func newMaintenanceServerWithUpdateCapture(fixture *maintenanceTestFixture) (*ht
 	maintenance := fixture.toAPIResponse()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+		case r.Method == http.MethodPost && r.URL.Path == hyperping.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(fixture.toAPIResponse())
-		case r.Method == http.MethodPut && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
+		case r.Method == http.MethodPut && r.URL.Path == hyperping.MaintenanceBasePath+"/"+fixture.UUID:
 			var req map[string]interface{}
 			json.NewDecoder(r.Body).Decode(&req)
 			// Update maintenance with new values
@@ -388,9 +388,9 @@ func newMaintenanceServerWithUpdateCapture(fixture *maintenanceTestFixture) (*ht
 				maintenance[k] = v
 			}
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
+		case r.Method == http.MethodGet && r.URL.Path == hyperping.MaintenanceBasePath+"/"+fixture.UUID:
 			json.NewEncoder(w).Encode(maintenance)
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
+		case r.Method == http.MethodDelete && r.URL.Path == hyperping.MaintenanceBasePath+"/"+fixture.UUID:
 			w.WriteHeader(http.StatusNoContent)
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -405,20 +405,20 @@ func newMaintenanceServerDeleteNotFound(fixture *maintenanceTestFixture) *httpte
 	deleted := false
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == client.MaintenanceBasePath:
+		case r.Method == http.MethodPost && r.URL.Path == hyperping.MaintenanceBasePath:
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(fixture.toAPIResponse())
-		case r.Method == http.MethodGet && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
+		case r.Method == http.MethodGet && r.URL.Path == hyperping.MaintenanceBasePath+"/"+fixture.UUID:
 			if deleted {
 				w.WriteHeader(http.StatusNotFound)
 				json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
 				return
 			}
 			json.NewEncoder(w).Encode(fixture.toAPIResponse())
-		case r.Method == http.MethodDelete && r.URL.Path == client.MaintenanceBasePath+"/"+fixture.UUID:
+		case r.Method == http.MethodDelete && r.URL.Path == hyperping.MaintenanceBasePath+"/"+fixture.UUID:
 			// Return not found - simulates already deleted resource
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "not found"})

@@ -8,12 +8,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // MapMonitorCommonFields maps common monitor fields from API response to Terraform types.
 // This is shared between MonitorResource and MonitorsDataSource to avoid duplication.
-func MapMonitorCommonFields(monitor *client.Monitor, diags *diag.Diagnostics) MonitorCommonFields {
+func MapMonitorCommonFields(monitor *hyperping.Monitor, diags *diag.Diagnostics) MonitorCommonFields {
 	result := MonitorCommonFields{
 		ID:                 types.StringValue(monitor.UUID),
 		Name:               types.StringValue(monitor.Name),
@@ -54,8 +54,8 @@ func MapMonitorCommonFields(monitor *client.Monitor, diags *diag.Diagnostics) Mo
 	}
 
 	// Handle escalation_policy
-	if monitor.EscalationPolicy != nil && *monitor.EscalationPolicy != "" {
-		result.EscalationPolicy = types.StringValue(*monitor.EscalationPolicy)
+	if monitor.EscalationPolicy != nil && monitor.EscalationPolicy.UUID != "" {
+		result.EscalationPolicy = types.StringValue(monitor.EscalationPolicy.UUID)
 	} else {
 		result.EscalationPolicy = types.StringNull()
 	}
@@ -174,7 +174,7 @@ func acknowledgedByAttrTypes() map[string]attr.Type {
 }
 
 // mapRequestHeadersToTFList converts []RequestHeader to a Terraform List of objects.
-func mapRequestHeadersToTFList(headers []client.RequestHeader, diags *diag.Diagnostics) types.List {
+func mapRequestHeadersToTFList(headers []hyperping.RequestHeader, diags *diag.Diagnostics) types.List {
 	if len(headers) == 0 {
 		return types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()})
 	}
@@ -215,9 +215,9 @@ type HealthcheckCommonFields struct {
 	CreatedAt        types.String
 }
 
-// MapHealthcheckCommonFields maps a client.Healthcheck to shared typed fields.
+// MapHealthcheckCommonFields maps a hyperping.Healthcheck to shared typed fields.
 // Returns a struct with explicit Null values for all fields if hc is nil.
-func MapHealthcheckCommonFields(hc *client.Healthcheck) HealthcheckCommonFields {
+func MapHealthcheckCommonFields(hc *hyperping.Healthcheck) HealthcheckCommonFields {
 	if hc == nil {
 		return HealthcheckCommonFields{
 			ID:               types.StringNull(),
@@ -291,7 +291,7 @@ func MapHealthcheckCommonFields(hc *client.Healthcheck) HealthcheckCommonFields 
 
 // MapOutageNestedObjects builds the monitor and acknowledged_by nested objects from an outage.
 // Returns null objects if the outage or its monitor reference is missing/empty.
-func MapOutageNestedObjects(outage *client.Outage, diags *diag.Diagnostics) (types.Object, types.Object) {
+func MapOutageNestedObjects(outage *hyperping.Outage, diags *diag.Diagnostics) (types.Object, types.Object) {
 	if outage == nil {
 		return types.ObjectNull(monitorReferenceAttrTypes()), types.ObjectNull(acknowledgedByAttrTypes())
 	}
@@ -328,13 +328,13 @@ func MapOutageNestedObjects(outage *client.Outage, diags *diag.Diagnostics) (typ
 }
 
 // mapTFListToRequestHeaders converts a Terraform List to []RequestHeader.
-func mapTFListToRequestHeaders(list types.List, diags *diag.Diagnostics) []client.RequestHeader {
+func mapTFListToRequestHeaders(list types.List, diags *diag.Diagnostics) []hyperping.RequestHeader {
 	if list.IsNull() || list.IsUnknown() {
 		return nil
 	}
 
 	elements := list.Elements()
-	headers := make([]client.RequestHeader, 0, len(elements))
+	headers := make([]hyperping.RequestHeader, 0, len(elements))
 
 	for _, elem := range elements {
 		obj, ok := elem.(types.Object)
@@ -356,7 +356,7 @@ func mapTFListToRequestHeaders(list types.List, diags *diag.Diagnostics) []clien
 		}
 
 		if !name.IsNull() && !value.IsNull() {
-			headers = append(headers, client.RequestHeader{
+			headers = append(headers, hyperping.RequestHeader{
 				Name:  name.ValueString(),
 				Value: value.ValueString(),
 			})

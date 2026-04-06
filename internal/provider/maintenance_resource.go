@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -39,7 +39,7 @@ func NewMaintenanceResource() resource.Resource {
 
 // MaintenanceResource defines the resource implementation.
 type MaintenanceResource struct {
-	client client.MaintenanceAPI
+	client hyperping.MaintenanceAPI
 }
 
 // MaintenanceResourceModel describes the resource data model.
@@ -128,14 +128,14 @@ func (r *MaintenanceResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Computed:            true,
 				Default:             stringdefault.StaticString("none"),
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedNotificationOptions...),
+					stringvalidator.OneOf(hyperping.AllowedNotificationOptions...),
 				},
 			},
 			"notification_minutes": schema.Int64Attribute{
 				MarkdownDescription: "Number of minutes before the maintenance to notify subscribers. Defaults to `60`. Only used when notification_option is `scheduled`. Must be at least 1.",
 				Optional:            true,
 				Computed:            true,
-				Default:             int64default.StaticInt64(client.DefaultNotifyBeforeMinutes),
+				Default:             int64default.StaticInt64(hyperping.DefaultNotifyBeforeMinutes),
 				Validators: []validator.Int64{
 					int64validator.AtLeast(1),
 				},
@@ -150,9 +150,9 @@ func (r *MaintenanceResource) Configure(_ context.Context, req resource.Configur
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperping.Client", req.ProviderData))
 		return
 	}
 
@@ -178,7 +178,7 @@ func (r *MaintenanceResource) Create(ctx context.Context, req resource.CreateReq
 	endDate := plan.EndDate.ValueString()
 
 	// Build create request
-	createReq := client.CreateMaintenanceRequest{
+	createReq := hyperping.CreateMaintenanceRequest{
 		Name:      plan.Name.ValueString(),
 		StartDate: startDate,
 		EndDate:   endDate,
@@ -186,12 +186,12 @@ func (r *MaintenanceResource) Create(ctx context.Context, req resource.CreateReq
 
 	// Handle optional title
 	if !plan.Title.IsNull() {
-		createReq.Title = client.LocalizedText{En: plan.Title.ValueString()}
+		createReq.Title = hyperping.LocalizedText{En: plan.Title.ValueString()}
 	}
 
 	// Handle optional text
 	if !plan.Text.IsNull() {
-		createReq.Text = client.LocalizedText{En: plan.Text.ValueString()}
+		createReq.Text = hyperping.LocalizedText{En: plan.Text.ValueString()}
 	}
 
 	// Handle monitors (required)
@@ -250,7 +250,7 @@ func (r *MaintenanceResource) Read(ctx context.Context, req resource.ReadRequest
 
 	maintenance, err := r.client.GetMaintenance(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -268,8 +268,8 @@ func (r *MaintenanceResource) Read(ctx context.Context, req resource.ReadRequest
 
 // buildMaintenanceUpdateRequest constructs an UpdateMaintenanceRequest with only changed fields.
 // Compares plan vs state and populates request with differences.
-func buildMaintenanceUpdateRequest(ctx context.Context, plan *MaintenanceResourceModel, state *MaintenanceResourceModel, diags *diag.Diagnostics) client.UpdateMaintenanceRequest {
-	updateReq := client.UpdateMaintenanceRequest{}
+func buildMaintenanceUpdateRequest(ctx context.Context, plan *MaintenanceResourceModel, state *MaintenanceResourceModel, diags *diag.Diagnostics) hyperping.UpdateMaintenanceRequest {
+	updateReq := hyperping.UpdateMaintenanceRequest{}
 
 	if !plan.Name.Equal(state.Name) {
 		name := plan.Name.ValueString()
@@ -277,12 +277,12 @@ func buildMaintenanceUpdateRequest(ctx context.Context, plan *MaintenanceResourc
 	}
 
 	if !plan.Title.Equal(state.Title) {
-		title := client.LocalizedText{En: plan.Title.ValueString()}
+		title := hyperping.LocalizedText{En: plan.Title.ValueString()}
 		updateReq.Title = &title
 	}
 
 	if !plan.Text.Equal(state.Text) {
-		text := client.LocalizedText{En: plan.Text.ValueString()}
+		text := hyperping.LocalizedText{En: plan.Text.ValueString()}
 		updateReq.Text = &text
 	}
 
@@ -379,7 +379,7 @@ func (r *MaintenanceResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err := r.client.DeleteMaintenance(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			// Already deleted, no error
 			return
 		}
@@ -391,7 +391,7 @@ func (r *MaintenanceResource) Delete(ctx context.Context, req resource.DeleteReq
 // ImportState imports an existing resource into Terraform.
 func (r *MaintenanceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	// Validate the import ID before setting state (VULN-015)
-	if err := client.ValidateResourceID(req.ID); err != nil {
+	if err := hyperping.ValidateResourceID(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid Import ID", fmt.Sprintf("Cannot import maintenance window: %s", err))
 		return
 	}
@@ -510,8 +510,8 @@ func validateMaintenanceDates(plan *MaintenanceResourceModel) diag.Diagnostics {
 	return diags
 }
 
-// mapMaintenanceToModel maps a client.Maintenance to the Terraform model.
-func (r *MaintenanceResource) mapMaintenanceToModel(maintenance *client.Maintenance, model *MaintenanceResourceModel, diags *diag.Diagnostics) {
+// mapMaintenanceToModel maps a hyperping.Maintenance to the Terraform model.
+func (r *MaintenanceResource) mapMaintenanceToModel(maintenance *hyperping.Maintenance, model *MaintenanceResourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(maintenance.UUID)
 	model.Name = types.StringValue(maintenance.Name)
 

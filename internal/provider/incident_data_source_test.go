@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewIncidentDataSource(t *testing.T) {
@@ -62,7 +62,7 @@ func TestIncidentDataSource_Schema(t *testing.T) {
 func TestIncidentDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &IncidentDataSource{}
-		c := &client.Client{}
+		c := &hyperping.Client{}
 
 		req := datasource.ConfigureRequest{
 			ProviderData: c,
@@ -115,23 +115,23 @@ func TestIncidentDataSource_mapIncidentToDataSourceModel(t *testing.T) {
 	d := &IncidentDataSource{}
 
 	t.Run("all fields populated with updates", func(t *testing.T) {
-		inc := &client.Incident{
+		inc := &hyperping.Incident{
 			UUID: "inc-123",
-			Title: client.LocalizedText{
+			Title: hyperping.LocalizedText{
 				En: "Service Degradation",
 			},
-			Text: client.LocalizedText{
+			Text: hyperping.LocalizedText{
 				En: "We are experiencing slow response times",
 			},
 			Type:               "incident",
 			Date:               "2026-01-15T10:00:00Z",
 			AffectedComponents: []string{"comp-1", "comp-2"},
 			StatusPages:        []string{"page-1"},
-			Updates: []client.IncidentUpdate{
+			Updates: []hyperping.IncidentUpdate{
 				{
 					UUID: "upd-1",
 					Date: "2026-01-15T10:30:00Z",
-					Text: client.LocalizedText{
+					Text: hyperping.LocalizedText{
 						En: "Issue identified",
 					},
 					Type: "identified",
@@ -159,16 +159,16 @@ func TestIncidentDataSource_mapIncidentToDataSourceModel(t *testing.T) {
 	})
 
 	t.Run("minimal fields no updates", func(t *testing.T) {
-		inc := &client.Incident{
+		inc := &hyperping.Incident{
 			UUID: "inc-min",
-			Title: client.LocalizedText{
+			Title: hyperping.LocalizedText{
 				En: "Minor Issue",
 			},
-			Text: client.LocalizedText{
+			Text: hyperping.LocalizedText{
 				En: "Brief description",
 			},
 			Type:    "outage",
-			Updates: []client.IncidentUpdate{},
+			Updates: []hyperping.IncidentUpdate{},
 		}
 
 		model := &IncidentDataSourceModel{}

@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ func TestApplySimpleFieldChanges_noChanges(t *testing.T) {
 		ProjectUUID:        types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	r := &MonitorResource{}
 	r.applySimpleFieldChanges(plan, state, &req)
 
@@ -107,7 +107,7 @@ func TestApplySimpleFieldChanges_nameChanged(t *testing.T) {
 		ProjectUUID:        types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	r := &MonitorResource{}
 	r.applySimpleFieldChanges(plan, state, &req)
 
@@ -150,7 +150,7 @@ func TestApplySimpleFieldChanges_multipleFieldsChanged(t *testing.T) {
 		ProjectUUID:        types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	r := &MonitorResource{}
 	r.applySimpleFieldChanges(plan, state, &req)
 
@@ -188,7 +188,7 @@ func TestApplySimpleFieldChanges_multipleFieldsChanged(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // buildHeaderList is a test helper that builds a types.List of request header objects.
-func buildHeaderList(t *testing.T, headers []client.RequestHeader) types.List {
+func buildHeaderList(t *testing.T, headers []hyperping.RequestHeader) types.List {
 	t.Helper()
 	if len(headers) == 0 {
 		return types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()})
@@ -216,7 +216,7 @@ func buildHeaderList(t *testing.T, headers []client.RequestHeader) types.List {
 func TestApplyHTTPFieldChanges_noChanges(t *testing.T) {
 	t.Parallel()
 
-	headers := buildHeaderList(t, []client.RequestHeader{{Name: "X-Test", Value: "val"}})
+	headers := buildHeaderList(t, []hyperping.RequestHeader{{Name: "X-Test", Value: "val"}})
 	plan := &MonitorResourceModel{
 		RequestHeaders: headers,
 		RequestBody:    types.StringValue("body"),
@@ -226,7 +226,7 @@ func TestApplyHTTPFieldChanges_noChanges(t *testing.T) {
 		RequestBody:    types.StringValue("body"),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyHTTPFieldChanges(plan, state, &req, &diags)
 
@@ -244,8 +244,8 @@ func TestApplyHTTPFieldChanges_noChanges(t *testing.T) {
 func TestApplyHTTPFieldChanges_headersChanged(t *testing.T) {
 	t.Parallel()
 
-	oldHeaders := buildHeaderList(t, []client.RequestHeader{{Name: "X-Old", Value: "old"}})
-	newHeaders := buildHeaderList(t, []client.RequestHeader{{Name: "X-New", Value: "new"}})
+	oldHeaders := buildHeaderList(t, []hyperping.RequestHeader{{Name: "X-Old", Value: "old"}})
+	newHeaders := buildHeaderList(t, []hyperping.RequestHeader{{Name: "X-New", Value: "new"}})
 
 	plan := &MonitorResourceModel{
 		RequestHeaders: newHeaders,
@@ -256,7 +256,7 @@ func TestApplyHTTPFieldChanges_headersChanged(t *testing.T) {
 		RequestBody:    types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyHTTPFieldChanges(plan, state, &req, &diags)
 
@@ -277,7 +277,7 @@ func TestApplyHTTPFieldChanges_headersChanged(t *testing.T) {
 func TestApplyHTTPFieldChanges_headersSetToNull(t *testing.T) {
 	t.Parallel()
 
-	oldHeaders := buildHeaderList(t, []client.RequestHeader{{Name: "X-Old", Value: "old"}})
+	oldHeaders := buildHeaderList(t, []hyperping.RequestHeader{{Name: "X-Old", Value: "old"}})
 
 	plan := &MonitorResourceModel{
 		RequestHeaders: types.ListNull(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}),
@@ -288,7 +288,7 @@ func TestApplyHTTPFieldChanges_headersSetToNull(t *testing.T) {
 		RequestBody:    types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyHTTPFieldChanges(plan, state, &req, &diags)
 
@@ -316,7 +316,7 @@ func TestApplyHTTPFieldChanges_requestBodyChanged(t *testing.T) {
 		RequestBody:    types.StringValue("old-body"),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyHTTPFieldChanges(plan, state, &req, &diags)
 
@@ -341,7 +341,7 @@ func TestApplyHTTPFieldChanges_requestBodyRemoved(t *testing.T) {
 		RequestBody:    types.StringValue("had-a-body"),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyHTTPFieldChanges(plan, state, &req, &diags)
 
@@ -360,7 +360,7 @@ func TestApplyHTTPFieldChanges_unknownHeadersSkipped(t *testing.T) {
 	t.Parallel()
 
 	unknownHeaders := types.ListUnknown(types.ObjectType{AttrTypes: RequestHeaderAttrTypes()})
-	oldHeaders := buildHeaderList(t, []client.RequestHeader{{Name: "X-Old", Value: "old"}})
+	oldHeaders := buildHeaderList(t, []hyperping.RequestHeader{{Name: "X-Old", Value: "old"}})
 
 	plan := &MonitorResourceModel{
 		RequestHeaders: unknownHeaders,
@@ -371,7 +371,7 @@ func TestApplyHTTPFieldChanges_unknownHeadersSkipped(t *testing.T) {
 		RequestBody:    types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyHTTPFieldChanges(plan, state, &req, &diags)
 
@@ -432,7 +432,7 @@ func TestApplyMonitoringFieldChanges_regionsChanged(t *testing.T) {
 		DNSExpectedAnswer: types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyMonitoringFieldChanges(ctx, plan, state, &req, &diags)
 
@@ -475,7 +475,7 @@ func TestApplyMonitoringFieldChanges_regionsRemoved(t *testing.T) {
 		DNSExpectedAnswer: types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyMonitoringFieldChanges(ctx, plan, state, &req, &diags)
 
@@ -515,7 +515,7 @@ func TestApplyMonitoringFieldChanges_alertsWaitRemoved(t *testing.T) {
 		DNSExpectedAnswer: types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyMonitoringFieldChanges(ctx, plan, state, &req, &diags)
 
@@ -555,7 +555,7 @@ func TestApplyMonitoringFieldChanges_escalationPolicyRemoved(t *testing.T) {
 		DNSExpectedAnswer: types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyMonitoringFieldChanges(ctx, plan, state, &req, &diags)
 
@@ -595,7 +595,7 @@ func TestApplyMonitoringFieldChanges_requiredKeywordRemoved(t *testing.T) {
 		DNSExpectedAnswer: types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyMonitoringFieldChanges(ctx, plan, state, &req, &diags)
 
@@ -635,7 +635,7 @@ func TestApplyMonitoringFieldChanges_dnsFieldsChanged(t *testing.T) {
 		DNSExpectedAnswer: types.StringValue("1.2.3.4"),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyMonitoringFieldChanges(ctx, plan, state, &req, &diags)
 
@@ -678,7 +678,7 @@ func TestApplyMonitoringFieldChanges_dnsFieldsRemoved(t *testing.T) {
 		DNSExpectedAnswer: types.StringValue("1.2.3.4"),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyMonitoringFieldChanges(ctx, plan, state, &req, &diags)
 
@@ -724,7 +724,7 @@ func TestApplyMonitoringFieldChanges_portChanged(t *testing.T) {
 		DNSExpectedAnswer: types.StringNull(),
 	}
 
-	var req client.UpdateMonitorRequest
+	var req hyperping.UpdateMonitorRequest
 	var diags diag.Diagnostics
 	applyMonitoringFieldChanges(ctx, plan, state, &req, &diags)
 
@@ -754,7 +754,7 @@ func TestMockServer_RequestSpy_RecordsCreateAndGet(t *testing.T) {
 
 	// Create a monitor via the mock
 	body := `{"name":"spy-test","url":"https://example.com"}`
-	resp, err := http.Post(server.URL+client.MonitorsBasePath, "application/json", strings.NewReader(body))
+	resp, err := http.Post(server.URL+hyperping.MonitorsBasePath, "application/json", strings.NewReader(body))
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
@@ -767,8 +767,8 @@ func TestMockServer_RequestSpy_RecordsCreateAndGet(t *testing.T) {
 	if reqs[0].Method != "POST" {
 		t.Errorf("expected POST, got %s", reqs[0].Method)
 	}
-	if reqs[0].Path != client.MonitorsBasePath {
-		t.Errorf("expected path %s, got %s", client.MonitorsBasePath, reqs[0].Path)
+	if reqs[0].Path != hyperping.MonitorsBasePath {
+		t.Errorf("expected path %s, got %s", hyperping.MonitorsBasePath, reqs[0].Path)
 	}
 	if reqs[0].Body == nil {
 		t.Fatal("expected non-nil body")
@@ -787,7 +787,7 @@ func TestMockServer_RequestSpy_GETHasNilBody(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()
 
-	resp, err := http.Get(server.URL + client.MonitorsBasePath)
+	resp, err := http.Get(server.URL + hyperping.MonitorsBasePath)
 	if err != nil {
 		t.Fatalf("GET failed: %v", err)
 	}

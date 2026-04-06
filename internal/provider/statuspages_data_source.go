@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -25,7 +25,7 @@ func NewStatusPagesDataSource() datasource.DataSource {
 
 // StatusPagesDataSource defines the data source implementation.
 type StatusPagesDataSource struct {
-	client client.HyperpingAPI
+	client hyperping.HyperpingAPI
 }
 
 // StatusPagesDataSourceModel describes the data source data model.
@@ -297,7 +297,7 @@ func (d *StatusPagesDataSource) Schema(ctx context.Context, req datasource.Schem
 }
 
 // shouldIncludeStatusPage determines if a status page matches the filter criteria.
-func (d *StatusPagesDataSource) shouldIncludeStatusPage(sp *client.StatusPage, filter *StatusPageFilterModel, diags *diag.Diagnostics) bool {
+func (d *StatusPagesDataSource) shouldIncludeStatusPage(sp *hyperping.StatusPage, filter *StatusPageFilterModel, diags *diag.Diagnostics) bool {
 	return ApplyAllFilters(
 		// Name regex filter
 		func() bool {
@@ -326,11 +326,11 @@ func (d *StatusPagesDataSource) Configure(ctx context.Context, req datasource.Co
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(client.HyperpingAPI)
+	apiClient, ok := req.ProviderData.(hyperping.HyperpingAPI)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected client.HyperpingAPI, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected hyperping.HyperpingAPI, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -371,7 +371,7 @@ func (d *StatusPagesDataSource) Read(ctx context.Context, req datasource.ReadReq
 	}
 
 	// Apply client-side filtering if filter provided
-	var filteredStatusPages []client.StatusPage
+	var filteredStatusPages []hyperping.StatusPage
 	if config.Filter != nil {
 		for _, sp := range paginatedResp.StatusPages {
 			if d.shouldIncludeStatusPage(&sp, config.Filter, &resp.Diagnostics) {

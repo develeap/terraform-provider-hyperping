@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // buildOptionalStringField returns an HCL line for a string field only when
@@ -29,7 +29,7 @@ func buildOptionalIntField(name string, value, skipValue int) string {
 	return fmt.Sprintf("  %s = %d\n", name, value)
 }
 
-func (g *Generator) generateMonitorHCL(sb *strings.Builder, m client.Monitor) {
+func (g *Generator) generateMonitorHCL(sb *strings.Builder, m hyperping.Monitor) {
 	name := g.terraformName(m.Name)
 
 	fmt.Fprintf(sb, "resource \"hyperping_monitor\" %q {\n", name)
@@ -66,8 +66,8 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m client.Monitor) {
 
 	sb.WriteString(buildOptionalIntField("alerts_wait", m.AlertsWait, 0))
 
-	if m.EscalationPolicy != nil && *m.EscalationPolicy != "" {
-		fmt.Fprintf(sb, "  escalation_policy_uuid = %q\n", *m.EscalationPolicy)
+	if m.EscalationPolicy != nil && m.EscalationPolicy.UUID != "" {
+		fmt.Fprintf(sb, "  escalation_policy_uuid = %q\n", m.EscalationPolicy.UUID)
 	}
 
 	if len(m.RequestHeaders) > 0 {
@@ -83,7 +83,7 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m client.Monitor) {
 	sb.WriteString("}\n")
 }
 
-func (g *Generator) generateHealthcheckHCL(sb *strings.Builder, h client.Healthcheck) {
+func (g *Generator) generateHealthcheckHCL(sb *strings.Builder, h hyperping.Healthcheck) {
 	name := g.terraformName(h.Name)
 
 	fmt.Fprintf(sb, "resource \"hyperping_healthcheck\" %q {\n", name)
@@ -110,7 +110,7 @@ func (g *Generator) generateHealthcheckHCL(sb *strings.Builder, h client.Healthc
 	sb.WriteString("}\n")
 }
 
-func (g *Generator) generateStatusPageHCL(sb *strings.Builder, sp client.StatusPage) {
+func (g *Generator) generateStatusPageHCL(sb *strings.Builder, sp hyperping.StatusPage) {
 	name := g.terraformName(sp.Name)
 
 	fmt.Fprintf(sb, "resource \"hyperping_statuspage\" %q {\n", name)
@@ -146,7 +146,7 @@ func (g *Generator) generateStatusPageHCL(sb *strings.Builder, sp client.StatusP
 	sb.WriteString("}\n")
 }
 
-func (g *Generator) generateIncidentHCL(sb *strings.Builder, i client.Incident) {
+func (g *Generator) generateIncidentHCL(sb *strings.Builder, i hyperping.Incident) {
 	name := g.terraformName(i.Title.En)
 
 	fmt.Fprintf(sb, "resource \"hyperping_incident\" %q {\n", name)
@@ -166,7 +166,7 @@ func (g *Generator) generateIncidentHCL(sb *strings.Builder, i client.Incident) 
 	sb.WriteString("}\n")
 }
 
-func (g *Generator) generateMaintenanceHCL(sb *strings.Builder, m client.Maintenance) {
+func (g *Generator) generateMaintenanceHCL(sb *strings.Builder, m hyperping.Maintenance) {
 	// Use Name if Title is empty
 	titleText := m.Title.En
 	if titleText == "" {
@@ -193,7 +193,7 @@ func (g *Generator) generateMaintenanceHCL(sb *strings.Builder, m client.Mainten
 	sb.WriteString("}\n")
 }
 
-func (g *Generator) generateOutageHCL(sb *strings.Builder, o client.Outage) {
+func (g *Generator) generateOutageHCL(sb *strings.Builder, o hyperping.Outage) {
 	name := g.terraformName(o.Monitor.Name)
 
 	fmt.Fprintf(sb, "resource \"hyperping_outage\" %q {\n", name)

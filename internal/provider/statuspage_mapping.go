@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // =============================================================================
@@ -46,14 +46,14 @@ func normalizeSubdomain(subdomain string) string {
 // MapStatusPageCommonFields maps common status page fields from API response to Terraform types.
 // This is shared between StatusPageResource and StatusPage data sources to avoid duplication.
 // Use MapStatusPageCommonFieldsWithFilter for resources that need localized field filtering.
-func MapStatusPageCommonFields(sp *client.StatusPage, diags *diag.Diagnostics) StatusPageCommonFields {
+func MapStatusPageCommonFields(sp *hyperping.StatusPage, diags *diag.Diagnostics) StatusPageCommonFields {
 	return MapStatusPageCommonFieldsWithFilter(sp, nil, diags)
 }
 
 // MapStatusPageCommonFieldsWithFilter maps common status page fields with optional language filtering.
 // When configuredLangs is provided, localized fields (description, section/service names) are filtered
 // to only include the configured languages, preventing drift from API auto-population.
-func MapStatusPageCommonFieldsWithFilter(sp *client.StatusPage, configuredLangs []string, diags *diag.Diagnostics) StatusPageCommonFields {
+func MapStatusPageCommonFieldsWithFilter(sp *hyperping.StatusPage, configuredLangs []string, diags *diag.Diagnostics) StatusPageCommonFields {
 	if sp == nil {
 		return StatusPageCommonFields{
 			ID:              types.StringNull(),
@@ -101,13 +101,13 @@ func MapStatusPageCommonFieldsWithFilter(sp *client.StatusPage, configuredLangs 
 
 // mapSettingsToTF converts API settings to Terraform Object type.
 // For data sources that don't need language filtering.
-func mapSettingsToTF(settings client.StatusPageSettings, diags *diag.Diagnostics) types.Object {
+func mapSettingsToTF(settings hyperping.StatusPageSettings, diags *diag.Diagnostics) types.Object {
 	return mapSettingsToTFWithFilter(settings, nil, diags)
 }
 
 // mapSettingsToTFWithFilter converts API settings to Terraform Object type with optional language filtering.
 // When configuredLangs is provided, the description map is filtered to only include configured languages.
-func mapSettingsToTFWithFilter(settings client.StatusPageSettings, configuredLangs []string, diags *diag.Diagnostics) types.Object {
+func mapSettingsToTFWithFilter(settings hyperping.StatusPageSettings, configuredLangs []string, diags *diag.Diagnostics) types.Object {
 	// Map subscribe settings
 	subscribeObj, subDiags := types.ObjectValue(SubscribeSettingsAttrTypes(), map[string]attr.Value{
 		"enabled": types.BoolValue(settings.Subscribe.Enabled),
@@ -191,7 +191,7 @@ func mapSettingsToTFWithFilter(settings client.StatusPageSettings, configuredLan
 
 // mapTFToSettings converts Terraform Object to API settings structures.
 // Returns subscribe and authentication settings for create/update requests.
-func mapTFToSettings(ctx context.Context, obj types.Object, diags *diag.Diagnostics) (*client.CreateStatusPageSubscribeSettings, *client.CreateStatusPageAuthenticationSettings) {
+func mapTFToSettings(ctx context.Context, obj types.Object, diags *diag.Diagnostics) (*hyperping.CreateStatusPageSubscribeSettings, *hyperping.CreateStatusPageAuthenticationSettings) {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil, nil
 	}
@@ -213,14 +213,14 @@ func mapTFToSettings(ctx context.Context, obj types.Object, diags *diag.Diagnost
 // extractSubscribeSettings converts a subscribe settings Terraform Object to the API struct.
 // Returns nil when the object is null or unknown.
 // Handles: enabled, email, slack, teams, sms.
-func extractSubscribeSettings(obj types.Object, diags *diag.Diagnostics) *client.CreateStatusPageSubscribeSettings {
+func extractSubscribeSettings(obj types.Object, diags *diag.Diagnostics) *hyperping.CreateStatusPageSubscribeSettings {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
 
 	_ = diags // reserved for future diagnostics
 	attrs := obj.Attributes()
-	subscribe := &client.CreateStatusPageSubscribeSettings{}
+	subscribe := &hyperping.CreateStatusPageSubscribeSettings{}
 
 	if enabled, ok := attrs["enabled"].(types.Bool); ok && !enabled.IsNull() {
 		val := enabled.ValueBool()
@@ -249,13 +249,13 @@ func extractSubscribeSettings(obj types.Object, diags *diag.Diagnostics) *client
 // extractAuthSettings converts an authentication settings Terraform Object to the API struct.
 // Returns nil when the object is null or unknown.
 // Handles: password_protection, google_sso, saml_sso, allowed_domains.
-func extractAuthSettings(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *client.CreateStatusPageAuthenticationSettings {
+func extractAuthSettings(ctx context.Context, obj types.Object, diags *diag.Diagnostics) *hyperping.CreateStatusPageAuthenticationSettings {
 	if obj.IsNull() || obj.IsUnknown() {
 		return nil
 	}
 
 	attrs := obj.Attributes()
-	authentication := &client.CreateStatusPageAuthenticationSettings{}
+	authentication := &hyperping.CreateStatusPageAuthenticationSettings{}
 
 	if passwordProtection, ok := attrs["password_protection"].(types.Bool); ok && !passwordProtection.IsNull() {
 		val := passwordProtection.ValueBool()
@@ -288,13 +288,13 @@ func extractAuthSettings(ctx context.Context, obj types.Object, diags *diag.Diag
 
 // mapSectionsToTF converts API sections array to Terraform List type.
 // For data sources that don't need language filtering.
-func mapSectionsToTF(sections []client.StatusPageSection, diags *diag.Diagnostics) types.List {
+func mapSectionsToTF(sections []hyperping.StatusPageSection, diags *diag.Diagnostics) types.List {
 	return mapSectionsToTFWithFilter(sections, nil, diags)
 }
 
 // mapSectionsToTFWithFilter converts API sections array to Terraform List type with optional language filtering.
 // When configuredLangs is provided, section and service names are filtered to only include configured languages.
-func mapSectionsToTFWithFilter(sections []client.StatusPageSection, configuredLangs []string, diags *diag.Diagnostics) types.List {
+func mapSectionsToTFWithFilter(sections []hyperping.StatusPageSection, configuredLangs []string, diags *diag.Diagnostics) types.List {
 	if len(sections) == 0 {
 		return types.ListNull(types.ObjectType{AttrTypes: SectionAttrTypes()})
 	}
@@ -324,7 +324,7 @@ func mapSectionsToTFWithFilter(sections []client.StatusPageSection, configuredLa
 
 // mapServicesToTFWithFilter converts API services array to Terraform List type with optional language filtering.
 // Pass nil for configuredLangs to include all languages (used by data sources).
-func mapServicesToTFWithFilter(services []client.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.List {
+func mapServicesToTFWithFilter(services []hyperping.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.List {
 	// Use ServiceAttrTypes for elements since services may contain nested services
 	attrs := ServiceAttrTypes()
 
@@ -342,10 +342,17 @@ func mapServicesToTFWithFilter(services []client.StatusPageService, configuredLa
 	return list
 }
 
-// serviceIDToString converts the flexible ID field (string or float64) to a string.
+// serviceIDToString converts the flexible ID field to a string.
 // The Hyperping API returns string UUIDs for flat services and integers for nested ones.
 func serviceIDToString(id interface{}) string {
 	switch v := id.(type) {
+	case *hyperping.FlexibleString:
+		if v == nil {
+			return ""
+		}
+		return string(*v)
+	case hyperping.FlexibleString:
+		return string(v)
 	case string:
 		return v
 	case float64:
@@ -360,7 +367,7 @@ func serviceIDToString(id interface{}) string {
 // mapServiceToTFWithFilter converts a single API service to Terraform Object type with optional language filtering.
 // Pass nil for configuredLangs to include all languages (used by data sources).
 // Handles group entries (is_group=true with nested services) and flat monitor entries.
-func mapServiceToTFWithFilter(service client.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.Object {
+func mapServiceToTFWithFilter(service hyperping.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.Object {
 	filteredName := filterLocalizedMap(service.Name, configuredLangs)
 	nameMap := mapStringMapToTF(filteredName, diags)
 
@@ -391,7 +398,7 @@ func mapServiceToTFWithFilter(service client.StatusPageService, configuredLangs 
 }
 
 // mapNestedServicesToTF converts nested child services (inside a group) to Terraform List type.
-func mapNestedServicesToTF(services []client.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.List {
+func mapNestedServicesToTF(services []hyperping.StatusPageService, configuredLangs []string, diags *diag.Diagnostics) types.List {
 	if len(services) == 0 {
 		return types.ListNull(types.ObjectType{AttrTypes: NestedServiceAttrTypes()})
 	}
@@ -423,13 +430,13 @@ func mapNestedServicesToTF(services []client.StatusPageService, configuredLangs 
 }
 
 // mapTFToSections converts Terraform List to API sections array.
-func mapTFToSections(list types.List, diags *diag.Diagnostics) []client.CreateStatusPageSection {
+func mapTFToSections(list types.List, diags *diag.Diagnostics) []hyperping.CreateStatusPageSection {
 	if list.IsNull() || list.IsUnknown() {
 		return nil
 	}
 
 	elements := list.Elements()
-	sections := make([]client.CreateStatusPageSection, 0, len(elements))
+	sections := make([]hyperping.CreateStatusPageSection, 0, len(elements))
 
 	for _, elem := range elements {
 		obj, ok := elem.(types.Object)
@@ -440,7 +447,7 @@ func mapTFToSections(list types.List, diags *diag.Diagnostics) []client.CreateSt
 
 		attrs := obj.Attributes()
 
-		section := client.CreateStatusPageSection{}
+		section := hyperping.CreateStatusPageSection{}
 
 		// Extract name (map[string]string -> string)
 		// API expects string on create, but returns map on read
@@ -477,13 +484,13 @@ func mapTFToSections(list types.List, diags *diag.Diagnostics) []client.CreateSt
 }
 
 // mapTFToServices converts Terraform List to API services array (recursive).
-func mapTFToServices(list types.List, diags *diag.Diagnostics) []client.CreateStatusPageService {
+func mapTFToServices(list types.List, diags *diag.Diagnostics) []hyperping.CreateStatusPageService {
 	if list.IsNull() || list.IsUnknown() {
 		return nil
 	}
 
 	elements := list.Elements()
-	services := make([]client.CreateStatusPageService, 0, len(elements))
+	services := make([]hyperping.CreateStatusPageService, 0, len(elements))
 
 	for i, elem := range elements {
 		service := mapTFToService(elem, diags)
@@ -515,15 +522,15 @@ func mapTFToServices(list types.List, diags *diag.Diagnostics) []client.CreateSt
 // mapTFToService converts a Terraform Object to API service.
 // For group entries (is_group=true), uuid is omitted and services list is mapped recursively.
 // For regular monitor entries, uuid is required and services is empty.
-func mapTFToService(elem attr.Value, diags *diag.Diagnostics) client.CreateStatusPageService {
+func mapTFToService(elem attr.Value, diags *diag.Diagnostics) hyperping.CreateStatusPageService {
 	obj, ok := elem.(types.Object)
 	if !ok {
 		diags.AddError("Invalid service element", "Expected object type for service element")
-		return client.CreateStatusPageService{}
+		return hyperping.CreateStatusPageService{}
 	}
 
 	attrs := obj.Attributes()
-	service := client.CreateStatusPageService{}
+	service := hyperping.CreateStatusPageService{}
 
 	// Extract is_group first — determines how we handle other fields
 	isGroupVal := false
@@ -593,13 +600,13 @@ func mapTFToService(elem attr.Value, diags *diag.Diagnostics) client.CreateStatu
 }
 
 // mapTFToNestedServices converts Terraform List of nested services (inside a group) to API structs.
-func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []client.CreateStatusPageService {
+func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []hyperping.CreateStatusPageService {
 	if list.IsNull() || list.IsUnknown() {
 		return nil
 	}
 
 	elements := list.Elements()
-	services := make([]client.CreateStatusPageService, 0, len(elements))
+	services := make([]hyperping.CreateStatusPageService, 0, len(elements))
 
 	for _, elem := range elements {
 		obj, ok := elem.(types.Object)
@@ -609,7 +616,7 @@ func mapTFToNestedServices(list types.List, diags *diag.Diagnostics) []client.Cr
 		}
 
 		attrs := obj.Attributes()
-		svc := client.CreateStatusPageService{}
+		svc := hyperping.CreateStatusPageService{}
 
 		if uuid, ok := attrs["uuid"].(types.String); ok && !uuid.IsNull() && uuid.ValueString() != "" {
 			val := uuid.ValueString()

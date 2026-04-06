@@ -9,16 +9,16 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestValidate_AllValid(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_abc123"},
 			{UUID: "mon_def456"},
 		},
-		healthchecks: []client.Healthcheck{
+		healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_abc123"},
 		},
 	}
@@ -45,7 +45,7 @@ func TestValidate_AllValid(t *testing.T) {
 
 func TestValidate_InvalidIDs(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_valid123"},
 			{UUID: "invalid_id!"},
 		},
@@ -138,12 +138,12 @@ func TestValidationResult_Print(t *testing.T) {
 
 func TestValidate_AllResourceTypes(t *testing.T) {
 	mock := &mockClient{
-		monitors:     []client.Monitor{{UUID: "mon_123"}},
-		healthchecks: []client.Healthcheck{{UUID: "hc_123"}},
-		statusPages:  []client.StatusPage{{UUID: "sp_123"}},
-		incidents:    []client.Incident{{UUID: "inc_123"}},
-		maintenance:  []client.Maintenance{{UUID: "maint_123"}},
-		outages:      []client.Outage{{UUID: "outage_123"}},
+		monitors:     []hyperping.Monitor{{UUID: "mon_123"}},
+		healthchecks: []hyperping.Healthcheck{{UUID: "hc_123"}},
+		statusPages:  []hyperping.StatusPage{{UUID: "sp_123"}},
+		incidents:    []hyperping.Incident{{UUID: "inc_123"}},
+		maintenance:  []hyperping.Maintenance{{UUID: "maint_123"}},
+		outages:      []hyperping.Outage{{UUID: "outage_123"}},
 	}
 
 	gen := &Generator{
@@ -179,10 +179,10 @@ func TestValidate_AllResourceTypes(t *testing.T) {
 
 func TestValidate_InvalidIDsAllTypes(t *testing.T) {
 	mock := &mockClient{
-		statusPages: []client.StatusPage{{UUID: "invalid_sp"}},
-		incidents:   []client.Incident{{UUID: "invalid_inc"}},
-		maintenance: []client.Maintenance{{UUID: "invalid_maint"}},
-		outages:     []client.Outage{{UUID: "invalid_outage"}},
+		statusPages: []hyperping.StatusPage{{UUID: "invalid_sp"}},
+		incidents:   []hyperping.Incident{{UUID: "invalid_inc"}},
+		maintenance: []hyperping.Maintenance{{UUID: "invalid_maint"}},
+		outages:     []hyperping.Outage{{UUID: "invalid_outage"}},
 	}
 
 	gen := &Generator{

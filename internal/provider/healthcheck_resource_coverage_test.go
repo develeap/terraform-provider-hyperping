@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // ---------------------------------------------------------------------------
@@ -35,7 +35,7 @@ func TestApplyHealthcheckTimingFields_noChanges(t *testing.T) {
 		GracePeriodType:  types.StringValue("minutes"),
 	}
 
-	var req client.UpdateHealthcheckRequest
+	var req hyperping.UpdateHealthcheckRequest
 	changed := applyHealthcheckTimingFields(plan, state, &req)
 
 	if changed {
@@ -81,7 +81,7 @@ func TestApplyHealthcheckTimingFields_cronChanged(t *testing.T) {
 		GracePeriodType:  types.StringValue("minutes"),
 	}
 
-	var req client.UpdateHealthcheckRequest
+	var req hyperping.UpdateHealthcheckRequest
 	changed := applyHealthcheckTimingFields(plan, state, &req)
 
 	if !changed {
@@ -112,7 +112,7 @@ func TestApplyHealthcheckTimingFields_cronRemoved(t *testing.T) {
 		GracePeriodType:  types.StringValue("minutes"),
 	}
 
-	var req client.UpdateHealthcheckRequest
+	var req hyperping.UpdateHealthcheckRequest
 	changed := applyHealthcheckTimingFields(plan, state, &req)
 
 	if !changed {
@@ -146,7 +146,7 @@ func TestApplyHealthcheckTimingFields_periodValueChanged(t *testing.T) {
 		GracePeriodType:  types.StringValue("minutes"),
 	}
 
-	var req client.UpdateHealthcheckRequest
+	var req hyperping.UpdateHealthcheckRequest
 	changed := applyHealthcheckTimingFields(plan, state, &req)
 
 	if !changed {
@@ -181,7 +181,7 @@ func TestApplyHealthcheckTimingFields_periodValueRemoved(t *testing.T) {
 		GracePeriodType:  types.StringValue("minutes"),
 	}
 
-	var req client.UpdateHealthcheckRequest
+	var req hyperping.UpdateHealthcheckRequest
 	changed := applyHealthcheckTimingFields(plan, state, &req)
 
 	if !changed {
@@ -217,7 +217,7 @@ func TestApplyHealthcheckTimingFields_gracePeriodChanged(t *testing.T) {
 		GracePeriodType:  types.StringValue("minutes"),
 	}
 
-	var req client.UpdateHealthcheckRequest
+	var req hyperping.UpdateHealthcheckRequest
 	changed := applyHealthcheckTimingFields(plan, state, &req)
 
 	if !changed {

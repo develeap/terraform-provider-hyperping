@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // =============================================================================
@@ -16,7 +16,7 @@ import (
 // =============================================================================
 
 // mapSubscriberToTF converts API subscriber to Terraform model fields.
-func mapSubscriberToTF(sub *client.StatusPageSubscriber, _ *diag.Diagnostics) SubscriberCommonFields {
+func mapSubscriberToTF(sub *hyperping.StatusPageSubscriber, _ *diag.Diagnostics) SubscriberCommonFields {
 	if sub == nil {
 		return SubscriberCommonFields{
 			ID:           types.Int64Null(),

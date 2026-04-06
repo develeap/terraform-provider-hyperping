@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
@@ -17,15 +17,15 @@ func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		outage   client.Outage
+		outage   hyperping.Outage
 		filter   *OutageFilterModel
 		expected bool
 		hasError bool
 	}{
 		{
 			name: "empty filter - includes all",
-			outage: client.Outage{
-				Monitor: client.MonitorReference{
+			outage: hyperping.Outage{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon-001",
 					Name: "API Monitor",
 				},
@@ -39,8 +39,8 @@ func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
 		},
 		{
 			name: "monitor name regex match",
-			outage: client.Outage{
-				Monitor: client.MonitorReference{
+			outage: hyperping.Outage{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon-001",
 					Name: "[PROD]-API-Health",
 				},
@@ -54,8 +54,8 @@ func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
 		},
 		{
 			name: "monitor name regex no match",
-			outage: client.Outage{
-				Monitor: client.MonitorReference{
+			outage: hyperping.Outage{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon-001",
 					Name: "[DEV]-API-Health",
 				},
@@ -69,8 +69,8 @@ func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
 		},
 		{
 			name: "monitor UUID filter match",
-			outage: client.Outage{
-				Monitor: client.MonitorReference{
+			outage: hyperping.Outage{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon-abc-123",
 					Name: "Test Monitor",
 				},
@@ -84,8 +84,8 @@ func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
 		},
 		{
 			name: "monitor UUID filter no match",
-			outage: client.Outage{
-				Monitor: client.MonitorReference{
+			outage: hyperping.Outage{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon-xyz-456",
 					Name: "Test Monitor",
 				},
@@ -99,8 +99,8 @@ func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
 		},
 		{
 			name: "combined filters - all match",
-			outage: client.Outage{
-				Monitor: client.MonitorReference{
+			outage: hyperping.Outage{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon-prod-001",
 					Name: "[PROD]-Database-Monitor",
 				},
@@ -114,8 +114,8 @@ func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
 		},
 		{
 			name: "combined filters - name matches but UUID doesn't",
-			outage: client.Outage{
-				Monitor: client.MonitorReference{
+			outage: hyperping.Outage{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon-prod-002",
 					Name: "[PROD]-Database-Monitor",
 				},
@@ -129,8 +129,8 @@ func TestOutagesDataSource_shouldIncludeOutage(t *testing.T) {
 		},
 		{
 			name: "invalid regex",
-			outage: client.Outage{
-				Monitor: client.MonitorReference{
+			outage: hyperping.Outage{
+				Monitor: hyperping.MonitorReference{
 					UUID: "mon-001",
 					Name: "Test Monitor",
 				},

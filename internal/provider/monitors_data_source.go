@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -29,7 +29,7 @@ func NewMonitorsDataSource() datasource.DataSource {
 
 // MonitorsDataSource defines the data source implementation.
 type MonitorsDataSource struct {
-	client client.MonitorAPI
+	client hyperping.MonitorAPI
 }
 
 // MonitorsDataSourceModel describes the data source data model.
@@ -207,11 +207,11 @@ func (d *MonitorsDataSource) Configure(_ context.Context, req datasource.Configu
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -240,7 +240,7 @@ func (d *MonitorsDataSource) Read(ctx context.Context, req datasource.ReadReques
 	}
 
 	// Apply client-side filtering if filter provided
-	var filteredMonitors []client.Monitor
+	var filteredMonitors []hyperping.Monitor
 	if config.Filter != nil {
 		// Pre-compile name_regex once before the loop for efficiency
 		var compiledNameRegex *regexp.Regexp
@@ -289,7 +289,7 @@ func (d *MonitorsDataSource) Read(ctx context.Context, req datasource.ReadReques
 
 // shouldIncludeMonitor determines if a monitor matches the filter criteria.
 // For bulk filtering, prefer filterMonitor which accepts a pre-compiled *regexp.Regexp.
-func (d *MonitorsDataSource) shouldIncludeMonitor(monitor *client.Monitor, filter *MonitorFilterModel, diags *diag.Diagnostics) bool {
+func (d *MonitorsDataSource) shouldIncludeMonitor(monitor *hyperping.Monitor, filter *MonitorFilterModel, diags *diag.Diagnostics) bool {
 	return ApplyAllFilters(
 		// Name regex filter
 		func() bool {
@@ -324,7 +324,7 @@ func (d *MonitorsDataSource) shouldIncludeMonitor(monitor *client.Monitor, filte
 
 // filterMonitor determines if a monitor matches the filter criteria using a pre-compiled regex.
 // compiledNameRegex is compiled once before the loop for efficiency; pass nil to skip regex filtering.
-func (d *MonitorsDataSource) filterMonitor(monitor *client.Monitor, filter *MonitorFilterModel, compiledNameRegex *regexp.Regexp) bool {
+func (d *MonitorsDataSource) filterMonitor(monitor *hyperping.Monitor, filter *MonitorFilterModel, compiledNameRegex *regexp.Regexp) bool {
 	return ApplyAllFilters(
 		// Name regex filter (uses pre-compiled regex for efficiency)
 		func() bool {
@@ -352,8 +352,8 @@ func (d *MonitorsDataSource) filterMonitor(monitor *client.Monitor, filter *Moni
 	)
 }
 
-// mapMonitorToDataModel maps a client.Monitor to the Terraform data model.
-func (d *MonitorsDataSource) mapMonitorToDataModel(monitor *client.Monitor, model *MonitorDataModel, diags *diag.Diagnostics) {
+// mapMonitorToDataModel maps a hyperping.Monitor to the Terraform data model.
+func (d *MonitorsDataSource) mapMonitorToDataModel(monitor *hyperping.Monitor, model *MonitorDataModel, diags *diag.Diagnostics) {
 	fields := MapMonitorCommonFields(monitor, diags)
 
 	model.ID = fields.ID

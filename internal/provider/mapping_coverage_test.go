@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
@@ -22,12 +22,12 @@ func TestMapMonitorCommonFields_FullMonitor(t *testing.T) {
 	port := 443
 	sslExp := 30
 	keyword := "healthy"
-	ep := "ep_abc"
+	ep := hyperping.EscalationPolicyRef{UUID: "ep_abc"}
 	dnsRecType := "A"
 	dnsNS := "8.8.8.8"
 	dnsAnswer := "1.2.3.4"
 
-	monitor := &client.Monitor{
+	monitor := &hyperping.Monitor{
 		UUID:               "mon_full",
 		Name:               "Full Monitor",
 		URL:                "https://example.com",
@@ -38,7 +38,7 @@ func TestMapMonitorCommonFields_FullMonitor(t *testing.T) {
 		FollowRedirects:    true,
 		Paused:             false,
 		Regions:            []string{"london", "frankfurt"},
-		RequestHeaders: []client.RequestHeader{
+		RequestHeaders: []hyperping.RequestHeader{
 			{Name: "Authorization", Value: "Bearer token123"},
 		},
 		RequestBody:       `{"ping":true}`,
@@ -116,7 +116,7 @@ func TestMapMonitorCommonFields_FullMonitor(t *testing.T) {
 }
 
 func TestMapMonitorCommonFields_MinimalMonitor(t *testing.T) {
-	monitor := &client.Monitor{
+	monitor := &hyperping.Monitor{
 		UUID:               "mon_min",
 		Name:               "Minimal",
 		URL:                "https://example.com",
@@ -193,7 +193,7 @@ func TestMapMonitorCommonFields_AlertsWait(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor := &client.Monitor{
+			monitor := &hyperping.Monitor{
 				UUID:               "mon_aw",
 				Name:               "AW Test",
 				URL:                "https://example.com",
@@ -254,7 +254,7 @@ func TestMapMonitorCommonFields_PortSetVsNil(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor := &client.Monitor{
+			monitor := &hyperping.Monitor{
 				UUID:               "mon_port",
 				Name:               "Port Test",
 				URL:                "https://example.com",
@@ -282,12 +282,12 @@ func TestMapMonitorCommonFields_PortSetVsNil(t *testing.T) {
 }
 
 func TestMapMonitorCommonFields_EscalationPolicyVariants(t *testing.T) {
-	empty := ""
-	populated := "ep_456"
+	emptyRef := hyperping.EscalationPolicyRef{UUID: ""}
+	populatedRef := hyperping.EscalationPolicyRef{UUID: "ep_456"}
 
 	tests := []struct {
 		name      string
-		ep        *string
+		ep        *hyperping.EscalationPolicyRef
 		wantNull  bool
 		wantValue string
 	}{
@@ -297,13 +297,13 @@ func TestMapMonitorCommonFields_EscalationPolicyVariants(t *testing.T) {
 			wantNull: true,
 		},
 		{
-			name:     "empty string escalation policy maps to null",
-			ep:       &empty,
+			name:     "empty UUID escalation policy maps to null",
+			ep:       &emptyRef,
 			wantNull: true,
 		},
 		{
 			name:      "populated escalation policy maps to value",
-			ep:        &populated,
+			ep:        &populatedRef,
 			wantNull:  false,
 			wantValue: "ep_456",
 		},
@@ -311,7 +311,7 @@ func TestMapMonitorCommonFields_EscalationPolicyVariants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor := &client.Monitor{
+			monitor := &hyperping.Monitor{
 				UUID:               "mon_ep",
 				Name:               "EP Test",
 				URL:                "https://example.com",
@@ -383,7 +383,7 @@ func TestMapMonitorCommonFields_DNSFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor := &client.Monitor{
+			monitor := &hyperping.Monitor{
 				UUID:               "mon_dns",
 				Name:               "DNS Test",
 				URL:                "dns://example.com",
@@ -450,7 +450,7 @@ func TestMapMonitorCommonFields_SSLExpiration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor := &client.Monitor{
+			monitor := &hyperping.Monitor{
 				UUID:               "mon_ssl",
 				Name:               "SSL Test",
 				URL:                "https://example.com",
@@ -510,7 +510,7 @@ func TestMapMonitorCommonFields_RegionsVariants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			monitor := &client.Monitor{
+			monitor := &hyperping.Monitor{
 				UUID:               "mon_reg",
 				Name:               "Regions Test",
 				URL:                "https://example.com",
@@ -601,7 +601,7 @@ func TestMapHealthcheckCommonFields_NilReturnsAllNulls(t *testing.T) {
 
 func TestMapHealthcheckCommonFields_AllFieldsPopulated(t *testing.T) {
 	pv := 5
-	hc := &client.Healthcheck{
+	hc := &hyperping.Healthcheck{
 		UUID:             "hc_full",
 		Name:             "Full HC",
 		PingURL:          "https://hb.tinyping.io/hc_full",
@@ -617,7 +617,7 @@ func TestMapHealthcheckCommonFields_AllFieldsPopulated(t *testing.T) {
 		GracePeriod:      120,
 		LastPing:         "2026-03-01T12:00:00Z",
 		CreatedAt:        "2026-01-15T08:00:00Z",
-		EscalationPolicy: &client.EscalationPolicyReference{UUID: "ep_hc_full"},
+		EscalationPolicy: &hyperping.EscalationPolicyReference{UUID: "ep_hc_full"},
 	}
 
 	f := MapHealthcheckCommonFields(hc)
@@ -641,7 +641,7 @@ func TestMapHealthcheckCommonFields_AllFieldsPopulated(t *testing.T) {
 }
 
 func TestMapHealthcheckCommonFields_OptionalFieldsEmpty(t *testing.T) {
-	hc := &client.Healthcheck{
+	hc := &hyperping.Healthcheck{
 		UUID:             "hc_sparse",
 		Name:             "Sparse",
 		PingURL:          "https://hb.tinyping.io/hc_sparse",
@@ -686,9 +686,9 @@ func TestMapOutageNestedObjects_NilReturnsNulls(t *testing.T) {
 }
 
 func TestMapOutageNestedObjects_ZeroValueMonitorReference(t *testing.T) {
-	outage := &client.Outage{
+	outage := &hyperping.Outage{
 		UUID:    "out_zero",
-		Monitor: client.MonitorReference{},
+		Monitor: hyperping.MonitorReference{},
 	}
 
 	var diags diag.Diagnostics
@@ -706,9 +706,9 @@ func TestMapOutageNestedObjects_ZeroValueMonitorReference(t *testing.T) {
 }
 
 func TestMapOutageNestedObjects_PopulatedMonitorNoAck(t *testing.T) {
-	outage := &client.Outage{
+	outage := &hyperping.Outage{
 		UUID: "out_mon",
-		Monitor: client.MonitorReference{
+		Monitor: hyperping.MonitorReference{
 			UUID:     "mon_ref_001",
 			Name:     "Web Monitor",
 			URL:      "https://web.example.com",
@@ -738,15 +738,15 @@ func TestMapOutageNestedObjects_PopulatedMonitorNoAck(t *testing.T) {
 }
 
 func TestMapOutageNestedObjects_WithAcknowledgedBy(t *testing.T) {
-	outage := &client.Outage{
+	outage := &hyperping.Outage{
 		UUID: "out_ack",
-		Monitor: client.MonitorReference{
+		Monitor: hyperping.MonitorReference{
 			UUID:     "mon_ref_002",
 			Name:     "API",
 			URL:      "https://api.example.com",
 			Protocol: "http",
 		},
-		AcknowledgedBy: &client.AcknowledgedByUser{
+		AcknowledgedBy: &hyperping.AcknowledgedByUser{
 			UUID:  "user_42",
 			Email: "admin@example.com",
 			Name:  "Admin User",
@@ -775,9 +775,9 @@ func TestMapOutageNestedObjects_WithAcknowledgedBy(t *testing.T) {
 
 func TestMapOutageNestedObjects_PartialMonitorReference(t *testing.T) {
 	// Only UUID set -- should still be non-null because UUID is non-empty.
-	outage := &client.Outage{
+	outage := &hyperping.Outage{
 		UUID: "out_partial",
-		Monitor: client.MonitorReference{
+		Monitor: hyperping.MonitorReference{
 			UUID: "mon_ref_003",
 		},
 	}
@@ -890,7 +890,7 @@ func TestMapRequestHeadersToTFList_NilInput(t *testing.T) {
 
 func TestMapRequestHeadersToTFList_EmptySlice(t *testing.T) {
 	var diags diag.Diagnostics
-	result := mapRequestHeadersToTFList([]client.RequestHeader{}, &diags)
+	result := mapRequestHeadersToTFList([]hyperping.RequestHeader{}, &diags)
 
 	if !result.IsNull() {
 		t.Error("expected null list for empty slice")
@@ -902,7 +902,7 @@ func TestMapRequestHeadersToTFList_EmptySlice(t *testing.T) {
 
 func TestMapRequestHeadersToTFList_PopulatedHeaders(t *testing.T) {
 	var diags diag.Diagnostics
-	headers := []client.RequestHeader{
+	headers := []hyperping.RequestHeader{
 		{Name: "Content-Type", Value: "application/json"},
 		{Name: "X-Request-ID", Value: "req-12345"},
 	}
@@ -1042,7 +1042,7 @@ func TestMapTFListToRequestHeaders_SkipsNullNameOnly(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRequestHeaders_Roundtrip(t *testing.T) {
-	original := []client.RequestHeader{
+	original := []hyperping.RequestHeader{
 		{Name: "Authorization", Value: "Bearer abc"},
 		{Name: "X-Custom", Value: "value-with-special chars !@#"},
 	}

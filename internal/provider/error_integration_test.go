@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Integration tests that validate error propagation through resources.
@@ -31,7 +31,7 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 	}{
 		{
 			name:          "not found error",
-			err:           client.NewAPIError(404, "monitor not found"),
+			err:           hyperping.NewAPIError(404, "monitor not found"),
 			wantErrorType: "not_found",
 			wantInMessage: []string{
 				"Troubleshooting",
@@ -42,7 +42,7 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 		},
 		{
 			name:          "unauthorized error",
-			err:           client.NewAPIError(401, "unauthorized"),
+			err:           hyperping.NewAPIError(401, "unauthorized"),
 			wantErrorType: "auth_error",
 			wantInMessage: []string{
 				"Troubleshooting",
@@ -52,7 +52,7 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 		},
 		{
 			name:          "rate limit error",
-			err:           client.NewRateLimitError(60),
+			err:           hyperping.NewRateLimitError(60),
 			wantErrorType: "rate_limit",
 			wantInMessage: []string{
 				"Troubleshooting",
@@ -62,7 +62,7 @@ func TestErrorPropagation_MonitorRead(t *testing.T) {
 		},
 		{
 			name:          "server error",
-			err:           client.NewAPIError(500, "internal server error"),
+			err:           hyperping.NewAPIError(500, "internal server error"),
 			wantErrorType: "server_error",
 			wantInMessage: []string{
 				"Troubleshooting",
@@ -107,7 +107,7 @@ func TestErrorPropagation_MonitorCreate(t *testing.T) {
 	}{
 		{
 			name: "validation error",
-			err:  client.NewAPIError(400, "invalid URL"),
+			err:  hyperping.NewAPIError(400, "invalid URL"),
 			wantInMessage: []string{
 				"Troubleshooting",
 				"required fields",
@@ -115,7 +115,7 @@ func TestErrorPropagation_MonitorCreate(t *testing.T) {
 		},
 		{
 			name: "forbidden error",
-			err:  client.NewAPIError(403, "forbidden"),
+			err:  hyperping.NewAPIError(403, "forbidden"),
 			wantInMessage: []string{
 				"Troubleshooting",
 				"permissions",
@@ -148,7 +148,7 @@ func TestErrorPropagation_MonitorUpdate(t *testing.T) {
 	}{
 		{
 			name: "not found during update",
-			err:  client.NewAPIError(404, "not found"),
+			err:  hyperping.NewAPIError(404, "not found"),
 			wantInMessage: []string{
 				"Troubleshooting",
 				"still exists",
@@ -156,7 +156,7 @@ func TestErrorPropagation_MonitorUpdate(t *testing.T) {
 		},
 		{
 			name: "validation error during update",
-			err:  client.NewAPIError(422, "invalid frequency"),
+			err:  hyperping.NewAPIError(422, "invalid frequency"),
 			wantInMessage: []string{
 				"Troubleshooting",
 				"required fields",
@@ -189,7 +189,7 @@ func TestErrorPropagation_MonitorDelete(t *testing.T) {
 	}{
 		{
 			name: "server error during delete",
-			err:  client.NewAPIError(500, "internal error"),
+			err:  hyperping.NewAPIError(500, "internal error"),
 			wantInMessage: []string{
 				"Troubleshooting",
 				"status.hyperping.app",
@@ -197,7 +197,7 @@ func TestErrorPropagation_MonitorDelete(t *testing.T) {
 		},
 		{
 			name: "rate limit during delete",
-			err:  client.NewRateLimitError(120),
+			err:  hyperping.NewRateLimitError(120),
 			wantInMessage: []string{
 				"Troubleshooting",
 				"120 seconds",
@@ -234,12 +234,12 @@ func TestErrorPropagation_IncidentRead(t *testing.T) {
 	}{
 		{
 			name:          "incident not found",
-			err:           client.NewAPIError(404, "incident not found"),
+			err:           hyperping.NewAPIError(404, "incident not found"),
 			wantInMessage: []string{"Troubleshooting"},
 		},
 		{
 			name:          "unauthorized for incident",
-			err:           client.NewAPIError(401, "unauthorized"),
+			err:           hyperping.NewAPIError(401, "unauthorized"),
 			wantInMessage: []string{"API key"},
 		},
 	}
@@ -262,7 +262,7 @@ func TestErrorPropagation_IncidentRead(t *testing.T) {
 func TestErrorPropagation_MaintenanceCreate(t *testing.T) {
 	t.Parallel()
 
-	err := client.NewValidationError(400, "invalid schedule", []client.ValidationDetail{
+	err := hyperping.NewValidationError(400, "invalid schedule", []hyperping.ValidationDetail{
 		{Field: "scheduled_start", Message: "must be in future"},
 	})
 	diag := NewCreateErrorWithContext("Maintenance", err)
@@ -281,7 +281,7 @@ func TestErrorPropagation_MultipleResources(t *testing.T) {
 	t.Parallel()
 
 	resourceTypes := []string{"Monitor", "Incident", "Maintenance", "Healthcheck", "Outage", "StatusPage"}
-	testErr := client.NewAPIError(404, "not found")
+	testErr := hyperping.NewAPIError(404, "not found")
 
 	for _, resourceType := range resourceTypes {
 		t.Run(resourceType, func(t *testing.T) {
@@ -318,7 +318,7 @@ func TestErrorContext_AllResourceTypes_CRUD(t *testing.T) {
 		{"IncidentUpdate", "iu_mno"},
 	}
 
-	testErr := client.NewAPIError(500, "server error")
+	testErr := hyperping.NewAPIError(500, "server error")
 
 	for _, resource := range allResources {
 		t.Run(resource.resourceType, func(t *testing.T) {
@@ -428,7 +428,7 @@ func TestErrorMessage_Format(t *testing.T) {
 func TestErrorMessage_AllOperations(t *testing.T) {
 	t.Parallel()
 
-	testErr := client.NewAPIError(400, "test error")
+	testErr := hyperping.NewAPIError(400, "test error")
 
 	operations := map[string]func() string{
 		"Create": func() string { return NewCreateErrorWithContext("Resource", testErr).Detail() },
@@ -468,7 +468,7 @@ func TestTroubleshootingSteps_UserReadability(t *testing.T) {
 		{
 			name: "read error is user-friendly",
 			diag: func() (string, string) {
-				err := client.NewAPIError(404, "not found")
+				err := hyperping.NewAPIError(404, "not found")
 				d := NewReadErrorWithContext("Monitor", "mon_123", err)
 				return d.Summary(), d.Detail()
 			},
@@ -478,7 +478,7 @@ func TestTroubleshootingSteps_UserReadability(t *testing.T) {
 		{
 			name: "create error provides actionable steps",
 			diag: func() (string, string) {
-				err := client.NewAPIError(400, "invalid request")
+				err := hyperping.NewAPIError(400, "invalid request")
 				d := NewCreateErrorWithContext("Monitor", err)
 				return d.Summary(), d.Detail()
 			},
@@ -518,7 +518,7 @@ func TestRateLimitError_RetryGuidance(t *testing.T) {
 	for _, retryAfter := range retryAfterTests {
 		t.Run(strings.Join([]string{"retry_after", string(rune(retryAfter))}, "_"), func(t *testing.T) {
 			t.Parallel()
-			err := client.NewRateLimitError(retryAfter)
+			err := hyperping.NewRateLimitError(retryAfter)
 			diag := NewReadErrorWithContext("Monitor", "mon_rate123", err)
 
 			detail := diag.Detail()
@@ -544,7 +544,7 @@ func TestAuthError_KeyVerification(t *testing.T) {
 	for _, statusCode := range authErrors {
 		t.Run(strings.Join([]string{"status", string(rune(statusCode))}, "_"), func(t *testing.T) {
 			t.Parallel()
-			err := client.NewAPIError(statusCode, "unauthorized")
+			err := hyperping.NewAPIError(statusCode, "unauthorized")
 			diag := NewReadErrorWithContext("Monitor", "mon_auth123", err)
 
 			detail := diag.Detail()

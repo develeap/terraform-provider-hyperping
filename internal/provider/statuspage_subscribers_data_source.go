@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -27,7 +27,7 @@ func NewStatusPageSubscribersDataSource() datasource.DataSource {
 
 // StatusPageSubscribersDataSource defines the data source implementation.
 type StatusPageSubscribersDataSource struct {
-	client client.HyperpingAPI
+	client hyperping.HyperpingAPI
 }
 
 // StatusPageSubscribersDataSourceModel describes the data source data model.
@@ -124,11 +124,11 @@ func (d *StatusPageSubscribersDataSource) Configure(ctx context.Context, req dat
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(client.HyperpingAPI)
+	apiClient, ok := req.ProviderData.(hyperping.HyperpingAPI)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected client.HyperpingAPI, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected hyperping.HyperpingAPI, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -146,7 +146,7 @@ func (d *StatusPageSubscribersDataSource) Read(ctx context.Context, req datasour
 	}
 
 	// Validate status page UUID
-	if err := client.ValidateResourceID(config.StatusPageUUID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(config.StatusPageUUID.ValueString()); err != nil {
 		resp.Diagnostics.AddError(
 			"Invalid Status Page UUID",
 			fmt.Sprintf("Status page UUID must be valid: %s", err.Error()),

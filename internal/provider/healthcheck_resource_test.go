@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewHealthcheckResource(t *testing.T) {
@@ -81,7 +81,7 @@ func TestHealthcheckResource_ConfigureNilProviderData(t *testing.T) {
 
 func TestHealthcheckResource_ConfigureValidClient(t *testing.T) {
 	r := &HealthcheckResource{}
-	mockClient := &client.Client{}
+	mockClient := &hyperping.Client{}
 	req := resource.ConfigureRequest{
 		ProviderData: mockClient,
 	}

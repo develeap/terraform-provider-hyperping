@@ -8,13 +8,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestFetchResources_ContinueOnError_Monitors(t *testing.T) {
 	mock := &mockClient{
 		monitorsErr: errors.New("API error"),
-		healthchecks: []client.Healthcheck{
+		healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_123", Name: "Healthcheck"},
 		},
 	}
@@ -45,7 +45,7 @@ func TestFetchResources_ContinueOnError_MultipleErrors(t *testing.T) {
 	mock := &mockClient{
 		monitorsErr:     errors.New("monitors error"),
 		healthchecksErr: errors.New("healthchecks error"),
-		statusPages: []client.StatusPage{
+		statusPages: []hyperping.StatusPage{
 			{UUID: "sp_123", Name: "Status Page"},
 		},
 	}
@@ -79,7 +79,7 @@ func TestFetchResources_ContinueOnError_MultipleErrors(t *testing.T) {
 func TestFetchResources_FailOnError_Default(t *testing.T) {
 	mock := &mockClient{
 		monitorsErr: errors.New("API error"),
-		healthchecks: []client.Healthcheck{
+		healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_123", Name: "Healthcheck"},
 		},
 	}
@@ -106,11 +106,11 @@ func TestFetchResources_FailOnError_Default(t *testing.T) {
 func TestFetchResources_ContinueOnError_AllResourceTypes(t *testing.T) {
 	mock := &mockClient{
 		monitorsErr:    errors.New("monitors error"),
-		healthchecks:   []client.Healthcheck{{UUID: "hc_1", Name: "HC1"}},
+		healthchecks:   []hyperping.Healthcheck{{UUID: "hc_1", Name: "HC1"}},
 		statusPagesErr: errors.New("status pages error"),
-		incidents:      []client.Incident{{UUID: "inc_1", Title: client.LocalizedText{En: "Inc1"}}},
+		incidents:      []hyperping.Incident{{UUID: "inc_1", Title: hyperping.LocalizedText{En: "Inc1"}}},
 		maintenanceErr: errors.New("maintenance error"),
-		outages:        []client.Outage{{UUID: "outage_1", Monitor: client.MonitorReference{Name: "Mon1"}}},
+		outages:        []hyperping.Outage{{UUID: "outage_1", Monitor: hyperping.MonitorReference{Name: "Mon1"}}},
 	}
 
 	gen := &Generator{
@@ -150,7 +150,7 @@ func TestFetchResources_ContinueOnError_AllResourceTypes(t *testing.T) {
 func TestGenerate_ContinueOnError_ProducesPartialOutput(t *testing.T) {
 	mock := &mockClient{
 		monitorsErr: errors.New("monitors error"),
-		healthchecks: []client.Healthcheck{
+		healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_123", Name: "Healthcheck"},
 		},
 	}

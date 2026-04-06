@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
@@ -33,7 +33,7 @@ func TestMapHealthcheckCommonFields_FullHealthcheck(t *testing.T) {
 	t.Parallel()
 
 	periodValue := 60
-	hc := &client.Healthcheck{
+	hc := &hyperping.Healthcheck{
 		UUID:             "hc_abc123",
 		Name:             "Test HC",
 		PingURL:          "https://hb.tinyping.io/hc_abc123",
@@ -82,7 +82,7 @@ func TestMapHealthcheckCommonFields_FullHealthcheck(t *testing.T) {
 func TestMapHealthcheckCommonFields_NullOptionalFields(t *testing.T) {
 	t.Parallel()
 
-	hc := &client.Healthcheck{
+	hc := &hyperping.Healthcheck{
 		UUID:             "hc_min",
 		Name:             "Minimal",
 		GracePeriodValue: 10,
@@ -134,7 +134,7 @@ func TestMapOutageNestedObjects_NilOutage(t *testing.T) {
 func TestMapOutageNestedObjects_ZeroValueMonitor(t *testing.T) {
 	t.Parallel()
 
-	outage := &client.Outage{
+	outage := &hyperping.Outage{
 		UUID: "out_123",
 		// Monitor is zero-value: all empty strings
 	}
@@ -153,15 +153,15 @@ func TestMapOutageNestedObjects_ZeroValueMonitor(t *testing.T) {
 func TestMapOutageNestedObjects_FullOutage(t *testing.T) {
 	t.Parallel()
 
-	outage := &client.Outage{
+	outage := &hyperping.Outage{
 		UUID: "out_456",
-		Monitor: client.MonitorReference{
+		Monitor: hyperping.MonitorReference{
 			UUID:     "mon_789",
 			Name:     "API Monitor",
 			URL:      "https://api.example.com",
 			Protocol: "HTTPS",
 		},
-		AcknowledgedBy: &client.AcknowledgedByUser{
+		AcknowledgedBy: &hyperping.AcknowledgedByUser{
 			UUID:  "user_001",
 			Email: "ops@example.com",
 			Name:  "Ops Team",

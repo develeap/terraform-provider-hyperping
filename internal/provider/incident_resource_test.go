@@ -19,7 +19,7 @@ import (
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestAccIncidentResource_basic(t *testing.T) {
@@ -213,7 +213,7 @@ func TestIncidentResource_ConfigureValidClient(t *testing.T) {
 	r := &IncidentResource{}
 
 	// Create a real client
-	c := client.NewClient("test_api_key")
+	c := hyperping.NewClient("test_api_key")
 
 	req := resource.ConfigureRequest{
 		ProviderData: c,
@@ -269,10 +269,10 @@ func TestIncidentResource_mapIncidentToModel(t *testing.T) {
 	r := &IncidentResource{}
 
 	t.Run("all fields populated", func(t *testing.T) {
-		incident := &client.Incident{
+		incident := &hyperping.Incident{
 			UUID:               "inci_123",
-			Title:              client.LocalizedText{En: "Test Incident"},
-			Text:               client.LocalizedText{En: "Test description"},
+			Title:              hyperping.LocalizedText{En: "Test Incident"},
+			Text:               hyperping.LocalizedText{En: "Test description"},
 			Type:               "outage",
 			AffectedComponents: []string{"comp-1", "comp-2"},
 			StatusPages:        []string{"sp-1", "sp-2"},
@@ -301,10 +301,10 @@ func TestIncidentResource_mapIncidentToModel(t *testing.T) {
 	})
 
 	t.Run("empty affected components", func(t *testing.T) {
-		incident := &client.Incident{
+		incident := &hyperping.Incident{
 			UUID:               "inci_456",
-			Title:              client.LocalizedText{En: "No Components"},
-			Text:               client.LocalizedText{En: "No affected components"},
+			Title:              hyperping.LocalizedText{En: "No Components"},
+			Text:               hyperping.LocalizedText{En: "No affected components"},
 			Type:               "incident",
 			AffectedComponents: []string{},
 			StatusPages:        []string{"sp-1"},
@@ -323,10 +323,10 @@ func TestIncidentResource_mapIncidentToModel(t *testing.T) {
 	})
 
 	t.Run("empty date", func(t *testing.T) {
-		incident := &client.Incident{
+		incident := &hyperping.Incident{
 			UUID:        "inci_789",
-			Title:       client.LocalizedText{En: "No Date"},
-			Text:        client.LocalizedText{En: "No date set"},
+			Title:       hyperping.LocalizedText{En: "No Date"},
+			Text:        hyperping.LocalizedText{En: "No date set"},
 			Type:        "incident",
 			StatusPages: []string{"sp-1"},
 			Date:        "",
@@ -348,10 +348,10 @@ func TestIncidentResource_mapIncidentToModel(t *testing.T) {
 		// The API accepts text on write but may not return it on GET.
 		// When the model already has a Text value (from plan/state) and
 		// the API returns empty text, the existing value must be preserved.
-		incident := &client.Incident{
+		incident := &hyperping.Incident{
 			UUID:        "inci_wo_1",
-			Title:       client.LocalizedText{En: "Write-only Text Test"},
-			Text:        client.LocalizedText{En: ""}, // API returns empty
+			Title:       hyperping.LocalizedText{En: "Write-only Text Test"},
+			Text:        hyperping.LocalizedText{En: ""}, // API returns empty
 			Type:        "incident",
 			StatusPages: []string{"sp-1"},
 		}
@@ -372,10 +372,10 @@ func TestIncidentResource_mapIncidentToModel(t *testing.T) {
 
 	t.Run("text overwritten when API returns non-empty", func(t *testing.T) {
 		// When the API does return text, use the API value.
-		incident := &client.Incident{
+		incident := &hyperping.Incident{
 			UUID:        "inci_wo_2",
-			Title:       client.LocalizedText{En: "API Text Test"},
-			Text:        client.LocalizedText{En: "Text from API"},
+			Title:       hyperping.LocalizedText{En: "API Text Test"},
+			Text:        hyperping.LocalizedText{En: "Text from API"},
 			Type:        "incident",
 			StatusPages: []string{"sp-1"},
 		}
@@ -396,10 +396,10 @@ func TestIncidentResource_mapIncidentToModel(t *testing.T) {
 
 	t.Run("text stays empty when model has no prior value and API returns empty", func(t *testing.T) {
 		// Fresh model with no prior Text value and API returns empty.
-		incident := &client.Incident{
+		incident := &hyperping.Incident{
 			UUID:        "inci_wo_3",
-			Title:       client.LocalizedText{En: "Fresh Model Test"},
-			Text:        client.LocalizedText{En: ""},
+			Title:       hyperping.LocalizedText{En: "Fresh Model Test"},
+			Text:        hyperping.LocalizedText{En: ""},
 			Type:        "incident",
 			StatusPages: []string{"sp-1"},
 		}
@@ -532,20 +532,20 @@ func newMockIncidentServer(t *testing.T) *mockIncidentServer {
 }
 
 func (m *mockIncidentServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 	switch {
-	case r.Method == "GET" && r.URL.Path == client.IncidentsBasePath:
+	case r.Method == "GET" && r.URL.Path == hyperping.IncidentsBasePath:
 		m.listIncidents(w)
-	case r.Method == "POST" && r.URL.Path == client.IncidentsBasePath:
+	case r.Method == "POST" && r.URL.Path == hyperping.IncidentsBasePath:
 		m.createIncident(w, r)
-	case r.Method == "POST" && strings.Contains(r.URL.Path, client.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates"):
+	case r.Method == "POST" && strings.Contains(r.URL.Path, hyperping.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates"):
 		m.addIncidentUpdate(w, r)
-	case r.Method == "GET" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
+	case r.Method == "GET" && len(r.URL.Path) > len(hyperping.IncidentsBasePath+"/"):
 		m.getIncident(w, r)
-	case r.Method == "PUT" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
+	case r.Method == "PUT" && len(r.URL.Path) > len(hyperping.IncidentsBasePath+"/"):
 		m.updateIncident(w, r)
-	case r.Method == "DELETE" && len(r.URL.Path) > len(client.IncidentsBasePath+"/"):
+	case r.Method == "DELETE" && len(r.URL.Path) > len(hyperping.IncidentsBasePath+"/"):
 		m.deleteIncident(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -607,7 +607,7 @@ func (m *mockIncidentServer) createIncident(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockIncidentServer) getIncident(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len(client.IncidentsBasePath+"/"):]
+	id := r.URL.Path[len(hyperping.IncidentsBasePath+"/"):]
 
 	incident, exists := m.incidents[id]
 	if !exists {
@@ -620,7 +620,7 @@ func (m *mockIncidentServer) getIncident(w http.ResponseWriter, r *http.Request)
 }
 
 func (m *mockIncidentServer) updateIncident(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len(client.IncidentsBasePath+"/"):]
+	id := r.URL.Path[len(hyperping.IncidentsBasePath+"/"):]
 
 	incident, exists := m.incidents[id]
 	if !exists {
@@ -658,7 +658,7 @@ func (m *mockIncidentServer) updateIncident(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockIncidentServer) deleteIncident(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[len(client.IncidentsBasePath+"/"):]
+	id := r.URL.Path[len(hyperping.IncidentsBasePath+"/"):]
 
 	if _, exists := m.incidents[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -675,8 +675,8 @@ func (m *mockIncidentServer) deleteAllIncidents() {
 }
 
 func (m *mockIncidentServer) addIncidentUpdate(w http.ResponseWriter, r *http.Request) {
-	// Extract incident ID from path like client.IncidentsBasePath+"/"{id}/updates"
-	path := r.URL.Path[len(client.IncidentsBasePath+"/"):]
+	// Extract incident ID from path like hyperping.IncidentsBasePath+"/"{id}/updates"
+	path := r.URL.Path[len(hyperping.IncidentsBasePath+"/"):]
 	incidentID := path[:len(path)-len("/updates")]
 
 	incident, exists := m.incidents[incidentID]
@@ -760,7 +760,7 @@ func (m *mockIncidentServerWithErrors) isReadBlocked() bool {
 }
 
 func (m *mockIncidentServerWithErrors) handlePostIncident(w http.ResponseWriter, r *http.Request) {
-	isUpdatePath := strings.Contains(r.URL.Path, client.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates")
+	isUpdatePath := strings.Contains(r.URL.Path, hyperping.IncidentsBasePath+"/") && strings.HasSuffix(r.URL.Path, "/updates")
 	if isUpdatePath {
 		if m.updateError {
 			m.writeIncidentInternalError(w)
@@ -777,9 +777,9 @@ func (m *mockIncidentServerWithErrors) handlePostIncident(w http.ResponseWriter,
 }
 
 func (m *mockIncidentServerWithErrors) handleRequestWithErrors(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
-	isIncidentPath := len(r.URL.Path) > len(client.IncidentsBasePath+"/")
+	isIncidentPath := len(r.URL.Path) > len(hyperping.IncidentsBasePath+"/")
 
 	switch {
 	case r.Method == "POST":

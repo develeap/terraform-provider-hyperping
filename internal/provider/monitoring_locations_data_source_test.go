@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // T31: Location metadata correctness (unit test)
@@ -51,29 +51,29 @@ func TestMonitoringLocations_MetadataCorrectness(t *testing.T) {
 	}
 }
 
-// T32: All client.AllowedRegions are covered (invariant test)
+// T32: All hyperping.AllowedRegions are covered (invariant test)
 func TestMonitoringLocations_AllRegionsCovered(t *testing.T) {
-	// Every entry in client.AllowedRegions must have a corresponding monitoring location
-	for _, region := range client.AllowedRegions {
+	// Every entry in hyperping.AllowedRegions must have a corresponding monitoring location
+	for _, region := range hyperping.AllowedRegions {
 		if _, ok := monitoringLocations[region]; !ok {
-			t.Errorf("client.AllowedRegions contains %q but monitoringLocations does not", region)
+			t.Errorf("hyperping.AllowedRegions contains %q but monitoringLocations does not", region)
 		}
 	}
 
 	// No extra entries in monitoringLocations beyond AllowedRegions
-	allowedSet := make(map[string]bool, len(client.AllowedRegions))
-	for _, r := range client.AllowedRegions {
+	allowedSet := make(map[string]bool, len(hyperping.AllowedRegions))
+	for _, r := range hyperping.AllowedRegions {
 		allowedSet[r] = true
 	}
 	for id := range monitoringLocations {
 		if !allowedSet[id] {
-			t.Errorf("monitoringLocations contains %q but client.AllowedRegions does not", id)
+			t.Errorf("monitoringLocations contains %q but hyperping.AllowedRegions does not", id)
 		}
 	}
 
 	// Verify 1:1 count
-	if len(monitoringLocations) != len(client.AllowedRegions) {
-		t.Errorf("expected %d locations, got %d", len(client.AllowedRegions), len(monitoringLocations))
+	if len(monitoringLocations) != len(hyperping.AllowedRegions) {
+		t.Errorf("expected %d locations, got %d", len(hyperping.AllowedRegions), len(monitoringLocations))
 	}
 }
 

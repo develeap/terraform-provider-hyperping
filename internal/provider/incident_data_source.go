@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -29,7 +29,7 @@ func NewIncidentDataSource() datasource.DataSource {
 
 // IncidentDataSource defines the data source implementation for a single incident.
 type IncidentDataSource struct {
-	client client.IncidentAPI
+	client hyperping.IncidentAPI
 }
 
 // IncidentDataSourceModel describes the data source data model.
@@ -119,11 +119,11 @@ func (d *IncidentDataSource) Configure(_ context.Context, req datasource.Configu
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *hyperping.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 		return
 	}
@@ -140,7 +140,7 @@ func (d *IncidentDataSource) Read(ctx context.Context, req datasource.ReadReques
 		return
 	}
 
-	if err := client.ValidateResourceID(config.ID.ValueString()); err != nil {
+	if err := hyperping.ValidateResourceID(config.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Invalid Incident ID", fmt.Sprintf("Cannot look up incident: %s", err))
 		return
 	}
@@ -159,8 +159,8 @@ func (d *IncidentDataSource) Read(ctx context.Context, req datasource.ReadReques
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }
 
-// mapIncidentToDataSourceModel maps a client.Incident to the data source model.
-func (d *IncidentDataSource) mapIncidentToDataSourceModel(incident *client.Incident, model *IncidentDataSourceModel, diags *diag.Diagnostics) {
+// mapIncidentToDataSourceModel maps a hyperping.Incident to the data source model.
+func (d *IncidentDataSource) mapIncidentToDataSourceModel(incident *hyperping.Incident, model *IncidentDataSourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(incident.UUID)
 	model.Title = types.StringValue(incident.Title.En)
 	model.Text = types.StringValue(incident.Text.En)

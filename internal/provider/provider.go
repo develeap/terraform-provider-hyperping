@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure HyperpingProvider satisfies the provider.Provider interface.
@@ -73,7 +73,7 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 
 	// Default values from environment variables
 	apiKey := os.Getenv("HYPERPING_API_KEY")
-	baseURL := client.DefaultBaseURL
+	baseURL := hyperping.DefaultBaseURL
 
 	// Override with config values if provided
 	if !config.APIKey.IsNull() {
@@ -114,15 +114,15 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 	// Note: Context masking applies to logs in this Configure function only
 	_ = tflog.MaskAllFieldValuesRegexes(
 		tflog.MaskFieldValuesWithFieldKeys(ctx, "api_key"),
-		client.APIKeyPattern,
+		hyperping.APIKeyPattern,
 	)
 
 	// Create client with tflog integration for debugging
-	hyperpingClient := client.NewClient(
+	hyperpingClient := hyperping.NewClient(
 		apiKey,
-		client.WithBaseURL(baseURL),
-		client.WithLogger(NewTFLogAdapter()),
-		client.WithVersion(p.version),
+		hyperping.WithBaseURL(baseURL),
+		hyperping.WithLogger(NewTFLogAdapter()),
+		hyperping.WithVersion(p.version),
 	)
 
 	// Make the client available to data sources and resources

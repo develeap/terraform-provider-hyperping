@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // OutageTypeManual is the outage type value for resources created by this provider.
@@ -37,7 +37,7 @@ func NewOutageResource() resource.Resource {
 
 // OutageResource defines the resource implementation.
 type OutageResource struct {
-	client client.OutageAPI
+	client hyperping.OutageAPI
 }
 
 // OutageResourceModel describes the resource data model.
@@ -219,9 +219,9 @@ func (r *OutageResource) Configure(_ context.Context, req resource.ConfigureRequ
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperping.Client", req.ProviderData))
 		return
 	}
 
@@ -237,7 +237,7 @@ func (r *OutageResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	createReq := client.CreateOutageRequest{
+	createReq := hyperping.CreateOutageRequest{
 		MonitorUUID: plan.MonitorUUID.ValueString(),
 		StartDate:   plan.StartDate.ValueString(),
 		StatusCode:  int(plan.StatusCode.ValueInt64()),
@@ -309,7 +309,7 @@ func (r *OutageResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	outage, err := r.client.GetOutage(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -362,16 +362,16 @@ func (r *OutageResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 // ImportState imports an existing resource into Terraform.
 func (r *OutageResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if err := client.ValidateResourceID(req.ID); err != nil {
+	if err := hyperping.ValidateResourceID(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid Import ID", fmt.Sprintf("Cannot import outage: %s", err))
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// mapOutageToModel maps a client.Outage to the Terraform resource model
+// mapOutageToModel maps a hyperping.Outage to the Terraform resource model
 // using the shared MapOutageNestedObjects helper for nested monitor/acknowledged_by.
-func (r *OutageResource) mapOutageToModel(outage *client.Outage, model *OutageResourceModel, diags *diag.Diagnostics) {
+func (r *OutageResource) mapOutageToModel(outage *hyperping.Outage, model *OutageResourceModel, diags *diag.Diagnostics) {
 	model.ID = types.StringValue(outage.UUID)
 	model.MonitorUUID = types.StringValue(outage.Monitor.UUID)
 	model.StartDate = types.StringValue(outage.StartDate)

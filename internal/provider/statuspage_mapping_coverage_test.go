@@ -11,7 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
+	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 
 // =============================================================================
@@ -767,7 +768,7 @@ func TestMapTFToServices_WithValues(t *testing.T) {
 
 func TestMapSettingsToTFWithFilter_EdgeCases(t *testing.T) {
 	t.Run("with null logo and favicon", func(t *testing.T) {
-		settings := client.StatusPageSettings{
+		settings := hyperping.StatusPageSettings{
 			Name:            "Test",
 			Website:         "https://example.com",
 			Description:     map[string]string{"en": "English"},
@@ -782,11 +783,11 @@ func TestMapSettingsToTFWithFilter_EdgeCases(t *testing.T) {
 			LogoHeight:      "40px",
 			Favicon:         nil,
 			HidePoweredBy:   false,
-			Subscribe: client.StatusPageSubscribeSettings{
+			Subscribe: hyperping.StatusPageSubscribeSettings{
 				Enabled: true,
 				Email:   true,
 			},
-			Authentication: client.StatusPageAuthenticationSettings{
+			Authentication: hyperping.StatusPageAuthenticationSettings{
 				AllowedDomains: []string{},
 			},
 		}
@@ -811,7 +812,7 @@ func TestMapSettingsToTFWithFilter_EdgeCases(t *testing.T) {
 
 	t.Run("with empty strings for optionals", func(t *testing.T) {
 		emptyStr := ""
-		settings := client.StatusPageSettings{
+		settings := hyperping.StatusPageSettings{
 			Name:            "Test",
 			Website:         "https://example.com",
 			Description:     map[string]string{},
@@ -824,8 +825,8 @@ func TestMapSettingsToTFWithFilter_EdgeCases(t *testing.T) {
 			LogoHeight:      "40px",
 			Favicon:         &emptyStr,
 			GoogleAnalytics: &emptyStr,
-			Subscribe:       client.StatusPageSubscribeSettings{},
-			Authentication: client.StatusPageAuthenticationSettings{
+			Subscribe:       hyperping.StatusPageSubscribeSettings{},
+			Authentication: hyperping.StatusPageAuthenticationSettings{
 				AllowedDomains: []string{},
 			},
 		}
@@ -903,7 +904,7 @@ func TestMapListToStringSlice_WithInvalidElement(t *testing.T) {
 
 func TestMapSubscriberToTF_EmptyOptionals(t *testing.T) {
 	emptyStr := ""
-	subscriber := &client.StatusPageSubscriber{
+	subscriber := &hyperping.StatusPageSubscriber{
 		ID:           123,
 		Type:         "webhook",
 		Value:        "https://webhook.example.com",
@@ -1246,7 +1247,7 @@ func TestMapSettingsToTFWithFilter_WithOptionalValues(t *testing.T) {
 	logoVal := "https://example.com/logo.png"
 	faviconVal := "https://example.com/favicon.ico"
 	gaVal := "UA-12345678-1"
-	settings := client.StatusPageSettings{
+	settings := hyperping.StatusPageSettings{
 		Name:            "Test",
 		Website:         "https://example.com",
 		Description:     map[string]string{"en": "Test page"},
@@ -1262,11 +1263,11 @@ func TestMapSettingsToTFWithFilter_WithOptionalValues(t *testing.T) {
 		Favicon:         &faviconVal,
 		HidePoweredBy:   false,
 		GoogleAnalytics: &gaVal,
-		Subscribe: client.StatusPageSubscribeSettings{
+		Subscribe: hyperping.StatusPageSubscribeSettings{
 			Enabled: true,
 			Email:   true,
 		},
-		Authentication: client.StatusPageAuthenticationSettings{
+		Authentication: hyperping.StatusPageAuthenticationSettings{
 			AllowedDomains: []string{"example.com"},
 		},
 	}
@@ -1410,18 +1411,18 @@ func TestExtractAuthSettings_SSOConnectionUUID(t *testing.T) {
 func TestMapSettingsToTFWithFilter_SSOConnectionUUID(t *testing.T) {
 	t.Run("non-nil sso_connection_uuid mapped", func(t *testing.T) {
 		val := "uuid-abc"
-		settings := client.StatusPageSettings{
+		settings := hyperping.StatusPageSettings{
 			Name:            "Test",
 			DefaultLanguage: "en",
 			Theme:           "light",
 			Font:            "inter",
 			AccentColor:     "#3B82F6",
 			LogoHeight:      "40px",
-			Authentication: client.StatusPageAuthenticationSettings{
+			Authentication: hyperping.StatusPageAuthenticationSettings{
 				AllowedDomains:    []string{},
 				SSOConnectionUUID: &val,
 			},
-			Subscribe: client.StatusPageSubscribeSettings{},
+			Subscribe: hyperping.StatusPageSubscribeSettings{},
 		}
 
 		var diags diag.Diagnostics
@@ -1443,17 +1444,17 @@ func TestMapSettingsToTFWithFilter_SSOConnectionUUID(t *testing.T) {
 	})
 
 	t.Run("nil sso_connection_uuid mapped as null", func(t *testing.T) {
-		settings := client.StatusPageSettings{
+		settings := hyperping.StatusPageSettings{
 			Name:            "Test",
 			DefaultLanguage: "en",
 			Theme:           "light",
 			Font:            "inter",
 			AccentColor:     "#3B82F6",
 			LogoHeight:      "40px",
-			Authentication: client.StatusPageAuthenticationSettings{
+			Authentication: hyperping.StatusPageAuthenticationSettings{
 				AllowedDomains: []string{},
 			},
-			Subscribe: client.StatusPageSubscribeSettings{},
+			Subscribe: hyperping.StatusPageSubscribeSettings{},
 		}
 
 		var diags diag.Diagnostics
@@ -1478,8 +1479,8 @@ func TestMapSettingsToTFWithFilter_SSOConnectionUUID(t *testing.T) {
 
 func TestMapServiceToTFWithFilter_Description(t *testing.T) {
 	t.Run("description populated", func(t *testing.T) {
-		svc := client.StatusPageService{
-			ID:          "svc_1",
+		svc := hyperping.StatusPageService{
+			ID:          testutil.Ptr(hyperping.FlexibleString("svc_1")),
 			UUID:        "mon_1",
 			Name:        map[string]string{"en": "API"},
 			Description: map[string]string{"en": "My API"},
@@ -1507,8 +1508,8 @@ func TestMapServiceToTFWithFilter_Description(t *testing.T) {
 	})
 
 	t.Run("nil description", func(t *testing.T) {
-		svc := client.StatusPageService{
-			ID:   "svc_1",
+		svc := hyperping.StatusPageService{
+			ID:   testutil.Ptr(hyperping.FlexibleString("svc_1")),
 			UUID: "mon_1",
 			Name: map[string]string{"en": "API"},
 		}
@@ -1529,15 +1530,15 @@ func TestMapServiceToTFWithFilter_Description(t *testing.T) {
 
 func TestMapNestedServicesToTF_Description(t *testing.T) {
 	t.Run("description populated", func(t *testing.T) {
-		svc := client.StatusPageService{
-			ID:          "svc_1",
+		svc := hyperping.StatusPageService{
+			ID:          testutil.Ptr(hyperping.FlexibleString("svc_1")),
 			UUID:        "mon_1",
 			Name:        map[string]string{"en": "Nested"},
 			Description: map[string]string{"en": "Nested svc"},
 		}
 
 		var d diag.Diagnostics
-		result := mapNestedServicesToTF([]client.StatusPageService{svc}, nil, &d)
+		result := mapNestedServicesToTF([]hyperping.StatusPageService{svc}, nil, &d)
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}
@@ -1556,14 +1557,14 @@ func TestMapNestedServicesToTF_Description(t *testing.T) {
 	})
 
 	t.Run("nil description", func(t *testing.T) {
-		svc := client.StatusPageService{
-			ID:   "svc_1",
+		svc := hyperping.StatusPageService{
+			ID:   testutil.Ptr(hyperping.FlexibleString("svc_1")),
 			UUID: "mon_1",
 			Name: map[string]string{"en": "Nested"},
 		}
 
 		var d diag.Diagnostics
-		result := mapNestedServicesToTF([]client.StatusPageService{svc}, nil, &d)
+		result := mapNestedServicesToTF([]hyperping.StatusPageService{svc}, nil, &d)
 		if d.HasError() {
 			t.Fatalf("unexpected error: %v", d.Errors())
 		}

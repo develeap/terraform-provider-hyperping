@@ -16,14 +16,14 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-// Client is a Better Stack API client.
+// Client is a Better Stack API hyperping.
 type Client struct {
 	baseURL    string
 	apiToken   string
 	httpClient *http.Client
 }
 
-// NewClient creates a new Better Stack API client.
+// NewClient creates a new Better Stack API hyperping.
 func NewClient(apiToken string) *Client {
 	return &Client{
 		baseURL:  defaultBaseURL,

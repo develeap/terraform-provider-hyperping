@@ -6,15 +6,15 @@ package converter
 import (
 	"fmt"
 
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
 	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // ConversionResult represents the result of converting a Pingdom check.
 type ConversionResult struct {
-	Monitor         *client.CreateMonitorRequest
-	Healthcheck     *client.CreateHealthcheckRequest
+	Monitor         *hyperping.CreateMonitorRequest
+	Healthcheck     *hyperping.CreateHealthcheckRequest
 	Supported       bool
 	UnsupportedType string
 	Notes           []string
@@ -77,7 +77,7 @@ func (c *CheckConverter) Convert(check pingdom.Check) ConversionResult {
 	return result
 }
 
-func (c *CheckConverter) convertHTTPCheck(check pingdom.Check) *client.CreateMonitorRequest {
+func (c *CheckConverter) convertHTTPCheck(check pingdom.Check) *hyperping.CreateMonitorRequest {
 	// Build URL
 	protocol := "http"
 	if check.Encryption {
@@ -89,9 +89,9 @@ func (c *CheckConverter) convertHTTPCheck(check pingdom.Check) *client.CreateMon
 	frequency := ConvertFrequency(check.Resolution)
 
 	// Build request headers
-	headers := make([]client.RequestHeader, 0, len(check.RequestHeaders))
+	headers := make([]hyperping.RequestHeader, 0, len(check.RequestHeaders))
 	for name, value := range check.RequestHeaders {
-		headers = append(headers, client.RequestHeader{
+		headers = append(headers, hyperping.RequestHeader{
 			Name:  name,
 			Value: value,
 		})
@@ -100,7 +100,7 @@ func (c *CheckConverter) convertHTTPCheck(check pingdom.Check) *client.CreateMon
 	// Convert regions
 	regions := ConvertRegions(check.ProbeFilters)
 
-	monitor := &client.CreateMonitorRequest{
+	monitor := &hyperping.CreateMonitorRequest{
 		Name:            GenerateName(check),
 		URL:             url,
 		Protocol:        "http",
@@ -135,7 +135,7 @@ func (c *CheckConverter) convertHTTPCheck(check pingdom.Check) *client.CreateMon
 	return monitor
 }
 
-func (c *CheckConverter) convertTCPCheck(check pingdom.Check) *client.CreateMonitorRequest {
+func (c *CheckConverter) convertTCPCheck(check pingdom.Check) *hyperping.CreateMonitorRequest {
 	frequency := ConvertFrequency(check.Resolution)
 	regions := ConvertRegions(check.ProbeFilters)
 
@@ -144,7 +144,7 @@ func (c *CheckConverter) convertTCPCheck(check pingdom.Check) *client.CreateMoni
 		port = 80
 	}
 
-	return &client.CreateMonitorRequest{
+	return &hyperping.CreateMonitorRequest{
 		Name:           GenerateName(check),
 		URL:            check.Hostname,
 		Protocol:       "port",
@@ -155,11 +155,11 @@ func (c *CheckConverter) convertTCPCheck(check pingdom.Check) *client.CreateMoni
 	}
 }
 
-func (c *CheckConverter) convertPingCheck(check pingdom.Check) *client.CreateMonitorRequest {
+func (c *CheckConverter) convertPingCheck(check pingdom.Check) *hyperping.CreateMonitorRequest {
 	frequency := ConvertFrequency(check.Resolution)
 	regions := ConvertRegions(check.ProbeFilters)
 
-	return &client.CreateMonitorRequest{
+	return &hyperping.CreateMonitorRequest{
 		Name:           GenerateName(check),
 		URL:            check.Hostname,
 		Protocol:       "icmp",
@@ -169,7 +169,7 @@ func (c *CheckConverter) convertPingCheck(check pingdom.Check) *client.CreateMon
 	}
 }
 
-func (c *CheckConverter) convertSMTPCheck(check pingdom.Check) *client.CreateMonitorRequest {
+func (c *CheckConverter) convertSMTPCheck(check pingdom.Check) *hyperping.CreateMonitorRequest {
 	frequency := ConvertFrequency(check.Resolution)
 	regions := ConvertRegions(check.ProbeFilters)
 
@@ -181,7 +181,7 @@ func (c *CheckConverter) convertSMTPCheck(check pingdom.Check) *client.CreateMon
 		}
 	}
 
-	return &client.CreateMonitorRequest{
+	return &hyperping.CreateMonitorRequest{
 		Name:           GenerateName(check),
 		URL:            check.Hostname,
 		Protocol:       "port",
@@ -192,7 +192,7 @@ func (c *CheckConverter) convertSMTPCheck(check pingdom.Check) *client.CreateMon
 	}
 }
 
-func (c *CheckConverter) convertPOP3Check(check pingdom.Check) *client.CreateMonitorRequest {
+func (c *CheckConverter) convertPOP3Check(check pingdom.Check) *hyperping.CreateMonitorRequest {
 	frequency := ConvertFrequency(check.Resolution)
 	regions := ConvertRegions(check.ProbeFilters)
 
@@ -204,7 +204,7 @@ func (c *CheckConverter) convertPOP3Check(check pingdom.Check) *client.CreateMon
 		}
 	}
 
-	return &client.CreateMonitorRequest{
+	return &hyperping.CreateMonitorRequest{
 		Name:           GenerateName(check),
 		URL:            check.Hostname,
 		Protocol:       "port",
@@ -215,7 +215,7 @@ func (c *CheckConverter) convertPOP3Check(check pingdom.Check) *client.CreateMon
 	}
 }
 
-func (c *CheckConverter) convertIMAPCheck(check pingdom.Check) *client.CreateMonitorRequest {
+func (c *CheckConverter) convertIMAPCheck(check pingdom.Check) *hyperping.CreateMonitorRequest {
 	frequency := ConvertFrequency(check.Resolution)
 	regions := ConvertRegions(check.ProbeFilters)
 
@@ -227,7 +227,7 @@ func (c *CheckConverter) convertIMAPCheck(check pingdom.Check) *client.CreateMon
 		}
 	}
 
-	return &client.CreateMonitorRequest{
+	return &hyperping.CreateMonitorRequest{
 		Name:           GenerateName(check),
 		URL:            check.Hostname,
 		Protocol:       "port",

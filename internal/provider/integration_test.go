@@ -16,7 +16,7 @@ import (
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // mockIntegrationServer provides a unified mock server for integration testing
@@ -58,7 +58,7 @@ func (m *mockIntegrationServer) handleRequest(w http.ResponseWriter, r *http.Req
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 
 	if m.shouldInjectError(r) {
 		w.WriteHeader(m.errorStatusCode)
@@ -79,7 +79,7 @@ func (m *mockIntegrationServer) handleRequest(w http.ResponseWriter, r *http.Req
 }
 
 func (m *mockIntegrationServer) routeMonitorRequest(w http.ResponseWriter, r *http.Request) bool {
-	base := client.MonitorsBasePath
+	base := hyperping.MonitorsBasePath
 	switch {
 	case r.Method == "GET" && r.URL.Path == base:
 		m.listMonitors(w)
@@ -98,7 +98,7 @@ func (m *mockIntegrationServer) routeMonitorRequest(w http.ResponseWriter, r *ht
 }
 
 func (m *mockIntegrationServer) routeIncidentRequest(w http.ResponseWriter, r *http.Request) bool {
-	base := client.IncidentsBasePath
+	base := hyperping.IncidentsBasePath
 	switch {
 	case r.Method == "GET" && r.URL.Path == base:
 		m.listIncidents(w)
@@ -117,7 +117,7 @@ func (m *mockIntegrationServer) routeIncidentRequest(w http.ResponseWriter, r *h
 }
 
 func (m *mockIntegrationServer) routeMaintenanceRequest(w http.ResponseWriter, r *http.Request) bool {
-	base := client.MaintenanceBasePath
+	base := hyperping.MaintenanceBasePath
 	switch {
 	case r.Method == "GET" && r.URL.Path == base:
 		m.listMaintenance(w)
@@ -143,11 +143,11 @@ func (m *mockIntegrationServer) shouldInjectError(r *http.Request) bool {
 	// Check if this request matches the error injection criteria
 	var resourceType string
 	switch {
-	case strings.HasPrefix(r.URL.Path, client.MonitorsBasePath):
+	case strings.HasPrefix(r.URL.Path, hyperping.MonitorsBasePath):
 		resourceType = "monitor"
-	case strings.HasPrefix(r.URL.Path, client.IncidentsBasePath):
+	case strings.HasPrefix(r.URL.Path, hyperping.IncidentsBasePath):
 		resourceType = "incident"
-	case strings.HasPrefix(r.URL.Path, client.MaintenanceBasePath):
+	case strings.HasPrefix(r.URL.Path, hyperping.MaintenanceBasePath):
 		resourceType = "maintenance"
 	default:
 		return false
@@ -236,7 +236,7 @@ func (m *mockIntegrationServer) createMonitor(w http.ResponseWriter, r *http.Req
 }
 
 func (m *mockIntegrationServer) getMonitor(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MonitorsBasePath+"/")
 
 	monitor, exists := m.monitors[id]
 	if !exists {
@@ -253,7 +253,7 @@ func (m *mockIntegrationServer) getMonitor(w http.ResponseWriter, r *http.Reques
 }
 
 func (m *mockIntegrationServer) updateMonitor(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MonitorsBasePath+"/")
 
 	monitor, exists := m.monitors[id]
 	if !exists {
@@ -289,7 +289,7 @@ func (m *mockIntegrationServer) updateMonitor(w http.ResponseWriter, r *http.Req
 }
 
 func (m *mockIntegrationServer) deleteMonitor(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MonitorsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MonitorsBasePath+"/")
 
 	if _, exists := m.monitors[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -374,7 +374,7 @@ func (m *mockIntegrationServer) createIncident(w http.ResponseWriter, r *http.Re
 }
 
 func (m *mockIntegrationServer) getIncident(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.IncidentsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.IncidentsBasePath+"/")
 
 	incident, exists := m.incidents[id]
 	if !exists {
@@ -391,7 +391,7 @@ func (m *mockIntegrationServer) getIncident(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *mockIntegrationServer) updateIncident(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.IncidentsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.IncidentsBasePath+"/")
 
 	incident, exists := m.incidents[id]
 	if !exists {
@@ -423,7 +423,7 @@ func (m *mockIntegrationServer) updateIncident(w http.ResponseWriter, r *http.Re
 }
 
 func (m *mockIntegrationServer) deleteIncident(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.IncidentsBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.IncidentsBasePath+"/")
 
 	if _, exists := m.incidents[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -508,7 +508,7 @@ func (m *mockIntegrationServer) createMaintenance(w http.ResponseWriter, r *http
 }
 
 func (m *mockIntegrationServer) getMaintenance(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MaintenanceBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MaintenanceBasePath+"/")
 
 	maintenance, exists := m.maintenance[id]
 	if !exists {
@@ -525,7 +525,7 @@ func (m *mockIntegrationServer) getMaintenance(w http.ResponseWriter, r *http.Re
 }
 
 func (m *mockIntegrationServer) updateMaintenance(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MaintenanceBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MaintenanceBasePath+"/")
 
 	maintenance, exists := m.maintenance[id]
 	if !exists {
@@ -557,7 +557,7 @@ func (m *mockIntegrationServer) updateMaintenance(w http.ResponseWriter, r *http
 }
 
 func (m *mockIntegrationServer) deleteMaintenance(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MaintenanceBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MaintenanceBasePath+"/")
 
 	if _, exists := m.maintenance[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)

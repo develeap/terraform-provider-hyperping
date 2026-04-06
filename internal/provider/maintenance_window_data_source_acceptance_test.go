@@ -14,7 +14,7 @@ import (
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestAccMaintenanceWindowDataSource_basic(t *testing.T) {
@@ -86,8 +86,8 @@ func newMockMaintenanceServer(t *testing.T) *mockMaintenanceServer {
 }
 
 func (m *mockMaintenanceServer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.MaintenanceBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.MaintenanceBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {
@@ -110,7 +110,7 @@ func (m *mockMaintenanceServer) listMaintenanceWindows(w http.ResponseWriter) {
 }
 
 func (m *mockMaintenanceServer) getMaintenanceWindow(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.MaintenanceBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.MaintenanceBasePath+"/")
 
 	window, exists := m.maintenanceWindows[id]
 	if !exists {

@@ -18,7 +18,7 @@
 //	    defer rec.Stop()
 //
 //	    // Use client for HTTP requests - they'll be recorded/replayed
-//	    resp, err := client.Get("https://api.example.com/v1/test")
+//	    resp, err := hyperping.Get("https://api.example.com/v1/test")
 //	    // ...
 //	}
 //

@@ -10,17 +10,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // TestIntegration_ValidationMode tests the full validation workflow
 func TestIntegration_ValidationMode(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_valid123", Name: "Monitor 1"},
 			{UUID: "mon_valid456", Name: "Monitor 2"},
 		},
-		healthchecks: []client.Healthcheck{
+		healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_valid123", Name: "Healthcheck 1"},
 		},
 	}
@@ -52,10 +52,10 @@ func TestIntegration_ValidationMode(t *testing.T) {
 // TestIntegration_ProgressMode tests progress reporting during fetch
 func TestIntegration_ProgressMode(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Monitor"},
 		},
-		healthchecks: []client.Healthcheck{
+		healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_123", Name: "Healthcheck"},
 		},
 	}
@@ -85,7 +85,7 @@ func TestIntegration_ProgressMode(t *testing.T) {
 // TestIntegration_ScriptFormat tests script generation end-to-end
 func TestIntegration_ScriptFormat(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "API Monitor"},
 			{UUID: "mon_456", Name: "Web Monitor"},
 		},
@@ -128,10 +128,10 @@ func TestIntegration_ScriptFormat(t *testing.T) {
 func TestIntegration_ErrorRecovery(t *testing.T) {
 	mock := &mockClient{
 		monitorsErr: errors.New("monitors API error"),
-		healthchecks: []client.Healthcheck{
+		healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_123", Name: "Healthcheck"},
 		},
-		statusPages: []client.StatusPage{
+		statusPages: []hyperping.StatusPage{
 			{UUID: "sp_123", Name: "Status Page"},
 		},
 	}
@@ -165,7 +165,7 @@ func TestIntegration_ErrorRecovery(t *testing.T) {
 // TestIntegration_CombinedModes tests multiple modes working together
 func TestIntegration_CombinedModes(t *testing.T) {
 	mock := &mockClient{
-		monitors: []client.Monitor{
+		monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Monitor"},
 		},
 		healthchecksErr: errors.New("healthchecks error"),
@@ -200,12 +200,12 @@ func TestIntegration_CombinedModes(t *testing.T) {
 // TestIntegration_AllFormatsWithAllResources tests all formats with all resource types
 func TestIntegration_AllFormatsWithAllResources(t *testing.T) {
 	mock := &mockClient{
-		monitors:     []client.Monitor{{UUID: "mon_1", Name: "Mon"}},
-		healthchecks: []client.Healthcheck{{UUID: "hc_1", Name: "HC"}},
-		statusPages:  []client.StatusPage{{UUID: "sp_1", Name: "SP"}},
-		incidents:    []client.Incident{{UUID: "inc_1", Title: client.LocalizedText{En: "Inc"}}},
-		maintenance:  []client.Maintenance{{UUID: "maint_1", Title: client.LocalizedText{En: "Maint"}, Name: "Maint"}},
-		outages:      []client.Outage{{UUID: "outage_1", Monitor: client.MonitorReference{Name: "OutMon"}}},
+		monitors:     []hyperping.Monitor{{UUID: "mon_1", Name: "Mon"}},
+		healthchecks: []hyperping.Healthcheck{{UUID: "hc_1", Name: "HC"}},
+		statusPages:  []hyperping.StatusPage{{UUID: "sp_1", Name: "SP"}},
+		incidents:    []hyperping.Incident{{UUID: "inc_1", Title: hyperping.LocalizedText{En: "Inc"}}},
+		maintenance:  []hyperping.Maintenance{{UUID: "maint_1", Title: hyperping.LocalizedText{En: "Maint"}, Name: "Maint"}},
+		outages:      []hyperping.Outage{{UUID: "outage_1", Monitor: hyperping.MonitorReference{Name: "OutMon"}}},
 	}
 
 	gen := &Generator{

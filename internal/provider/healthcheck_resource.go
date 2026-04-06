@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -34,7 +34,7 @@ func NewHealthcheckResource() resource.Resource {
 
 // HealthcheckResource defines the resource implementation.
 type HealthcheckResource struct {
-	client client.HealthcheckAPI
+	client hyperping.HealthcheckAPI
 }
 
 // HealthcheckResourceModel describes the resource data model.
@@ -112,7 +112,7 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 				MarkdownDescription: "Unit for `period_value`. Valid values: `seconds`, `minutes`, `hours`, `days`.",
 				Optional:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedPeriodTypes...),
+					stringvalidator.OneOf(hyperping.AllowedPeriodTypes...),
 				},
 			},
 			"grace_period_value": schema.Int64Attribute{
@@ -123,7 +123,7 @@ func (r *HealthcheckResource) Schema(_ context.Context, _ resource.SchemaRequest
 				MarkdownDescription: "Unit for `grace_period_value`. Valid values: `seconds`, `minutes`, `hours`, `days`.",
 				Required:            true,
 				Validators: []validator.String{
-					stringvalidator.OneOf(client.AllowedPeriodTypes...),
+					stringvalidator.OneOf(hyperping.AllowedPeriodTypes...),
 				},
 			},
 			"escalation_policy": schema.StringAttribute{
@@ -211,9 +211,9 @@ func (r *HealthcheckResource) Configure(_ context.Context, req resource.Configur
 		return
 	}
 
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*hyperping.Client)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*client.Client", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperping.Client", req.ProviderData))
 		return
 	}
 
@@ -339,8 +339,8 @@ func (r *HealthcheckResource) Create(ctx context.Context, req resource.CreateReq
 }
 
 // buildCreateHealthcheckRequest converts the plan model into an API request.
-func buildCreateHealthcheckRequest(plan *HealthcheckResourceModel) client.CreateHealthcheckRequest {
-	req := client.CreateHealthcheckRequest{
+func buildCreateHealthcheckRequest(plan *HealthcheckResourceModel) hyperping.CreateHealthcheckRequest {
+	req := hyperping.CreateHealthcheckRequest{
 		Name:             plan.Name.ValueString(),
 		GracePeriodValue: int(plan.GracePeriodValue.ValueInt64()),
 		GracePeriodType:  plan.GracePeriodType.ValueString(),
@@ -381,7 +381,7 @@ func (r *HealthcheckResource) Read(ctx context.Context, req resource.ReadRequest
 
 	healthcheck, err := r.client.GetHealthcheck(ctx, state.ID.ValueString())
 	if err != nil {
-		if client.IsNotFound(err) {
+		if hyperping.IsNotFound(err) {
 			resp.State.RemoveResource(ctx)
 			return
 		}
@@ -452,7 +452,7 @@ func (r *HealthcheckResource) Update(ctx context.Context, req resource.UpdateReq
 
 // applyHealthcheckTimingFields handles schedule/timing field changes for healthcheck updates.
 // Handles: cron, timezone, period_value, period_type, grace_period_value, grace_period_type.
-func applyHealthcheckTimingFields(plan, state *HealthcheckResourceModel, updateReq *client.UpdateHealthcheckRequest) bool {
+func applyHealthcheckTimingFields(plan, state *HealthcheckResourceModel, updateReq *hyperping.UpdateHealthcheckRequest) bool {
 	hasChanges := false
 
 	if !plan.Cron.Equal(state.Cron) {
@@ -511,7 +511,7 @@ func applyHealthcheckTimingFields(plan, state *HealthcheckResourceModel, updateR
 
 // applyHealthcheckBehaviorFields handles behavior/policy field changes for healthcheck updates.
 // Handles: name, escalation_policy.
-func applyHealthcheckBehaviorFields(plan, state *HealthcheckResourceModel, updateReq *client.UpdateHealthcheckRequest) bool {
+func applyHealthcheckBehaviorFields(plan, state *HealthcheckResourceModel, updateReq *hyperping.UpdateHealthcheckRequest) bool {
 	hasChanges := false
 
 	if !plan.Name.Equal(state.Name) {
@@ -535,7 +535,7 @@ func applyHealthcheckBehaviorFields(plan, state *HealthcheckResourceModel, updat
 
 // applyFieldChanges builds and sends an update request for changed non-pause fields.
 func (r *HealthcheckResource) applyFieldChanges(ctx context.Context, plan, state *HealthcheckResourceModel, resp *resource.UpdateResponse) {
-	updateReq := client.UpdateHealthcheckRequest{}
+	updateReq := hyperping.UpdateHealthcheckRequest{}
 
 	hasChanges := applyHealthcheckTimingFields(plan, state, &updateReq)
 	hasChanges = applyHealthcheckBehaviorFields(plan, state, &updateReq) || hasChanges
@@ -585,7 +585,7 @@ func (r *HealthcheckResource) Delete(ctx context.Context, req resource.DeleteReq
 
 	err := r.client.DeleteHealthcheck(ctx, state.ID.ValueString())
 	if err != nil {
-		if !client.IsNotFound(err) {
+		if !hyperping.IsNotFound(err) {
 			resp.Diagnostics.AddError(
 				"Error deleting healthcheck",
 				fmt.Sprintf("Could not delete healthcheck %s: %s", state.ID.ValueString(), err),
@@ -605,16 +605,16 @@ func (r *HealthcheckResource) Delete(ctx context.Context, req resource.DeleteReq
 
 // ImportState imports an existing resource into Terraform.
 func (r *HealthcheckResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	if err := client.ValidateResourceID(req.ID); err != nil {
+	if err := hyperping.ValidateResourceID(req.ID); err != nil {
 		resp.Diagnostics.AddError("Invalid Import ID", fmt.Sprintf("Cannot import healthcheck: %s", err))
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-// mapHealthcheckToModel maps a client.Healthcheck to the Terraform resource model
+// mapHealthcheckToModel maps a hyperping.Healthcheck to the Terraform resource model
 // using the shared HealthcheckCommonFields mapping.
-func (r *HealthcheckResource) mapHealthcheckToModel(hc *client.Healthcheck, model *HealthcheckResourceModel) {
+func (r *HealthcheckResource) mapHealthcheckToModel(hc *hyperping.Healthcheck, model *HealthcheckResourceModel) {
 	f := MapHealthcheckCommonFields(hc)
 	model.ID = f.ID
 	model.Name = f.Name

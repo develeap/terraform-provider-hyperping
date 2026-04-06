@@ -14,7 +14,7 @@ import (
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 // TestAccOutageResource_escalationPolicy tests the escalation_policy_uuid field
@@ -343,8 +343,8 @@ func newMockOutageServerWithEscalation(t *testing.T) *mockOutageServerWithEscala
 }
 
 func (m *mockOutageServerWithEscalation) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.OutagesBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.OutagesBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {
@@ -421,7 +421,7 @@ func (m *mockOutageServerWithEscalation) createOutage(w http.ResponseWriter, r *
 }
 
 func (m *mockOutageServerWithEscalation) getOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	outage, exists := m.outages[id]
 	if !exists {
@@ -437,7 +437,7 @@ func (m *mockOutageServerWithEscalation) getOutage(w http.ResponseWriter, r *htt
 }
 
 func (m *mockOutageServerWithEscalation) deleteOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	if _, exists := m.outages[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -471,8 +471,8 @@ func newMockOutageServerWithStatusCodes(t *testing.T) *mockOutageServerWithStatu
 }
 
 func (m *mockOutageServerWithStatusCodes) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.OutagesBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.OutagesBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {
@@ -538,7 +538,7 @@ func (m *mockOutageServerWithStatusCodes) createOutage(w http.ResponseWriter, r 
 }
 
 func (m *mockOutageServerWithStatusCodes) getOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	outage, exists := m.outages[id]
 	if !exists {
@@ -554,7 +554,7 @@ func (m *mockOutageServerWithStatusCodes) getOutage(w http.ResponseWriter, r *ht
 }
 
 func (m *mockOutageServerWithStatusCodes) deleteOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	if _, exists := m.outages[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -588,8 +588,8 @@ func newMockOutageServerWithComputed(t *testing.T) *mockOutageServerWithComputed
 }
 
 func (m *mockOutageServerWithComputed) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.OutagesBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.OutagesBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {
@@ -670,7 +670,7 @@ func (m *mockOutageServerWithComputed) createOutage(w http.ResponseWriter, r *ht
 }
 
 func (m *mockOutageServerWithComputed) getOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	outage, exists := m.outages[id]
 	if !exists {
@@ -686,7 +686,7 @@ func (m *mockOutageServerWithComputed) getOutage(w http.ResponseWriter, r *http.
 }
 
 func (m *mockOutageServerWithComputed) deleteOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	if _, exists := m.outages[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -720,8 +720,8 @@ func newMockOutageServerWithNested(t *testing.T) *mockOutageServerWithNested {
 }
 
 func (m *mockOutageServerWithNested) handleRequest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
-	basePath := client.OutagesBasePath
+	w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+	basePath := hyperping.OutagesBasePath
 	basePathWithSlash := basePath + "/"
 
 	switch {
@@ -799,7 +799,7 @@ func (m *mockOutageServerWithNested) createOutage(w http.ResponseWriter, r *http
 }
 
 func (m *mockOutageServerWithNested) getOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	outage, exists := m.outages[id]
 	if !exists {
@@ -815,7 +815,7 @@ func (m *mockOutageServerWithNested) getOutage(w http.ResponseWriter, r *http.Re
 }
 
 func (m *mockOutageServerWithNested) deleteOutage(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, client.OutagesBasePath+"/")
+	id := strings.TrimPrefix(r.URL.Path, hyperping.OutagesBasePath+"/")
 
 	if _, exists := m.outages[id]; !exists {
 		w.WriteHeader(http.StatusNotFound)

@@ -15,7 +15,7 @@ import (
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestNewMonitorReportsDataSource(t *testing.T) {
@@ -62,7 +62,7 @@ func TestMonitorReportsDataSource_Schema(t *testing.T) {
 func TestMonitorReportsDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &MonitorReportsDataSource{}
-		c := &client.Client{}
+		c := &hyperping.Client{}
 
 		req := datasource.ConfigureRequest{
 			ProviderData: c,
@@ -124,7 +124,7 @@ func TestMonitorReportsDataSource_Configure(t *testing.T) {
 
 func TestMonitorReportsDataSource_mapReportsToListItems(t *testing.T) {
 	t.Run("single report with all fields", func(t *testing.T) {
-		reports := []client.MonitorReport{
+		reports := []hyperping.MonitorReport{
 			{
 				UUID:          "mon_test001",
 				Name:          "Website",
@@ -132,7 +132,7 @@ func TestMonitorReportsDataSource_mapReportsToListItems(t *testing.T) {
 				SLA:           99.95,
 				MTTR:          120,
 				MTTRFormatted: "2min 0s",
-				Outages: client.OutageStats{
+				Outages: hyperping.OutageStats{
 					Count:                  1,
 					TotalDowntime:          120,
 					TotalDowntimeFormatted: "2min 0s",
@@ -179,21 +179,21 @@ func TestMonitorReportsDataSource_mapReportsToListItems(t *testing.T) {
 	})
 
 	t.Run("empty reports slice", func(t *testing.T) {
-		items := mapReportsToListItems([]client.MonitorReport{})
+		items := mapReportsToListItems([]hyperping.MonitorReport{})
 		if len(items) != 0 {
 			t.Errorf("Expected 0 items, got %d", len(items))
 		}
 	})
 
 	t.Run("zero MTTR for monitor with no outages", func(t *testing.T) {
-		reports := []client.MonitorReport{
+		reports := []hyperping.MonitorReport{
 			{
 				UUID:     "mon_no_outages",
 				Name:     "Healthy Monitor",
 				Protocol: "http",
 				SLA:      100.0,
 				MTTR:     0,
-				Outages: client.OutageStats{
+				Outages: hyperping.OutageStats{
 					Count:         0,
 					TotalDowntime: 0,
 				},
@@ -304,7 +304,7 @@ func TestAccMonitorReportsDataSource_withDateRange(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedFrom = r.URL.Query().Get("from")
 		capturedTo = r.URL.Query().Get("to")
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 		payload := map[string]interface{}{
 			"period": map[string]string{
 				"from": "2026-01-01T00:00:00Z",
@@ -363,7 +363,7 @@ func TestAccMonitorReportsDataSource_noDateRange(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedFrom = r.URL.Query().Get("from")
 		capturedTo = r.URL.Query().Get("to")
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 		payload := map[string]interface{}{
 			"period": map[string]string{
 				"from": "",
@@ -415,7 +415,7 @@ func TestAccMonitorReportsDataSource_noDateRange(t *testing.T) {
 
 func TestAccMonitorReportsDataSource_outageFields(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 		payload := map[string]interface{}{
 			"period": map[string]string{
 				"from": "2026-01-01T00:00:00Z",
@@ -466,12 +466,12 @@ func TestAccMonitorReportsDataSource_outageFields(t *testing.T) {
 func newMockMonitorReportsServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" || r.URL.Path != client.ReportsBasePath {
+		if r.Method != "GET" || r.URL.Path != hyperping.ReportsBasePath {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "not found"}) //nolint:errcheck
 			return
 		}
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 		payload := map[string]interface{}{
 			"period": map[string]string{
 				"from": "2025-01-01T00:00:00Z",
@@ -503,12 +503,12 @@ func newMockMonitorReportsServer(t *testing.T) *httptest.Server {
 func newMockMonitorReportsServerEmpty(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" || r.URL.Path != client.ReportsBasePath {
+		if r.Method != "GET" || r.URL.Path != hyperping.ReportsBasePath {
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "not found"}) //nolint:errcheck
 			return
 		}
-		w.Header().Set(client.HeaderContentType, client.ContentTypeJSON)
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
 		payload := map[string]interface{}{
 			"period": map[string]string{
 				"from": "2025-01-01T00:00:00Z",

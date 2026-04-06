@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 var (
@@ -116,7 +116,7 @@ func run() int {
 	}
 
 	// Create client
-	c := client.NewClient(apiKey, client.WithBaseURL(*baseURL))
+	c := hyperping.NewClient(apiKey, hyperping.WithBaseURL(*baseURL))
 
 	// Set timeout based on execution mode
 	timeout := 5 * time.Minute

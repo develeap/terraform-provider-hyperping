@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
@@ -20,15 +20,15 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		statusPage client.StatusPage
+		statusPage hyperping.StatusPage
 		filter     *StatusPageFilterModel
 		expected   bool
 		hasError   bool
 	}{
 		{
 			name: "empty filter - includes all",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Production Status",
 				},
 				Hostname: &customHostname,
@@ -42,8 +42,8 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 		},
 		{
 			name: "name regex match",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Production API Status",
 				},
 				Hostname: noHostname,
@@ -57,8 +57,8 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 		},
 		{
 			name: "name regex no match",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Development Status",
 				},
 				Hostname: noHostname,
@@ -72,8 +72,8 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 		},
 		{
 			name: "hostname filter match",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Test Status",
 				},
 				Hostname: &customHostname,
@@ -87,8 +87,8 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 		},
 		{
 			name: "hostname filter no match",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Test Status",
 				},
 				Hostname: &customHostname,
@@ -102,8 +102,8 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 		},
 		{
 			name: "hostname filter with null hostname",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Test Status",
 				},
 				Hostname: noHostname,
@@ -117,8 +117,8 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 		},
 		{
 			name: "combined filters - all match",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Production Status Page",
 				},
 				Hostname: &customHostname,
@@ -132,8 +132,8 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 		},
 		{
 			name: "combined filters - name matches but hostname doesn't",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Production Status Page",
 				},
 				Hostname: &customHostname,
@@ -147,8 +147,8 @@ func TestStatusPagesDataSource_shouldIncludeStatusPage(t *testing.T) {
 		},
 		{
 			name: "invalid regex",
-			statusPage: client.StatusPage{
-				Settings: client.StatusPageSettings{
+			statusPage: hyperping.StatusPage{
+				Settings: hyperping.StatusPageSettings{
 					Name: "Test Status",
 				},
 				Hostname: noHostname,

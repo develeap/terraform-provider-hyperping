@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
+	hyperping "github.com/develeap/hyperping-go"
 )
 
 func TestGenerateScript_EmptyData(t *testing.T) {
@@ -54,7 +54,7 @@ func TestGenerateScript_Monitors(t *testing.T) {
 	}
 
 	data := &ResourceData{
-		Monitors: []client.Monitor{
+		Monitors: []hyperping.Monitor{
 			{UUID: "mon_abc123", Name: "API Monitor"},
 			{UUID: "mon_def456", Name: "Web Monitor"},
 		},
@@ -83,23 +83,23 @@ func TestGenerateScript_AllResourceTypes(t *testing.T) {
 	}
 
 	data := &ResourceData{
-		Monitors: []client.Monitor{
+		Monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Monitor"},
 		},
-		Healthchecks: []client.Healthcheck{
+		Healthchecks: []hyperping.Healthcheck{
 			{UUID: "hc_123", Name: "Healthcheck"},
 		},
-		StatusPages: []client.StatusPage{
+		StatusPages: []hyperping.StatusPage{
 			{UUID: "sp_123", Name: "Status Page"},
 		},
-		Incidents: []client.Incident{
-			{UUID: "inc_123", Title: client.LocalizedText{En: "Incident"}},
+		Incidents: []hyperping.Incident{
+			{UUID: "inc_123", Title: hyperping.LocalizedText{En: "Incident"}},
 		},
-		Maintenance: []client.Maintenance{
-			{UUID: "maint_123", Title: client.LocalizedText{En: "Maintenance"}, Name: "Maintenance"},
+		Maintenance: []hyperping.Maintenance{
+			{UUID: "maint_123", Title: hyperping.LocalizedText{En: "Maintenance"}, Name: "Maintenance"},
 		},
-		Outages: []client.Outage{
-			{UUID: "outage_123", Monitor: client.MonitorReference{Name: "Outage Monitor"}},
+		Outages: []hyperping.Outage{
+			{UUID: "outage_123", Monitor: hyperping.MonitorReference{Name: "Outage Monitor"}},
 		},
 	}
 
@@ -144,7 +144,7 @@ func TestGenerateScript_CountersAndSummary(t *testing.T) {
 	}
 
 	data := &ResourceData{
-		Monitors: []client.Monitor{
+		Monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Monitor"},
 		},
 	}
@@ -193,7 +193,7 @@ func TestGenerateScript_ErrorHandling(t *testing.T) {
 	}
 
 	data := &ResourceData{
-		Monitors: []client.Monitor{
+		Monitors: []hyperping.Monitor{
 			{UUID: "mon_123", Name: "Monitor"},
 		},
 	}

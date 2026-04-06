@@ -18,11 +18,11 @@ import (
 	"path/filepath"
 	"time"
 
+	hyperping "github.com/develeap/hyperping-go"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/converter"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/generator"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/report"
-	"github.com/develeap/terraform-provider-hyperping/internal/client"
 	"github.com/develeap/terraform-provider-hyperping/pkg/checkpoint"
 	"github.com/develeap/terraform-provider-hyperping/pkg/migrationstate"
 	"github.com/develeap/terraform-provider-hyperping/pkg/recovery"
@@ -466,8 +466,8 @@ func createPingdomClient(apiKey string) *pingdom.Client {
 	return pingdom.NewClient(apiKey, options...)
 }
 
-func createHyperpingClient(apiKey string) *client.Client {
-	return client.NewClient(apiKey, client.WithBaseURL(*hyperpingBaseURL))
+func createHyperpingClient(apiKey string) *hyperping.Client {
+	return hyperping.NewClient(apiKey, hyperping.WithBaseURL(*hyperpingBaseURL))
 }
 
 func log(msg string) {
