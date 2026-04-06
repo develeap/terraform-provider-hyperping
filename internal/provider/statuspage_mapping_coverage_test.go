@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	hyperping "github.com/develeap/hyperping-go"
+
 	"github.com/develeap/terraform-provider-hyperping/internal/provider/testutil"
 )
 

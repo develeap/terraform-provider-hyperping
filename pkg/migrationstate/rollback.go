@@ -10,6 +10,7 @@ import (
 	"time"
 
 	hyperping "github.com/develeap/hyperping-go"
+
 	"github.com/develeap/terraform-provider-hyperping/pkg/checkpoint"
 	"github.com/develeap/terraform-provider-hyperping/pkg/recovery"
 )

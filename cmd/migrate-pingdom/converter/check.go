@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	hyperping "github.com/develeap/hyperping-go"
+
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
 	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )

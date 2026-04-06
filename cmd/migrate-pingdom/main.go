@@ -19,6 +19,7 @@ import (
 	"time"
 
 	hyperping "github.com/develeap/hyperping-go"
+
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/converter"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/generator"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
