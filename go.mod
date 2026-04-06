@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/briandowns/spinner v1.23.2
-	github.com/develeap/hyperping-go v0.0.0-00010101000000-000000000000
+	github.com/develeap/hyperping-go v0.1.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
@@ -78,5 +78,3 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/develeap/hyperping-go => ../hyperping-go
