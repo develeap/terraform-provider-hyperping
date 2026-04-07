@@ -61,9 +61,11 @@ resource "hyperping_incident" "outage" {
 - `dns_nameserver` (String) Nameserver used for DNS queries.
 - `dns_record_type` (String) DNS record type for DNS-protocol monitors.
 - `escalation_policy` (String) UUID of the escalation policy linked to this monitor.
+- `escalation_policy_name` (String) Human-readable name of the assigned escalation policy.
 - `expected_status_code` (String) Expected HTTP status code or pattern (e.g., `200`, `2xx`, `1xx-3xx`).
 - `follow_redirects` (Boolean) Whether the monitor follows HTTP redirects.
 - `http_method` (String) HTTP method used for checks (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
+- `is_down` (Boolean) Whether the monitor is currently reporting as down.
 - `name` (String) The name of the monitor.
 - `paused` (Boolean) Whether the monitor is paused.
 - `port` (Number) Port number for port protocol monitors.

@@ -30,8 +30,7 @@ pre-commit:
         [ -f "docs/TROUBLESHOOTING.md" ] && cp docs/TROUBLESHOOTING.md /tmp/docs-troubleshooting-backup.md
 
         # Generate schema-based documentation
-        cd tools && go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate --provider-dir .. --provider-name hyperping
-        cd ..
+        go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@v0.24.0 generate --provider-dir . --provider-name hyperping
 
         # Restore manual documentation (ensure directory exists first)
         mkdir -p docs/guides
