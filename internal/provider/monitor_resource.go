@@ -44,28 +44,30 @@ type MonitorResource struct {
 
 // MonitorResourceModel describes the resource data model.
 type MonitorResourceModel struct {
-	ID                 types.String `tfsdk:"id"`
-	Name               types.String `tfsdk:"name"`
-	URL                types.String `tfsdk:"url"`
-	Protocol           types.String `tfsdk:"protocol"`
-	HTTPMethod         types.String `tfsdk:"http_method"`
-	CheckFrequency     types.Int64  `tfsdk:"check_frequency"`
-	Regions            types.List   `tfsdk:"regions"`
-	RequestHeaders     types.List   `tfsdk:"request_headers"`
-	RequestBody        types.String `tfsdk:"request_body"`
-	ExpectedStatusCode types.String `tfsdk:"expected_status_code"`
-	FollowRedirects    types.Bool   `tfsdk:"follow_redirects"`
-	Paused             types.Bool   `tfsdk:"paused"`
-	Port               types.Int64  `tfsdk:"port"`
-	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
-	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
-	DNSRecordType      types.String `tfsdk:"dns_record_type"`
-	DNSNameserver      types.String `tfsdk:"dns_nameserver"`
-	DNSExpectedAnswer  types.String `tfsdk:"dns_expected_answer"`
-	RequiredKeyword    types.String `tfsdk:"required_keyword"`
-	Status             types.String `tfsdk:"status"`
-	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
-	ProjectUUID        types.String `tfsdk:"project_uuid"`
+	ID                   types.String `tfsdk:"id"`
+	Name                 types.String `tfsdk:"name"`
+	URL                  types.String `tfsdk:"url"`
+	Protocol             types.String `tfsdk:"protocol"`
+	HTTPMethod           types.String `tfsdk:"http_method"`
+	CheckFrequency       types.Int64  `tfsdk:"check_frequency"`
+	Regions              types.List   `tfsdk:"regions"`
+	RequestHeaders       types.List   `tfsdk:"request_headers"`
+	RequestBody          types.String `tfsdk:"request_body"`
+	ExpectedStatusCode   types.String `tfsdk:"expected_status_code"`
+	FollowRedirects      types.Bool   `tfsdk:"follow_redirects"`
+	Paused               types.Bool   `tfsdk:"paused"`
+	Port                 types.Int64  `tfsdk:"port"`
+	AlertsWait           types.Int64  `tfsdk:"alerts_wait"`
+	EscalationPolicy     types.String `tfsdk:"escalation_policy"`
+	EscalationPolicyName types.String `tfsdk:"escalation_policy_name"`
+	DNSRecordType        types.String `tfsdk:"dns_record_type"`
+	DNSNameserver        types.String `tfsdk:"dns_nameserver"`
+	DNSExpectedAnswer    types.String `tfsdk:"dns_expected_answer"`
+	RequiredKeyword      types.String `tfsdk:"required_keyword"`
+	Status               types.String `tfsdk:"status"`
+	IsDown               types.Bool   `tfsdk:"is_down"`
+	SSLExpiration        types.Int64  `tfsdk:"ssl_expiration"`
+	ProjectUUID          types.String `tfsdk:"project_uuid"`
 }
 
 // Metadata returns the resource type name.
@@ -209,6 +211,10 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					UUIDFormat(),
 				},
 			},
+			"escalation_policy_name": schema.StringAttribute{
+				MarkdownDescription: "Human-readable name of the assigned escalation policy.",
+				Computed:            true,
+			},
 			"dns_record_type": schema.StringAttribute{
 				MarkdownDescription: "DNS record type to check. Only valid when protocol is `dns`. " +
 					"Valid values: `A`, `AAAA`, `CNAME`, `MX`, `NS`, `TXT`, `SOA`, `SRV`, `CAA`, `PTR`. " +
@@ -236,6 +242,10 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"status": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Current monitor status. Either `up` or `down`.",
+			},
+			"is_down": schema.BoolAttribute{
+				Computed:            true,
+				MarkdownDescription: "Whether the monitor is currently reporting as down.",
 			},
 			"ssl_expiration": schema.Int64Attribute{
 				Computed:            true,
@@ -505,11 +515,13 @@ func (r *MonitorResource) mapMonitorToModel(monitor *hyperping.Monitor, model *M
 	model.Port = common.Port
 	model.AlertsWait = common.AlertsWait
 	model.EscalationPolicy = common.EscalationPolicy
+	model.EscalationPolicyName = common.EscalationPolicyName
 	model.DNSRecordType = common.DNSRecordType
 	model.DNSNameserver = common.DNSNameserver
 	model.DNSExpectedAnswer = common.DNSExpectedAnswer
 	model.RequiredKeyword = common.RequiredKeyword
 	model.Status = common.Status
+	model.IsDown = common.IsDown
 	model.SSLExpiration = common.SSLExpiration
 	model.ProjectUUID = common.ProjectUUID
 }

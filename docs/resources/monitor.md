@@ -87,7 +87,9 @@ resource "hyperping_monitor" "maintenance" {
 
 ### Read-Only
 
+- `escalation_policy_name` (String) Human-readable name of the assigned escalation policy.
 - `id` (String) The unique identifier (UUID) of the monitor.
+- `is_down` (Boolean) Whether the monitor is currently reporting as down.
 - `ssl_expiration` (Number) Days until the SSL certificate expires.
 - `status` (String) Current monitor status. Either `up` or `down`.
 

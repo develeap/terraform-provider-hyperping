@@ -229,7 +229,7 @@ func TestMonitorDataSource_Schema(t *testing.T) {
 	// Verify computed attributes exist
 	computedAttrs := []string{"name", "url", "protocol", "http_method", "check_frequency", "regions",
 		"request_headers", "request_body", "expected_status_code", "follow_redirects", "paused",
-		"status", "ssl_expiration", "project_uuid"}
+		"status", "is_down", "ssl_expiration", "project_uuid", "escalation_policy", "escalation_policy_name"}
 	for _, attr := range computedAttrs {
 		if _, ok := resp.Schema.Attributes[attr]; !ok {
 			t.Errorf("Schema missing '%s' attribute", attr)
@@ -387,4 +387,119 @@ func TestNewMonitorDataSource(t *testing.T) {
 	if _, ok := ds.(*MonitorDataSource); !ok {
 		t.Errorf("expected *MonitorDataSource, got %T", ds)
 	}
+}
+
+func TestAccMonitorDataSource_isDownAndEscalationPolicyName(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+
+		if r.Method == "GET" && r.URL.Path == hyperping.MonitorsBasePath+"/mon-down-123" {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"uuid":             "mon-down-123",
+				"name":             "Down Monitor",
+				"url":              "https://example.com",
+				"protocol":         "http",
+				"http_method":      "GET",
+				"check_frequency":  60,
+				"follow_redirects": true,
+				"paused":           false,
+				"status":           "down",
+				"regions":          []string{"london"},
+				"escalation_policy": map[string]interface{}{
+					"uuid": "ep-uuid-abc",
+					"name": "PagerDuty On-Call",
+				},
+			})
+			return
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Not found"})
+	}))
+	defer server.Close()
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "test_api_key"
+  base_url = %[1]q
+}
+
+data "hyperping_monitor" "test" {
+  id = "mon-down-123"
+}
+`, server.URL),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("data.hyperping_monitor.test", "id", "mon-down-123"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitor.test", "status", "down"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitor.test", "is_down", "true"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitor.test", "escalation_policy", "ep-uuid-abc"),
+					tfresource.TestCheckResourceAttr("data.hyperping_monitor.test", "escalation_policy_name", "PagerDuty On-Call"),
+				),
+			},
+		},
+	})
+}
+
+func TestMonitorDataSource_mapMonitorToDataSourceModel_isDownAndEscalationPolicyName(t *testing.T) {
+	d := &MonitorDataSource{}
+
+	t.Run("monitor down with escalation policy name", func(t *testing.T) {
+		ep := hyperping.EscalationPolicyRef{UUID: "ep-123", Name: "On-Call Policy"}
+		monitor := &hyperping.Monitor{
+			UUID:             "mon-abc",
+			Name:             "Test",
+			URL:              "https://example.com",
+			Protocol:         "http",
+			HTTPMethod:       "GET",
+			CheckFrequency:   60,
+			FollowRedirects:  true,
+			Status:           "down",
+			EscalationPolicy: &ep,
+		}
+
+		model := &MonitorDataSourceModel{}
+		diags := &diag.Diagnostics{}
+		d.mapMonitorToDataSourceModel(monitor, model, diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags)
+		}
+		if !model.IsDown.ValueBool() {
+			t.Error("expected IsDown to be true when status is 'down'")
+		}
+		if model.EscalationPolicyName.ValueString() != "On-Call Policy" {
+			t.Errorf("expected EscalationPolicyName 'On-Call Policy', got %s", model.EscalationPolicyName.ValueString())
+		}
+	})
+
+	t.Run("monitor up without escalation policy", func(t *testing.T) {
+		monitor := &hyperping.Monitor{
+			UUID:            "mon-xyz",
+			Name:            "Test Up",
+			URL:             "https://example.com",
+			Protocol:        "http",
+			HTTPMethod:      "GET",
+			CheckFrequency:  60,
+			FollowRedirects: true,
+			Status:          "up",
+		}
+
+		model := &MonitorDataSourceModel{}
+		diags := &diag.Diagnostics{}
+		d.mapMonitorToDataSourceModel(monitor, model, diags)
+
+		if diags.HasError() {
+			t.Errorf("unexpected error: %v", diags)
+		}
+		if model.IsDown.ValueBool() {
+			t.Error("expected IsDown to be false when status is 'up'")
+		}
+		if model.EscalationPolicyName.ValueString() != "" {
+			t.Errorf("expected empty EscalationPolicyName, got %s", model.EscalationPolicyName.ValueString())
+		}
+	})
 }
