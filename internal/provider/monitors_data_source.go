@@ -42,28 +42,30 @@ type MonitorsDataSourceModel struct {
 
 // MonitorDataModel describes a single monitor in the data source.
 type MonitorDataModel struct {
-	ID                 types.String `tfsdk:"id"`
-	Name               types.String `tfsdk:"name"`
-	URL                types.String `tfsdk:"url"`
-	Protocol           types.String `tfsdk:"protocol"`
-	HTTPMethod         types.String `tfsdk:"http_method"`
-	CheckFrequency     types.Int64  `tfsdk:"check_frequency"`
-	Regions            types.List   `tfsdk:"regions"`
-	RequestHeaders     types.List   `tfsdk:"request_headers"`
-	RequestBody        types.String `tfsdk:"request_body"`
-	ExpectedStatusCode types.String `tfsdk:"expected_status_code"`
-	FollowRedirects    types.Bool   `tfsdk:"follow_redirects"`
-	Paused             types.Bool   `tfsdk:"paused"`
-	Port               types.Int64  `tfsdk:"port"`
-	AlertsWait         types.Int64  `tfsdk:"alerts_wait"`
-	EscalationPolicy   types.String `tfsdk:"escalation_policy"`
-	DNSRecordType      types.String `tfsdk:"dns_record_type"`
-	DNSNameserver      types.String `tfsdk:"dns_nameserver"`
-	DNSExpectedAnswer  types.String `tfsdk:"dns_expected_answer"`
-	RequiredKeyword    types.String `tfsdk:"required_keyword"`
-	Status             types.String `tfsdk:"status"`
-	SSLExpiration      types.Int64  `tfsdk:"ssl_expiration"`
-	ProjectUUID        types.String `tfsdk:"project_uuid"`
+	ID                   types.String `tfsdk:"id"`
+	Name                 types.String `tfsdk:"name"`
+	URL                  types.String `tfsdk:"url"`
+	Protocol             types.String `tfsdk:"protocol"`
+	HTTPMethod           types.String `tfsdk:"http_method"`
+	CheckFrequency       types.Int64  `tfsdk:"check_frequency"`
+	Regions              types.List   `tfsdk:"regions"`
+	RequestHeaders       types.List   `tfsdk:"request_headers"`
+	RequestBody          types.String `tfsdk:"request_body"`
+	ExpectedStatusCode   types.String `tfsdk:"expected_status_code"`
+	FollowRedirects      types.Bool   `tfsdk:"follow_redirects"`
+	Paused               types.Bool   `tfsdk:"paused"`
+	Port                 types.Int64  `tfsdk:"port"`
+	AlertsWait           types.Int64  `tfsdk:"alerts_wait"`
+	EscalationPolicy     types.String `tfsdk:"escalation_policy"`
+	EscalationPolicyName types.String `tfsdk:"escalation_policy_name"`
+	DNSRecordType        types.String `tfsdk:"dns_record_type"`
+	DNSNameserver        types.String `tfsdk:"dns_nameserver"`
+	DNSExpectedAnswer    types.String `tfsdk:"dns_expected_answer"`
+	RequiredKeyword      types.String `tfsdk:"required_keyword"`
+	Status               types.String `tfsdk:"status"`
+	IsDown               types.Bool   `tfsdk:"is_down"`
+	SSLExpiration        types.Int64  `tfsdk:"ssl_expiration"`
+	ProjectUUID          types.String `tfsdk:"project_uuid"`
 }
 
 // Metadata returns the data source type name.
@@ -166,6 +168,10 @@ func (d *MonitorsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 							MarkdownDescription: "UUID of the escalation policy linked to this monitor.",
 							Computed:            true,
 						},
+						"escalation_policy_name": schema.StringAttribute{
+							MarkdownDescription: "Human-readable name of the assigned escalation policy.",
+							Computed:            true,
+						},
 						"dns_record_type": schema.StringAttribute{
 							MarkdownDescription: "DNS record type for DNS-protocol monitors.",
 							Computed:            true,
@@ -185,6 +191,10 @@ func (d *MonitorsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 						"status": schema.StringAttribute{
 							Computed:            true,
 							MarkdownDescription: "Current monitor status. Either `up` or `down`.",
+						},
+						"is_down": schema.BoolAttribute{
+							Computed:            true,
+							MarkdownDescription: "Whether the monitor is currently reporting as down.",
 						},
 						"ssl_expiration": schema.Int64Attribute{
 							Computed:            true,
@@ -371,21 +381,13 @@ func (d *MonitorsDataSource) mapMonitorToDataModel(monitor *hyperping.Monitor, m
 	model.Port = fields.Port
 	model.AlertsWait = fields.AlertsWait
 	model.EscalationPolicy = fields.EscalationPolicy
+	model.EscalationPolicyName = fields.EscalationPolicyName
 	model.DNSRecordType = fields.DNSRecordType
 	model.DNSNameserver = fields.DNSNameserver
 	model.DNSExpectedAnswer = fields.DNSExpectedAnswer
 	model.RequiredKeyword = fields.RequiredKeyword
-	model.Status = types.StringValue(monitor.Status)
-	model.SSLExpiration = func() types.Int64 {
-		if monitor.SSLExpiration != nil {
-			return types.Int64Value(int64(*monitor.SSLExpiration))
-		}
-		return types.Int64Null()
-	}()
-	model.ProjectUUID = func() types.String {
-		if monitor.ProjectUUID != "" {
-			return types.StringValue(monitor.ProjectUUID)
-		}
-		return types.StringNull()
-	}()
+	model.Status = fields.Status
+	model.IsDown = fields.IsDown
+	model.SSLExpiration = fields.SSLExpiration
+	model.ProjectUUID = fields.ProjectUUID
 }

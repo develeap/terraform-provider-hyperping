@@ -53,12 +53,17 @@ func MapMonitorCommonFields(monitor *hyperping.Monitor, diags *diag.Diagnostics)
 		result.AlertsWait = types.Int64Null()
 	}
 
-	// Handle escalation_policy
+	// Handle escalation_policy UUID and name
 	if monitor.EscalationPolicy != nil && monitor.EscalationPolicy.UUID != "" {
 		result.EscalationPolicy = types.StringValue(monitor.EscalationPolicy.UUID)
+		result.EscalationPolicyName = types.StringValue(monitor.EscalationPolicy.Name)
 	} else {
 		result.EscalationPolicy = types.StringNull()
+		result.EscalationPolicyName = types.StringValue("")
 	}
+
+	// Handle is_down (derived from status field)
+	result.IsDown = types.BoolValue(monitor.Status == "down")
 
 	// Handle DNS-protocol fields
 	if monitor.DNSRecordType != nil && *monitor.DNSRecordType != "" {
@@ -106,28 +111,30 @@ func MapMonitorCommonFields(monitor *hyperping.Monitor, diags *diag.Diagnostics)
 
 // MonitorCommonFields contains fields shared between resource and data source models.
 type MonitorCommonFields struct {
-	ID                 types.String
-	Name               types.String
-	URL                types.String
-	Protocol           types.String
-	HTTPMethod         types.String
-	CheckFrequency     types.Int64
-	Regions            types.List
-	RequestHeaders     types.List // List of objects with name/value
-	RequestBody        types.String
-	ExpectedStatusCode types.String
-	FollowRedirects    types.Bool
-	Paused             types.Bool
-	Port               types.Int64
-	AlertsWait         types.Int64
-	EscalationPolicy   types.String
-	DNSRecordType      types.String
-	DNSNameserver      types.String
-	DNSExpectedAnswer  types.String
-	RequiredKeyword    types.String
-	Status             types.String
-	SSLExpiration      types.Int64
-	ProjectUUID        types.String
+	ID                   types.String
+	Name                 types.String
+	URL                  types.String
+	Protocol             types.String
+	HTTPMethod           types.String
+	CheckFrequency       types.Int64
+	Regions              types.List
+	RequestHeaders       types.List // List of objects with name/value
+	RequestBody          types.String
+	ExpectedStatusCode   types.String
+	FollowRedirects      types.Bool
+	Paused               types.Bool
+	Port                 types.Int64
+	AlertsWait           types.Int64
+	EscalationPolicy     types.String
+	EscalationPolicyName types.String
+	DNSRecordType        types.String
+	DNSNameserver        types.String
+	DNSExpectedAnswer    types.String
+	RequiredKeyword      types.String
+	Status               types.String
+	IsDown               types.Bool
+	SSLExpiration        types.Int64
+	ProjectUUID          types.String
 }
 
 // mapStringSliceToList converts a Go string slice to a Terraform List.
