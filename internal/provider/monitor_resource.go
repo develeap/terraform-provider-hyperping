@@ -163,6 +163,7 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"request_body": schema.StringAttribute{
 				MarkdownDescription: "HTTP request body. Only valid when protocol is `http` and http_method is `POST`, `PUT`, or `PATCH`.",
 				Optional:            true,
+				Sensitive:           true,
 			},
 			"expected_status_code": schema.StringAttribute{
 				MarkdownDescription: "Expected HTTP status code pattern. " +

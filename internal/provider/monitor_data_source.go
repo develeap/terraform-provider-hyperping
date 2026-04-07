@@ -116,6 +116,7 @@ func (d *MonitorDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 			"request_body": schema.StringAttribute{
 				MarkdownDescription: "Request body for POST/PUT/PATCH requests.",
 				Computed:            true,
+				Sensitive:           true,
 			},
 			"expected_status_code": schema.StringAttribute{
 				MarkdownDescription: "Expected HTTP status code or pattern (e.g., `200`, `2xx`, `1xx-3xx`).",
