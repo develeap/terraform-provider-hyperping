@@ -10,6 +10,17 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Added
+
+- `hyperping_monitors` data source — list and filter all monitors by name, protocol,
+  region, paused state, and down state. Useful for referencing existing monitors in
+  other Terraform resources without managing their lifecycle.
+- `is_down` computed attribute on `hyperping_monitor` resource — reflects current
+  outage/down status as reported by the Hyperping API. Read-only; updated on every
+  `terraform refresh` or `plan`.
+- `escalation_policy_name` computed attribute on `hyperping_monitor` resource —
+  human-readable escalation policy name resolved from the policy UUID. Read-only.
+
 ## [1.9.2] - 2026-03-24
 
 ### Fixed
