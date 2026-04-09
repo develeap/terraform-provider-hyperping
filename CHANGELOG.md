@@ -14,14 +14,35 @@ Published releases start from v1.0.3.
 
 ### Added
 
-- `hyperping_monitors` data source - list and filter all monitors by name, protocol,
+- `hyperping_monitors` data source -- list and filter all monitors by name, protocol,
   region, paused state, and down state. Useful for referencing existing monitors in
   other Terraform resources without managing their lifecycle.
-- `is_down` computed attribute on `hyperping_monitor` resource - reflects current
+- `is_down` computed attribute on `hyperping_monitor` resource -- reflects current
   outage/down status as reported by the Hyperping API. Read-only; updated on every
   terraform refresh or plan.
-- `escalation_policy_name` computed attribute on `hyperping_monitor` resource -
+- `escalation_policy_name` computed attribute on `hyperping_monitor` resource --
   human-readable escalation policy name resolved from the policy UUID. Read-only.
+- Scraper CI workflow (`scraper-ci.yml`) for independent linting of the API drift
+  detection tool in `tools/`.
+
+### Changed
+
+- Migrated from vendored `internal/client/` to the shared
+  `github.com/develeap/hyperping-go` module (`github.com/develeap/hyperping-go v0.1.0`).
+  No provider behavior changes -- internal only.
+- API drift scraper tool moved to the `hyperping-go` repository. The `tools/`
+  directory in this repo now contains only the import generator and migration utilities.
+- Exporter binary removed from this repository; it is now maintained at
+  `github.com/develeap/hyperping-exporter`.
+- Provider CI workflow excludes `tools/**` to reduce build time.
+- Dependabot group added for `hyperping-go` module auto-updates.
+
+### Fixed
+
+- Stale tool references, incorrect HCL attribute name, and style violations from
+  phase 0 audit.
+- API drift detection: false-positive change issues from degraded scrapes prevented.
+- API drift detection: golangci-lint errors resolved across scraper module.
 
 ### Security
 
