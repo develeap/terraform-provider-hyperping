@@ -10,16 +10,24 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-04-09
+
 ### Added
 
-- `hyperping_monitors` data source — list and filter all monitors by name, protocol,
+- `hyperping_monitors` data source - list and filter all monitors by name, protocol,
   region, paused state, and down state. Useful for referencing existing monitors in
   other Terraform resources without managing their lifecycle.
-- `is_down` computed attribute on `hyperping_monitor` resource — reflects current
+- `is_down` computed attribute on `hyperping_monitor` resource - reflects current
   outage/down status as reported by the Hyperping API. Read-only; updated on every
-  `terraform refresh` or `plan`.
-- `escalation_policy_name` computed attribute on `hyperping_monitor` resource —
+  terraform refresh or plan.
+- `escalation_policy_name` computed attribute on `hyperping_monitor` resource -
   human-readable escalation policy name resolved from the policy UUID. Read-only.
+
+### Security
+
+- Upgraded Go toolchain from go1.26.1 to go1.26.2 to resolve 5 standard library
+  vulnerabilities (GO-2026-4947, GO-2026-4946, GO-2026-4870, GO-2026-4866,
+  GO-2026-4865) in crypto/x509, crypto/tls, and html/template.
 
 ## [1.9.2] - 2026-03-24
 
