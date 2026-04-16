@@ -278,7 +278,7 @@ func (m *Manager) getCheckpointFilename(migrationID string) string {
 
 // GenerateMigrationID generates a unique migration ID
 func GenerateMigrationID(tool string) string {
-	timestamp := time.Now().UTC().Format("20060102-150405")
+	timestamp := time.Now().UTC().Format("20060102-150405.000")
 	return fmt.Sprintf("%s-%s", tool, timestamp)
 }
 

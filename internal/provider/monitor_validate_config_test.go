@@ -76,6 +76,7 @@ type monitorConfigBuilder struct {
 	requestBody       *string
 	requiredKeyword   *string
 	port              *int64
+	portUnknown       bool // set port to unknown (e.g., from module variable)
 	dnsRecordType     *string
 	dnsNameserver     *string
 	dnsExpectedAnswer *string
@@ -126,7 +127,9 @@ func (b *monitorConfigBuilder) buildConfigValue(s schema.Schema) tftypes.Value {
 		vals["follow_redirects"] = tftypes.NewValue(tftypes.Bool, *b.followRedirects)
 	}
 
-	if b.port != nil {
+	if b.portUnknown {
+		vals["port"] = tftypes.NewValue(tftypes.Number, tftypes.UnknownValue)
+	} else if b.port != nil {
 		vals["port"] = tftypes.NewValue(tftypes.Number, *b.port)
 	}
 
@@ -413,6 +416,14 @@ func TestValidateConfig_PortProtocol(t *testing.T) {
 			},
 			wantError:     true,
 			errorContains: "port",
+		},
+		{
+			name: "port accepts unknown port (module composition)",
+			builder: &monitorConfigBuilder{
+				protocol:    "port",
+				portUnknown: true,
+			},
+			wantError: false,
 		},
 		{
 			name: "port rejects http_method",

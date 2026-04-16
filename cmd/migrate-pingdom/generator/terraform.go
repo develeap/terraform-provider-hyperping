@@ -146,17 +146,20 @@ func buildOptionalRequiredKeyword(monitor *hyperping.CreateMonitorRequest) strin
 	return fmt.Sprintf("  required_keyword = %q\n", escapeHCL(*monitor.RequiredKeyword))
 }
 
-// buildOptionalRequestHeaders returns the request_headers block if non-empty.
+// buildOptionalRequestHeaders returns the request_headers list if non-empty.
 func buildOptionalRequestHeaders(monitor *hyperping.CreateMonitorRequest) string {
 	if len(monitor.RequestHeaders) == 0 {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString("  request_headers = {\n")
+	sb.WriteString("  request_headers = [\n")
 	for _, h := range monitor.RequestHeaders {
-		fmt.Fprintf(&sb, "    %q = %q\n", escapeHCL(h.Name), escapeHCL(h.Value))
+		sb.WriteString("    {\n")
+		fmt.Fprintf(&sb, "      name  = %q\n", escapeHCL(h.Name))
+		fmt.Fprintf(&sb, "      value = %q\n", escapeHCL(h.Value))
+		sb.WriteString("    },\n")
 	}
-	sb.WriteString("  }\n")
+	sb.WriteString("  ]\n")
 	return sb.String()
 }
 

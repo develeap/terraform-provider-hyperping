@@ -32,7 +32,7 @@ module "api_monitors" {
     "authenticated-api" = {
       url     = "https://api.example.com/health"
       headers = {
-        "Authorization" = "Bearer ${var.api_token}"
+        "X-Auth-Token" = "${var.api_token}"
         "Accept"        = "application/json"
       }
     }

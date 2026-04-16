@@ -191,7 +191,7 @@ resource "hyperping_monitor" "http_endpoint" {
 # TCP port check (database)
 resource "hyperping_monitor" "database_port" {
   name            = "${local.name_prefix} Database Port"
-  url             = "tcp://db.example.com:5432"
+  url             = "https://db.example.com"
   protocol        = "port"
   port            = 5432
   check_frequency = 120
@@ -201,7 +201,7 @@ resource "hyperping_monitor" "database_port" {
 # TCP port check (Redis)
 resource "hyperping_monitor" "cache_port" {
   name            = "${local.name_prefix} Redis Cache"
-  url             = "tcp://cache.example.com:6379"
+  url             = "https://cache.example.com"
   protocol        = "port"
   port            = 6379
   check_frequency = 60
@@ -222,7 +222,7 @@ resource "hyperping_monitor" "authenticated_api" {
   expected_status_code = "200"
 
   request_headers = [
-    { name = "Authorization", value = "Bearer ${var.environment}_health_check_token" },
+    { name = "X-Auth-Token", value = "${var.environment}_health_check_token" },
     { name = "Accept", value = "application/json" }
   ]
 }

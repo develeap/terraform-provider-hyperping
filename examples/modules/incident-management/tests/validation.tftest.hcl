@@ -1,9 +1,5 @@
 # Incident Management Module - Validation Tests
 
-provider "hyperping" {
-  api_key = "test_mock_api_key_for_plan_only"
-}
-
 # Test valid severity values
 run "accepts_valid_severity_values" {
   command = plan

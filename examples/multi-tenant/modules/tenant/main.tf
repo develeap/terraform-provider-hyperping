@@ -8,6 +8,8 @@
 #   }
 
 terraform {
+  required_version = ">= 1.0"
+
   required_providers {
     hyperping = {
       source  = "develeap/hyperping"
@@ -45,13 +47,7 @@ resource "hyperping_monitor" "tenant" {
   follow_redirects     = true
   regions              = each.value.regions
 
-  dynamic "request_headers" {
-    for_each = each.value.headers != null ? each.value.headers : []
-    content {
-      name  = request_headers.value.name
-      value = request_headers.value.value
-    }
-  }
+  request_headers = each.value.headers
 
   request_body = each.value.body
 

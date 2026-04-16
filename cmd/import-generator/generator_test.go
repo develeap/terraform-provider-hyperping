@@ -622,9 +622,10 @@ func TestGenerateMonitorHCL_AllOptionalFields(t *testing.T) {
 		`required_keyword = "healthy"`,
 		`paused = true`,
 		`alerts_wait = 5`,
-		`escalation_policy_uuid = "esc_123"`,
-		`request_headers = {`,
-		`"Auth" = "Bearer token"`,
+		`escalation_policy = "esc_123"`,
+		`request_headers = [`,
+		`name  = "Auth"`,
+		`value = "Bearer token"`,
 		`request_body = "{\"test\": true}"`,
 	}
 
@@ -713,7 +714,7 @@ func TestGenerateHealthcheckHCL_WithCron(t *testing.T) {
 		`cron = "0 0 * * *"`,
 		`timezone = "America/New_York"`,
 		`grace_period = 300`,
-		`paused = true`,
+		`is_paused = true`,
 	}
 
 	for _, assertion := range assertions {

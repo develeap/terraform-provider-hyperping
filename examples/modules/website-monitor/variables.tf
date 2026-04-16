@@ -29,7 +29,6 @@ variable "pages" {
     expected_status          = optional(string)
     method                   = optional(string)
     frequency                = optional(number)
-    performance_threshold_ms = optional(number)
     follow_redirects         = optional(bool)
     headers                  = optional(map(string))
     body                     = optional(string)
@@ -119,17 +118,6 @@ variable "follow_redirects" {
   description = "Follow HTTP redirects by default"
   type        = bool
   default     = true
-}
-
-variable "performance_threshold_ms" {
-  description = "Response time threshold in milliseconds (null = no threshold)"
-  type        = number
-  default     = null
-
-  validation {
-    condition     = var.performance_threshold_ms == null || var.performance_threshold_ms > 0
-    error_message = "Performance threshold must be greater than 0 if specified."
-  }
 }
 
 variable "default_headers" {
