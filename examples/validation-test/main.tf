@@ -2,9 +2,12 @@
 # This file contains valid configurations that should pass terraform validate
 
 terraform {
+  required_version = ">= 1.0"
+
   required_providers {
     hyperping = {
-      source = "develeap/hyperping"
+      source  = "develeap/hyperping"
+      version = "~> 1.0"
     }
   }
 }
