@@ -8,7 +8,7 @@
 # ============================================================================
 
 module "basic_incidents" {
-  source = "./"
+  source = "./modules/incident-management"
 
   statuspage_id = hyperping_statuspage.main.id
 
@@ -32,7 +32,7 @@ module "basic_incidents" {
 # ============================================================================
 
 module "maintenance_scheduling" {
-  source = "./"
+  source = "./modules/incident-management"
 
   statuspage_id = hyperping_statuspage.main.id
 
@@ -63,7 +63,7 @@ module "maintenance_scheduling" {
 # ============================================================================
 
 module "complete_incident_mgmt" {
-  source = "./"
+  source = "./modules/incident-management"
 
   statuspage_id = hyperping_statuspage.main.id
 
@@ -128,7 +128,7 @@ module "complete_incident_mgmt" {
 # ============================================================================
 
 module "production_incidents" {
-  source = "./"
+  source = "./modules/incident-management"
 
   statuspage_id = hyperping_statuspage.production.id
 
@@ -157,7 +157,7 @@ module "production_incidents" {
 }
 
 module "staging_testing" {
-  source = "./"
+  source = "./modules/incident-management"
 
   # No status page for staging
   statuspage_id = null
@@ -184,7 +184,7 @@ module "staging_testing" {
 
 # Create monitors
 module "production_monitors" {
-  source = "../api-health"
+  source = "./modules/api-health"
 
   name_prefix = "PROD"
   endpoints = {
@@ -196,7 +196,7 @@ module "production_monitors" {
 
 # Create status page
 module "status_page" {
-  source = "../statuspage-complete"
+  source = "./modules/statuspage-complete"
 
   name             = "Example Corp Status"
   hosted_subdomain = "status"
@@ -210,7 +210,7 @@ module "status_page" {
 
 # Link incident management
 module "incident_mgmt" {
-  source = "./"
+  source = "./modules/incident-management"
 
   statuspage_id = module.status_page.statuspage_id
 
@@ -256,7 +256,7 @@ locals {
 }
 
 module "recurring_maintenance" {
-  source = "./"
+  source = "./modules/incident-management"
 
   statuspage_id       = hyperping_statuspage.main.id
   maintenance_windows = local.weekly_maintenance_windows

@@ -24,7 +24,6 @@ output "monitors" {
       regions                 = v.regions
       paused                  = v.paused
       required_keyword        = v.required_keyword
-      response_time_threshold = v.response_time_threshold
     }
   }
 }
@@ -44,7 +43,3 @@ output "pages_monitored" {
   value       = [for k, v in var.pages : v.path]
 }
 
-output "performance_monitoring_enabled" {
-  description = "Whether performance thresholds are configured"
-  value       = var.performance_threshold_ms != null || anytrue([for k, v in var.pages : v.performance_threshold_ms != null])
-}
