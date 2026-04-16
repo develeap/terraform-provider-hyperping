@@ -23,8 +23,8 @@ resource "hyperping_monitor" "api_health" {
       value = "application/json"
     },
     {
-      name  = "Authorization"
-      value = "Bearer ${var.api_token}"
+      name  = "X-Auth-Token"
+      value = "${var.api_token}"
     }
   ]
 

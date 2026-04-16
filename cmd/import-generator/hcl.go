@@ -71,11 +71,14 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m hyperping.Monitor)
 	}
 
 	if len(m.RequestHeaders) > 0 {
-		sb.WriteString("  request_headers = {\n")
+		sb.WriteString("  request_headers = [\n")
 		for _, h := range m.RequestHeaders {
-			fmt.Fprintf(sb, "    %q = %q\n", h.Name, h.Value)
+			sb.WriteString("    {\n")
+			fmt.Fprintf(sb, "      name  = %q\n", h.Name)
+			fmt.Fprintf(sb, "      value = %q\n", h.Value)
+			sb.WriteString("    },\n")
 		}
-		sb.WriteString("  }\n")
+		sb.WriteString("  ]\n")
 	}
 
 	sb.WriteString(buildOptionalStringField("request_body", m.RequestBody, ""))
@@ -104,7 +107,7 @@ func (g *Generator) generateHealthcheckHCL(sb *strings.Builder, h hyperping.Heal
 	}
 
 	if h.IsPaused {
-		sb.WriteString("  paused = true\n")
+		sb.WriteString("  is_paused = true\n")
 	}
 
 	sb.WriteString("}\n")
