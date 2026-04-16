@@ -1,9 +1,5 @@
 # Incident Management Module - Basic Tests
 
-provider "hyperping" {
-  api_key = "test_mock_api_key_for_plan_only"
-}
-
 variables {
   statuspage_id = "sp_test123"
 

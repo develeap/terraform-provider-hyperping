@@ -622,7 +622,7 @@ func TestGenerateMonitorHCL_AllOptionalFields(t *testing.T) {
 		`required_keyword = "healthy"`,
 		`paused = true`,
 		`alerts_wait = 5`,
-		`escalation_policy_uuid = "esc_123"`,
+		`escalation_policy = "esc_123"`,
 		`request_headers = {`,
 		`"Auth" = "Bearer token"`,
 		`request_body = "{\"test\": true}"`,

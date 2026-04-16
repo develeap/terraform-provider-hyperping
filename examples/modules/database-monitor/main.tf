@@ -64,7 +64,7 @@ resource "hyperping_monitor" "database" {
   for_each = var.databases
 
   name     = local.monitor_names[each.key]
-  url      = each.value.host
+  url      = "https://${each.value.host}"
   protocol = "port"
   port     = each.value.port
 

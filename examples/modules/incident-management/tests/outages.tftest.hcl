@@ -1,9 +1,5 @@
 # Incident Management Module - Manual Outage Tests
 
-provider "hyperping" {
-  api_key = "test_mock_api_key_for_plan_only"
-}
-
 variables {
   outage_definitions = {
     test_outage = {

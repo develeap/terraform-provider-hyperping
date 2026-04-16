@@ -35,7 +35,7 @@ resource "hyperping_monitor" "api_full" {
 # Example 3: Valid TCP monitor
 resource "hyperping_monitor" "database" {
   name     = "Database"
-  url      = "db.example.com"
+  url      = "https://db.example.com"
   protocol = "port"
   port     = 5432
 }

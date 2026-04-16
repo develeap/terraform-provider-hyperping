@@ -33,11 +33,6 @@ locals {
     })
   }
 
-  # Determine which pages should use performance checks
-  pages_with_performance = {
-    for key, page in local.pages_with_urls : key => page
-    if var.performance_threshold_ms != null || page.performance_threshold_ms != null
-  }
 }
 
 resource "hyperping_monitor" "page" {
@@ -57,12 +52,6 @@ resource "hyperping_monitor" "page" {
 
   # Content validation - check for expected text
   required_keyword = each.value.expected_text
-
-  # Performance threshold (if specified)
-  response_time_threshold = coalesce(
-    each.value.performance_threshold_ms,
-    var.performance_threshold_ms
-  )
 
   # Optional: custom headers (e.g., for authentication, user-agent)
   request_headers = each.value.headers != null ? [

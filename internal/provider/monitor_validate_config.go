@@ -91,7 +91,11 @@ func validatePortRequired(ctx context.Context, req resource.ValidateConfigReques
 		return
 	}
 
-	if port.IsNull() || port.IsUnknown() {
+	if port.IsUnknown() {
+		return // Value will be known at plan time (e.g., from module variables)
+	}
+
+	if port.IsNull() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("port"),
 			"Missing Required Attribute",
