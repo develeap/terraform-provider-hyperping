@@ -32,7 +32,6 @@ locals {
       full_url = "${var.protocol}://${var.domain}${page.path}"
     })
   }
-
 }
 
 resource "hyperping_monitor" "page" {
