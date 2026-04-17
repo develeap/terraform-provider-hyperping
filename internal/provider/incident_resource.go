@@ -322,12 +322,13 @@ func (r *IncidentResource) mapIncidentToModel(incident *hyperping.Incident, mode
 	// The API accepts text during CREATE/UPDATE but may not return it in GET responses.
 	// If API returns it (non-empty), use that value; otherwise preserve the prior
 	// state value so that subsequent Reads do not lose the configured text.
-	if incident.Text.En != "" {
+	switch {
+	case incident.Text.En != "":
 		model.Text = types.StringValue(incident.Text.En)
-	} else if !model.Text.IsNull() && model.Text.ValueString() != "" {
+	case !model.Text.IsNull() && model.Text.ValueString() != "":
 		// API returned empty text but the model (prior state) has a value set.
 		// Preserve it to prevent state drift when the API omits the field.
-	} else {
+	default:
 		model.Text = types.StringValue("")
 	}
 
