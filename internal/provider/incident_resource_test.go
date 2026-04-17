@@ -56,6 +56,13 @@ func TestAccIncidentResource_basic(t *testing.T) {
 	})
 }
 
+// TODO: Add acceptance test for incident text field updates.
+// The Update function now sends text changes to the API, but there is no test
+// that changes the text value between steps and verifies the updated value
+// is reflected in state. This should follow the same pattern as
+// TestAccIncidentResource_basic (multi-step with a title change), but vary
+// the text field instead.
+
 func TestAccIncidentResource_full(t *testing.T) {
 	server := newMockIncidentServer(t)
 	defer server.Close()

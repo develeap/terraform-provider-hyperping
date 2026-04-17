@@ -203,7 +203,11 @@ func (r *StatusPageResource) Read(ctx context.Context, req resource.ReadRequest,
 	// Map response to state
 	r.mapStatusPageToModel(ctx, statusPage, &state, &resp.Diagnostics)
 
-	// Restore password: API never returns this field, so preserve prior state value
+	// Restore password: API never returns this field, so preserve prior state value.
+	// This ensures that when a password is configured, it remains in state and
+	// Terraform does not show a spurious diff on every plan. When the user removes
+	// the password from config, Terraform will detect the diff (state has password,
+	// config does not) and trigger an Update, which explicitly clears it via the API.
 	if !priorPassword.IsNull() {
 		state.Password = priorPassword
 	}
@@ -230,6 +234,13 @@ func (r *StatusPageResource) Update(ctx context.Context, req resource.UpdateRequ
 	updateReq := r.buildUpdateRequest(ctx, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// If the user removed the password from config (plan is null) but state had
+	// one, explicitly send an empty string to clear it on the API side.
+	if plan.Password.IsNull() && !state.Password.IsNull() {
+		empty := ""
+		updateReq.Password = &empty
 	}
 
 	// Translate mon_xxx -> numeric IDs for the uptime renderer
@@ -262,7 +273,9 @@ func (r *StatusPageResource) Update(ctx context.Context, req resource.UpdateRequ
 	// Map response to state
 	r.mapStatusPageToModel(ctx, statusPage, &plan, &resp.Diagnostics)
 
-	// Restore password: API never returns this field, so preserve plan value
+	// Restore password: API never returns this field, so preserve plan value.
+	// When the user clears the password (plan is null but state had a value),
+	// leave plan.Password as null so state no longer holds the stale value.
 	if !planPassword.IsNull() {
 		plan.Password = planPassword
 	}

@@ -280,12 +280,16 @@ func (r *OutageResource) Create(ctx context.Context, req resource.CreateRequest,
 	// Read back full state
 	outage, err := r.client.GetOutage(ctx, created.UUID)
 	if err != nil {
+		// Save what we know from the create response so that the resource is not
+		// left with only the ID populated. The plan already contains all user-supplied
+		// fields; persist them alongside the ID so a subsequent refresh can reconcile.
+		plan.OutageType = types.StringValue(OutageTypeManual)
 		resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-		resp.Diagnostics.AddError(
-			"Error reading created outage",
-			fmt.Sprintf("Outage created (ID: %s) but failed to read: %s. "+
-				"The resource has been saved to state with its ID. "+
-				"Run 'terraform apply' again to retry reading the full state.", created.UUID, err),
+		resp.Diagnostics.AddWarning(
+			"Partial state after outage creation",
+			fmt.Sprintf("Outage created (ID: %s) but the read-back failed: %s. "+
+				"State has been saved with the values from the create request. "+
+				"Run 'terraform refresh' or 'terraform apply' to reconcile with the API.", created.UUID, err),
 		)
 		return
 	}

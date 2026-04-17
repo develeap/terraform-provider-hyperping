@@ -2,6 +2,8 @@ module github.com/develeap/terraform-provider-hyperping
 
 go 1.26.2
 
+replace github.com/develeap/hyperping-go => ../hyperping-go
+
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/briandowns/spinner v1.23.2

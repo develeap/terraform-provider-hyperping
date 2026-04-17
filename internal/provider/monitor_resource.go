@@ -702,7 +702,10 @@ func applyMonitoringFieldChanges(ctx context.Context, plan *MonitorResourceModel
 	}
 
 	// Handle escalation_policy
-	// API docs: send UUID to link, "none" to unlink. Empty string "" is rejected.
+	// The Hyperping API uses a magic value "none" as the canonical way to unlink
+	// (disassociate) an escalation policy from a monitor. Sending a valid UUID
+	// links that policy; sending "none" removes any existing link. The API
+	// rejects an empty string "", so "none" is the only supported unlink value.
 	if !plan.EscalationPolicy.Equal(state.EscalationPolicy) {
 		if plan.EscalationPolicy.IsNull() {
 			none := "none"
