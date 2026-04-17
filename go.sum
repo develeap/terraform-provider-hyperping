@@ -39,6 +39,8 @@ github.com/develeap/hyperping-go v0.1.1-0.20260417005919-90c967a99034 h1:ri18YXA
 github.com/develeap/hyperping-go v0.1.1-0.20260417005919-90c967a99034/go.mod h1:Bn2xZkTmyU/eMjTMK6+cdnDQImgKv5849m1Mx+tX7Q4=
 github.com/develeap/hyperping-go v0.2.0 h1:ytFQeiYyDfxeMnY6q4s3NH+3Oe2uaUUKgtWW5V2T3bE=
 github.com/develeap/hyperping-go v0.2.0/go.mod h1:Bn2xZkTmyU/eMjTMK6+cdnDQImgKv5849m1Mx+tX7Q4=
+github.com/develeap/hyperping-go v0.2.1 h1:k9RiUDvuOLnlAaTZ0q52DndycQaQG7LS9gUkHtA4kuU=
+github.com/develeap/hyperping-go v0.2.1/go.mod h1:Bn2xZkTmyU/eMjTMK6+cdnDQImgKv5849m1Mx+tX7Q4=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
 github.com/emirpasic/gods v1.18.1/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
