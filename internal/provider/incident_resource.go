@@ -251,6 +251,12 @@ func (r *IncidentResource) Update(ctx context.Context, req resource.UpdateReques
 		}
 	}
 
+	// Handle text
+	if !plan.Text.Equal(state.Text) {
+		text := hyperping.LocalizedText{En: plan.Text.ValueString()}
+		updateReq.Text = &text
+	}
+
 	// Handle status_pages
 	if !plan.StatusPages.Equal(state.StatusPages) {
 		var statusPages []string
@@ -313,13 +319,18 @@ func (r *IncidentResource) mapIncidentToModel(incident *hyperping.Incident, mode
 	model.Title = types.StringValue(incident.Title.En)
 
 	// NOTE: Text field behavior - Hyperping API quirk
-	// The API accepts text during CREATE/UPDATE but may not return it in GET responses
-	// If API returns it (non-empty), use that value; otherwise preserve plan value
-	if incident.Text.En != "" {
+	// The API accepts text during CREATE/UPDATE but may not return it in GET responses.
+	// If API returns it (non-empty), use that value; otherwise preserve the prior
+	// state value so that subsequent Reads do not lose the configured text.
+	switch {
+	case incident.Text.En != "":
 		model.Text = types.StringValue(incident.Text.En)
+	case !model.Text.IsNull() && model.Text.ValueString() != "":
+		// API returned empty text but the model (prior state) has a value set.
+		// Preserve it to prevent state drift when the API omits the field.
+	default:
+		model.Text = types.StringValue("")
 	}
-	// If empty and model.Text is already set (from plan), keep the existing value
-	// This prevents state drift when API doesn't return the field
 
 	model.Type = types.StringValue(incident.Type)
 

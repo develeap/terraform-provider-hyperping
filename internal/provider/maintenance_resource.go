@@ -282,6 +282,9 @@ func buildMaintenanceUpdateRequest(ctx context.Context, plan *MaintenanceResourc
 	}
 
 	if !plan.Text.Equal(state.Text) {
+		// When text is cleared (set to null), ValueString() returns "" and the API
+		// receives {"en":""}. This is the correct behavior for this API: sending an
+		// empty string clears the text field on the Hyperping side.
 		text := hyperping.LocalizedText{En: plan.Text.ValueString()}
 		updateReq.Text = &text
 	}
