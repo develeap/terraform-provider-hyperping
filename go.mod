@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/briandowns/spinner v1.23.2
-	github.com/develeap/hyperping-go v0.2.1
+	github.com/develeap/hyperping-go v0.3.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
