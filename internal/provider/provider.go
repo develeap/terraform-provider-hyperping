@@ -36,6 +36,14 @@ type HyperpingProvider struct {
 type HyperpingProviderModel struct {
 	APIKey  types.String `tfsdk:"api_key"`
 	BaseURL types.String `tfsdk:"base_url"`
+	MCPURL  types.String `tfsdk:"mcp_url"`
+}
+
+// hyperpingClients holds both REST and MCP clients.
+type hyperpingClients struct {
+	REST    *hyperping.Client
+	MCP     *hyperping.MCPClient
+	RESTAPI hyperping.HyperpingAPI
 }
 
 // Metadata returns the provider type name.
@@ -58,6 +66,10 @@ func (p *HyperpingProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 				MarkdownDescription: "Hyperping API base URL. Defaults to `https://api.hyperping.io`.",
 				Optional:            true,
 			},
+			"mcp_url": schema.StringAttribute{
+				MarkdownDescription: "Hyperping MCP server URL. Defaults to `https://api.hyperping.io/v1/mcp`.",
+				Optional:            true,
+			},
 		},
 	}
 }
@@ -74,6 +86,7 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 	// Default values from environment variables
 	apiKey := os.Getenv("HYPERPING_API_KEY")
 	baseURL := hyperping.DefaultBaseURL
+	mcpURL := "" // hyperping-go defaults to official URL if empty
 
 	// Override with config values if provided
 	if !config.APIKey.IsNull() {
@@ -98,6 +111,20 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 		}
 	}
 
+	if !config.MCPURL.IsNull() {
+		mcpURL = config.MCPURL.ValueString()
+		// Re-use same security check for MCP URL if it's not localhost
+		if !isAllowedBaseURL(mcpURL) {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("mcp_url"),
+				"Invalid MCP URL",
+				"The mcp_url must be an HTTPS URL pointing to a Hyperping API domain (*.hyperping.io). "+
+					fmt.Sprintf("Provided: %s.", mcpURL),
+			)
+			return
+		}
+	}
+
 	// Validate API key is set
 	if apiKey == "" {
 		resp.Diagnostics.AddAttributeError(
@@ -117,17 +144,27 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 		hyperping.APIKeyPattern,
 	)
 
-	// Create client with tflog integration for debugging
-	hyperpingClient := hyperping.NewClient(
+	// Create REST client
+	restClient := hyperping.NewClient(
 		apiKey,
 		hyperping.WithBaseURL(baseURL),
 		hyperping.WithLogger(NewTFLogAdapter()),
 		hyperping.WithVersion(p.version),
 	)
 
-	// Make the client available to data sources and resources
-	resp.DataSourceData = hyperpingClient
-	resp.ResourceData = hyperpingClient
+	// Create MCP client
+	mcpTransport := hyperping.NewMcpTransport(apiKey, mcpURL)
+	mcpClient := hyperping.NewMCPClient(mcpTransport)
+
+	clients := &hyperpingClients{
+		REST:    restClient,
+		MCP:     mcpClient,
+		RESTAPI: restClient,
+	}
+
+	// Make the clients available to data sources and resources
+	resp.DataSourceData = clients
+	resp.ResourceData = clients
 }
 
 // Resources defines the resources implemented in the provider.
@@ -163,6 +200,9 @@ func (p *HyperpingProvider) DataSources(_ context.Context) []func() datasource.D
 		NewStatusPagesDataSource,
 		NewStatusPageSubscribersDataSource,
 		NewMonitoringLocationsDataSource,
+		NewEscalationPoliciesDataSource,
+		NewOnCallSchedulesDataSource,
+		NewIntegrationsDataSource,
 	}
 }
 

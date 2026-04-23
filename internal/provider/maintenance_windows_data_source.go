@@ -134,7 +134,7 @@ func (d *MaintenanceWindowsDataSource) Configure(_ context.Context, req datasour
 		return
 	}
 
-	c, ok := req.ProviderData.(*hyperping.Client)
+	clients, ok := req.ProviderData.(*hyperpingClients)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Data Source Configure Type",
@@ -143,7 +143,7 @@ func (d *MaintenanceWindowsDataSource) Configure(_ context.Context, req datasour
 		return
 	}
 
-	d.client = c
+	d.client = clients.REST
 }
 
 // Read refreshes the Terraform state with the latest data.

@@ -159,13 +159,13 @@ func (r *StatusPageSubscriberResource) Configure(ctx context.Context, req resour
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(hyperping.HyperpingAPI)
+	clients, ok := req.ProviderData.(*hyperpingClients)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("hyperping.HyperpingAPI", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperpingClients", req.ProviderData))
 		return
 	}
 
-	r.client = apiClient
+	r.client = clients.RESTAPI
 }
 
 func (r *StatusPageSubscriberResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
