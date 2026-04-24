@@ -60,10 +60,10 @@ func TestMonitorResource_ConfigureValidClient(t *testing.T) {
 	r := &MonitorResource{}
 
 	// Create a real client
-	c := hyperping.NewClient("test_api_key")
+	clients := &hyperpingClients{REST: hyperping.NewClient("test_api_key")}
 
 	req := resource.ConfigureRequest{
-		ProviderData: c,
+		ProviderData: clients,
 	}
 	resp := &resource.ConfigureResponse{}
 

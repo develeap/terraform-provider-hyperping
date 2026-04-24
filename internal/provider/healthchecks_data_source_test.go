@@ -61,10 +61,10 @@ func TestHealthchecksDataSource_Schema(t *testing.T) {
 func TestHealthchecksDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &HealthchecksDataSource{}
-		c := &hyperping.Client{}
+		clients := &hyperpingClients{REST: &hyperping.Client{}}
 
 		req := datasource.ConfigureRequest{
-			ProviderData: c,
+			ProviderData: clients,
 		}
 		resp := &datasource.ConfigureResponse{}
 

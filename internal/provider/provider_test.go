@@ -77,12 +77,11 @@ func TestProvider_DataSources(t *testing.T) {
 	p := &HyperpingProvider{}
 	dataSources := p.DataSources(context.Background())
 
-	// Monitor (single), Monitors (list), Incident (single), Incidents (list),
-	// MaintenanceWindow (single), MaintenanceWindows (list), MonitorReport, MonitorReports (list),
-	// Outage (single), Outages (list), Healthcheck (single), Healthchecks (list),
-	// StatusPage (single), StatusPages (list), StatusPageSubscribers, MonitoringLocations
-	if len(dataSources) != 16 {
-		t.Errorf("expected 16 data sources, got %d", len(dataSources))
+	// 16 original + 5 new: 
+	// EscalationPolicies, EscalationPolicy, OnCallSchedules, OnCallSchedule, Integrations
+	// 16 + 5 = 21
+	if len(dataSources) != 21 {
+		t.Errorf("expected 21 data sources, got %d", len(dataSources))
 	}
 }
 

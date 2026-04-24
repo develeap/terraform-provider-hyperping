@@ -257,11 +257,11 @@ func TestMaintenanceResource_ConfigureValidClient(t *testing.T) {
 	r := &MaintenanceResource{}
 
 	// Create a real client
-	c := hyperping.NewClient("test_api_key")
+	clients := &hyperpingClients{REST: hyperping.NewClient("test_api_key")}
 
 	resp := &frameworkresource.ConfigureResponse{}
 	r.Configure(context.Background(), frameworkresource.ConfigureRequest{
-		ProviderData: c,
+		ProviderData: clients,
 	}, resp)
 
 	// Should not error

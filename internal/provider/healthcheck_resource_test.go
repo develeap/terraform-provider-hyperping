@@ -81,9 +81,11 @@ func TestHealthcheckResource_ConfigureNilProviderData(t *testing.T) {
 
 func TestHealthcheckResource_ConfigureValidClient(t *testing.T) {
 	r := &HealthcheckResource{}
-	mockClient := &hyperping.Client{}
+	c := &hyperping.Client{}
+	clients := &hyperpingClients{REST: c}
+
 	req := resource.ConfigureRequest{
-		ProviderData: mockClient,
+		ProviderData: clients,
 	}
 	resp := &resource.ConfigureResponse{}
 
