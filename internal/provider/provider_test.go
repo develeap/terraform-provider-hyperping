@@ -77,7 +77,7 @@ func TestProvider_DataSources(t *testing.T) {
 	p := &HyperpingProvider{}
 	dataSources := p.DataSources(context.Background())
 
-	// 16 original + 5 new: 
+	// 16 original + 5 new:
 	// EscalationPolicies, EscalationPolicy, OnCallSchedules, OnCallSchedule, Integrations
 	// 16 + 5 = 21
 	if len(dataSources) != 21 {
