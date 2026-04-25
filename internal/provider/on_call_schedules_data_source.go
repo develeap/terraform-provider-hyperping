@@ -122,9 +122,15 @@ func (d *OnCallSchedulesDataSource) Configure(_ context.Context, req datasource.
 func (d *OnCallSchedulesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state OnCallSchedulesDataSourceModel
 
+	if d.client == nil {
+		resp.Diagnostics.AddError("MCP Client Not Configured",
+			"The MCP client was not initialized. Ensure the provider is configured with a valid api_key.")
+		return
+	}
+
 	schedules, err := d.client.ListOnCallSchedules(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error fetching on-call schedules", err.Error())
+		resp.Diagnostics.Append(NewReadErrorWithContext("On-Call Schedules", "", err))
 		return
 	}
 

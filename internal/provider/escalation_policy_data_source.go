@@ -112,6 +112,12 @@ func (d *EscalationPolicyDataSource) Configure(_ context.Context, req datasource
 func (d *EscalationPolicyDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data EscalationPolicyDataSourceModel
 
+	if d.client == nil {
+		resp.Diagnostics.AddError("MCP Client Not Configured",
+			"The MCP client was not initialized. Ensure the provider is configured with a valid api_key.")
+		return
+	}
+
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
@@ -120,7 +126,7 @@ func (d *EscalationPolicyDataSource) Read(ctx context.Context, req datasource.Re
 
 	policies, err := d.client.ListEscalationPolicies(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error fetching escalation policies", err.Error())
+		resp.Diagnostics.Append(NewReadErrorWithContext("Escalation Policy", data.ID.ValueString(), err))
 		return
 	}
 

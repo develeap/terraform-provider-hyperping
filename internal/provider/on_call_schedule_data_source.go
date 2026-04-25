@@ -110,6 +110,12 @@ func (d *OnCallScheduleDataSource) Configure(_ context.Context, req datasource.C
 func (d *OnCallScheduleDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data OnCallScheduleDataSourceModel
 
+	if d.client == nil {
+		resp.Diagnostics.AddError("MCP Client Not Configured",
+			"The MCP client was not initialized. Ensure the provider is configured with a valid api_key.")
+		return
+	}
+
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
@@ -118,7 +124,7 @@ func (d *OnCallScheduleDataSource) Read(ctx context.Context, req datasource.Read
 
 	schedules, err := d.client.ListOnCallSchedules(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error fetching on-call schedules", err.Error())
+		resp.Diagnostics.Append(NewReadErrorWithContext("On-Call Schedule", data.ID.ValueString(), err))
 		return
 	}
 

@@ -132,9 +132,15 @@ func (d *EscalationPoliciesDataSource) Configure(_ context.Context, req datasour
 func (d *EscalationPoliciesDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state EscalationPoliciesDataSourceModel
 
+	if d.client == nil {
+		resp.Diagnostics.AddError("MCP Client Not Configured",
+			"The MCP client was not initialized. Ensure the provider is configured with a valid api_key.")
+		return
+	}
+
 	policies, err := d.client.ListEscalationPolicies(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error fetching escalation policies", err.Error())
+		resp.Diagnostics.Append(NewReadErrorWithContext("Escalation Policies", "", err))
 		return
 	}
 

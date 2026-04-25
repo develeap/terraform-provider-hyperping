@@ -117,9 +117,15 @@ func (d *IntegrationsDataSource) Configure(_ context.Context, req datasource.Con
 func (d *IntegrationsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state IntegrationsDataSourceModel
 
+	if d.client == nil {
+		resp.Diagnostics.AddError("MCP Client Not Configured",
+			"The MCP client was not initialized. Ensure the provider is configured with a valid api_key.")
+		return
+	}
+
 	integrations, err := d.client.ListIntegrations(ctx)
 	if err != nil {
-		resp.Diagnostics.AddError("Error fetching integrations", err.Error())
+		resp.Diagnostics.Append(NewReadErrorWithContext("Integrations", "", err))
 		return
 	}
 
