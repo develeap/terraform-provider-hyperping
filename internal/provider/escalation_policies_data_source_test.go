@@ -91,7 +91,10 @@ func TestEscalationPoliciesDataSource_Configure(t *testing.T) {
 	t.Run("valid provider data", func(t *testing.T) {
 		d := &EscalationPoliciesDataSource{}
 
-		transport := hyperping.NewMcpTransport("sk_test", "")
+		transport, err := hyperping.NewMcpTransport("sk_test", "")
+		if err != nil {
+			t.Fatalf("NewMcpTransport: %v", err)
+		}
 		mcpClient := hyperping.NewMCPClient(transport)
 		clients := &hyperpingClients{MCP: mcpClient}
 

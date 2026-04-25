@@ -6,9 +6,9 @@ This file provides context for AI coding agents working on the Terraform Provide
 
 **What**: Terraform provider enabling Infrastructure as Code management of Hyperping monitoring resources (monitors, incidents, maintenance windows, status pages).
 
-**Language**: Go 1.26.1+
+**Language**: Go 1.26.2+
 **Framework**: Terraform Plugin Framework
-**API**: Hyperping REST API (https://api.hyperping.io)
+**API**: Hyperping REST API (https://api.hyperping.io) + MCP server (https://api.hyperping.io/v1/mcp)
 
 ## Quick Start Commands
 
@@ -43,15 +43,12 @@ go build ./cmd/import-generator
 ```
 terraform-provider-hyperping/
 ├── internal/
-│   ├── provider/          # Terraform resources & data sources
-│   │   ├── *_resource.go  # Resource implementations
-│   │   ├── *_data_source.go
-│   │   └── *_test.go      # Acceptance tests
-│   ├── client/            # Hyperping API client
-│   │   ├── models_*.go    # API models
-│   │   ├── *_contract_test.go  # API contract tests
-│   │   └── *_test.go      # Unit tests with VCR
-│   └── errors/            # Enhanced error handling
+│   └── provider/          # Terraform resources & data sources
+│       ├── *_resource.go  # Resource implementations
+│       ├── *_data_source.go
+│       ├── *_test.go      # Acceptance tests
+│       ├── error_*.go     # Enhanced error handling
+│       └── testutil/      # Shared test helpers
 ├── cmd/
 │   ├── migrate-betterstack/   # Better Stack → Hyperping migration
 │   ├── migrate-uptimerobot/   # UptimeRobot → Hyperping migration
@@ -98,7 +95,7 @@ monitor, err := r.client.Get(ctx, createResp.UUID)  // Full read
 ```
 
 **3. Test Patterns**
-- Unit tests: Use VCR fixtures (`internal/client/*_test.go`)
+- Unit tests: Mock HTTP servers inside `internal/provider/testutil/`
 - Acceptance tests: Real API calls with `TF_ACC=1`
 - Test helpers: `monitor_resource_test_helpers.go`
 
@@ -147,7 +144,7 @@ Different endpoints use different versions:
 ### Rate Limits
 - Handle 429 responses
 - Respect `Retry-After` header
-- Exponential backoff implemented in `internal/client/transport.go`
+- Exponential backoff implemented in `github.com/develeap/hyperping-go` transport layer
 
 ## Testing Requirements
 
@@ -166,7 +163,6 @@ Different endpoints use different versions:
 ### Test Execution
 ```bash
 # Unit tests (no API key needed)
-go test ./internal/client
 go test ./internal/provider
 
 # Acceptance tests (requires HYPERPING_TEST_API_KEY)
@@ -283,7 +279,7 @@ migrate-betterstack --resume
 - ❌ NEVER include credentials in tests (use env vars)
 
 ### Error Sanitization
-Implemented in `internal/client/errors.go`:
+Implemented in `internal/provider/error_helpers.go`:
 - API keys (`sk_*`) → `sk_***REDACTED***`
 - Bearer tokens → `Bearer ***REDACTED***`
 - URL credentials → `://***REDACTED***@`
@@ -349,11 +345,10 @@ Types: feat, fix, refactor, docs, test, chore, perf, ci
 
 ### Adding API Coverage
 1. Check `docs/API_COMPLETENESS_AUDIT.md` for gaps
-2. Add client methods in `internal/client/`
-3. Add models in `internal/client/models_*.go`
-4. Add contract tests to verify API behavior
-5. Implement provider resource/data source
-6. Update audit doc
+2. Add client methods and models to `github.com/develeap/hyperping-go`
+3. Implement provider resource/data source in `internal/provider/`
+4. Add acceptance tests
+5. Update audit doc
 
 ## Documentation
 
@@ -382,10 +377,9 @@ Integration tests for migration tools skip when source platform API keys are mis
 HTTP monitors have fields (http_method, expected_status_code) that don't apply to ICMP/Port. Use save-restore pattern to prevent drift for non-HTTP protocols.
 
 ### VCR Test Fixtures
-- Located in `internal/client/testdata/cassettes/`
-- Record real API responses for repeatable tests
-- Update fixtures when API changes
-- Run tests with real API occasionally to verify contracts
+- VCR cassettes for the REST client are maintained in `github.com/develeap/hyperping-go/testdata/cassettes/`
+- Provider acceptance tests use mock HTTP servers (no cassettes needed)
+- Run tests with real API occasionally to verify contracts: `TF_ACC=1 HYPERPING_TEST_API_KEY=sk_xxx go test ./internal/provider/ -v`
 
 ## Performance Considerations
 
@@ -410,6 +404,7 @@ HTTP monitors have fields (http_method, expected_status_code) that don't apply t
 - `terraform-plugin-framework` v1.19.0 - Provider framework
 - `terraform-plugin-go` v0.29.0 - Plugin protocol
 - `terraform-plugin-testing` v1.14.0 - Acceptance testing
+- `github.com/develeap/hyperping-go` v0.3.0 - Shared Hyperping REST + MCP client
 
 ### Interactive Mode (v1.2.0+)
 - `survey/v2` v2.3.7 - Interactive prompts
@@ -438,6 +433,9 @@ HTTP monitors have fields (http_method, expected_status_code) that don't apply t
 - **v1.2.2** (2026-02-16): Production hardening — 73 new acceptance tests, QA initiative, gosec clean
 - **v1.2.3** (2026-02-17): Code quality — cyclomatic complexity reduced to CC≤15 across entire codebase (gocyclo 100%)
 - *(... continued releases through v1.9.2 — see CHANGELOG.md for full history)*
+- **v1.10.0** (2026-04-09): `hyperping_monitors` data source, `is_down`/`escalation_policy_name` computed fields, migrated to `hyperping-go` module
+- **v1.10.1** (2026-04-17): Audit fixes, version standardization (PRs #115/#116)
+- **Unreleased**: MCP-backed data sources (`escalation_policies`, `on_call_schedules`, `integrations`, `escalation_policy`, `on_call_schedule`), `mcp_url` provider attribute, statuspage data source type assertion fixes
 
 ## Getting Help
 
