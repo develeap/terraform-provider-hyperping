@@ -62,10 +62,10 @@ func TestMonitorReportsDataSource_Schema(t *testing.T) {
 func TestMonitorReportsDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &MonitorReportsDataSource{}
-		c := &hyperping.Client{}
+		clients := &hyperpingClients{REST: &hyperping.Client{}}
 
 		req := datasource.ConfigureRequest{
-			ProviderData: c,
+			ProviderData: clients,
 		}
 		resp := &datasource.ConfigureResponse{}
 

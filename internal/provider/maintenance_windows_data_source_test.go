@@ -61,10 +61,10 @@ func TestMaintenanceWindowsDataSource_Schema(t *testing.T) {
 func TestMaintenanceWindowsDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &MaintenanceWindowsDataSource{}
-		c := &hyperping.Client{}
+		clients := &hyperpingClients{REST: &hyperping.Client{}}
 
 		req := datasource.ConfigureRequest{
-			ProviderData: c,
+			ProviderData: clients,
 		}
 		resp := &datasource.ConfigureResponse{}
 

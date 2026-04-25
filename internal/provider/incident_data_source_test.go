@@ -62,10 +62,10 @@ func TestIncidentDataSource_Schema(t *testing.T) {
 func TestIncidentDataSource_Configure(t *testing.T) {
 	t.Run("valid client", func(t *testing.T) {
 		d := &IncidentDataSource{}
-		c := &hyperping.Client{}
+		clients := &hyperpingClients{REST: &hyperping.Client{}}
 
 		req := datasource.ConfigureRequest{
-			ProviderData: c,
+			ProviderData: clients,
 		}
 		resp := &datasource.ConfigureResponse{}
 

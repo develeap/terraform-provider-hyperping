@@ -220,10 +220,10 @@ func TestIncidentResource_ConfigureValidClient(t *testing.T) {
 	r := &IncidentResource{}
 
 	// Create a real client
-	c := hyperping.NewClient("test_api_key")
+	clients := &hyperpingClients{REST: hyperping.NewClient("test_api_key")}
 
 	req := resource.ConfigureRequest{
-		ProviderData: c,
+		ProviderData: clients,
 	}
 	resp := &resource.ConfigureResponse{}
 

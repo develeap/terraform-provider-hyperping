@@ -150,13 +150,13 @@ func (r *MaintenanceResource) Configure(_ context.Context, req resource.Configur
 		return
 	}
 
-	c, ok := req.ProviderData.(*hyperping.Client)
+	clients, ok := req.ProviderData.(*hyperpingClients)
 	if !ok {
-		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperping.Client", req.ProviderData))
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperpingClients", req.ProviderData))
 		return
 	}
 
-	r.client = c
+	r.client = clients.REST
 }
 
 // Create creates the resource and sets the initial Terraform state.

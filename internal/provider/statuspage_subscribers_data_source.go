@@ -124,16 +124,13 @@ func (d *StatusPageSubscribersDataSource) Configure(ctx context.Context, req dat
 		return
 	}
 
-	apiClient, ok := req.ProviderData.(hyperping.HyperpingAPI)
+	clients, ok := req.ProviderData.(*hyperpingClients)
 	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected hyperping.HyperpingAPI, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
+		resp.Diagnostics.Append(newUnexpectedConfigTypeError("*hyperpingClients", req.ProviderData))
 		return
 	}
 
-	d.client = apiClient
+	d.client = clients.REST
 }
 
 func (d *StatusPageSubscribersDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {

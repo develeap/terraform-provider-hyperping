@@ -270,10 +270,10 @@ func TestMonitorDataSource_ConfigureNilProviderData(t *testing.T) {
 func TestMonitorDataSource_ConfigureValidClient(t *testing.T) {
 	d := &MonitorDataSource{}
 
-	c := hyperping.NewClient("test_api_key")
+	clients := &hyperpingClients{REST: hyperping.NewClient("test_api_key")}
 
 	req := datasource.ConfigureRequest{
-		ProviderData: c,
+		ProviderData: clients,
 	}
 	resp := &datasource.ConfigureResponse{}
 

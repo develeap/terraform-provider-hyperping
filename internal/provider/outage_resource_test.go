@@ -81,9 +81,11 @@ func TestOutageResource_ConfigureNilProviderData(t *testing.T) {
 
 func TestOutageResource_ConfigureValidClient(t *testing.T) {
 	r := &OutageResource{}
-	mockClient := &hyperping.Client{}
+	c := &hyperping.Client{}
+	clients := &hyperpingClients{REST: c}
+
 	req := resource.ConfigureRequest{
-		ProviderData: mockClient,
+		ProviderData: clients,
 	}
 	resp := &resource.ConfigureResponse{}
 

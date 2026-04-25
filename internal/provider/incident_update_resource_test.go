@@ -220,10 +220,10 @@ func TestIncidentUpdateResource_ConfigureNilProviderData(t *testing.T) {
 func TestIncidentUpdateResource_ConfigureValidClient(t *testing.T) {
 	r := &IncidentUpdateResource{}
 
-	c := hyperping.NewClient("test_api_key")
+	clients := &hyperpingClients{REST: hyperping.NewClient("test_api_key")}
 
 	req := resource.ConfigureRequest{
-		ProviderData: c,
+		ProviderData: clients,
 	}
 	resp := &resource.ConfigureResponse{}
 
