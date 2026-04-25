@@ -25,6 +25,11 @@ Community Terraform provider for [Hyperping](https://hyperping.io/) - manage upt
 - `hyperping_statuspage` - Single status page details
 - `hyperping_statuspage_subscribers` - List subscribers by type
 - `hyperping_monitor_report` - Uptime/SLA reports
+- `hyperping_escalation_policies` - List all escalation policies (MCP)
+- `hyperping_escalation_policy` - Single escalation policy lookup (MCP)
+- `hyperping_on_call_schedules` - List all on-call schedules (MCP)
+- `hyperping_on_call_schedule` - Single on-call schedule lookup (MCP)
+- `hyperping_integrations` - List all integrations (MCP)
 
 ## Quick Start
 
@@ -140,7 +145,7 @@ migrate-pingdom --pingdom-api-key $PINGDOM_KEY --hyperping-api-key $HYPERPING_KE
 ## Requirements
 
 - Terraform >= 1.0
-- Go >= 1.26.1 (development only)
+- Go >= 1.26.2 (development only)
 - Hyperping account with API key
 
 ## Development
@@ -164,64 +169,29 @@ gosec ./...
 
 ### Testing
 
-The provider uses **VCR (Video Cassette Recorder)** for hermetic, fast, and deterministic testing.
+Provider acceptance tests use mock HTTP servers — no real API key required for unit/acceptance tests. VCR cassettes for the REST client are maintained in the [`hyperping-go`](https://github.com/develeap/hyperping-go) module.
 
-#### Contract Tests (No API Key Required)
-
-Contract tests validate API response structure using pre-recorded cassettes:
+#### Acceptance Tests
 
 ```bash
-# Run all contract tests (no API key needed)
-export VCR_MODE=replay
-go test -v -run "^TestContract" ./internal/client/
+# Run all acceptance tests (mock HTTP servers, no real API key needed)
+go test -v ./internal/provider/
 
-# Run specific resource tests
-go test -v -run "TestContract_Monitor" ./internal/client/
-go test -v -run "TestContract_StatusPage" ./internal/client/
+# Run specific tests
+go test -v -run "TestAccMonitorResource" ./internal/provider/
+go test -v -run "TestAccDataSource" ./internal/provider/
 
-# Check for flakiness
-for i in {1..10}; do go test -count=1 -run "^TestContract" ./internal/client/ || exit 1; done
+# Run with real API (optional, for full contract validation)
+TF_ACC=1 HYPERPING_TEST_API_KEY=sk_xxx go test -v ./internal/provider/
 ```
-
-**Benefits:**
-- No API key required
-- Fast execution (~7 seconds for 356 tests)
-- Deterministic results (same every time)
-- Safe for CI/CD (no rate limiting)
-- Detects API breaking changes
-
-#### Recording New Cassettes
-
-When the API changes or new tests are added:
-
-```bash
-# Set API key
-export HYPERPING_API_KEY=sk_your_key_here
-
-# Record mode
-export VCR_MODE=record
-go test -v -run TestLiveContract_Monitor_CRUD ./internal/client/
-
-# Verify cassette created
-ls -lh internal/client/testdata/cassettes/monitor_crud.yaml
-
-# Test in replay mode
-unset HYPERPING_API_KEY
-export VCR_MODE=replay
-go test -v -run TestContract_Monitor ./internal/client/
-```
-
-**Security:** All cassettes automatically mask API keys and sensitive headers.
 
 #### Test Coverage
 
-- **356 contract tests** validating API responses
-- **41 VCR cassettes** covering all resources
-- **100% passing** core tests (79/79)
-- **Zero flaky tests** across multiple runs
 - **Race detector clean**
-
-See [internal/client/testdata/cassettes/README.md](internal/client/testdata/cassettes/README.md) for cassette documentation.
+- **Zero flaky tests** across multiple runs
+- Protocol-specific tests: Port, ICMP, HTTP protocol handling
+- State drift detection tests for all CRUD resources
+- Unit tests for all MCP data sources (constructor, Metadata, Schema, Configure)
 
 #### Integration Tests for Migration Tools
 

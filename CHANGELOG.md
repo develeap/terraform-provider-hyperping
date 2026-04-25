@@ -10,6 +10,35 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-04-25
+
+### Added
+
+- `hyperping_escalation_policies` data source — list all escalation policies via MCP.
+- `hyperping_on_call_schedules` data source — list all on-call schedules via MCP.
+- `hyperping_integrations` data source — list all integrations via MCP.
+- `hyperping_escalation_policy` data source — single escalation policy lookup by UUID or name.
+- `hyperping_on_call_schedule` data source — single on-call schedule lookup by UUID.
+- `mcp_url` provider attribute — optional custom Hyperping MCP server URL for MCP-backed data sources.
+- Unit tests (constructor, Metadata, Schema, Configure) for `escalation_policies`, `on_call_schedules`, and `integrations` data sources.
+
+### Fixed
+
+- Nil pointer panics in all five MCP-backed data source `Read()` methods: added nil client guard with a descriptive diagnostic when the provider is misconfigured.
+- Runtime panic in `statuspage_data_source`, `statuspages_data_source`, and `statuspage_subscribers_data_source`: these still asserted `hyperping.HyperpingAPI` from provider data after `*hyperpingClients` was introduced. Updated all three to assert `*hyperpingClients` and use `clients.REST`.
+- `NewMcpTransport` initialization error now surfaces as a provider configure diagnostic instead of panicking (upgraded `hyperping-go` to v0.4.0).
+
+### Changed
+
+- Upgraded `github.com/develeap/hyperping-go` from v0.3.0 to v0.4.0 (TLS 1.2+ enforcement, JSON error propagation, thread-safe MCP handshake).
+
+## [1.10.1] - 2026-04-17
+
+### Fixed
+
+- Resolved audit findings in provider resource logic: unused fields, missing error checks, and drift-detection edge cases (PR #116).
+- Standardized module versions, corrected example HCL, regenerated docs, and fixed import/migration tooling references (PR #115).
+
 ## [1.10.0] - 2026-04-09
 
 ### Added

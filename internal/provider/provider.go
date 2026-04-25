@@ -153,7 +153,14 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 	)
 
 	// Create MCP client
-	mcpTransport := hyperping.NewMcpTransport(apiKey, mcpURL)
+	mcpTransport, err := hyperping.NewMcpTransport(apiKey, mcpURL)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid MCP URL",
+			fmt.Sprintf("Failed to initialize MCP transport: %s", err),
+		)
+		return
+	}
 	mcpClient := hyperping.NewMCPClient(mcpTransport)
 
 	clients := &hyperpingClients{
