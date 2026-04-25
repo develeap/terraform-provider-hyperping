@@ -10,6 +10,8 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-04-25
+
 ### Added
 
 - `hyperping_escalation_policies` data source — list all escalation policies via MCP.
@@ -24,6 +26,11 @@ Published releases start from v1.0.3.
 
 - Nil pointer panics in all five MCP-backed data source `Read()` methods: added nil client guard with a descriptive diagnostic when the provider is misconfigured.
 - Runtime panic in `statuspage_data_source`, `statuspages_data_source`, and `statuspage_subscribers_data_source`: these still asserted `hyperping.HyperpingAPI` from provider data after `*hyperpingClients` was introduced. Updated all three to assert `*hyperpingClients` and use `clients.REST`.
+- `NewMcpTransport` initialization error now surfaces as a provider configure diagnostic instead of panicking (upgraded `hyperping-go` to v0.4.0).
+
+### Changed
+
+- Upgraded `github.com/develeap/hyperping-go` from v0.3.0 to v0.4.0 (TLS 1.2+ enforcement, JSON error propagation, thread-safe MCP handshake).
 
 ## [1.10.1] - 2026-04-17
 
