@@ -4,12 +4,38 @@
 package uptimerobot
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// roundTripFunc is an http.RoundTripper backed by a function. Letting tests
+// inject a transport keeps the production NewClient surface unchanged while
+// still allowing full request/response control.
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func newClientWithTransport(rt http.RoundTripper) *Client {
+	c := NewClient("test-api-key")
+	c.httpClient.Transport = rt
+	return c
+}
+
+func jsonResponse(status int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+}
 
 func TestFlexibleInt_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
@@ -128,4 +154,120 @@ func TestFlexibleInt_InStruct(t *testing.T) {
 func flexIntPtr(n int) *FlexibleInt {
 	fi := FlexibleInt(n)
 	return &fi
+}
+
+// =============================================================================
+// Client tests
+// =============================================================================
+
+func TestNewClient_Defaults(t *testing.T) {
+	c := NewClient("k")
+	assert.Equal(t, "k", c.apiKey)
+	require.NotNil(t, c.httpClient)
+	assert.NotZero(t, c.httpClient.Timeout, "expected a non-zero default timeout")
+}
+
+func TestGetMonitors_Success(t *testing.T) {
+	var captured *http.Request
+	var capturedBody []byte
+	rt := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		captured = r
+		capturedBody, _ = io.ReadAll(r.Body)
+		return jsonResponse(200, `{"stat":"ok","monitors":[{"id":1,"friendly_name":"A","url":"https://a.example.com","type":1,"interval":60,"status":2}]}`), nil
+	})
+	c := newClientWithTransport(rt)
+
+	got, err := c.GetMonitors(context.Background())
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "A", got[0].FriendlyName)
+
+	require.NotNil(t, captured)
+	assert.Equal(t, "POST", captured.Method)
+	assert.Contains(t, captured.URL.String(), "/getMonitors")
+	assert.Equal(t, "application/json", captured.Header.Get("Content-Type"))
+
+	var payload map[string]interface{}
+	require.NoError(t, json.Unmarshal(capturedBody, &payload))
+	assert.Equal(t, "test-api-key", payload["api_key"])
+	assert.Equal(t, "json", payload["format"])
+}
+
+func TestGetMonitors_APIErrorStruct(t *testing.T) {
+	rt := roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return jsonResponse(200, `{"stat":"fail","error":{"type":"invalid_parameter","message":"bad key"}}`), nil
+	})
+	_, err := newClientWithTransport(rt).GetMonitors(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid_parameter")
+	assert.Contains(t, err.Error(), "bad key")
+}
+
+func TestGetMonitors_StatNotOK_NoErrorStruct(t *testing.T) {
+	rt := roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return jsonResponse(200, `{"stat":"fail"}`), nil
+	})
+	_, err := newClientWithTransport(rt).GetMonitors(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "API returned status")
+}
+
+func TestGetMonitors_NonOKHTTPStatus(t *testing.T) {
+	rt := roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusUnauthorized, `unauthorized`), nil
+	})
+	_, err := newClientWithTransport(rt).GetMonitors(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected status code: 401")
+}
+
+func TestGetMonitors_NetworkError(t *testing.T) {
+	netErr := errors.New("dial tcp: refused")
+	rt := roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, netErr
+	})
+	_, err := newClientWithTransport(rt).GetMonitors(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "executing request")
+}
+
+func TestGetMonitors_BadJSON(t *testing.T) {
+	rt := roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return jsonResponse(200, `not json`), nil
+	})
+	_, err := newClientWithTransport(rt).GetMonitors(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decoding response")
+}
+
+func TestGetAlertContacts_Success(t *testing.T) {
+	var captured *http.Request
+	rt := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		captured = r
+		return jsonResponse(200, `{"stat":"ok","alert_contacts":[{"id":"1","friendly_name":"Ops","type":2,"value":"ops@example.com","status":2}]}`), nil
+	})
+	got, err := newClientWithTransport(rt).GetAlertContacts(context.Background())
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "Ops", got[0].FriendlyName)
+	assert.Equal(t, 2, got[0].Type)
+	assert.Contains(t, captured.URL.String(), "/getAlertContacts")
+}
+
+func TestGetAlertContacts_StatFail(t *testing.T) {
+	rt := roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return jsonResponse(200, `{"stat":"fail","error":{"type":"forbidden","message":"nope"}}`), nil
+	})
+	_, err := newClientWithTransport(rt).GetAlertContacts(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "forbidden")
+}
+
+func TestGetAlertContacts_BadJSON(t *testing.T) {
+	rt := roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return jsonResponse(200, `{`), nil
+	})
+	_, err := newClientWithTransport(rt).GetAlertContacts(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decoding response")
 }

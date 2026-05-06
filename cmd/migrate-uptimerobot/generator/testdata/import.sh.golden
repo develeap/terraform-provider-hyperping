@@ -1,0 +1,109 @@
+#!/bin/bash
+# Terraform import script generated from UptimeRobot migration
+#
+# This script is only needed if resources already exist in Hyperping
+# and you want to import them into Terraform state.
+#
+# If you're creating new resources, you don't need this script.
+# Just run: terraform apply
+#
+# Prerequisites:
+#   1. Terraform initialized: terraform init
+#   2. Resources created in Hyperping manually or via API
+#   3. HYPERPING_API_KEY environment variable set
+#
+# Total resources to import: 3
+#
+
+set -e  # Exit on error
+
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo "Starting Terraform import process..."
+echo ""
+
+# Check prerequisites
+if [ -z "$HYPERPING_API_KEY" ]; then
+  echo "${RED}Error: HYPERPING_API_KEY environment variable not set${NC}"
+  exit 1
+fi
+
+if ! command -v terraform &> /dev/null; then
+  echo "${RED}Error: terraform command not found${NC}"
+  exit 1
+fi
+
+if [ ! -f "hyperping.tf" ]; then
+  echo "${YELLOW}Warning: hyperping.tf not found in current directory${NC}"
+  echo "Make sure you're in the correct directory"
+fi
+
+# Track import results
+SUCCESS_COUNT=0
+FAIL_COUNT=0
+SKIPPED_COUNT=0
+
+# ============================================
+# Import Monitors
+# ============================================
+
+echo "Importing monitor: API Health..."
+# Note: You need the actual Hyperping monitor UUID
+# Replace 'mon_PLACEHOLDER' with the actual UUID from Hyperping
+if terraform import 'hyperping_monitor.api_health' 'mon_PLACEHOLDER_101' 2>/dev/null; then
+  echo "${GREEN}✓ Successfully imported${NC}"
+  ((SUCCESS_COUNT++))
+else
+  echo "${YELLOW}⚠ Import failed or resource doesn't exist - will be created on apply${NC}"
+  ((SKIPPED_COUNT++))
+fi
+echo ""
+
+echo "Importing monitor: Database Port..."
+# Note: You need the actual Hyperping monitor UUID
+# Replace 'mon_PLACEHOLDER' with the actual UUID from Hyperping
+if terraform import 'hyperping_monitor.db_port' 'mon_PLACEHOLDER_102' 2>/dev/null; then
+  echo "${GREEN}✓ Successfully imported${NC}"
+  ((SUCCESS_COUNT++))
+else
+  echo "${YELLOW}⚠ Import failed or resource doesn't exist - will be created on apply${NC}"
+  ((SKIPPED_COUNT++))
+fi
+echo ""
+
+# ============================================
+# Import Healthchecks
+# ============================================
+
+echo "Importing healthcheck: Cron Heartbeat..."
+# Note: You need the actual Hyperping healthcheck UUID
+# Replace 'hc_PLACEHOLDER' with the actual UUID from Hyperping
+if terraform import 'hyperping_healthcheck.cron_heartbeat' 'hc_PLACEHOLDER_201' 2>/dev/null; then
+  echo "${GREEN}✓ Successfully imported${NC}"
+  ((SUCCESS_COUNT++))
+else
+  echo "${YELLOW}⚠ Import failed or resource doesn't exist - will be created on apply${NC}"
+  ((SKIPPED_COUNT++))
+fi
+echo ""
+
+# ============================================
+# Summary
+# ============================================
+
+echo ""
+echo "Import process complete!"
+echo "${GREEN}Successfully imported: $SUCCESS_COUNT${NC}"
+echo "${YELLOW}Skipped (will be created): $SKIPPED_COUNT${NC}"
+if [ $FAIL_COUNT -gt 0 ]; then
+  echo "${RED}Failed: $FAIL_COUNT${NC}"
+fi
+echo ""
+echo "Next steps:"
+echo "  1. Run: terraform plan"
+echo "  2. Review the plan"
+echo "  3. Run: terraform apply"
