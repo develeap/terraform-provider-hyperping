@@ -195,7 +195,7 @@ func TestGenerateName_LongNameTruncated(t *testing.T) {
 		t.Errorf("expected truncation to exactly %d chars (input is far longer), got %d", cap, len(svc))
 	}
 	for _, r := range svc {
-		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')) {
+		if (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && (r < '0' || r > '9') {
 			t.Errorf("unexpected non-alphanumeric char %q in service name %q", r, svc)
 		}
 	}
