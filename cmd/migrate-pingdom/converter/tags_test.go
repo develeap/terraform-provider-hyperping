@@ -67,14 +67,6 @@ func TestGenerateName(t *testing.T) {
 			want:  "[UNKNOWN]-Service-Monitor",
 		},
 		{
-			name: "long name truncated to 30 chars",
-			check: pingdom.Check{
-				Name: strings.Repeat("ABCD ", 20), // many words, very long
-			},
-			// Each "ABCD " becomes "Abcd"; concatenated to "AbcdAbcd...". 30-char cutoff.
-			want: "[UNKNOWN]-Service-" + strings.Repeat("Abcd", 8)[:30],
-		},
-		{
 			name: "qa environment",
 			check: pingdom.Check{
 				Name: "Reports",
@@ -141,36 +133,70 @@ func TestTagsToString(t *testing.T) {
 	}
 }
 
-// Indirectly exercise the category aliases that GenerateName covers.
+// TestExtractCategory_AllAliases indirectly exercises the category aliases that
+// GenerateName covers. Cases are kept in a slice rather than a map so subtest
+// order is deterministic (helps when running with -shuffle and when reading
+// failure output).
 func TestExtractCategory_AllAliases(t *testing.T) {
-	cases := map[string]string{
-		"api":         "API",
-		"web":         "Web",
-		"website":     "Web",
-		"database":    "Database",
-		"cache":       "Cache",
-		"memcached":   "Cache",
-		"queue":       "Queue",
-		"cdn":         "CDN",
-		"dns":         "DNS",
-		"mail":        "Mail",
-		"smtp":        "Mail",
-		"email":       "Mail",
-		"service":     "Service",
-		"app":         "App",
-		"application": "App",
+	cases := []struct {
+		tag, want string
+	}{
+		{"api", "API"},
+		{"web", "Web"},
+		{"website", "Web"},
+		{"database", "Database"},
+		{"cache", "Cache"},
+		{"memcached", "Cache"},
+		{"queue", "Queue"},
+		{"cdn", "CDN"},
+		{"dns", "DNS"},
+		{"mail", "Mail"},
+		{"smtp", "Mail"},
+		{"email", "Mail"},
+		{"service", "Service"},
+		{"app", "App"},
+		{"application", "App"},
 	}
-	for tag, want := range cases {
-		t.Run(tag, func(t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.tag, func(t *testing.T) {
 			check := pingdom.Check{
 				Name: "Foo",
-				Tags: []pingdom.Tag{{Name: "prod"}, {Name: tag}},
+				Tags: []pingdom.Tag{{Name: "prod"}, {Name: tc.tag}},
 			}
 			got := GenerateName(check)
-			expected := "[PROD]-" + want + "-Foo"
+			expected := "[PROD]-" + tc.want + "-Foo"
 			if got != expected {
 				t.Errorf("got %q, want %q", got, expected)
 			}
 		})
+	}
+}
+
+// TestGenerateName_LongNameTruncated checks the length cap as a property
+// rather than pinning a specific 30-char value: future tweaks to the cap or
+// the casing rules don't require recomputing a hand-built expected string,
+// only updating the cap constant in the assertion.
+func TestGenerateName_LongNameTruncated(t *testing.T) {
+	const cap = 30
+	long := strings.Repeat("ABCD ", 20) // 100 chars before sanitisation
+	got := GenerateName(pingdom.Check{Name: long})
+
+	const prefix = "[UNKNOWN]-Service-"
+	if !strings.HasPrefix(got, prefix) {
+		t.Fatalf("got %q, missing env/category prefix %q", got, prefix)
+	}
+	svc := strings.TrimPrefix(got, prefix)
+	if len(svc) > cap {
+		t.Errorf("service-name length = %d, want <= %d", len(svc), cap)
+	}
+	// Confirm the long input actually exercised the truncation path,
+	// otherwise this test would silently degrade if the cap moved.
+	if len(svc) != cap {
+		t.Errorf("expected truncation to exactly %d chars (input is far longer), got %d", cap, len(svc))
+	}
+	for _, r := range svc {
+		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')) {
+			t.Errorf("unexpected non-alphanumeric char %q in service name %q", r, svc)
+		}
 	}
 }

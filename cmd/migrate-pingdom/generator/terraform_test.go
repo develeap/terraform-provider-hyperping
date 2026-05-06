@@ -107,8 +107,14 @@ func TestBuildOptionalHelpers(t *testing.T) {
 
 		{"body nil omitted", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{}, ""},
 		{"body empty omitted", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{RequestBody: strPtr("")}, ""},
-		// Note: escapeHCL + %q double-escapes quotes/backslashes; this test pins current behaviour.
-		{"body emitted", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{RequestBody: strPtr(`hello`)}, "  request_body = \"hello\"\n"},
+		{"body emitted (ASCII-safe)", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{RequestBody: strPtr("hello")}, "  request_body = \"hello\"\n"},
+		// TODO: pinning the current double-escape behaviour. terraform.go formats
+		// already-escaped strings with %q, which escapes them a second time. For input
+		// {"a":1}, the runtime output is `"{\\\"a\\\":1}"` (3 backslashes before each
+		// quote) instead of the HCL-correct `"{\"a\":1}"`. When the bug is fixed (drop
+		// %q in favour of QuoteHCL, or stop pre-escaping), this expectation becomes
+		// "  request_body = \"{\\\"a\\\":1}\"\n" — see the PR body for context.
+		{"body emitted (current double-escape)", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{RequestBody: strPtr(`{"a":1}`)}, "  request_body = \"{\\\\\\\"a\\\\\\\":1}\"\n"},
 
 		{"paused false omitted", buildOptionalPaused, &hyperping.CreateMonitorRequest{}, ""},
 		{"paused true emitted", buildOptionalPaused, &hyperping.CreateMonitorRequest{Paused: true}, "  paused = true\n"},
@@ -138,36 +144,48 @@ func TestBuildOptionalRequestHeaders(t *testing.T) {
 	}
 }
 
-func TestGenerateHCL_SupportedHTTP(t *testing.T) {
-	check := pingdom.Check{
-		ID:           1,
-		Name:         "API",
-		Type:         "http",
-		Hostname:     "api.example.com",
-		URL:          "/health",
-		Tags:         []pingdom.Tag{{Name: "production"}, {Name: "api"}},
-		ProbeFilters: []string{"region:NA"},
+// TestGenerateHCL_Golden snapshots a representative mix of supported and
+// unsupported checks. Inputs are deliberately ASCII-only and avoid any field
+// that would introduce non-deterministic output (request headers — map
+// iteration; probe-filter-derived regions — set→slice). A field-ordering or
+// whitespace regression here would silently ship broken HCL to users, so we
+// pin the full output rather than substring-asserting.
+func TestGenerateHCL_Golden(t *testing.T) {
+	checks := []pingdom.Check{
+		{
+			ID:         1,
+			Name:       "API Health",
+			Type:       "https",
+			Hostname:   "api.example.com",
+			URL:        "/health",
+			Encryption: true,
+			Resolution: 5,
+			Tags:       []pingdom.Tag{{Name: "production"}, {Name: "api"}},
+		},
+		{
+			ID:         2,
+			Name:       "Database",
+			Type:       "tcp",
+			Hostname:   "db.example.com",
+			Port:       5432,
+			Resolution: 1,
+			Tags:       []pingdom.Tag{{Name: "production"}, {Name: "database"}},
+		},
+		{
+			ID:       3,
+			Name:     "DNS Lookup",
+			Type:     "dns",
+			Hostname: "example.com",
+		},
 	}
-	results := []converter.ConversionResult{
-		converter.NewCheckConverter().Convert(check),
+	conv := converter.NewCheckConverter()
+	results := make([]converter.ConversionResult, len(checks))
+	for i, c := range checks {
+		results[i] = conv.Convert(c)
 	}
 
-	g := NewTerraformGenerator("")
-	hcl := g.GenerateHCL([]pingdom.Check{check}, results)
-
-	for _, want := range []string{
-		"# Pingdom Check ID: 1",
-		"# Original Name: API",
-		"# Type: http",
-		"# Tags: production, api",
-		`resource "hyperping_monitor"`,
-		"protocol = \"http\"",
-		"url      = \"http://api.example.com/health\"",
-	} {
-		if !strings.Contains(hcl, want) {
-			t.Errorf("HCL missing %q\n---\n%s", want, hcl)
-		}
-	}
+	got := NewTerraformGenerator("").GenerateHCL(checks, results)
+	goldenAssert(t, "monitors.tf.golden", got)
 }
 
 func TestGenerateHCL_Unsupported(t *testing.T) {
