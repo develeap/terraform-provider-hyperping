@@ -1,0 +1,17 @@
+#!/bin/bash
+# Generated Terraform import script for Pingdom -> Hyperping migration
+# Run this after applying the Terraform configuration
+
+set -e
+
+echo "Importing Hyperping resources into Terraform state..."
+echo ""
+
+# Pingdom Check 1: API
+echo "Importing hyperping_monitor.api_api..."
+terraform import hyperping_monitor.api_api "mon_aaaa" || echo "Warning: Import failed for api_api"
+echo ""
+
+# Skipping Pingdom Check 3 (not yet created in Hyperping)
+echo "Import complete! Imported 1 resources."
+echo "Run 'terraform plan' to verify the state matches your configuration."
