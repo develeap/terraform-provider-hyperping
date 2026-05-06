@@ -43,36 +43,18 @@ func makeChecks() ([]pingdom.Check, []converter.ConversionResult) {
 	return checks, results
 }
 
-func TestGenerateImportScript_Shape(t *testing.T) {
+// TestGenerateImportScript_Golden snapshots the full script for a representative
+// input mix (one created, one unsupported, one supported-but-not-created). The
+// script is user-facing and shells get sensitive to subtle shape regressions
+// (echo placement, semicolons, comment vs command), so we pin the entire output.
+func TestGenerateImportScript_Golden(t *testing.T) {
 	checks, results := makeChecks()
 	created := map[int]string{
 		1: "mon_aaaa",
 		// check 2 is unsupported, check 3 not yet created
 	}
-
-	out := NewImportGenerator("").GenerateImportScript(checks, results, created)
-
-	if !strings.HasPrefix(out, "#!/bin/bash\n") {
-		t.Errorf("expected shebang, got:\n%s", out)
-	}
-	if !strings.Contains(out, "set -e") {
-		t.Errorf("expected set -e in script:\n%s", out)
-	}
-	if !strings.Contains(out, "terraform import hyperping_monitor.") {
-		t.Errorf("expected import command:\n%s", out)
-	}
-	if !strings.Contains(out, `"mon_aaaa"`) {
-		t.Errorf("expected created UUID:\n%s", out)
-	}
-	if strings.Contains(out, "Pingdom Check 2") {
-		t.Errorf("unsupported check 2 should not appear in script:\n%s", out)
-	}
-	if !strings.Contains(out, "# Skipping Pingdom Check 3") {
-		t.Errorf("expected skip comment for uncreated check 3:\n%s", out)
-	}
-	if !strings.Contains(out, "Imported 1 resources") {
-		t.Errorf("expected count summary:\n%s", out)
-	}
+	got := NewImportGenerator("").GenerateImportScript(checks, results, created)
+	goldenAssert(t, "import.sh.golden", got)
 }
 
 func TestGenerateImportScript_Prefix(t *testing.T) {

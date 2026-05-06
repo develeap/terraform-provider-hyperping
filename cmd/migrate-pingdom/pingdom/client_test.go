@@ -5,6 +5,7 @@ package pingdom
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -56,6 +57,14 @@ func TestListChecks_Success(t *testing.T) {
 		if got := r.Header.Get("Content-Type"); got != "application/json" {
 			t.Errorf("Content-Type = %q", got)
 		}
+		// ListChecks is a GET; body must be empty (we pass http.NoBody).
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read body: %v", err)
+		}
+		if len(body) != 0 {
+			t.Errorf("request body = %q, want empty", body)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"checks":[{"id":1,"name":"a","type":"http","hostname":"a.example.com"},{"id":2,"name":"b","type":"tcp","hostname":"b.example.com","port":5432}]}`))
 	}))
@@ -106,7 +115,14 @@ func TestListChecks_BadJSON(t *testing.T) {
 }
 
 func TestListChecks_NetworkError(t *testing.T) {
-	c := NewClient("t", WithBaseURL("http://127.0.0.1:0"))
+	// Stand up a server, capture its URL, then close it. The URL is now a
+	// well-formed but unreachable address, so http.Do fails at dial time.
+	// This is more portable than relying on port 0 semantics.
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	deadURL := srv.URL
+	srv.Close()
+
+	c := NewClient("t", WithBaseURL(deadURL))
 	_, err := c.ListChecks(context.Background())
 	if err == nil {
 		t.Fatal("expected network error")
@@ -179,7 +195,11 @@ func TestGetCheck_BadBaseURL(t *testing.T) {
 }
 
 func TestGetCheck_NetworkError(t *testing.T) {
-	c := NewClient("t", WithBaseURL("http://127.0.0.1:0"))
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	deadURL := srv.URL
+	srv.Close()
+
+	c := NewClient("t", WithBaseURL(deadURL))
 	_, err := c.GetCheck(context.Background(), 1)
 	if err == nil || !strings.Contains(err.Error(), "executing request") {
 		t.Errorf("error = %v, want executing request error", err)

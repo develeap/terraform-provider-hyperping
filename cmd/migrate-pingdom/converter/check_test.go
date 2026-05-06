@@ -171,10 +171,57 @@ func TestConvertHTTPCheck_FieldMapping(t *testing.T) {
 	if len(m.RequestHeaders) != 1 || m.RequestHeaders[0].Name != "X-Test" || m.RequestHeaders[0].Value != "value" {
 		t.Errorf("RequestHeaders = %#v", m.RequestHeaders)
 	}
-	// VerifyCertificate=false flips FollowRedirects to true (per existing logic);
-	// VerifyCertificate=true would flip it false.
-	if m.FollowRedirects == nil {
-		t.Error("FollowRedirects = nil, want non-nil for HTTPS check")
+	// HTTPS branch overrides FollowRedirects with !VerifyCertificate.
+	// VerifyCertificate=false here, so FollowRedirects must be true.
+	if m.FollowRedirects == nil || !*m.FollowRedirects {
+		t.Errorf("FollowRedirects = %v, want non-nil pointing to true (VerifyCertificate=false on HTTPS)", m.FollowRedirects)
+	}
+}
+
+// TestConvertHTTPCheck_VerifyCertificateFlipsFollowRedirects locks in the
+// (admittedly odd) production behaviour where VerifyCertificate on an HTTPS
+// check is what controls FollowRedirects. Tested as a property — flipping
+// VerifyCertificate must flip FollowRedirects — so the test does not pretend
+// to endorse the semantic mapping.
+func TestConvertHTTPCheck_VerifyCertificateFlipsFollowRedirects(t *testing.T) {
+	tests := []struct {
+		name              string
+		verifyCertificate bool
+		wantFollow        bool
+	}{
+		{"verify=false → follow=true", false, true},
+		{"verify=true → follow=false", true, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewCheckConverter().Convert(pingdom.Check{
+				Type:              "https",
+				Hostname:          "api.example.com",
+				URL:               "/",
+				Encryption:        true,
+				VerifyCertificate: tt.verifyCertificate,
+			}).Monitor
+			if m.FollowRedirects == nil {
+				t.Fatal("FollowRedirects is nil, want non-nil for HTTPS check")
+			}
+			if *m.FollowRedirects != tt.wantFollow {
+				t.Errorf("FollowRedirects = %v, want %v", *m.FollowRedirects, tt.wantFollow)
+			}
+		})
+	}
+}
+
+// TestConvertHTTPCheck_NoEncryptionFollowsRedirects covers the non-HTTPS path
+// where the initial true value survives unchanged.
+func TestConvertHTTPCheck_NoEncryptionFollowsRedirects(t *testing.T) {
+	m := NewCheckConverter().Convert(pingdom.Check{
+		Type:              "http",
+		Hostname:          "site.example.com",
+		Encryption:        false,
+		VerifyCertificate: true, // ignored when Encryption is false
+	}).Monitor
+	if m.FollowRedirects == nil || !*m.FollowRedirects {
+		t.Errorf("FollowRedirects = %v, want non-nil pointing to true (HTTP default)", m.FollowRedirects)
 	}
 }
 
