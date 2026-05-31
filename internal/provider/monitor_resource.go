@@ -148,8 +148,11 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
-							MarkdownDescription: "The header name. Reserved headers (`Host`, `Transfer-Encoding`) are not allowed.",
-							Required:            true,
+							MarkdownDescription: "The header name. Must be a valid HTTP token (RFC 7230). " +
+								"Reserved headers that control HTTP framing or routing are not allowed: " +
+								"`Host`, `Transfer-Encoding`, `Content-Length`, `Connection`, `Upgrade`, " +
+								"`TE`, `Trailer`, `Expect`.",
+							Required: true,
 							Validators: []validator.String{
 								NoControlCharacters("Header name must not contain CR, LF, or NULL characters to prevent HTTP header injection."),
 								ReservedHeaderName(),

@@ -23,16 +23,39 @@ import (
 var resourceIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{1,}[a-zA-Z0-9]$`)
 
 // reservedHeaderNames lists HTTP headers that users must not override on monitor
-// probes. Limited to entries that have real impact on the outbound HTTP exchange:
-//   - host: routing manipulation / blind SSRF target shifting.
-//   - transfer-encoding: request smuggling against the monitored origin.
+// probes. Scoped to headers that control HTTP message framing, routing, or
+// connection lifecycle, where a user-supplied value can produce request
+// smuggling, cache poisoning, or protocol-switch abuse against the monitored
+// origin or the probing layer.
 //
-// Authentication-style headers (Authorization, Cookie) are legitimate on monitor
-// requests for probing endpoints behind auth and are intentionally allowed. Header
-// values are marked sensitive in the schema to mask credentials in plan output.
+//   - host: routing manipulation; blind SSRF target shifting on shared-IP vhosts.
+//   - transfer-encoding: TE smuggling pair; user-controlled framing.
+//   - content-length: CL smuggling pair with TE. Go's net/http rewrites this on
+//     the wire, but blocking it in the schema makes the intent explicit and
+//     prevents the SDK or future transports from accidentally honouring it.
+//   - connection: hop-by-hop header; not appropriate for user control.
+//   - upgrade: protocol switch (h2c, WebSocket). Probes are HTTP/1.1 or HTTP/2
+//     monitors; an upgrade has no monitor semantics.
+//   - te: Transfer-Encoding negotiation; smuggling vector.
+//   - trailer: declares trailing headers; smuggling-related.
+//   - expect: 100-continue. Can hang the probe or interact badly with origins
+//     that do not implement Expect handling.
+//
+// Authentication-style headers (Authorization, Cookie, Set-Cookie,
+// Proxy-Authorize) and forwarding metadata (X-Forwarded-*, Forwarded,
+// X-Real-IP) are NOT in the banlist. They are legitimate on monitor probes
+// for probing endpoints behind auth or for testing IP-allowlist behaviour on
+// the user's own origin. Header values are marked sensitive in the schema to
+// mask credentials in plan output.
 var reservedHeaderNames = map[string]bool{
 	"host":              true,
 	"transfer-encoding": true,
+	"content-length":    true,
+	"connection":        true,
+	"upgrade":           true,
+	"te":                true,
+	"trailer":           true,
+	"expect":            true,
 }
 
 // noControlCharactersValidator rejects strings containing CR, LF, or NULL.
@@ -70,8 +93,7 @@ func NoControlCharacters(message string) validator.String {
 }
 
 // reservedHeaderNameValidator rejects reserved HTTP header names (case-insensitive).
-// Currently blocks Host and Transfer-Encoding to mitigate routing/smuggling abuse on
-// the outbound probe; see reservedHeaderNames for the full set and rationale.
+// See reservedHeaderNames for the full set and per-entry rationale.
 type reservedHeaderNameValidator struct{}
 
 func (v reservedHeaderNameValidator) Description(_ context.Context) string {
@@ -93,7 +115,9 @@ func (v reservedHeaderNameValidator) ValidateString(_ context.Context, req valid
 			req.Path,
 			"Reserved Header Name",
 			fmt.Sprintf("The header name %q is reserved and cannot be overridden in request_headers. "+
-				"This protects API credentials and request integrity.", value),
+				"Reserved headers control HTTP message framing, routing, or "+
+				"connection lifecycle and are unsafe to expose to user "+
+				"configuration on outbound probes.", value),
 		)
 	}
 }
