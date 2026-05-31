@@ -149,6 +149,42 @@ func TestMaskSensitiveHeaders(t *testing.T) {
 		}
 	})
 
+	t.Run("masks sensitive query params case-insensitively", func(t *testing.T) {
+		// Real-world APIs (and operator-crafted URLs) use varying capitalisations
+		// for the same parameter name. The masker must treat the parameter name
+		// case-insensitively while preserving the original casing in the output
+		// (so cassette diffs remain readable). Locking this in here: a future
+		// change that reverts to a case-sensitive map lookup would let secrets
+		// hit disk under `Api_Key=...`, `API_KEY=...`, or `Token=...`.
+		cases := []struct {
+			name     string
+			url      string
+			secret   string
+			wantPair string // pair that must appear verbatim in the masked URL
+		}{
+			{"PascalCase Api_Key", "https://api.example.com/v1/x?Api_Key=sk_real_value", "sk_real_value", "Api_Key=[MASKED]"},
+			{"upper API_KEY", "https://api.example.com/v1/x?API_KEY=sk_real_value", "sk_real_value", "API_KEY=[MASKED]"},
+			{"title Token", "https://api.example.com/v1/x?Token=secret_value", "secret_value", "Token=[MASKED]"},
+			{"jagged aPi_KeY", "https://api.example.com/v1/x?aPi_KeY=sk_xxx", "sk_xxx", "aPi_KeY=[MASKED]"},
+			{"upper Access_Token", "https://api.example.com/v1/x?Access_Token=tk_yyy", "tk_yyy", "Access_Token=[MASKED]"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				i := &cassette.Interaction{
+					Request:  cassette.Request{Headers: http.Header{}, URL: tc.url},
+					Response: cassette.Response{Headers: http.Header{}},
+				}
+				maskSensitiveHeaders(i)
+				if strings.Contains(i.Request.URL, tc.secret) {
+					t.Errorf("secret leaked under non-lowercase key: %s", i.Request.URL)
+				}
+				if !strings.Contains(i.Request.URL, tc.wantPair) {
+					t.Errorf("expected %q in URL, got: %s", tc.wantPair, i.Request.URL)
+				}
+			})
+		}
+	})
+
 	t.Run("masks token and apikey and access_token query params", func(t *testing.T) {
 		cases := []struct {
 			name   string
