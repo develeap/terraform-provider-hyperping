@@ -383,7 +383,7 @@ func TestIsAllowedBaseURL(t *testing.T) {
 		{"local http denied without allowLocal", "http://localhost:8080", false},
 		{"local 127.0.0.1 denied without allowLocal", "http://127.0.0.1:8080", false},
 		{"local ipv6 denied without allowLocal", "http://[::1]", false},
-		{"local https denied without allowLocal (not a hyperping host)", "https://localhost", false},
+		{"https://localhost rejected by hyperping-host allowlist when allowLocal off", "https://localhost", false},
 		{"hyperping.io still allowed without allowLocal", "https://api.hyperping.io", true},
 	}
 	for _, tt := range denyLocalCases {
