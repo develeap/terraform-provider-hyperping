@@ -11,10 +11,10 @@ import (
 
 func TestSafeUUID(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   string
-		want    string
-		wantOK  bool
+		name   string
+		input  string
+		want   string
+		wantOK bool
 	}{
 		{"empty", "", "", false},
 		{"plain uuid hex", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440000", true},

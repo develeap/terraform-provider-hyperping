@@ -34,7 +34,7 @@ func SafeUUID(s string) (string, bool) {
 // bash double-quote-safe) literal. Inputs that do not match the safe UUID
 // pattern are replaced with the sentinel "INVALID_UUID_<hex>" before quoting,
 // so a malformed server response cannot smuggle command substitution
-// ($(...), ``...``), variable expansion ($VAR), or statement chaining (;) into
+// ($(...), “...“), variable expansion ($VAR), or statement chaining (;) into
 // the generated shell script.
 //
 // The sentinel preserves the script's structure (Terraform will fail the
