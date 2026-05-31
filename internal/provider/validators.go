@@ -58,6 +58,12 @@ var reservedHeaderNames = map[string]bool{
 	"expect":            true,
 }
 
+// headerNameTokenPattern matches the RFC 7230 token grammar for HTTP header
+// field-names: 1*tchar where tchar is any of the alphanumeric set plus the
+// specials listed below. Anything outside this set (whitespace, control
+// characters, separators) is not a valid header name.
+var headerNameTokenPattern = regexp.MustCompile("^[A-Za-z0-9!#$%&'*+\\-.^_`|~]+$")
+
 // noControlCharactersValidator rejects strings containing CR, LF, or NULL.
 // This prevents HTTP header injection (VULN-012).
 type noControlCharactersValidator struct {
@@ -92,12 +98,21 @@ func NoControlCharacters(message string) validator.String {
 	return noControlCharactersValidator{message: message}
 }
 
-// reservedHeaderNameValidator rejects reserved HTTP header names (case-insensitive).
-// See reservedHeaderNames for the full set and per-entry rationale.
+// reservedHeaderNameValidator rejects reserved HTTP header names (case-insensitive)
+// and header names that do not match the RFC 7230 token grammar.
+//
+// Two failure modes are guarded:
+//  1. A name whose lowercased, whitespace-trimmed form is in reservedHeaderNames
+//     (HTTP framing/routing/connection-control headers). See reservedHeaderNames
+//     for the full set and rationale.
+//  2. A name that contains characters outside the RFC 7230 token set, including
+//     any internal or surrounding whitespace. This blocks bypasses such as
+//     "Host " (trailing space) or "X-Foo Host" (internal whitespace) from
+//     reaching the wire as a valid header on the probe.
 type reservedHeaderNameValidator struct{}
 
 func (v reservedHeaderNameValidator) Description(_ context.Context) string {
-	return "header name must not be a reserved HTTP header"
+	return "header name must be a valid HTTP token and must not be a reserved header"
 }
 
 func (v reservedHeaderNameValidator) MarkdownDescription(ctx context.Context) string {
@@ -110,7 +125,25 @@ func (v reservedHeaderNameValidator) ValidateString(_ context.Context, req valid
 	}
 
 	value := req.ConfigValue.ValueString()
-	if reservedHeaderNames[strings.ToLower(value)] {
+
+	// Reject names that do not match the RFC 7230 token grammar. This covers
+	// leading/trailing whitespace, internal whitespace, and control or
+	// separator characters that would otherwise let a reserved name slip
+	// through the lowercased-map check (for example "Host ", " host",
+	// "X-Foo Host").
+	if !headerNameTokenPattern.MatchString(value) {
+		resp.Diagnostics.AddAttributeError(
+			req.Path,
+			"Invalid Header Name",
+			fmt.Sprintf("The header name %q is not a valid HTTP header name. "+
+				"Header names must match the RFC 7230 token grammar: "+
+				"letters, digits, and the symbols !#$%%&'*+-.^_`|~. Whitespace "+
+				"and other separators are not permitted.", value),
+		)
+		return
+	}
+
+	if reservedHeaderNames[strings.ToLower(strings.TrimSpace(value))] {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Reserved Header Name",
