@@ -29,6 +29,11 @@ func TestEscapeHCL(t *testing.T) {
 		{"interp env var", `${env.SECRET}`, `$${env.SECRET}`},
 		{"interp mixed", `${env.SECRET}_%{ "x" }`, `$${env.SECRET}_%%{ \"x\" }`},
 		{"interp dollar then template", `$${literal}`, `$$${literal}`},
+		// Pathological backslash + template start. The backslash must be doubled
+		// first; then ${ must be neutralized. Order matters: if the template
+		// escape ran before the backslash escape, we could end up doubling the
+		// sigil we just produced. Locking the ordering in with a regression case.
+		{"interp backslash then template", `\${x}`, `\\$${x}`},
 	}
 
 	for _, tt := range tests {
