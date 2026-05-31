@@ -85,4 +85,4 @@ resource "hyperping_incident" "outage" {
 Read-Only:
 
 - `name` (String) Header name.
-- `value` (String) Header value.
+- `value` (String, Sensitive) Header value. Marked sensitive: masked in plan output and Terraform CLI display because monitor request headers commonly carry credentials (Authorization, Cookie).

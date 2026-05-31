@@ -489,9 +489,9 @@ resource "hyperping_monitor" "api" {
   name     = "API Monitor"
   url      = "https://api.example.com"
   protocol = "http"
-  request_headers = {
-    "X-Custom-Header" = "value\nInjected-Header: malicious"
-  }
+  request_headers = [
+    { name = "X-Custom-Header", value = "value\nInjected-Header: malicious" },
+  ]
 }
 
 # ✅ Correct - clean header value
@@ -499,20 +499,20 @@ resource "hyperping_monitor" "api" {
   name     = "API Monitor"
   url      = "https://api.example.com"
   protocol = "http"
-  request_headers = {
-    "X-Custom-Header" = "clean-value-123"
-  }
+  request_headers = [
+    { name = "X-Custom-Header", value = "clean-value-123" },
+  ]
 }
 
-# ✅ Correct - multiple headers (use separate keys)
+# ✅ Correct - multiple headers (one entry per header)
 resource "hyperping_monitor" "api" {
   name     = "API Monitor"
   url      = "https://api.example.com"
   protocol = "http"
-  request_headers = {
-    "X-Custom-Header" = "value1"
-    "X-Another-Header" = "value2"
-  }
+  request_headers = [
+    { name = "X-Custom-Header",  value = "value1" },
+    { name = "X-Another-Header", value = "value2" },
+  ]
 }
 ```
 
@@ -561,15 +561,26 @@ resource "hyperping_monitor" "api" {
 ```
 
 **Reserved headers (still cannot override):**
-- `Host` - target hostname; derived from the monitor URL. Overriding it enables vhost manipulation.
+- `Host` - target hostname; derived from the monitor URL. Overriding it enables vhost manipulation and blind SSRF target shifting on shared-IP virtual hosts.
 - `Transfer-Encoding` - message framing; user-supplied values enable request smuggling against the monitored origin.
+- `Content-Length` - smuggling pair with `Transfer-Encoding`. Blocking it makes intent explicit even though Go's HTTP client rewrites this on the wire.
+- `Connection` - hop-by-hop header; not appropriate for user control.
+- `Upgrade` - protocol switch (h2c, WebSocket); has no monitor semantics on probe traffic.
+- `TE` - `Transfer-Encoding` negotiation; smuggling vector.
+- `Trailer` - declares trailing headers; smuggling-related.
+- `Expect` - 100-continue; can hang the probe or fail on origins that do not implement Expect.
 
-**Allowed (commonly used for auth):**
+Header names must also match the RFC 7230 token grammar. Names with leading, trailing, or internal whitespace, control characters, or HTTP separators (such as `:`) are rejected with an `Invalid Header Name` diagnostic.
+
+**Allowed (commonly used for auth or forwarding):**
 - `Authorization` (Bearer, Basic, custom schemes)
-- `Cookie`
-- Any `X-*` header
+- `Cookie`, `Set-Cookie`
+- `Proxy-Authorize`
+- `X-Forwarded-For`, `Forwarded`, `X-Real-IP` and similar forwarding metadata (legitimate when probing IP-allowlisted endpoints you own)
+- `Range` (legitimate for testing CDN/range-supporting endpoints)
+- Any `X-*` header that matches the HTTP token grammar
 
-**Why the remaining two are blocked:** `Host` and `Transfer-Encoding` change how the probe is interpreted at the network layer, not what credentials are carried. Header values are marked sensitive in the schema so secrets are masked in plan output (but still land in Terraform state, so use an encrypted backend).
+**Why these are blocked:** the reserved set controls HTTP message framing, routing, and connection lifecycle. A user-supplied value on any of them produces request smuggling, cache poisoning, or protocol-switch abuse against the monitored origin or the probing layer, none of which is needed to probe an endpoint. Header values are marked sensitive in the schema so secrets are masked in plan output (but still land in Terraform state, so use an encrypted backend).
 
 ---
 
@@ -1163,9 +1174,9 @@ resource "hyperping_monitor" "api" {
   name     = "Production API"           # ✅ 1-255 chars
   url      = "https://api.example.com"  # ✅ Valid HTTP URL
   protocol = "http"
-  request_headers = {
-    "X-API-Key" = "Bearer token"        # ✅ Custom header (not reserved)
-  }
+  request_headers = [
+    { name = "X-API-Key", value = "Bearer token" }, # ✅ Custom header (not reserved)
+  ]
 }
 
 resource "hyperping_monitor" "database" {

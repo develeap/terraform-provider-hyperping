@@ -16,8 +16,9 @@ Published releases start from v1.0.3.
 
 ### Changed
 
-- `hyperping_monitor.request_headers[*].value` is marked sensitive: Terraform masks the value in plan output and CLI display. Values are still persisted to state, so use an encrypted state backend for credentials.
-- `ReservedHeaderName` validator narrowed to `Host` and `Transfer-Encoding`. These remain blocked because they manipulate request routing and message framing on the outbound probe. `Authorization`, `Cookie`, `Set-Cookie`, and `Proxy-Authorize` are now allowed.
+- `hyperping_monitor.request_headers[*].value` is marked sensitive on both the resource and the `hyperping_monitor` / `hyperping_monitors` data sources. Terraform masks the value in plan output and CLI display. This applies to ALL header values, including non-secret ones such as `Accept` and `Content-Type`: every entry will render as `(sensitive value)` in plan output. Values are still persisted to state, so use an encrypted state backend whenever a header carries credentials.
+- `ReservedHeaderName` validator updated to block the full set of HTTP framing and connection-control headers: `Host`, `Transfer-Encoding`, `Content-Length`, `Connection`, `Upgrade`, `TE`, `Trailer`, `Expect`. These are unsafe to expose to user configuration on outbound probes (request smuggling, protocol switch, cache poisoning). `Authorization`, `Cookie`, `Set-Cookie`, `Proxy-Authorize`, `X-Forwarded-*`, `Forwarded`, `X-Real-IP`, and `Range` are allowed.
+- `ReservedHeaderName` now also rejects header names that do not match the RFC 7230 token grammar, including names with leading, trailing, or internal whitespace. This closes a bypass where `"Host "` or `" host"` would be accepted by the lowercased-map lookup.
 - Updated `examples/modules/graphql-monitor`, `docs/guides/validation.md`, `docs/DRY_RUN_GUIDE.md`, and `examples/dry-run-example.md` to reflect the relaxed validator.
 
 ### Security

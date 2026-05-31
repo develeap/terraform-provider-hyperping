@@ -98,7 +98,7 @@ resource "hyperping_monitor" "maintenance" {
 
 Required:
 
-- `name` (String) The header name. Reserved headers (`Host`, `Transfer-Encoding`) are not allowed.
+- `name` (String) The header name. Must be a valid HTTP token (RFC 7230). Reserved headers that control HTTP framing or routing are not allowed: `Host`, `Transfer-Encoding`, `Content-Length`, `Connection`, `Upgrade`, `TE`, `Trailer`, `Expect`.
 - `value` (String, Sensitive) The header value. Marked sensitive: masked in plan output and Terraform CLI display. Values are still stored in state, so credentials require a secure state backend.
 
 ## Import
