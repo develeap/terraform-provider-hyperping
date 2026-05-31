@@ -370,11 +370,11 @@ Migrated: regions: ["virginia", "frankfurt", "singapore"]
 
 #### Custom Headers
 
-**Issue**: Some headers may be restricted
+**Issue**: A small set of headers remain reserved (`Host`, `Transfer-Encoding`).
 
 ```
-Warning: Authorization header blocked for security
-Action: Use endpoint-level authentication instead
+Warning: Host header is reserved and cannot be overridden
+Action: Remove the Host override; Hyperping derives Host from the URL
 ```
 
 ## Common Scenarios

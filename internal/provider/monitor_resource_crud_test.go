@@ -156,6 +156,30 @@ func TestAccMonitorResource_updateAllFields(t *testing.T) {
 	})
 }
 
+// TestAccMonitorResource_authorizationHeader verifies issue #132: Authorization
+// and Cookie headers are accepted on monitor probes (Host and Transfer-Encoding
+// remain rejected). Header values are marked sensitive in the schema.
+func TestAccMonitorResource_authorizationHeader(t *testing.T) {
+	server := newMockHyperpingServer(t)
+	defer server.Close()
+
+	tfresource.ParallelTest(t, tfresource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []tfresource.TestStep{
+			{
+				Config: testAccMonitorResourceConfigWithAuthHeader(server.URL),
+				Check: tfresource.ComposeAggregateTestCheckFunc(
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.#", "2"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.0.name", "Authorization"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.0.value", "Basic dXNlcjpwYXNzd29yZA=="),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.1.name", "Cookie"),
+					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.1.value", "session=abc123"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccMonitorResource_headersUpdate(t *testing.T) {
 	server := newMockHyperpingServer(t)
 	defer server.Close()

@@ -37,9 +37,10 @@ variable "queries" {
 }
 
 variable "custom_headers" {
-  description = "Additional custom headers to include in GraphQL requests. Note: Reserved headers (Authorization, Cookie, Host, etc.) are not allowed by the provider for security reasons. Use non-reserved headers like X-API-Key for authentication if needed."
+  description = "Additional custom headers to include in GraphQL requests. `Authorization` and `Cookie` are allowed; `Host` and `Transfer-Encoding` are still rejected by the provider. Header values are sensitive in plan output but persisted to Terraform state."
   type        = map(string)
   default     = null
+  sensitive   = true
 }
 
 variable "name_prefix" {
