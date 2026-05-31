@@ -14,6 +14,13 @@ import (
 )
 
 func TestAccEscalationPolicyDataSource_basic(t *testing.T) {
+	// This fixture points mcp_url at an httptest server on 127.0.0.1, which the
+	// provider rejects by default. The opt-in env var is scoped to this test so
+	// the production gate (default-deny localhost for mcp_url) remains intact
+	// for real users; it is only relaxed here, where the loopback target is the
+	// test server we just spun up in-process.
+	t.Setenv("HYPERPING_ALLOW_LOCAL", "1")
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -38,7 +45,9 @@ func TestAccEscalationPolicyDataSource_basic(t *testing.T) {
 	}))
 	defer server.Close()
 
-	tfresource.ParallelTest(t, tfresource.TestCase{
+	// Note: using tfresource.Test rather than ParallelTest because t.Setenv
+	// above is incompatible with t.Parallel (the Go testing runtime panics).
+	tfresource.Test(t, tfresource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []tfresource.TestStep{
 			{

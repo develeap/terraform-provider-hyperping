@@ -564,7 +564,7 @@ func (v statusCodePatternValidator) ValidateString(_ context.Context, req valida
 			resp.Diagnostics.AddAttributeError(
 				req.Path,
 				"Invalid Status Code Range",
-				fmt.Sprintf("The range %q is inverted — the start class (%cxx) must be "+
+				fmt.Sprintf("The range %q is inverted: the start class (%cxx) must be "+
 					"less than or equal to the end class (%cxx).", value, value[0], value[4]),
 			)
 		}

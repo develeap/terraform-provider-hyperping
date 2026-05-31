@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	hyperping "github.com/develeap/hyperping-go"
+
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // buildOptionalStringField returns an HCL line for a string field only when
@@ -17,7 +19,7 @@ func buildOptionalStringField(name, value, skipValue string) string {
 	if value == "" || value == skipValue {
 		return ""
 	}
-	return fmt.Sprintf("  %s = %q\n", name, value)
+	return fmt.Sprintf("  %s = %s\n", name, migrate.QuoteHCL(value))
 }
 
 // buildOptionalIntField returns an HCL line for an int field only when
@@ -32,10 +34,11 @@ func buildOptionalIntField(name string, value, skipValue int) string {
 func (g *Generator) generateMonitorHCL(sb *strings.Builder, m hyperping.Monitor) {
 	name := g.terraformName(m.Name)
 
+	// name is sanitized to identifier-safe characters by terraformName; safe for %q.
 	fmt.Fprintf(sb, "resource \"hyperping_monitor\" %q {\n", name)
-	fmt.Fprintf(sb, "  name     = %q\n", m.Name)
-	fmt.Fprintf(sb, "  url      = %q\n", m.URL)
-	fmt.Fprintf(sb, "  protocol = %q\n", m.Protocol)
+	fmt.Fprintf(sb, "  name     = %s\n", migrate.QuoteHCL(m.Name))
+	fmt.Fprintf(sb, "  url      = %s\n", migrate.QuoteHCL(m.URL))
+	fmt.Fprintf(sb, "  protocol = %s\n", migrate.QuoteHCL(m.Protocol))
 
 	sb.WriteString(buildOptionalStringField("http_method", m.HTTPMethod, "GET"))
 	sb.WriteString(buildOptionalIntField("check_frequency", m.CheckFrequency, 60))
@@ -53,11 +56,11 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m hyperping.Monitor)
 	}
 
 	if m.ExpectedStatusCode.String() != "" && m.ExpectedStatusCode.String() != "200" {
-		fmt.Fprintf(sb, "  expected_status_code = %q\n", m.ExpectedStatusCode.String())
+		fmt.Fprintf(sb, "  expected_status_code = %s\n", migrate.QuoteHCL(m.ExpectedStatusCode.String()))
 	}
 
 	if m.RequiredKeyword != nil && *m.RequiredKeyword != "" {
-		fmt.Fprintf(sb, "  required_keyword = %q\n", *m.RequiredKeyword)
+		fmt.Fprintf(sb, "  required_keyword = %s\n", migrate.QuoteHCL(*m.RequiredKeyword))
 	}
 
 	if m.Paused {
@@ -67,15 +70,15 @@ func (g *Generator) generateMonitorHCL(sb *strings.Builder, m hyperping.Monitor)
 	sb.WriteString(buildOptionalIntField("alerts_wait", m.AlertsWait, 0))
 
 	if m.EscalationPolicy != nil && m.EscalationPolicy.UUID != "" {
-		fmt.Fprintf(sb, "  escalation_policy = %q\n", m.EscalationPolicy.UUID)
+		fmt.Fprintf(sb, "  escalation_policy = %s\n", migrate.QuoteHCL(m.EscalationPolicy.UUID))
 	}
 
 	if len(m.RequestHeaders) > 0 {
 		sb.WriteString("  request_headers = [\n")
 		for _, h := range m.RequestHeaders {
 			sb.WriteString("    {\n")
-			fmt.Fprintf(sb, "      name  = %q\n", h.Name)
-			fmt.Fprintf(sb, "      value = %q\n", h.Value)
+			fmt.Fprintf(sb, "      name  = %s\n", migrate.QuoteHCL(h.Name))
+			fmt.Fprintf(sb, "      value = %s\n", migrate.QuoteHCL(h.Value))
 			sb.WriteString("    },\n")
 		}
 		sb.WriteString("  ]\n")
@@ -90,16 +93,16 @@ func (g *Generator) generateHealthcheckHCL(sb *strings.Builder, h hyperping.Heal
 	name := g.terraformName(h.Name)
 
 	fmt.Fprintf(sb, "resource \"hyperping_healthcheck\" %q {\n", name)
-	fmt.Fprintf(sb, "  name = %q\n", h.Name)
+	fmt.Fprintf(sb, "  name = %s\n", migrate.QuoteHCL(h.Name))
 
 	if h.Cron != "" {
-		fmt.Fprintf(sb, "  cron = %q\n", h.Cron)
+		fmt.Fprintf(sb, "  cron = %s\n", migrate.QuoteHCL(h.Cron))
 		if h.Timezone != "" {
-			fmt.Fprintf(sb, "  timezone = %q\n", h.Timezone)
+			fmt.Fprintf(sb, "  timezone = %s\n", migrate.QuoteHCL(h.Timezone))
 		}
 	} else if h.PeriodValue != nil && *h.PeriodValue > 0 {
 		fmt.Fprintf(sb, "  period_value = %d\n", *h.PeriodValue)
-		fmt.Fprintf(sb, "  period_type = %q\n", h.PeriodType)
+		fmt.Fprintf(sb, "  period_type = %s\n", migrate.QuoteHCL(h.PeriodType))
 	}
 
 	if h.GracePeriod > 0 {
@@ -117,16 +120,16 @@ func (g *Generator) generateStatusPageHCL(sb *strings.Builder, sp hyperping.Stat
 	name := g.terraformName(sp.Name)
 
 	fmt.Fprintf(sb, "resource \"hyperping_statuspage\" %q {\n", name)
-	fmt.Fprintf(sb, "  name             = %q\n", sp.Name)
-	fmt.Fprintf(sb, "  hosted_subdomain = %q\n", sp.HostedSubdomain)
+	fmt.Fprintf(sb, "  name             = %s\n", migrate.QuoteHCL(sp.Name))
+	fmt.Fprintf(sb, "  hosted_subdomain = %s\n", migrate.QuoteHCL(sp.HostedSubdomain))
 
 	if sp.Hostname != nil && *sp.Hostname != "" {
-		fmt.Fprintf(sb, "  hostname = %q\n", *sp.Hostname)
+		fmt.Fprintf(sb, "  hostname = %s\n", migrate.QuoteHCL(*sp.Hostname))
 	}
 
 	// Settings block
 	sb.WriteString("\n  settings = {\n")
-	fmt.Fprintf(sb, "    name      = %q\n", sp.Name)
+	fmt.Fprintf(sb, "    name      = %s\n", migrate.QuoteHCL(sp.Name))
 
 	if len(sp.Settings.Languages) > 0 {
 		fmt.Fprintf(sb, "    languages = %s\n", formatStringList(sp.Settings.Languages))
@@ -153,7 +156,7 @@ func (g *Generator) generateIncidentHCL(sb *strings.Builder, i hyperping.Inciden
 	name := g.terraformName(i.Title.En)
 
 	fmt.Fprintf(sb, "resource \"hyperping_incident\" %q {\n", name)
-	fmt.Fprintf(sb, "  title = %q\n", i.Title.En)
+	fmt.Fprintf(sb, "  title = %s\n", migrate.QuoteHCL(i.Title.En))
 
 	sb.WriteString(buildOptionalStringField("text", i.Text.En, ""))
 	sb.WriteString(buildOptionalStringField("type", i.Type, "incident"))
@@ -178,15 +181,15 @@ func (g *Generator) generateMaintenanceHCL(sb *strings.Builder, m hyperping.Main
 	name := g.terraformName(titleText)
 
 	fmt.Fprintf(sb, "resource \"hyperping_maintenance\" %q {\n", name)
-	fmt.Fprintf(sb, "  title = %q\n", titleText)
+	fmt.Fprintf(sb, "  title = %s\n", migrate.QuoteHCL(titleText))
 
 	sb.WriteString(buildOptionalStringField("text", m.Text.En, ""))
 
 	if m.StartDate != nil {
-		fmt.Fprintf(sb, "  start_date = %q\n", *m.StartDate)
+		fmt.Fprintf(sb, "  start_date = %s\n", migrate.QuoteHCL(*m.StartDate))
 	}
 	if m.EndDate != nil {
-		fmt.Fprintf(sb, "  end_date   = %q\n", *m.EndDate)
+		fmt.Fprintf(sb, "  end_date   = %s\n", migrate.QuoteHCL(*m.EndDate))
 	}
 
 	if len(m.StatusPages) > 0 {
@@ -200,10 +203,11 @@ func (g *Generator) generateOutageHCL(sb *strings.Builder, o hyperping.Outage) {
 	name := g.terraformName(o.Monitor.Name)
 
 	fmt.Fprintf(sb, "resource \"hyperping_outage\" %q {\n", name)
-	fmt.Fprintf(sb, "  monitor_uuid = %q\n", o.Monitor.UUID)
+	fmt.Fprintf(sb, "  monitor_uuid = %s\n", migrate.QuoteHCL(o.Monitor.UUID))
 
 	if o.Description != "" {
-		fmt.Fprintf(sb, "  # description = %q\n", o.Description)
+		// Emitted as a comment so any embedded newline is sanitized via EscapeHCL.
+		fmt.Fprintf(sb, "  # description = %s\n", migrate.QuoteHCL(o.Description))
 	}
 
 	// Note: Most outage fields are read-only/computed

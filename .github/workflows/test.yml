@@ -209,30 +209,30 @@ jobs:
           fail_ci_if_error: false
         continue-on-error: true
 
-      # Run acceptance tests with parallel execution (only if API key available)
+      # Run acceptance tests with parallel execution (only if API key available).
+      # The skip gate lives inside the step body because the job-level `env`
+      # context does not see step-scoped secrets, so the previous
+      # `if: env.HYPERPING_API_KEY != ''` always evaluated to false and the
+      # acceptance suite never ran on push or PR.
       - name: Run acceptance tests (E2E)
-        if: env.HYPERPING_API_KEY != ''
         env:
           TF_ACC: "1"
           HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
           # Optimize parallel execution for acceptance tests
           GOMAXPROCS: "4"
         run: |
+          if [ -z "$HYPERPING_API_KEY" ]; then
+            echo "WARN: Acceptance tests skipped - HYPERPING_API_KEY not available"
+            echo "This is expected for:"
+            echo "  - Pull requests from forks"
+            echo "  - First-time contributors"
+            echo ""
+            echo "Unit and contract tests have passed. Maintainers will run acceptance tests."
+            exit 0
+          fi
           # Run with parallelism: -p 2 packages (limit API load), -parallel 10 tests per package
           # Timeout: 30m for comprehensive E2E testing
           go test -v -p 2 -parallel 10 -timeout 30m ./internal/provider/
         continue-on-error: false
-
-      - name: Acceptance tests skipped (no API key)
-        if: env.HYPERPING_API_KEY == ''
-        env:
-          HYPERPING_API_KEY: ${{ secrets.HYPERPING_API_KEY }}
-        run: |
-          echo "WARN: Acceptance tests skipped - HYPERPING_API_KEY not available"
-          echo "This is expected for:"
-          echo "  - Pull requests from forks"
-          echo "  - First-time contributors"
-          echo ""
-          echo "Unit and contract tests have passed. Maintainers will run acceptance tests."
 
 

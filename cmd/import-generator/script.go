@@ -6,6 +6,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // generateScript generates an executable bash script for importing resources.
@@ -70,13 +72,16 @@ func (g *Generator) generateScript(data *ResourceData) string {
 	sb.WriteString("echo\n")
 	sb.WriteString("\n")
 
-	// Generate import commands
+	// Generate import commands. UUIDs flow through migrate.QuoteShellUUID so
+	// an attacker-influenced UUID-shaped value cannot smuggle command
+	// substitution ($(...), ``...``) or statement chaining (;) into the
+	// generated script.
 	if len(data.Monitors) > 0 {
 		sb.WriteString("# Monitors\n")
 		for _, m := range data.Monitors {
 			name := g.terraformName(m.Name)
 			addr := fmt.Sprintf("hyperping_monitor.%s", name)
-			fmt.Fprintf(&sb, "import_resource %q %q\n", addr, m.UUID)
+			fmt.Fprintf(&sb, "import_resource %q %s\n", addr, migrate.QuoteShellUUID(m.UUID))
 		}
 		sb.WriteString("\n")
 	}
@@ -86,7 +91,7 @@ func (g *Generator) generateScript(data *ResourceData) string {
 		for _, h := range data.Healthchecks {
 			name := g.terraformName(h.Name)
 			addr := fmt.Sprintf("hyperping_healthcheck.%s", name)
-			fmt.Fprintf(&sb, "import_resource %q %q\n", addr, h.UUID)
+			fmt.Fprintf(&sb, "import_resource %q %s\n", addr, migrate.QuoteShellUUID(h.UUID))
 		}
 		sb.WriteString("\n")
 	}
@@ -96,7 +101,7 @@ func (g *Generator) generateScript(data *ResourceData) string {
 		for _, sp := range data.StatusPages {
 			name := g.terraformName(sp.Name)
 			addr := fmt.Sprintf("hyperping_statuspage.%s", name)
-			fmt.Fprintf(&sb, "import_resource %q %q\n", addr, sp.UUID)
+			fmt.Fprintf(&sb, "import_resource %q %s\n", addr, migrate.QuoteShellUUID(sp.UUID))
 		}
 		sb.WriteString("\n")
 	}
@@ -106,7 +111,7 @@ func (g *Generator) generateScript(data *ResourceData) string {
 		for _, i := range data.Incidents {
 			name := g.terraformName(i.Title.En)
 			addr := fmt.Sprintf("hyperping_incident.%s", name)
-			fmt.Fprintf(&sb, "import_resource %q %q\n", addr, i.UUID)
+			fmt.Fprintf(&sb, "import_resource %q %s\n", addr, migrate.QuoteShellUUID(i.UUID))
 		}
 		sb.WriteString("\n")
 	}
@@ -120,7 +125,7 @@ func (g *Generator) generateScript(data *ResourceData) string {
 			}
 			name := g.terraformName(titleText)
 			addr := fmt.Sprintf("hyperping_maintenance.%s", name)
-			fmt.Fprintf(&sb, "import_resource %q %q\n", addr, m.UUID)
+			fmt.Fprintf(&sb, "import_resource %q %s\n", addr, migrate.QuoteShellUUID(m.UUID))
 		}
 		sb.WriteString("\n")
 	}
@@ -130,7 +135,7 @@ func (g *Generator) generateScript(data *ResourceData) string {
 		for _, o := range data.Outages {
 			name := g.terraformName(o.Monitor.Name)
 			addr := fmt.Sprintf("hyperping_outage.%s", name)
-			fmt.Fprintf(&sb, "import_resource %q %q\n", addr, o.UUID)
+			fmt.Fprintf(&sb, "import_resource %q %s\n", addr, migrate.QuoteShellUUID(o.UUID))
 		}
 		sb.WriteString("\n")
 	}

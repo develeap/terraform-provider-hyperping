@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	hyperping "github.com/develeap/hyperping-go"
+
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // APIClient defines the interface for fetching Hyperping resources.
@@ -222,24 +224,28 @@ func (g *Generator) fetchOutages(ctx context.Context, data *ResourceData, progre
 }
 
 func (g *Generator) generateImports(sb *strings.Builder, data *ResourceData) {
+	// UUIDs flow through migrate.QuoteShellUUID for defense in depth: the API
+	// is the source of truth for these identifiers, but %q does not escape
+	// bash metacharacters ($, `, ;), so an attacker-influenced UUID-shaped
+	// value would otherwise smuggle command substitution into the script.
 	for _, m := range data.Monitors {
 		name := g.terraformName(m.Name)
-		fmt.Fprintf(sb, "terraform import hyperping_monitor.%s %q\n", name, m.UUID)
+		fmt.Fprintf(sb, "terraform import hyperping_monitor.%s %s\n", name, migrate.QuoteShellUUID(m.UUID))
 	}
 
 	for _, h := range data.Healthchecks {
 		name := g.terraformName(h.Name)
-		fmt.Fprintf(sb, "terraform import hyperping_healthcheck.%s %q\n", name, h.UUID)
+		fmt.Fprintf(sb, "terraform import hyperping_healthcheck.%s %s\n", name, migrate.QuoteShellUUID(h.UUID))
 	}
 
 	for _, sp := range data.StatusPages {
 		name := g.terraformName(sp.Name)
-		fmt.Fprintf(sb, "terraform import hyperping_statuspage.%s %q\n", name, sp.UUID)
+		fmt.Fprintf(sb, "terraform import hyperping_statuspage.%s %s\n", name, migrate.QuoteShellUUID(sp.UUID))
 	}
 
 	for _, i := range data.Incidents {
 		name := g.terraformName(i.Title.En)
-		fmt.Fprintf(sb, "terraform import hyperping_incident.%s %q\n", name, i.UUID)
+		fmt.Fprintf(sb, "terraform import hyperping_incident.%s %s\n", name, migrate.QuoteShellUUID(i.UUID))
 	}
 
 	for _, m := range data.Maintenance {
@@ -248,12 +254,12 @@ func (g *Generator) generateImports(sb *strings.Builder, data *ResourceData) {
 			titleText = m.Name
 		}
 		name := g.terraformName(titleText)
-		fmt.Fprintf(sb, "terraform import hyperping_maintenance.%s %q\n", name, m.UUID)
+		fmt.Fprintf(sb, "terraform import hyperping_maintenance.%s %s\n", name, migrate.QuoteShellUUID(m.UUID))
 	}
 
 	for _, o := range data.Outages {
 		name := g.terraformName(o.Monitor.Name)
-		fmt.Fprintf(sb, "terraform import hyperping_outage.%s %q\n", name, o.UUID)
+		fmt.Fprintf(sb, "terraform import hyperping_outage.%s %s\n", name, migrate.QuoteShellUUID(o.UUID))
 	}
 }
 
@@ -325,22 +331,22 @@ func (g *Generator) terraformName(name string) string {
 	return tfName
 }
 
-// escapeHCL escapes a string for HCL output.
+// escapeHCL escapes a string for HCL output. Delegates to migrate.EscapeHCL
+// so HCL template-interpolation sequences are neutralized in addition to
+// backslashes/quotes/newlines.
 func escapeHCL(s string) string {
-	s = strings.ReplaceAll(s, "\\", "\\\\")
-	s = strings.ReplaceAll(s, "\"", "\\\"")
-	s = strings.ReplaceAll(s, "\n", "\\n")
-	return s
+	return migrate.EscapeHCL(s)
 }
 
-// formatStringList formats a Go string slice as an HCL list.
+// formatStringList formats a Go string slice as an HCL list, with each item
+// safely quoted via migrate.QuoteHCL (template-interpolation safe).
 func formatStringList(items []string) string {
 	if len(items) == 0 {
 		return "[]"
 	}
 	quoted := make([]string, len(items))
 	for i, item := range items {
-		quoted[i] = fmt.Sprintf("%q", item)
+		quoted[i] = migrate.QuoteHCL(item)
 	}
 	return "[" + strings.Join(quoted, ", ") + "]"
 }

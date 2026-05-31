@@ -85,6 +85,73 @@ func TestProvider_DataSources(t *testing.T) {
 	}
 }
 
+// TestAccProvider_LocalMCPURLDeniedByDefault asserts that a localhost mcp_url
+// is rejected unless the operator explicitly opts in via the HYPERPING_ALLOW_LOCAL
+// environment variable. Without the gate, a malicious example or typo-squatted
+// module variable could redirect the bearer token to any process listening on
+// loopback.
+func TestAccProvider_LocalMCPURLDeniedByDefault(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+		w.Write([]byte("[]"))
+	}))
+	defer server.Close()
+
+	// Ensure the opt-in env var is unset.
+	t.Setenv("HYPERPING_ALLOW_LOCAL", "")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "hp_test_key"
+  base_url = %q
+  mcp_url  = "http://localhost:8080"
+}
+
+data "hyperping_monitors" "all" {}
+`, server.URL),
+				ExpectError: regexp.MustCompile("Invalid MCP URL"),
+			},
+		},
+	})
+}
+
+// TestAccProvider_LocalMCPURLAllowedWithOptIn asserts that setting
+// HYPERPING_ALLOW_LOCAL=1 re-enables the localhost exemption for mcp_url so
+// integration testing against a local MCP server remains possible.
+func TestAccProvider_LocalMCPURLAllowedWithOptIn(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(hyperping.HeaderContentType, hyperping.ContentTypeJSON)
+		w.Write([]byte("[]"))
+	}))
+	defer server.Close()
+
+	t.Setenv("HYPERPING_ALLOW_LOCAL", "1")
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "hp_test_key"
+  base_url = %q
+  mcp_url  = "http://localhost:9"
+}
+
+data "hyperping_monitors" "all" {}
+`, server.URL),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("data.hyperping_monitors.all", "monitors.#", "0"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccProvider_MissingAPIKey(t *testing.T) {
 	// Save and unset the env var to test missing API key scenario
 	originalKey := os.Getenv("HYPERPING_API_KEY")
@@ -298,9 +365,32 @@ func TestIsAllowedBaseURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isAllowedBaseURL(tt.baseURL)
+			// Historic cases were written against the base_url path, which
+			// retains the localhost exemption (allowLocal=true).
+			got := isAllowedBaseURL(tt.baseURL, true)
 			if got != tt.want {
-				t.Errorf("isAllowedBaseURL(%q) = %v, want %v", tt.baseURL, got, tt.want)
+				t.Errorf("isAllowedBaseURL(%q, true) = %v, want %v", tt.baseURL, got, tt.want)
+			}
+		})
+	}
+
+	// Additional cases for the no-local-exemption path (mcp_url default).
+	denyLocalCases := []struct {
+		name    string
+		baseURL string
+		want    bool
+	}{
+		{"local http denied without allowLocal", "http://localhost:8080", false},
+		{"local 127.0.0.1 denied without allowLocal", "http://127.0.0.1:8080", false},
+		{"local ipv6 denied without allowLocal", "http://[::1]", false},
+		{"https://localhost rejected by hyperping-host allowlist when allowLocal off", "https://localhost", false},
+		{"hyperping.io still allowed without allowLocal", "https://api.hyperping.io", true},
+	}
+	for _, tt := range denyLocalCases {
+		t.Run("noLocal/"+tt.name, func(t *testing.T) {
+			got := isAllowedBaseURL(tt.baseURL, false)
+			if got != tt.want {
+				t.Errorf("isAllowedBaseURL(%q, false) = %v, want %v", tt.baseURL, got, tt.want)
 			}
 		})
 	}

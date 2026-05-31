@@ -9,6 +9,7 @@ import (
 
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/converter"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // ImportGenerator generates Terraform import scripts.
@@ -53,7 +54,9 @@ func (g *ImportGenerator) GenerateImportScript(checks []pingdom.Check, results [
 			tfName := g.terraformName(result.Monitor.Name)
 			fmt.Fprintf(&sb, "# Pingdom Check %d: %s\n", check.ID, check.Name)
 			fmt.Fprintf(&sb, "echo \"Importing hyperping_monitor.%s...\"\n", tfName)
-			fmt.Fprintf(&sb, "terraform import hyperping_monitor.%s %q || echo \"Warning: Import failed for %s\"\n", tfName, uuid, tfName)
+			// UUID flows through migrate.QuoteShellUUID for defense in depth;
+			// %q does not escape bash metacharacters.
+			fmt.Fprintf(&sb, "terraform import hyperping_monitor.%s %s || echo \"Warning: Import failed for %s\"\n", tfName, migrate.QuoteShellUUID(uuid), tfName)
 			sb.WriteString("echo \"\"\n\n")
 			importCount++
 		}
@@ -87,7 +90,7 @@ func (g *ImportGenerator) GenerateImportCommands(checks []pingdom.Check, results
 		if result.Monitor != nil {
 			tfName := g.terraformName(result.Monitor.Name)
 			fmt.Fprintf(&sb, "# Pingdom Check %d: %s\n", check.ID, check.Name)
-			fmt.Fprintf(&sb, "terraform import hyperping_monitor.%s %q\n\n", tfName, uuid)
+			fmt.Fprintf(&sb, "terraform import hyperping_monitor.%s %s\n\n", tfName, migrate.QuoteShellUUID(uuid))
 		}
 	}
 

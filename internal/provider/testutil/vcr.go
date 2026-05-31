@@ -38,6 +38,7 @@ package testutil
 
 import (
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,6 +47,17 @@ import (
 	"gopkg.in/dnaeon/go-vcr.v3/cassette"
 	"gopkg.in/dnaeon/go-vcr.v3/recorder"
 )
+
+// sensitiveQueryParams lists URL query parameter names whose VALUES must be
+// stripped before a cassette is written to disk. Keys are stored lowercase;
+// lookups must lowercase the decoded parameter name first so variations such
+// as "Api_Key", "API_KEY", "Token", and "aPi_KeY" are all caught.
+var sensitiveQueryParams = map[string]struct{}{
+	"api_key":      {},
+	"apikey":       {},
+	"token":        {},
+	"access_token": {},
+}
 
 // VCRMode determines how VCR handles HTTP requests.
 type VCRMode int
@@ -130,15 +142,58 @@ func maskSensitiveHeaders(i *cassette.Interaction) {
 		i.Request.Headers.Set("Authorization", "Bearer [MASKED]")
 	}
 
-	// Mask any API keys in URL query params (shouldn't happen but be safe)
-	if strings.Contains(i.Request.URL, "api_key=") {
-		i.Request.URL = strings.ReplaceAll(i.Request.URL, "api_key=", "api_key=[MASKED]")
-	}
+	// Mask sensitive query-parameter VALUES (api_key, token, ...) in the URL.
+	// The previous implementation only rewrote the parameter NAME, which left
+	// the value plaintext on disk; see security audit finding HIGH-2.
+	i.Request.URL = maskSensitiveQueryValues(i.Request.URL)
 
 	// Mask Set-Cookie headers
 	if cookie := i.Response.Headers.Get("Set-Cookie"); cookie != "" {
 		i.Response.Headers.Set("Set-Cookie", "[MASKED]")
 	}
+}
+
+// maskSensitiveQueryValues parses the URL, replaces every value of any
+// parameter in sensitiveQueryParams with "[MASKED]", and re-serializes the
+// URL. If the URL fails to parse, it is returned untouched (the underlying
+// string is opaque to us, so we cannot safely mutate substrings without
+// risking leaving secrets behind).
+//
+// We rebuild RawQuery by hand rather than calling url.Values.Encode() so the
+// "[MASKED]" sentinel is not percent-encoded into "%5BMASKED%5D", which would
+// hide the substring test cassette reviewers look for.
+func maskSensitiveQueryValues(raw string) string {
+	if raw == "" {
+		return raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.RawQuery == "" {
+		return raw
+	}
+	pairs := strings.Split(u.RawQuery, "&")
+	mutated := false
+	for idx, pair := range pairs {
+		key, _, _ := strings.Cut(pair, "=")
+		decodedKey, derr := url.QueryUnescape(key)
+		if derr != nil {
+			decodedKey = key
+		}
+		// Look up case-insensitively but preserve the original key casing
+		// in the rewritten pair so cassette diffs remain human-readable.
+		if _, sensitive := sensitiveQueryParams[strings.ToLower(decodedKey)]; !sensitive {
+			continue
+		}
+		// Always emit "<key>=[MASKED]" regardless of whether the original pair
+		// contained an equals sign: if a sensitive parameter appears without a
+		// value, we still want the value position explicitly masked.
+		pairs[idx] = key + "=[MASKED]"
+		mutated = true
+	}
+	if !mutated {
+		return raw
+	}
+	u.RawQuery = strings.Join(pairs, "&")
+	return u.String()
 }
 
 // GetRecordMode returns the VCR mode based on environment variables.
