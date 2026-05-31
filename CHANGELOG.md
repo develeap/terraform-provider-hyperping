@@ -10,6 +10,8 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-05-31
+
 ### Security
 
 - HCL template-interpolation injection closed across all generator paths (`cmd/migrate-uptimerobot`, `cmd/migrate-pingdom`, `cmd/import-generator`). Untrusted string fields (monitor names, URLs, header values) now flow through `pkg/migrate.QuoteHCL`, which doubles the leading sigil on `${...}` and `%{...}` sequences so Terraform treats them as literal text rather than evaluating them at plan time.
@@ -21,12 +23,31 @@ Published releases start from v1.0.3.
 ### Changed
 
 - `mcp_url` set to a localhost address now requires `HYPERPING_ALLOW_LOCAL=1`. **Breaking** for any configuration that pointed `mcp_url` at `http://localhost`, `http://127.0.0.1`, or `http://[::1]` without setting the env var. The `base_url` provider attribute retains the localhost exemption to avoid breaking acceptance-test setups.
+- Bumped `github.com/develeap/hyperping-go` from v0.6.1 to v0.6.2. Pulls in the MCP transport 10 MB response-body cap, `WithMCPHTTPClient` transport rewrap so caller-supplied clients no longer bypass the TLS 1.2+ floor or drop the Bearer auth wrapper, RFC 6750 challenge-parameter preservation in the Bearer redactor (`realm=`, `scope=`, `error=`, `error_description=`, `error_uri=` no longer over-redacted), `Retry-After` clamping against hostile `86400`-second values, atomic publish of `(sessionID, initialized)` on initialize, and `enforceTLS` cloning caller transports instead of mutating them. `WithBaseURL` and `NewMcpTransport` now reject base URLs that embed userinfo (`https://user:pass@host`); the provider does not construct such URLs, so no provider-side call sites required adaptation.
 
 ### Added
 
 - `HYPERPING_ALLOW_LOCAL` environment variable. Set to `1` to re-enable the localhost exemption for `mcp_url` (intended for local integration testing against a development MCP server).
 - Case-insensitive masking of API-key-shaped query parameters (`api_key`, `apikey`, `token`, `access_token`) in VCR cassettes regardless of source URL casing.
 - `pkg/migrate.SafeUUID` and `pkg/migrate.QuoteShellUUID` helpers for validating and quoting server-issued identifiers before interpolating them into generated shell scripts.
+
+### Upgrade Notes
+
+If a previous configuration pointed `mcp_url` at a localhost address, the provider will now reject it at configure time. Either drop the override (the provider defaults to the public MCP endpoint) or opt in explicitly:
+
+```hcl
+provider "hyperping" {
+  api_key = var.hyperping_api_key
+  mcp_url = "http://localhost:8080"
+}
+```
+
+```bash
+export HYPERPING_ALLOW_LOCAL=1
+terraform plan
+```
+
+`HYPERPING_ALLOW_LOCAL` is intended for local integration testing only. Leave it unset in CI and production.
 
 ## [1.11.1] - 2026-05-31
 
