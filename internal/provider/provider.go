@@ -96,9 +96,10 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 		baseURL = config.BaseURL.ValueString()
 
 		// SECURITY: Enforce domain allowlist AND HTTPS requirement to prevent credential theft.
-		// isAllowedBaseURL checks both the domain (*.hyperping.io only) and protocol (HTTPS required,
-		// except for localhost which is exempt for testing).
-		if !isAllowedBaseURL(baseURL) {
+		// isAllowedBaseURL checks both the domain (*.hyperping.io only) and protocol (HTTPS required).
+		// base_url retains a localhost exemption so httptest-driven unit and
+		// acceptance tests can continue to work out of the box.
+		if !isAllowedBaseURL(baseURL, true /* allowLocal */) {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("base_url"),
 				"Invalid Base URL",
@@ -112,12 +113,18 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 
 	if !config.MCPURL.IsNull() {
 		mcpURL = config.MCPURL.ValueString()
-		// Re-use same security check for MCP URL if it's not localhost
-		if !isAllowedBaseURL(mcpURL) {
+		// SECURITY: For mcp_url, the localhost exemption is gated behind an
+		// explicit opt-in (HYPERPING_ALLOW_LOCAL=1). Otherwise a malicious
+		// example or typo-squatted variable pointing mcp_url at
+		// http://localhost:8080 would ship the bearer token to whatever is
+		// listening on loopback.
+		allowLocalMCP := os.Getenv("HYPERPING_ALLOW_LOCAL") == "1"
+		if !isAllowedBaseURL(mcpURL, allowLocalMCP) {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("mcp_url"),
 				"Invalid MCP URL",
 				"The mcp_url must be an HTTPS URL pointing to a Hyperping API domain (*.hyperping.io). "+
+					"Localhost URLs are only accepted when HYPERPING_ALLOW_LOCAL=1 is set in the environment. "+
 					fmt.Sprintf("Provided: %s.", mcpURL),
 			)
 			return
@@ -213,25 +220,27 @@ func (p *HyperpingProvider) DataSources(_ context.Context) []func() datasource.D
 	}
 }
 
-// isAllowedBaseURL validates that a base URL points to an allowed Hyperping domain
-// and uses HTTPS (VULN-016: reject http:// to prevent credential leakage in cleartext).
-// Only *.hyperping.io and localhost (for testing) are permitted to prevent
+// isAllowedBaseURL validates that a URL points to an allowed Hyperping domain
+// and uses HTTPS (VULN-016: reject http:// to prevent credential leakage in
+// cleartext). Only *.hyperping.io is permitted by default, to prevent
 // credential theft via SSRF attacks.
-func isAllowedBaseURL(baseURL string) bool {
+//
+// When allowLocal is true, loopback hosts (localhost, 127.0.0.1, ::1) are
+// also accepted regardless of scheme, so httptest-driven tests and explicit
+// local-MCP development setups (gated by HYPERPING_ALLOW_LOCAL=1) can work.
+func isAllowedBaseURL(baseURL string, allowLocal bool) bool {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return false
 	}
 
-	// Require a scheme to avoid ambiguous parsing
 	host := parsed.Hostname()
 
-	// Allow localhost for local testing (127.0.0.1, ::1, localhost)
-	// Localhost is exempt from HTTPS requirement (httptest uses HTTP)
-	isLocalhost := host == "localhost" || host == "127.0.0.1" || host == "::1"
-
-	if isLocalhost {
-		return true
+	if allowLocal {
+		isLocalhost := host == "localhost" || host == "127.0.0.1" || host == "::1"
+		if isLocalhost {
+			return true
+		}
 	}
 
 	// Non-localhost targets MUST use HTTPS to prevent credential leakage (VULN-016)

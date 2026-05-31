@@ -365,9 +365,32 @@ func TestIsAllowedBaseURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isAllowedBaseURL(tt.baseURL)
+			// Historic cases were written against the base_url path, which
+			// retains the localhost exemption (allowLocal=true).
+			got := isAllowedBaseURL(tt.baseURL, true)
 			if got != tt.want {
-				t.Errorf("isAllowedBaseURL(%q) = %v, want %v", tt.baseURL, got, tt.want)
+				t.Errorf("isAllowedBaseURL(%q, true) = %v, want %v", tt.baseURL, got, tt.want)
+			}
+		})
+	}
+
+	// Additional cases for the no-local-exemption path (mcp_url default).
+	denyLocalCases := []struct {
+		name    string
+		baseURL string
+		want    bool
+	}{
+		{"local http denied without allowLocal", "http://localhost:8080", false},
+		{"local 127.0.0.1 denied without allowLocal", "http://127.0.0.1:8080", false},
+		{"local ipv6 denied without allowLocal", "http://[::1]", false},
+		{"local https denied without allowLocal (not a hyperping host)", "https://localhost", false},
+		{"hyperping.io still allowed without allowLocal", "https://api.hyperping.io", true},
+	}
+	for _, tt := range denyLocalCases {
+		t.Run("noLocal/"+tt.name, func(t *testing.T) {
+			got := isAllowedBaseURL(tt.baseURL, false)
+			if got != tt.want {
+				t.Errorf("isAllowedBaseURL(%q, false) = %v, want %v", tt.baseURL, got, tt.want)
 			}
 		})
 	}

@@ -1299,7 +1299,7 @@ func TestMapSettingsToTFWithFilter_WithOptionalValues(t *testing.T) {
 }
 
 // =============================================================================
-// isAllowedBaseURL edge case — port in domain
+// isAllowedBaseURL edge case (port in domain)
 // =============================================================================
 
 func TestIsAllowedBaseURL_PortVariants(t *testing.T) {
@@ -1316,9 +1316,9 @@ func TestIsAllowedBaseURL_PortVariants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isAllowedBaseURL(tt.baseURL)
+			got := isAllowedBaseURL(tt.baseURL, true)
 			if got != tt.want {
-				t.Errorf("isAllowedBaseURL(%q) = %v, want %v", tt.baseURL, got, tt.want)
+				t.Errorf("isAllowedBaseURL(%q, true) = %v, want %v", tt.baseURL, got, tt.want)
 			}
 		})
 	}
