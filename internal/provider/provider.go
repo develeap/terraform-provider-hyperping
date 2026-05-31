@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	hyperping "github.com/develeap/hyperping-go"
 )
@@ -137,12 +136,11 @@ func (p *HyperpingProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
-	// Mask sensitive fields in logs to prevent API key leaks in debug output
-	// Note: Context masking applies to logs in this Configure function only
-	_ = tflog.MaskAllFieldValuesRegexes(
-		tflog.MaskFieldValuesWithFieldKeys(ctx, "api_key"),
-		hyperping.APIKeyPattern,
-	)
+	// Note: sensitive-field masking is applied per Debug call inside
+	// TFLogAdapter (see internal/provider/logging.go). A masked context built
+	// here would not survive into the per-operation contexts the Terraform
+	// framework creates for resources and data sources, so we cannot rely on
+	// Configure-time masking alone.
 
 	// Create REST client
 	restClient := hyperping.NewClient(

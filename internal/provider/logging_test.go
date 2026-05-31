@@ -64,8 +64,8 @@ func TestTFLogAdapter_MasksAPIKey(t *testing.T) {
 		}
 	}
 	// A redaction marker must be present so the operator can confirm masking
-	// is engaged.
-	if !strings.Contains(logged, "[REDACTED]") && !strings.Contains(logged, "[MASKED]") {
+	// is engaged. tflog renders its default marker as "***".
+	if !strings.Contains(logged, "***") && !strings.Contains(logged, "[REDACTED]") && !strings.Contains(logged, "[MASKED]") {
 		t.Errorf("expected redaction marker in log output:\n%s", logged)
 	}
 	// Non-sensitive fields are still emitted normally.
