@@ -52,7 +52,7 @@ func (m *mockClient) ListMaintenance(_ context.Context) ([]hyperping.Maintenance
 	return m.maintenance, m.maintenanceErr
 }
 
-func (m *mockClient) ListOutages(_ context.Context) ([]hyperping.Outage, error) {
+func (m *mockClient) ListOutages(_ context.Context, _ ...hyperping.OutageListOption) ([]hyperping.Outage, error) {
 	return m.outages, m.outagesErr
 }
 

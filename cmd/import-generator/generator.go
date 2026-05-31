@@ -19,7 +19,7 @@ type APIClient interface {
 	ListStatusPages(ctx context.Context, page *int, search *string) (*hyperping.StatusPagePaginatedResponse, error)
 	ListIncidents(ctx context.Context) ([]hyperping.Incident, error)
 	ListMaintenance(ctx context.Context) ([]hyperping.Maintenance, error)
-	ListOutages(ctx context.Context) ([]hyperping.Outage, error)
+	ListOutages(ctx context.Context, opts ...hyperping.OutageListOption) ([]hyperping.Outage, error)
 }
 
 // Generator generates Terraform import commands and HCL from Hyperping resources.
