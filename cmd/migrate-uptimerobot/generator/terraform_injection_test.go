@@ -45,19 +45,8 @@ func TestGenerateTerraform_HCLTemplateInjection(t *testing.T) {
 
 	out := GenerateTerraform(result)
 
-	// Raw template sequences must NOT appear unescaped anywhere in the output.
-	forbidden := []string{
-		`${file(`,
-		`${env.SECRET}`,
-		`%{for x in y}`,
-	}
-	for _, f := range forbidden {
-		if strings.Contains(out, f) {
-			t.Errorf("generated HCL contains unescaped template sequence %q\n---\n%s\n---", f, out)
-		}
-	}
-
-	// The escaped forms MUST appear.
+	// The escaped forms MUST appear: ${...} must become $${...} and %{...}
+	// must become %%{...} so HCL treats them as literal text.
 	expected := []string{
 		`$${file(`,
 		`$${env.SECRET}`,
@@ -67,5 +56,34 @@ func TestGenerateTerraform_HCLTemplateInjection(t *testing.T) {
 		if !strings.Contains(out, e) {
 			t.Errorf("generated HCL missing escaped sequence %q\n---\n%s\n---", e, out)
 		}
+	}
+
+	// No unescaped template start ("${" or "%{") may appear. We detect this by
+	// scanning for the literal two-byte starts that lack the leading sigil
+	// double. An unescaped ${...} appears as "${" not preceded by "$"; an
+	// unescaped %{...} appears as "%{" not preceded by "%".
+	if hasUnescapedTemplate(out, "${", '$') {
+		t.Errorf("generated HCL contains unescaped ${ template start\n---\n%s\n---", out)
+	}
+	if hasUnescapedTemplate(out, "%{", '%') {
+		t.Errorf("generated HCL contains unescaped %%{ template start\n---\n%s\n---", out)
+	}
+}
+
+// hasUnescapedTemplate returns true when needle ("${" or "%{") appears in s
+// without the leading escape byte (a duplicate of the sigil) directly in front
+// of it. This is the same check Terraform's template lexer effectively does.
+func hasUnescapedTemplate(s, needle string, escape byte) bool {
+	from := 0
+	for {
+		idx := strings.Index(s[from:], needle)
+		if idx < 0 {
+			return false
+		}
+		abs := from + idx
+		if abs == 0 || s[abs-1] != escape {
+			return true
+		}
+		from = abs + len(needle)
 	}
 }

@@ -71,10 +71,11 @@ func (g *TerraformGenerator) GenerateHCL(checks []pingdom.Check, results []conve
 func (g *TerraformGenerator) generateMonitorHCL(sb *strings.Builder, _ pingdom.Check, monitor *hyperping.CreateMonitorRequest) {
 	tfName := g.terraformName(monitor.Name)
 
+	// tfName is derived from terraformName() and only contains [a-z0-9_]; safe for %q.
 	fmt.Fprintf(sb, "resource \"hyperping_monitor\" %q {\n", tfName)
-	fmt.Fprintf(sb, "  name     = %q\n", escapeHCL(monitor.Name))
-	fmt.Fprintf(sb, "  url      = %q\n", escapeHCL(monitor.URL))
-	fmt.Fprintf(sb, "  protocol = %q\n", monitor.Protocol)
+	fmt.Fprintf(sb, "  name     = %s\n", migrate.QuoteHCL(monitor.Name))
+	fmt.Fprintf(sb, "  url      = %s\n", migrate.QuoteHCL(monitor.URL))
+	fmt.Fprintf(sb, "  protocol = %s\n", migrate.QuoteHCL(monitor.Protocol))
 
 	sb.WriteString(buildOptionalHTTPMethod(monitor))
 	sb.WriteString(buildOptionalCheckFrequency(monitor))
@@ -95,7 +96,7 @@ func buildOptionalHTTPMethod(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.HTTPMethod == "" || monitor.HTTPMethod == "GET" {
 		return ""
 	}
-	return fmt.Sprintf("  http_method = %q\n", monitor.HTTPMethod)
+	return fmt.Sprintf("  http_method = %s\n", migrate.QuoteHCL(monitor.HTTPMethod))
 }
 
 // buildOptionalCheckFrequency returns the check_frequency line if non-default.
@@ -135,7 +136,7 @@ func buildOptionalExpectedStatus(monitor *hyperping.CreateMonitorRequest) string
 	if monitor.ExpectedStatusCode == "" || monitor.ExpectedStatusCode == "200" {
 		return ""
 	}
-	return fmt.Sprintf("  expected_status_code = %q\n", monitor.ExpectedStatusCode)
+	return fmt.Sprintf("  expected_status_code = %s\n", migrate.QuoteHCL(monitor.ExpectedStatusCode))
 }
 
 // buildOptionalRequiredKeyword returns the required_keyword line if set.
@@ -143,7 +144,7 @@ func buildOptionalRequiredKeyword(monitor *hyperping.CreateMonitorRequest) strin
 	if monitor.RequiredKeyword == nil || *monitor.RequiredKeyword == "" {
 		return ""
 	}
-	return fmt.Sprintf("  required_keyword = %q\n", escapeHCL(*monitor.RequiredKeyword))
+	return fmt.Sprintf("  required_keyword = %s\n", migrate.QuoteHCL(*monitor.RequiredKeyword))
 }
 
 // buildOptionalRequestHeaders returns the request_headers list if non-empty.
@@ -155,8 +156,8 @@ func buildOptionalRequestHeaders(monitor *hyperping.CreateMonitorRequest) string
 	sb.WriteString("  request_headers = [\n")
 	for _, h := range monitor.RequestHeaders {
 		sb.WriteString("    {\n")
-		fmt.Fprintf(&sb, "      name  = %q\n", escapeHCL(h.Name))
-		fmt.Fprintf(&sb, "      value = %q\n", escapeHCL(h.Value))
+		fmt.Fprintf(&sb, "      name  = %s\n", migrate.QuoteHCL(h.Name))
+		fmt.Fprintf(&sb, "      value = %s\n", migrate.QuoteHCL(h.Value))
 		sb.WriteString("    },\n")
 	}
 	sb.WriteString("  ]\n")
@@ -168,7 +169,7 @@ func buildOptionalRequestBody(monitor *hyperping.CreateMonitorRequest) string {
 	if monitor.RequestBody == nil || *monitor.RequestBody == "" {
 		return ""
 	}
-	return fmt.Sprintf("  request_body = %q\n", escapeHCL(*monitor.RequestBody))
+	return fmt.Sprintf("  request_body = %s\n", migrate.QuoteHCL(*monitor.RequestBody))
 }
 
 // buildOptionalPaused returns the paused line if true.
@@ -213,12 +214,8 @@ func (g *TerraformGenerator) terraformName(name string) string {
 	return tfName
 }
 
-// escapeHCL escapes a string for HCL output.
-func escapeHCL(s string) string {
-	return migrate.EscapeHCL(s)
-}
-
-// formatStringList formats a Go string slice as an HCL list.
+// formatStringList formats a Go string slice as an HCL list, with each item
+// safely quoted via migrate.QuoteHCL (template-interpolation safe).
 func formatStringList(items []string) string {
 	if len(items) == 0 {
 		return "[]"
@@ -226,7 +223,7 @@ func formatStringList(items []string) string {
 
 	quoted := make([]string, len(items))
 	for i, item := range items {
-		quoted[i] = fmt.Sprintf("%q", item)
+		quoted[i] = migrate.QuoteHCL(item)
 	}
 
 	return "[" + strings.Join(quoted, ", ") + "]"

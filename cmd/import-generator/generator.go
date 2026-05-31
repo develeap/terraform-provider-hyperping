@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	hyperping "github.com/develeap/hyperping-go"
+
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 // APIClient defines the interface for fetching Hyperping resources.
@@ -325,22 +327,22 @@ func (g *Generator) terraformName(name string) string {
 	return tfName
 }
 
-// escapeHCL escapes a string for HCL output.
+// escapeHCL escapes a string for HCL output. Delegates to migrate.EscapeHCL
+// so HCL template-interpolation sequences are neutralized in addition to
+// backslashes/quotes/newlines.
 func escapeHCL(s string) string {
-	s = strings.ReplaceAll(s, "\\", "\\\\")
-	s = strings.ReplaceAll(s, "\"", "\\\"")
-	s = strings.ReplaceAll(s, "\n", "\\n")
-	return s
+	return migrate.EscapeHCL(s)
 }
 
-// formatStringList formats a Go string slice as an HCL list.
+// formatStringList formats a Go string slice as an HCL list, with each item
+// safely quoted via migrate.QuoteHCL (template-interpolation safe).
 func formatStringList(items []string) string {
 	if len(items) == 0 {
 		return "[]"
 	}
 	quoted := make([]string, len(items))
 	for i, item := range items {
-		quoted[i] = fmt.Sprintf("%q", item)
+		quoted[i] = migrate.QuoteHCL(item)
 	}
 	return "[" + strings.Join(quoted, ", ") + "]"
 }

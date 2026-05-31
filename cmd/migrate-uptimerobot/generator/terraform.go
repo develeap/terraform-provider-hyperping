@@ -117,22 +117,22 @@ func generateMonitorResource(sb *strings.Builder, m converter.HyperpingMonitor) 
 		}
 	}
 	fmt.Fprintf(sb, "resource \"hyperping_monitor\" \"%s\" {\n", m.ResourceName)
-	fmt.Fprintf(sb, "  name            = %q\n", m.Name)
-	fmt.Fprintf(sb, "  url             = %q\n", m.URL)
-	fmt.Fprintf(sb, "  protocol        = %q\n", m.Protocol)
+	fmt.Fprintf(sb, "  name            = %s\n", migrate.QuoteHCL(m.Name))
+	fmt.Fprintf(sb, "  url             = %s\n", migrate.QuoteHCL(m.URL))
+	fmt.Fprintf(sb, "  protocol        = %s\n", migrate.QuoteHCL(m.Protocol))
 
 	if m.HTTPMethod != "" {
-		fmt.Fprintf(sb, "  http_method     = %q\n", m.HTTPMethod)
+		fmt.Fprintf(sb, "  http_method     = %s\n", migrate.QuoteHCL(m.HTTPMethod))
 	}
 
 	fmt.Fprintf(sb, "  check_frequency = %d\n", m.CheckFrequency)
 
 	if m.ExpectedStatusCode != "" {
-		fmt.Fprintf(sb, "  expected_status_code = %q\n", m.ExpectedStatusCode)
+		fmt.Fprintf(sb, "  expected_status_code = %s\n", migrate.QuoteHCL(m.ExpectedStatusCode))
 	}
 
 	if m.RequiredKeyword != "" {
-		fmt.Fprintf(sb, "  required_keyword     = %q\n", m.RequiredKeyword)
+		fmt.Fprintf(sb, "  required_keyword     = %s\n", migrate.QuoteHCL(m.RequiredKeyword))
 	}
 
 	if m.Port > 0 {
@@ -149,7 +149,7 @@ func generateMonitorResource(sb *strings.Builder, m converter.HyperpingMonitor) 
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			fmt.Fprintf(sb, "%q", r)
+			sb.WriteString(migrate.QuoteHCL(r))
 		}
 		sb.WriteString("]\n")
 	}
@@ -170,11 +170,11 @@ func generateHealthcheckResource(sb *strings.Builder, h converter.HyperpingHealt
 		}
 	}
 	fmt.Fprintf(sb, "resource \"hyperping_healthcheck\" \"%s\" {\n", h.ResourceName)
-	fmt.Fprintf(sb, "  name               = %q\n", h.Name)
+	fmt.Fprintf(sb, "  name               = %s\n", migrate.QuoteHCL(h.Name))
 	fmt.Fprintf(sb, "  period_value       = %d\n", h.PeriodValue)
-	fmt.Fprintf(sb, "  period_type        = %q\n", h.PeriodType)
+	fmt.Fprintf(sb, "  period_type        = %s\n", migrate.QuoteHCL(h.PeriodType))
 	fmt.Fprintf(sb, "  grace_period_value = %d\n", h.GracePeriodValue)
-	fmt.Fprintf(sb, "  grace_period_type  = %q\n", h.GracePeriodType)
+	fmt.Fprintf(sb, "  grace_period_type  = %s\n", migrate.QuoteHCL(h.GracePeriodType))
 	sb.WriteString("\n")
 	sb.WriteString("  # Uncomment to enable alerting:\n")
 	sb.WriteString("  # escalation_policy = var.escalation_policy\n")
