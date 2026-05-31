@@ -22,14 +22,16 @@ import (
 // Requires at least 3 characters, only alphanumeric, dashes, and underscores.
 var resourceIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{1,}[a-zA-Z0-9]$`)
 
-// reservedHeaderNames lists HTTP headers that users must not override.
-// Allowing these could leak API credentials or manipulate routing.
+// reservedHeaderNames lists HTTP headers that users must not override on monitor
+// probes. Limited to entries that have real impact on the outbound HTTP exchange:
+//   - host: routing manipulation / blind SSRF target shifting.
+//   - transfer-encoding: request smuggling against the monitored origin.
+//
+// Authentication-style headers (Authorization, Cookie) are legitimate on monitor
+// requests for probing endpoints behind auth and are intentionally allowed. Header
+// values are marked sensitive in the schema to mask credentials in plan output.
 var reservedHeaderNames = map[string]bool{
-	"authorization":     true,
 	"host":              true,
-	"cookie":            true,
-	"set-cookie":        true,
-	"proxy-authorize":   true,
 	"transfer-encoding": true,
 }
 
@@ -68,7 +70,8 @@ func NoControlCharacters(message string) validator.String {
 }
 
 // reservedHeaderNameValidator rejects reserved HTTP header names (case-insensitive).
-// This prevents users from overriding Authorization, Host, Cookie, etc. (VULN-012).
+// Currently blocks Host and Transfer-Encoding to mitigate routing/smuggling abuse on
+// the outbound probe; see reservedHeaderNames for the full set and rationale.
 type reservedHeaderNameValidator struct{}
 
 func (v reservedHeaderNameValidator) Description(_ context.Context) string {

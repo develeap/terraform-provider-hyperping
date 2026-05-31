@@ -10,6 +10,20 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Added
+
+- `hyperping_monitor.request_headers` now accepts `Authorization`, `Cookie`, and other previously-rejected auth headers, so probes can authenticate against endpoints behind Bearer/Basic/session auth (closes #132).
+
+### Changed
+
+- `hyperping_monitor.request_headers[*].value` is marked sensitive: Terraform masks the value in plan output and CLI display. Values are still persisted to state, so use an encrypted state backend for credentials.
+- `ReservedHeaderName` validator narrowed to `Host` and `Transfer-Encoding`. These remain blocked because they manipulate request routing and message framing on the outbound probe. `Authorization`, `Cookie`, `Set-Cookie`, and `Proxy-Authorize` are now allowed.
+- Updated `examples/modules/graphql-monitor`, `docs/guides/validation.md`, `docs/DRY_RUN_GUIDE.md`, and `examples/dry-run-example.md` to reflect the relaxed validator.
+
+### Security
+
+- Pairs with `hyperping-go` PR #32, which extends error sanitization to redact `Authorization: Basic`/`Digest`/custom-scheme values, not only `Bearer`. The provider should consume the resulting `hyperping-go` release once published.
+
 ## [1.11.0] - 2026-04-25
 
 ### Added

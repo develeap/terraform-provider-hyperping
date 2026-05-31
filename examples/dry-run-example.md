@@ -142,8 +142,8 @@ WARNINGS (6):
   3. Custom headers with authentication (2 monitors)
      Monitor: "Internal API Check"
      Header: Authorization
-     Action: Hyperping blocks reserved headers for security
-     Solution: Use API authentication at endpoint level
+     Action: Verify the token is sourced from a secret variable, not a literal
+     Solution: Header is allowed; value is marked sensitive in plan output
 
 INFO (3):
   - 3 monitors use non-standard regions (mapped automatically)

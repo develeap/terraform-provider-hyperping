@@ -75,7 +75,7 @@ The Hyperping provider includes 9 core validators and 3 conditional validators. 
 | **PortRange** | `monitor.port` | `80`<br>`443`<br>`3000`<br>`8080`<br>`5432` | `0`<br>`-1`<br>`65536`<br>`99999` | Must be between 1 and 65535 |
 | **HexColor** | `statuspage.settings.accent_color` | `#ff5733`<br>`#000000`<br>`#FFFFFF`<br>`#3498db` | `#fff` (too short)<br>`red` (not hex)<br>`#gggggg` (invalid chars)<br>`ff5733` (missing #) | Must be 6-digit hex (#RRGGBB) |
 | **NoControlCharacters** | `monitor.request_headers` (keys/values) | `"Authorization"`<br>`"X-Custom-Header"`<br>`"Bearer token123"` | Headers containing `\n`<br>Headers containing `\r`<br>Headers containing `\x00` | No control characters allowed (security) |
-| **ReservedHeaderName** | `monitor.request_headers` (keys) | `"X-Custom-Header"`<br>`"X-API-Key"`<br>`"X-Request-ID"` | `"Authorization"`<br>`"Host"`<br>`"Cookie"`<br>`"Set-Cookie"` | Cannot override reserved HTTP headers |
+| **ReservedHeaderName** | `monitor.request_headers` (keys) | `"Authorization"`<br>`"Cookie"`<br>`"X-API-Key"`<br>`"X-Request-ID"` | `"Host"`<br>`"Transfer-Encoding"` | Cannot override headers that affect routing or message framing |
 | **ISO8601** | `maintenance.scheduled_start`<br>`maintenance.scheduled_end`<br>`incident.created_at` (computed) | `2026-01-29T10:00:00Z`<br>`2026-02-13T15:30:00Z`<br>`2026-03-01T00:00:00+00:00` | `2026-01-29` (missing time)<br>`10:00:00` (missing date)<br>`Jan 29, 2026` (wrong format) | Must be ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ) |
 
 ### Conditional Validators
@@ -522,31 +522,31 @@ resource "hyperping_monitor" "api" {
 
 ### 8. Reserved Header Names
 
-**Problem:** `The header name "Authorization" is reserved and cannot be overridden`
+**Problem:** `The header name "Host" is reserved and cannot be overridden`
 
-**Cause:** Attempting to override protected HTTP headers
+**Cause:** Attempting to override headers that affect request routing or message framing.
 
-**Solution:** Use custom header names (X- prefix recommended):
+**Solution:** Pick a header that isn't reserved. `Authorization` and `Cookie` are both fine for probing endpoints behind auth.
 
 ```hcl
-# ❌ Wrong - overriding reserved header
+# ❌ Wrong - overriding Host
 resource "hyperping_monitor" "api" {
   name     = "API Monitor"
   url      = "https://api.example.com"
   protocol = "http"
-  request_headers = {
-    "Authorization" = "Bearer mytoken"  # Reserved!
-  }
+  request_headers = [
+    { name = "Host", value = "different.example.com" }, # Reserved
+  ]
 }
 
-# ❌ Wrong - overriding Host header
+# ✅ Correct - Authorization is allowed
 resource "hyperping_monitor" "api" {
   name     = "API Monitor"
   url      = "https://api.example.com"
   protocol = "http"
-  request_headers = {
-    "Host" = "different.example.com"  # Reserved!
-  }
+  request_headers = [
+    { name = "Authorization", value = "Bearer ${var.api_token}" },
+  ]
 }
 
 # ✅ Correct - custom header
@@ -554,36 +554,22 @@ resource "hyperping_monitor" "api" {
   name     = "API Monitor"
   url      = "https://api.example.com"
   protocol = "http"
-  request_headers = {
-    "X-API-Key" = "mytoken"
-  }
-}
-
-# ✅ Correct - multiple custom headers
-resource "hyperping_monitor" "api" {
-  name     = "API Monitor"
-  url      = "https://api.example.com"
-  protocol = "http"
-  request_headers = {
-    "X-API-Key"    = var.api_key
-    "X-Request-ID" = "12345"
-    "X-Environment" = "production"
-  }
+  request_headers = [
+    { name = "X-API-Key", value = var.api_key },
+  ]
 }
 ```
 
-**Reserved headers (cannot override):**
-- `Authorization` - Authentication credentials (managed by provider)
-- `Host` - Target hostname (derived from URL)
-- `Cookie` / `Set-Cookie` - Cookie management (security risk)
-- `Proxy-Authorize` - Proxy authentication
-- `Transfer-Encoding` - Message body encoding
+**Reserved headers (still cannot override):**
+- `Host` - target hostname; derived from the monitor URL. Overriding it enables vhost manipulation.
+- `Transfer-Encoding` - message framing; user-supplied values enable request smuggling against the monitored origin.
 
-**Why this validation exists:** Overriding these headers could:
-- Leak API credentials
-- Bypass authentication
-- Manipulate request routing
-- Break HTTP protocol compliance
+**Allowed (commonly used for auth):**
+- `Authorization` (Bearer, Basic, custom schemes)
+- `Cookie`
+- Any `X-*` header
+
+**Why the remaining two are blocked:** `Host` and `Transfer-Encoding` change how the probe is interpreted at the network layer, not what credentials are carried. Header values are marked sensitive in the schema so secrets are masked in plan output (but still land in Terraform state, so use an encrypted backend).
 
 ---
 
@@ -1057,9 +1043,9 @@ resource "hyperping_monitor" "broken" {
   url      = "example.com"         # Error 2: missing protocol
   protocol = "http"
   port     = 99999                 # Error 3: port out of range
-  request_headers = {
-    "Authorization" = "Bearer token"  # Error 4: reserved header
-  }
+  request_headers = [
+    { name = "Host", value = "spoofed.example.com" }, # Error 4: reserved header
+  ]
 }
 
 resource "hyperping_healthcheck" "broken" {
@@ -1139,9 +1125,9 @@ Error: Invalid Port Number
 
 Error: Reserved Header Name
   on main.tf line 7, in resource "hyperping_monitor" "broken":
-   7:     "Authorization" = "Bearer token"
+   7:     { name = "Host", value = "spoofed.example.com" }
 
-  The header name "Authorization" is reserved and cannot be overridden
+  The header name "Host" is reserved and cannot be overridden
 
 Error: Invalid Cron Expression
   on main.tf line 14, in resource "hyperping_healthcheck" "broken":

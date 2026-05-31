@@ -123,6 +123,24 @@ resource "hyperping_monitor" "test" {
 `, baseURL)
 }
 
+func testAccMonitorResourceConfigWithAuthHeader(baseURL string) string {
+	return fmt.Sprintf(`
+provider "hyperping" {
+  api_key  = "test_api_key"
+  base_url = %[1]q
+}
+
+resource "hyperping_monitor" "test" {
+  name = "auth-header-test"
+  url  = "https://example.com"
+  request_headers = [
+    { name = "Authorization", value = "Basic dXNlcjpwYXNzd29yZA==" },
+    { name = "Cookie",        value = "session=abc123" }
+  ]
+}
+`, baseURL)
+}
+
 func testAccMonitorResourceConfigWithUpdatedHeaders(baseURL string) string {
 	return fmt.Sprintf(`
 provider "hyperping" {

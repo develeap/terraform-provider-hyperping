@@ -58,14 +58,15 @@ func TestReservedHeaderName(t *testing.T) {
 		input     types.String
 		wantError bool
 	}{
-		{"Authorization blocked", types.StringValue("Authorization"), true},
-		{"authorization lowercase blocked", types.StringValue("authorization"), true},
-		{"AUTHORIZATION uppercase blocked", types.StringValue("AUTHORIZATION"), true},
 		{"Host blocked", types.StringValue("Host"), true},
-		{"Cookie blocked", types.StringValue("Cookie"), true},
-		{"Set-Cookie blocked", types.StringValue("Set-Cookie"), true},
-		{"Proxy-Authorize blocked", types.StringValue("Proxy-Authorize"), true},
+		{"host lowercase blocked", types.StringValue("host"), true},
 		{"Transfer-Encoding blocked", types.StringValue("Transfer-Encoding"), true},
+		{"transfer-encoding lowercase blocked", types.StringValue("transfer-encoding"), true},
+		{"Authorization allowed (issue #132)", types.StringValue("Authorization"), false},
+		{"authorization lowercase allowed", types.StringValue("authorization"), false},
+		{"Cookie allowed", types.StringValue("Cookie"), false},
+		{"Set-Cookie allowed (response-only header, harmless)", types.StringValue("Set-Cookie"), false},
+		{"Proxy-Authorize allowed (no proxy on probe path)", types.StringValue("Proxy-Authorize"), false},
 		{"custom header allowed", types.StringValue("X-Custom"), false},
 		{"Accept allowed", types.StringValue("Accept"), false},
 		{"Content-Type allowed", types.StringValue("Content-Type"), false},

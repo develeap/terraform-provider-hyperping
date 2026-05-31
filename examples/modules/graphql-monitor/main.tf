@@ -2,9 +2,9 @@
 #
 # Creates POST monitors for GraphQL endpoint health checking with query validation.
 #
-# NOTE: This module is designed for public GraphQL endpoints or endpoints where
-# authentication can be handled via custom (non-reserved) headers. The Hyperping
-# provider blocks reserved headers (Authorization, Cookie, Host, etc.) for security.
+# NOTE: Authentication headers including `Authorization` and `Cookie` are accepted.
+# The provider still blocks `Host` and `Transfer-Encoding` to prevent vhost
+# manipulation and request smuggling on the outbound probe.
 #
 # Usage:
 #   module "graphql_monitors" {

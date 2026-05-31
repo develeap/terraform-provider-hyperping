@@ -8,17 +8,14 @@ Reusable Terraform module for GraphQL endpoint health monitoring with Hyperping.
 - Response validation using expected keywords
 - GraphQL introspection monitoring (optional)
 - Support for query variables
-- Custom headers for GraphQL requests (non-reserved headers only)
+- Custom headers for GraphQL requests, including `Authorization` and `Cookie`
 - Multi-region monitoring
 
-## Important: Authentication Limitations
+## Authentication
 
-The Hyperping provider blocks reserved HTTP headers (Authorization, Cookie, Host, etc.) for security reasons. This module is designed for:
+The module supports any header the Hyperping provider allows on monitor probes, including standard `Authorization: Bearer …` / `Authorization: Basic …` and `Cookie`. The provider still blocks `Host` and `Transfer-Encoding` to prevent routing manipulation and request smuggling.
 
-1. **Public GraphQL endpoints** (no authentication)
-2. **Custom authentication headers** (X-API-Key, X-Auth-Token, etc.)
-
-If your GraphQL API requires standard `Authorization` headers, you cannot use this module due to provider security restrictions.
+Header values are marked sensitive in the provider schema (masked in plan output) but are still persisted to Terraform state. Use a secure state backend whenever tokens are involved.
 
 ## Usage
 
@@ -100,8 +97,6 @@ module "graphql_api" {
 
 ### Custom Authentication Headers
 
-For APIs using non-reserved authentication headers:
-
 ```hcl
 module "graphql_api" {
   source = "path/to/modules/graphql-monitor"
@@ -109,7 +104,7 @@ module "graphql_api" {
   endpoint = "https://api.example.com/graphql"
 
   custom_headers = {
-    "X-API-Key"     = var.graphql_api_key
+    "Authorization" = "Bearer ${var.graphql_api_key}"
     "X-Client-ID"   = var.client_id
   }
 
@@ -260,8 +255,6 @@ module "public_graphql" {
 
 ### Option 2: Custom Authentication Headers
 
-For APIs using non-reserved headers:
-
 ```hcl
 module "custom_auth_graphql" {
   source   = "path/to/modules/graphql-monitor"
@@ -274,11 +267,21 @@ module "custom_auth_graphql" {
 }
 ```
 
-### Option 3: Not Supported - Standard Authorization
+### Option 3: Standard Authorization (Bearer / Basic)
 
-**This module cannot be used** for APIs requiring standard `Authorization: Bearer <token>` headers due to provider security restrictions.
+```hcl
+module "auth_graphql" {
+  source   = "path/to/modules/graphql-monitor"
+  endpoint = "https://api.example.com/graphql"
 
-For such APIs, you must use the `hyperping_monitor` resource directly without this module.
+  custom_headers = {
+    "Authorization" = "Bearer ${var.api_token}"
+  }
+  # ... queries ...
+}
+```
+
+Header values are sensitive in plan output but still land in Terraform state. Pair this with a state backend that encrypts at rest.
 
 ## GraphQL Query Best Practices
 
@@ -420,13 +423,10 @@ terraform test
 
 ## Limitations
 
-1. **No Standard Authorization Headers**: The provider blocks `Authorization`, `Cookie`, `Host`, and other reserved headers for security
-2. **Public or Custom Auth Only**: This module works only with public endpoints or custom authentication headers (X-API-Key, etc.)
-3. **No OAuth/JWT Support**: Standard OAuth2 Bearer tokens cannot be used through this module
+1. **Reserved Headers**: The provider still blocks `Host` and `Transfer-Encoding` to prevent vhost manipulation and request smuggling on the outbound probe.
+2. **State Sensitivity**: Header values are masked in plan output but persisted in Terraform state. Use an encrypted state backend whenever credentials are involved.
 
-## Alternatives for Authenticated APIs
-
-If your GraphQL API requires standard `Authorization` headers, use the `hyperping_monitor` resource directly:
+## Standard Authorization Example
 
 ```hcl
 resource "hyperping_monitor" "graphql_with_auth" {
@@ -436,8 +436,8 @@ resource "hyperping_monitor" "graphql_with_auth" {
   http_method = "POST"
 
   request_headers = [
-    { name = "Content-Type", value = "application/json" }
-    # Note: Authorization header will be rejected by provider
+    { name = "Content-Type",  value = "application/json" },
+    { name = "Authorization", value = "Bearer ${var.api_token}" },
   ]
 
   request_body = jsonencode({
