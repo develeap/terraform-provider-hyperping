@@ -10,6 +10,24 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Security
+
+- HCL template-interpolation injection closed across all generator paths (`cmd/migrate-uptimerobot`, `cmd/migrate-pingdom`, `cmd/import-generator`). Untrusted string fields (monitor names, URLs, header values) now flow through `pkg/migrate.QuoteHCL`, which doubles the leading sigil on `${...}` and `%{...}` sequences so Terraform treats them as literal text rather than evaluating them at plan time.
+- VCR cassette masker rewritten: previously only the parameter name was rewritten, leaving the secret value plaintext on disk. The masker now URL-parses the request, replaces the value of every sensitive query parameter with `[MASKED]`, and re-serialises the URL. Lookup is case-insensitive so `Api_Key`, `API_KEY`, `Token`, and `aPi_KeY` are all caught.
+- `TFLogAdapter` now applies per-call redaction inside its `Debug` path, so any message containing API-key-shaped values is sanitised before tflog writes it to disk.
+- `mcp_url` localhost default-deny: `http://localhost`, `http://127.0.0.1`, and `http://[::1]` are rejected unless the operator opts in with `HYPERPING_ALLOW_LOCAL=1`. This closes an SSRF vector where a malicious value could otherwise reach a metadata service.
+- Defense-in-depth quoting for resource UUIDs in generated shell scripts (`cmd/import-generator/{generator,script}.go`, `cmd/migrate-pingdom/generator/import.go`): UUIDs now flow through `pkg/migrate.QuoteShellUUID`, which whitelists `[A-Za-z0-9_-]` and replaces non-conforming values with a sentinel before quoting. The Hyperping API remains the source of truth for these identifiers; this is a guardrail against a future backend or partner-API regression smuggling command substitution into the script.
+
+### Changed
+
+- `mcp_url` set to a localhost address now requires `HYPERPING_ALLOW_LOCAL=1`. **Breaking** for any configuration that pointed `mcp_url` at `http://localhost`, `http://127.0.0.1`, or `http://[::1]` without setting the env var. The `base_url` provider attribute retains the localhost exemption to avoid breaking acceptance-test setups.
+
+### Added
+
+- `HYPERPING_ALLOW_LOCAL` environment variable. Set to `1` to re-enable the localhost exemption for `mcp_url` (intended for local integration testing against a development MCP server).
+- Case-insensitive masking of API-key-shaped query parameters (`api_key`, `apikey`, `token`, `access_token`) in VCR cassettes regardless of source URL casing.
+- `pkg/migrate.SafeUUID` and `pkg/migrate.QuoteShellUUID` helpers for validating and quoting server-issued identifiers before interpolating them into generated shell scripts.
+
 ## [1.11.1] - 2026-05-31
 
 ### Added
