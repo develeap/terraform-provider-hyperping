@@ -109,8 +109,9 @@ func (d *MonitorDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 							Computed:            true,
 						},
 						"value": schema.StringAttribute{
-							MarkdownDescription: "Header value.",
+							MarkdownDescription: "Header value. Marked sensitive: masked in plan output and Terraform CLI display because monitor request headers commonly carry credentials (Authorization, Cookie).",
 							Computed:            true,
+							Sensitive:           true,
 						},
 					},
 				},
