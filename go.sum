@@ -31,8 +31,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/develeap/hyperping-go v0.4.0 h1:0++CDXxNohxQN803+l6+8ZVamnDL5zIa+JMl6FhHGyg=
-github.com/develeap/hyperping-go v0.4.0/go.mod h1:LReXmCFW1WF/KKJ6Qa+uJe8HgyihFMd4fEDYGQ0wPII=
+github.com/develeap/hyperping-go v0.6.0 h1:18hGv9tad9fSiYmwSK6y09hxR4nTl2zvpdN5TS12mBc=
+github.com/develeap/hyperping-go v0.6.0/go.mod h1:LReXmCFW1WF/KKJ6Qa+uJe8HgyihFMd4fEDYGQ0wPII=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
 github.com/emirpasic/gods v1.18.1/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
