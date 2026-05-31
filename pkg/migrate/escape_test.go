@@ -23,6 +23,12 @@ func TestEscapeHCL(t *testing.T) {
 		{"tab", "col1\tcol2", `col1\tcol2`},
 		{"mixed", "say \"hello\"\nnext line", `say \"hello\"\nnext line`},
 		{"empty", "", ""},
+		// Template-interpolation injection prevention (HCL ${...} and %{...} sequences).
+		{"interp file()", `${file("/etc/passwd")}`, `$${file(\"/etc/passwd\")}`},
+		{"interp for", `%{for x in y}`, `%%{for x in y}`},
+		{"interp env var", `${env.SECRET}`, `$${env.SECRET}`},
+		{"interp mixed", `${env.SECRET}_%{ "x" }`, `$${env.SECRET}_%%{ \"x\" }`},
+		{"interp dollar then template", `$${literal}`, `$$${literal}`},
 	}
 
 	for _, tt := range tests {
@@ -46,6 +52,8 @@ func TestEscapeShell(t *testing.T) {
 		{"backtick", "run `ls`", "run \\`ls\\`"},
 		{"mixed", `var="$HOME"`, `var=\"\$HOME\"`},
 		{"empty", "", ""},
+		{"newline", "line1\nline2", `line1\nline2`},
+		{"carriage return", "line1\rline2", `line1\rline2`},
 	}
 
 	for _, tt := range tests {
@@ -60,4 +68,7 @@ func TestQuoteHCL(t *testing.T) {
 	assert.Equal(t, `"hello"`, QuoteHCL("hello"))
 	assert.Equal(t, `"say \"hi\""`, QuoteHCL(`say "hi"`))
 	assert.Equal(t, `""`, QuoteHCL(""))
+	// QuoteHCL must neutralize HCL template interpolation in the value.
+	assert.Equal(t, `"$${file(\"/etc/passwd\")}"`, QuoteHCL(`${file("/etc/passwd")}`))
+	assert.Equal(t, `"%%{for x in y}"`, QuoteHCL(`%{for x in y}`))
 }
