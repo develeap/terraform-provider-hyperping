@@ -171,7 +171,7 @@ func maskSensitiveQueryValues(raw string) string {
 	pairs := strings.Split(u.RawQuery, "&")
 	mutated := false
 	for idx, pair := range pairs {
-		key, _, hasEq := strings.Cut(pair, "=")
+		key, _, _ := strings.Cut(pair, "=")
 		decodedKey, derr := url.QueryUnescape(key)
 		if derr != nil {
 			decodedKey = key
@@ -179,11 +179,10 @@ func maskSensitiveQueryValues(raw string) string {
 		if _, sensitive := sensitiveQueryParams[decodedKey]; !sensitive {
 			continue
 		}
-		if hasEq {
-			pairs[idx] = key + "=[MASKED]"
-		} else {
-			pairs[idx] = key + "=[MASKED]"
-		}
+		// Always emit "<key>=[MASKED]" regardless of whether the original pair
+		// contained an equals sign: if a sensitive parameter appears without a
+		// value, we still want the value position explicitly masked.
+		pairs[idx] = key + "=[MASKED]"
 		mutated = true
 	}
 	if !mutated {
