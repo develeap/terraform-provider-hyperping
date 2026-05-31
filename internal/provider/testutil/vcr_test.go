@@ -123,11 +123,11 @@ func TestMaskSensitiveHeaders(t *testing.T) {
 		}
 	})
 
-	t.Run("masks api_key in URL", func(t *testing.T) {
+	t.Run("masks api_key value in URL", func(t *testing.T) {
 		interaction := &cassette.Interaction{
 			Request: cassette.Request{
 				Headers: http.Header{},
-				URL:     "https://api.example.com/v1/test?api_key=secret123",
+				URL:     "https://api.example.com/v1/test?api_key=sk_real_secret_value&page=2",
 			},
 			Response: cassette.Response{
 				Headers: http.Header{},
@@ -136,9 +136,43 @@ func TestMaskSensitiveHeaders(t *testing.T) {
 
 		maskSensitiveHeaders(interaction)
 
-		// The masking replaces "api_key=" with "api_key=[MASKED]"
+		// The masker must replace the VALUE of api_key, not just the parameter name.
 		if !strings.Contains(interaction.Request.URL, "api_key=[MASKED]") {
 			t.Errorf("expected api_key=[MASKED] in URL, got: %s", interaction.Request.URL)
+		}
+		if strings.Contains(interaction.Request.URL, "sk_real_secret_value") {
+			t.Errorf("secret value leaked into cassette URL: %s", interaction.Request.URL)
+		}
+		// Other query parameters must survive unchanged.
+		if !strings.Contains(interaction.Request.URL, "page=2") {
+			t.Errorf("non-sensitive query param dropped: %s", interaction.Request.URL)
+		}
+	})
+
+	t.Run("masks token and apikey and access_token query params", func(t *testing.T) {
+		cases := []struct {
+			name   string
+			url    string
+			secret string
+		}{
+			{"token", "https://api.example.com/v1/x?token=sk_alpha_secret", "sk_alpha_secret"},
+			{"apikey", "https://api.example.com/v1/x?apikey=sk_beta_secret", "sk_beta_secret"},
+			{"access_token", "https://api.example.com/v1/x?access_token=sk_gamma_secret", "sk_gamma_secret"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				i := &cassette.Interaction{
+					Request:  cassette.Request{Headers: http.Header{}, URL: tc.url},
+					Response: cassette.Response{Headers: http.Header{}},
+				}
+				maskSensitiveHeaders(i)
+				if strings.Contains(i.Request.URL, tc.secret) {
+					t.Errorf("secret leaked: %s", i.Request.URL)
+				}
+				if !strings.Contains(i.Request.URL, "[MASKED]") {
+					t.Errorf("expected [MASKED] in URL, got: %s", i.Request.URL)
+				}
+			})
 		}
 	})
 
