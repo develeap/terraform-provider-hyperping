@@ -49,7 +49,9 @@ import (
 )
 
 // sensitiveQueryParams lists URL query parameter names whose VALUES must be
-// stripped before a cassette is written to disk.
+// stripped before a cassette is written to disk. Keys are stored lowercase;
+// lookups must lowercase the decoded parameter name first so variations such
+// as "Api_Key", "API_KEY", "Token", and "aPi_KeY" are all caught.
 var sensitiveQueryParams = map[string]struct{}{
 	"api_key":      {},
 	"apikey":       {},
@@ -176,7 +178,9 @@ func maskSensitiveQueryValues(raw string) string {
 		if derr != nil {
 			decodedKey = key
 		}
-		if _, sensitive := sensitiveQueryParams[decodedKey]; !sensitive {
+		// Look up case-insensitively but preserve the original key casing
+		// in the rewritten pair so cassette diffs remain human-readable.
+		if _, sensitive := sensitiveQueryParams[strings.ToLower(decodedKey)]; !sensitive {
 			continue
 		}
 		// Always emit "<key>=[MASKED]" regardless of whether the original pair
