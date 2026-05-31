@@ -37,7 +37,7 @@ jobs:
           cache: true
       - run: go build -v .
       - name: Run linters
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
           version: v2.10.1
           # Enable caching for faster builds (replaces deprecated skip-pkg-cache/skip-build-cache)
@@ -56,7 +56,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
-      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_wrapper: false
       - name: Verify documentation is up-to-date
@@ -107,7 +107,7 @@ jobs:
         with:
           args: -no-fail -exclude-generated -fmt sarif -out gosec-results.sarif ./...
       - name: Upload gosec results to GitHub Security
-        uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4.35.3
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         if: always() && hashFiles('gosec-results.sarif') != ''
         with:
           sarif_file: gosec-results.sarif
@@ -137,7 +137,7 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
@@ -202,7 +202,7 @@ jobs:
           fi
           echo "OK: Production code coverage ${TOTAL_COVERAGE}% meets 50% threshold"
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           files: ./coverage.out,./coverage_provider.out
           flags: unittests
