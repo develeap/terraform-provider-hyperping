@@ -10,6 +10,10 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Fixed
+
+- Bump `github.com/develeap/hyperping-go` v0.6.2 to v0.6.3. v0.6.2 had a critical HTTP/2 ALPN regression that broke all HTTPS API calls to non-localhost servers (manifested as `Unsolicited response received on idle HTTP channel` errors with `\x00\x00\x12\x04` byte patterns, i.e. HTTP/2 SETTINGS frames being misread by Go's HTTP/1 parser). Affects both REST and MCP paths. Upstream fix: https://github.com/develeap/hyperping-go/pull/37.
+
 ## [1.12.0] - 2026-05-31
 
 ### Security
