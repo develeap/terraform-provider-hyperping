@@ -4,9 +4,7 @@
 package provider
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -309,10 +307,3 @@ func TestEscalationPoliciesDataSource_FailsAgainstStrictServer_WhenBugRegressedT
 	}
 }
 
-// echo helpers below are intentionally unused — placeholders that document
-// the JSON-RPC envelope shape the fixture must respect. Kept as a single
-// reference point for future tests.
-var (
-	_ = bytes.NewReader
-	_ = fmt.Sprintf
-)
