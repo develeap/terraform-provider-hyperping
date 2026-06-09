@@ -11,6 +11,7 @@ import (
 
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/converter"
 	"github.com/develeap/terraform-provider-hyperping/cmd/migrate-pingdom/pingdom"
+	"github.com/develeap/terraform-provider-hyperping/pkg/migrate"
 )
 
 func intPtr(n int) *int    { return &n }
@@ -46,12 +47,17 @@ func TestTerraformName(t *testing.T) {
 	}
 }
 
+// The local escapeHCL helper that this test originally covered was removed
+// in PR #138 (sec: HCL injection hardening) in favour of the shared
+// migrate.EscapeHCL/QuoteHCL pair. The generator now calls migrate.QuoteHCL
+// directly, so we exercise that here to keep coverage on the HCL-quoting
+// path the package depends on.
 func TestEscapeHCL(t *testing.T) {
-	if got := escapeHCL(`he said "hi"`); got != `he said \"hi\"` {
-		t.Errorf("escapeHCL quotes = %q", got)
+	if got := migrate.EscapeHCL(`he said "hi"`); got != `he said \"hi\"` {
+		t.Errorf("EscapeHCL quotes = %q", got)
 	}
-	if got := escapeHCL("a\\b"); got != `a\\b` {
-		t.Errorf("escapeHCL backslash = %q", got)
+	if got := migrate.EscapeHCL("a\\b"); got != `a\\b` {
+		t.Errorf("EscapeHCL backslash = %q", got)
 	}
 }
 
@@ -108,13 +114,12 @@ func TestBuildOptionalHelpers(t *testing.T) {
 		{"body nil omitted", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{}, ""},
 		{"body empty omitted", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{RequestBody: strPtr("")}, ""},
 		{"body emitted (ASCII-safe)", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{RequestBody: strPtr("hello")}, "  request_body = \"hello\"\n"},
-		// TODO: pinning the current double-escape behaviour. terraform.go formats
-		// already-escaped strings with %q, which escapes them a second time. For input
-		// {"a":1}, the runtime output is `"{\\\"a\\\":1}"` (3 backslashes before each
-		// quote) instead of the HCL-correct `"{\"a\":1}"`. When the bug is fixed (drop
-		// %q in favour of QuoteHCL, or stop pre-escaping), this expectation becomes
-		// "  request_body = \"{\\\"a\\\":1}\"\n" — see the PR body for context.
-		{"body emitted (current double-escape)", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{RequestBody: strPtr(`{"a":1}`)}, "  request_body = \"{\\\\\\\"a\\\\\\\":1}\"\n"},
+		// The earlier double-escape bug (terraform.go formatting an already-escaped
+		// string with %q) was fixed in PR #138, which switched the generator to
+		// migrate.QuoteHCL. For input {"a":1} the correct HCL output is
+		// `"{\"a\":1}"` (1 backslash before each quote), encoded here as the
+		// Go literal "  request_body = \"{\\\"a\\\":1}\"\n".
+		{"body emitted (json escaped once)", buildOptionalRequestBody, &hyperping.CreateMonitorRequest{RequestBody: strPtr(`{"a":1}`)}, "  request_body = \"{\\\"a\\\":1}\"\n"},
 
 		{"paused false omitted", buildOptionalPaused, &hyperping.CreateMonitorRequest{}, ""},
 		{"paused true emitted", buildOptionalPaused, &hyperping.CreateMonitorRequest{Paused: true}, "  paused = true\n"},
