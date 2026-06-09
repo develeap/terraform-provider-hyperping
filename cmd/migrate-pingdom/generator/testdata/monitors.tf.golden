@@ -1,0 +1,33 @@
+# Generated from Pingdom export
+# Review and adjust as needed before applying
+
+# Pingdom Check ID: 1
+# Original Name: API Health
+# Type: https
+# Tags: production, api
+resource "hyperping_monitor" "api_apihealth" {
+  name     = "[PROD]-API-ApiHealth"
+  url      = "https://api.example.com/health"
+  protocol = "http"
+  check_frequency = 300
+  regions = ["virginia", "london", "frankfurt", "singapore"]
+}
+
+# Pingdom Check ID: 2
+# Original Name: Database
+# Type: tcp
+# Tags: production, database
+resource "hyperping_monitor" "database_database" {
+  name     = "[PROD]-Database-Database"
+  url      = "db.example.com"
+  protocol = "port"
+  regions = ["virginia", "london", "frankfurt", "singapore"]
+  port = 5432
+}
+
+# Pingdom Check ID: 3
+# Original Name: DNS Lookup
+# Type: dns
+# UNSUPPORTED: dns
+# NOTE: DNS checks not directly supported. Consider using HTTP check to DNS-over-HTTPS service or monitor the service that relies on DNS
+
