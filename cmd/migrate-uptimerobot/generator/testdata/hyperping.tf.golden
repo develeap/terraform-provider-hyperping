@@ -1,0 +1,100 @@
+# Terraform configuration generated from UptimeRobot migration
+# Review and adjust as needed before applying
+#
+# Total monitors: 2
+# Total healthchecks: 1
+# Skipped resources: 1 (see comments below)
+
+terraform {
+  required_providers {
+    hyperping = {
+      source  = "develeap/hyperping"
+      version = "~> 1.0"
+    }
+  }
+}
+
+provider "hyperping" {
+  # API key will be read from HYPERPING_API_KEY environment variable
+}
+
+# Escalation Policy Configuration
+# Create escalation policies in Hyperping dashboard first,
+# then set their UUIDs here or via terraform.tfvars
+variable "escalation_policy" {
+  description = "Default escalation policy UUID for alerts"
+  type        = string
+  default     = ""  # Set this to your escalation policy UUID
+}
+
+# ============================================
+# Monitors
+# ============================================
+
+# Original UptimeRobot Monitor ID: 101
+# Warnings:
+#   - Check frequency adjusted from 250s to 300s (nearest allowed value)
+resource "hyperping_monitor" "api_health" {
+  name            = "API Health"
+  url             = "https://api.example.com/health"
+  protocol        = "http"
+  http_method     = "GET"
+  check_frequency = 300
+  expected_status_code = "2xx"
+  follow_redirects = true
+  regions         = ["london", "virginia", "singapore"]
+
+  # Uncomment to enable alerting:
+  # escalation_policy = var.escalation_policy
+}
+
+# Original UptimeRobot Monitor ID: 102
+resource "hyperping_monitor" "db_port" {
+  name            = "Database Port"
+  url             = "https://db.example.com"
+  protocol        = "port"
+  check_frequency = 60
+  port            = 5432
+  regions         = ["virginia"]
+
+  # Uncomment to enable alerting:
+  # escalation_policy = var.escalation_policy
+}
+
+# ============================================
+# Healthchecks (from Heartbeat monitors)
+# ============================================
+
+# Original UptimeRobot Heartbeat Monitor ID: 201
+# Warnings:
+#   - Heartbeat monitor converted to healthcheck. Update your script to ping the new URL (see manual-steps.md)
+resource "hyperping_healthcheck" "cron_heartbeat" {
+  name               = "Cron Heartbeat"
+  period_value       = 1
+  period_type        = "hours"
+  grace_period_value = 1
+  grace_period_type  = "hours"
+
+  # Uncomment to enable alerting:
+  # escalation_policy = var.escalation_policy
+}
+
+# ============================================
+# Skipped Resources
+# ============================================
+# The following monitors could not be migrated:
+#
+# - Unsupported Foo (ID: 999, Type: 99): unsupported monitor type: 99
+
+# ============================================
+# Outputs
+# ============================================
+
+# Healthcheck ping URLs
+# Use these URLs to update your heartbeat scripts
+output "cron_heartbeat_ping_url" {
+  description = "Ping URL for Cron Heartbeat"
+  value       = hyperping_healthcheck.cron_heartbeat.ping_url
+  sensitive   = true
+}
+
