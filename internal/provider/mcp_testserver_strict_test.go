@@ -29,7 +29,7 @@ func initSession(t *testing.T, srvURL string) string {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) //nolint:gosec // G704: srvURL is httptest.NewServer().URL, owned by the test, not user-tainted
 	if err != nil {
 		t.Fatalf("initialize call: %v", err)
 	}
@@ -52,7 +52,7 @@ func initSession(t *testing.T, srvURL string) string {
 	nreq.Header.Set("Content-Type", "application/json")
 	nreq.Header.Set("Accept", "application/json, text/event-stream")
 	nreq.Header.Set("Mcp-Session-Id", sid)
-	if nresp, err := http.DefaultClient.Do(nreq); err == nil {
+	if nresp, err := http.DefaultClient.Do(nreq); err == nil { //nolint:gosec // G704: srvURL is httptest.NewServer().URL, owned by the test, not user-tainted
 		_, _ = io.Copy(io.Discard, nresp.Body)
 		_ = nresp.Body.Close()
 	}
@@ -77,7 +77,7 @@ func callToolRaw(t *testing.T, srvURL, sid, jsonRPCBody string) map[string]any {
 		req.Header.Set("Mcp-Session-Id", sid)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) //nolint:gosec // G704: srvURL is httptest.NewServer().URL, owned by the test, not user-tainted
 	if err != nil {
 		t.Fatalf("tools/call: %v", err)
 	}
