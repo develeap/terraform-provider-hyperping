@@ -4,10 +4,7 @@
 package provider
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	tfresource "github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -21,28 +18,31 @@ func TestAccEscalationPolicyDataSource_basic(t *testing.T) {
 	// test server we just spun up in-process.
 	t.Setenv("HYPERPING_ALLOW_LOCAL", "1")
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		var rpcReq struct {
-			Method string `json:"method"`
-		}
-		json.NewDecoder(r.Body).Decode(&rpcReq)
-
-		if rpcReq.Method == "initialize" {
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26","capabilities":{},"serverInfo":{"name":"test","version":"1.0"}}}`)
-			return
-		}
-
-		if rpcReq.Method == "tools/call" {
-			// Simulate ListEscalationPolicies tool call
-			// Note: hyperping-go transport expects tool response to be JSON string in content[0].text
-			resultJSON := `[{"uuid":"ep_123","name":"SRE-Policy","team":"SRE-Team","steps":[{"delay":5,"target_type":"user","target_id":"u_1"}]}]`
-			escaped, _ := json.Marshal(resultJSON)
-			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":2,"result":{"content":[{"type":"text","text":%s}]}}`, escaped)
-			return
-		}
-	}))
+	// Strict fixture: rejects the v0.6.x nil-arguments wire shape the way
+	// the live /v1/mcp endpoint does. ListEscalationPolicies in
+	// hyperping-go v0.7.1 sends arguments:{} so this path stays green;
+	// any future regression to omitted/null arguments would fail here
+	// instead of silently going green like the pre-TF-06 fixture.
+	server := newStrictMCPTestServer(t, map[string]strictMCPTool{
+		"list_escalation_policies": {
+			Handler: func(_ map[string]any) (any, error) {
+				return []any{
+					map[string]any{
+						"uuid": "ep_123",
+						"name": "SRE-Policy",
+						"team": "SRE-Team",
+						"steps": []any{
+							map[string]any{
+								"delay":       5,
+								"target_type": "user",
+								"target_id":   "u_1",
+							},
+						},
+					},
+				}, nil
+			},
+		},
+	})
 	defer server.Close()
 
 	// Note: using tfresource.Test rather than ParallelTest because t.Setenv
