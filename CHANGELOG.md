@@ -10,6 +10,25 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped `github.com/develeap/hyperping-go` from v0.6.3 to v0.7.1. The bump pulls in the v0.7.0 MCP client correctness work (canonical windowed signatures on `GetMonitorMtta`, `GetMonitorMttr`, `GetMonitorResponseTime`, `GetMonitorUptime`; response types renamed and rewritten to match the live `https://api.hyperping.io/v1/mcp` wire shape) and the v0.7.1 nil-args MCP transport fix that unblocked the six argument-less `tools/call` requests. The provider only consumes `*MCPClient` methods that were not affected by the type renames (`ListEscalationPolicies`, `ListOnCallSchedules`, `ListIntegrations`, plus the single-resource lookups), so no source-level migration is required for provider users. Upstream releases: v0.7.0 (https://github.com/develeap/hyperping-go/releases/tag/v0.7.0), v0.7.1 (https://github.com/develeap/hyperping-go/releases/tag/v0.7.1).
+
+### Fixed
+
+- The five MCP-backed data sources (`hyperping_escalation_policies`, `hyperping_escalation_policy`, `hyperping_integrations`, `hyperping_on_call_schedules`, `hyperping_on_call_schedule`) now return real data against the production `/v1/mcp` endpoint. Pre-bump they failed with `failed to parse MCP tool response: invalid character 'M'` because the server's input validator rejected the `nil`-args requests the v0.6.x transport emitted and surfaced its `MCP error -32602` text into the response body where it then failed JSON decoding. The fix is the v0.7.1 nil-args normalisation in `McpTransport.callToolOnce`; no provider-side code change.
+
+### Security
+
+- Bumped `govulncheck` from v1.1.4 to v1.3.0 in the `Security` CI job (`.github/workflows/test.yml`) and dropped the `-scan package` workaround. v1.1.4 crashed in symbol-scan mode whenever `golang.org/x/sys/unix` v0.35+ entered the graph (a `//go:linkname` in `auxv.go` made `go/packages` fail type-checking); `-scan package` worked around the crash but reported every imported vulnerable package instead of only those reachable from the provider's call graph. v1.3.0 restores default symbol-mode precision. Mirrors `hyperping-go` PR #22 which originated the workaround.
+
+### Added
+
+- Unit-test coverage for `cmd/migrate-pingdom` non-`main` subpackages: `converter` 0% to 100%, `generator` 0% to 100%, `pingdom` 0% to 95.6%, `report` 0% to 98.9%. Patterns: table-driven converter cases, golden-file generator snapshots, `http.RoundTripper`-injected REST client tests. No production-code changes (PR #128).
+- Unit-test coverage for `cmd/migrate-uptimerobot` non-`main` subpackages: `converter` 0% to 96.9%, `generator` 0% to 99.7%, `report` 0% to 100%, `uptimerobot` 23.4% to 90.6%. Same patterns as #128. No production-code changes (PR #129).
+
+## [1.12.1] - 2026-06-07
+
 ### Fixed
 
 - Bump `github.com/develeap/hyperping-go` v0.6.2 to v0.6.3. v0.6.2 had a critical HTTP/2 ALPN regression that broke all HTTPS API calls to non-localhost servers (manifested as `Unsolicited response received on idle HTTP channel` errors with `\x00\x00\x12\x04` byte patterns, i.e. HTTP/2 SETTINGS frames being misread by Go's HTTP/1 parser). Affects both REST and MCP paths. Upstream fix: https://github.com/develeap/hyperping-go/pull/37.
