@@ -63,8 +63,9 @@ func (p *HyperpingProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 				// TODO(TF-10): add WriteOnly: true once terraform-plugin-framework supports
 				// WriteOnly on provider schema attributes. As of v1.19.0, IsWriteOnly()
 				// always returns false for provider attributes ("write-only attributes are
-				// not relevant to provider schemas"). Track:
-				// https://github.com/hashicorp/terraform-plugin-framework/issues/1118
+				// not relevant to provider schemas"). WriteOnly was added for resource
+				// schemas in hashicorp/terraform-plugin-framework#1044; no upstream issue
+				// yet tracks provider-schema support.
 			},
 			"base_url": schema.StringAttribute{
 				MarkdownDescription: "Hyperping API base URL. Defaults to `https://api.hyperping.io`.",
