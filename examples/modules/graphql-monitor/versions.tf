@@ -4,7 +4,7 @@
 # Provider configuration should be done in the root module.
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.11"
 
   required_providers {
     hyperping = {
