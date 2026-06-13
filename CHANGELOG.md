@@ -12,7 +12,7 @@ Published releases start from v1.0.3.
 
 ### Chore
 
-- Added a tracking `TODO(TF-10)` comment on the `api_key` provider attribute noting that `WriteOnly: true` cannot be set until `terraform-plugin-framework` supports write-only attributes on provider schemas. As of v1.19.0, `IsWriteOnly()` always returns false for provider attributes. The attribute remains protected by `Sensitive: true` and the `HYPERPING_API_KEY` environment variable pattern in the meantime.
+- Added a tracking `TODO(TF-10)` comment on the `api_key` provider attribute noting that `WriteOnly: true` cannot be set until `terraform-plugin-framework` supports write-only attributes on provider schemas. As of v1.19.0, `IsWriteOnly()` always returns false for provider attributes. The attribute remains protected by `Sensitive: true` and the `HYPERPING_API_KEY` environment variable pattern in the meantime. Upstream feature request: hashicorp/terraform-plugin-framework#1305.
 
 ### Changed
 
