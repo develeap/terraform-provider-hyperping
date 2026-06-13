@@ -171,9 +171,9 @@ func TestAccMonitorResource_authorizationHeader(t *testing.T) {
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.#", "2"),
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.0.name", "Authorization"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.0.value", "Basic dXNlcjpwYXNzd29yZA=="),
+					tfresource.TestCheckNoResourceAttr("hyperping_monitor.test", "request_headers.0.value"),
 					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.1.name", "Cookie"),
-					tfresource.TestCheckResourceAttr("hyperping_monitor.test", "request_headers.1.value", "session=abc123"),
+					tfresource.TestCheckNoResourceAttr("hyperping_monitor.test", "request_headers.1.value"),
 				),
 			},
 		},

@@ -24,7 +24,7 @@ func TestAccStatusPageSubscriberResource_import(t *testing.T) {
 				Config: testAccStatusPageSubscriberResourceConfig_email(server.URL),
 				Check: tfresource.ComposeTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.email", "type", "email"),
-					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.email", "email", "team@example.com"),
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.email", "email"),
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.email", "language", "en"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.email", "id"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.email", "created_at"),
@@ -56,7 +56,7 @@ func TestAccStatusPageSubscriberResource_importSMS(t *testing.T) {
 				Config: testAccStatusPageSubscriberResourceConfig_sms(server.URL),
 				Check: tfresource.ComposeTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.sms", "type", "sms"),
-					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.sms", "phone", "+1234567890"),
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.sms", "phone"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.sms", "id"),
 				),
 			},
@@ -86,7 +86,7 @@ func TestAccStatusPageSubscriberResource_importTeams(t *testing.T) {
 				Config: testAccStatusPageSubscriberResourceConfig_teams(server.URL),
 				Check: tfresource.ComposeTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.teams", "type", "teams"),
-					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.teams", "teams_webhook_url", "https://outlook.office.com/webhook/test"),
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.teams", "teams_webhook_url"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.teams", "id"),
 				),
 			},
