@@ -141,9 +141,8 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"request_headers": schema.ListNestedAttribute{
 				MarkdownDescription: "Custom HTTP headers to send with the request. Only valid when protocol is `http`. " +
-					"`Authorization` and `Cookie` are allowed for probing endpoints behind authentication; " +
-					"because values may contain credentials, the `value` field is marked sensitive and is " +
-					"persisted to Terraform state. Use a secure state backend if you put secrets here.",
+					"`Authorization` and `Cookie` are allowed for probing endpoints behind authentication. " +
+					"The `value` field is write-only: it is masked in plan output and never persisted to state.",
 				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -159,10 +158,11 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 							},
 						},
 						"value": schema.StringAttribute{
-							MarkdownDescription: "The header value. Marked sensitive: masked in plan output and Terraform CLI display. " +
-								"Values are still stored in state, so credentials require a secure state backend.",
+							MarkdownDescription: "The header value. Sensitive: masked in plan output. " +
+								"Write-only: the value is never persisted to Terraform state (requires Terraform >= 1.11).",
 							Required:  true,
 							Sensitive: true,
+							WriteOnly: true,
 							Validators: []validator.String{
 								NoControlCharacters("Header value must not contain CR, LF, or NULL characters to prevent HTTP header injection."),
 							},

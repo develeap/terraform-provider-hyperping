@@ -91,9 +91,10 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"email": schema.StringAttribute{
-				MarkdownDescription: "Email address (required when type=email)",
+				MarkdownDescription: "Email address (required when type=email). Write-only: never persisted to state (requires Terraform >= 1.11).",
 				Optional:            true,
 				Sensitive:           true,
+				WriteOnly:           true,
 				Validators: []validator.String{
 					RequiredWhenValueIs(path.Root("type"), "email", "type"),
 					EmailFormat(),
@@ -103,9 +104,10 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"phone": schema.StringAttribute{
-				MarkdownDescription: "Phone number (required when type=sms)",
+				MarkdownDescription: "Phone number (required when type=sms). Write-only: never persisted to state (requires Terraform >= 1.11).",
 				Optional:            true,
 				Sensitive:           true,
+				WriteOnly:           true,
 				Validators: []validator.String{
 					RequiredWhenValueIs(path.Root("type"), "sms", "type"),
 				},
@@ -114,9 +116,10 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"teams_webhook_url": schema.StringAttribute{
-				MarkdownDescription: "Microsoft Teams webhook URL (required when type=teams)",
+				MarkdownDescription: "Microsoft Teams webhook URL (required when type=teams). Write-only: never persisted to state (requires Terraform >= 1.11).",
 				Optional:            true,
 				Sensitive:           true,
+				WriteOnly:           true,
 				Validators: []validator.String{
 					RequiredWhenValueIs(path.Root("type"), "teams", "type"),
 				},
