@@ -10,6 +10,10 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Chore
+
+- Added a tracking `TODO(TF-10)` comment on the `api_key` provider attribute noting that `WriteOnly: true` cannot be set until `terraform-plugin-framework` supports write-only attributes on provider schemas. As of v1.19.0, `IsWriteOnly()` always returns false for provider attributes. The attribute remains protected by `Sensitive: true` and the `HYPERPING_API_KEY` environment variable pattern in the meantime.
+
 ### Changed
 
 - Bumped `github.com/develeap/hyperping-go` from v0.6.3 to v0.7.1. The bump pulls in the v0.7.0 MCP client correctness work (canonical windowed signatures on `GetMonitorMtta`, `GetMonitorMttr`, `GetMonitorResponseTime`, `GetMonitorUptime`; response types renamed and rewritten to match the live `https://api.hyperping.io/v1/mcp` wire shape) and the v0.7.1 nil-args MCP transport fix that unblocked the six argument-less `tools/call` requests. The provider only consumes `*MCPClient` methods that were not affected by the type renames (`ListEscalationPolicies`, `ListOnCallSchedules`, `ListIntegrations`, plus the single-resource lookups), so no source-level migration is required for provider users. Upstream releases: v0.7.0 (https://github.com/develeap/hyperping-go/releases/tag/v0.7.0), v0.7.1 (https://github.com/develeap/hyperping-go/releases/tag/v0.7.1).
