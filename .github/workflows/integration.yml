@@ -56,7 +56,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          terraform_version: '1.8.*'
+          terraform_version: '1.11.*'
           terraform_wrapper: false
 
       - name: Run Better Stack integration tests
@@ -116,7 +116,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          terraform_version: '1.8.*'
+          terraform_version: '1.11.*'
           terraform_wrapper: false
 
       - name: Run UptimeRobot integration tests
@@ -176,7 +176,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
-          terraform_version: '1.8.*'
+          terraform_version: '1.11.*'
           terraform_wrapper: false
 
       - name: Run Pingdom integration tests

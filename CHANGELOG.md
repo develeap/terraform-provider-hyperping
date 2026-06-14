@@ -10,6 +10,10 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- The secret-bearing attributes `hyperping_monitor.request_headers[].value` and the `email`, `phone`, and `teams_webhook_url` attributes of `hyperping_statuspage_subscriber` are now [write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) (TF-09). Their values are sent to the Hyperping API but are never persisted to Terraform state, removing the prior need to protect state with a secure backend for these fields. Write-only attributes require **Terraform >= 1.11**; the example modules' `required_version` and the CI test/integration matrices were raised to `1.11` accordingly. The provider reads these values from the resource config during create/update and stores only non-secret metadata (header names, computed display `value`) in state.
+
 ### Chore
 
 - Added a tracking `TODO(TF-10)` comment on the `api_key` provider attribute noting that `WriteOnly: true` cannot be set until `terraform-plugin-framework` supports write-only attributes on provider schemas. As of v1.19.0, `IsWriteOnly()` always returns false for provider attributes. The attribute remains protected by `Sensitive: true` and the `HYPERPING_API_KEY` environment variable pattern in the meantime.

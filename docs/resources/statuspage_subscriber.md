@@ -98,10 +98,12 @@ resource "hyperping_statuspage" "production" {
 
 ### Optional
 
-- `email` (String, Sensitive) Email address (required when type=email)
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
+- `email` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Email address (required when type=email). Write-only: never persisted to state (requires Terraform >= 1.11).
 - `language` (String) Preferred language code (default: en)
-- `phone` (String, Sensitive) Phone number (required when type=sms)
-- `teams_webhook_url` (String, Sensitive) Microsoft Teams webhook URL (required when type=teams)
+- `phone` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Phone number (required when type=sms). Write-only: never persisted to state (requires Terraform >= 1.11).
+- `teams_webhook_url` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Microsoft Teams webhook URL (required when type=teams). Write-only: never persisted to state (requires Terraform >= 1.11).
 
 ### Read-Only
 

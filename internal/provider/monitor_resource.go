@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	hyperping "github.com/develeap/hyperping-go"
@@ -295,11 +296,23 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	// Build create request from plan
+	// request_headers[].value is write-only: it lives only in the config, never in
+	// the plan or state. Persist the plan headers (names only, value null) to state,
+	// but build the API request from the config headers (which carry the values).
+	stateHeaders := plan.RequestHeaders
+	plan.RequestHeaders = readConfigRequestHeaders(ctx, req.Config, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Build create request from plan (now carrying write-only header values)
 	createReq := r.buildCreateRequest(ctx, &plan, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// State must never persist write-only header values.
+	plan.RequestHeaders = stateHeaders
 
 	// Save desired paused state (create API doesn't support paused field)
 	wantPaused := !plan.Paused.IsNull() && plan.Paused.ValueBool()
@@ -338,6 +351,9 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 	if !planRequiredKeyword.IsNull() && plan.RequiredKeyword.IsNull() {
 		plan.RequiredKeyword = planRequiredKeyword
 	}
+
+	// request_headers[].value is write-only: persist names only, never the values.
+	plan.RequestHeaders = stateHeaders
 
 	// Handle pause state via separate API call if needed
 	if wantPaused {
@@ -385,6 +401,13 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 		state.RequiredKeyword = priorRequiredKeyword
 	}
 
+	// request_headers[].value is write-only: keep the header names from the API
+	// (so import and drift detection work) but never persist the values.
+	state.RequestHeaders = nullifyRequestHeaderValues(state.RequestHeaders, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -399,11 +422,22 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
+	// request_headers[].value is write-only: read the config headers (with values)
+	// to forward to the API, but persist only the names (value null) to state.
+	stateHeaders := plan.RequestHeaders
+	plan.RequestHeaders = readConfigRequestHeaders(ctx, req.Config, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Build update request with only changed fields
 	updateReq := r.buildUpdateRequest(ctx, &plan, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// State must never persist write-only header values.
+	plan.RequestHeaders = stateHeaders
 
 	// Call API to update monitor
 	monitor, err := r.client.UpdateMonitor(ctx, state.ID.ValueString(), updateReq)
@@ -428,6 +462,9 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 	if !planRequiredKeyword.IsNull() && plan.RequiredKeyword.IsNull() {
 		plan.RequiredKeyword = planRequiredKeyword
 	}
+
+	// request_headers[].value is write-only: persist names only, never the values.
+	plan.RequestHeaders = stateHeaders
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -460,6 +497,17 @@ func (r *MonitorResource) ImportState(ctx context.Context, req resource.ImportSt
 		return
 	}
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// readConfigRequestHeaders returns the request_headers list from the resource
+// config. The nested `value` field is a write-only attribute (TF-09), so it is
+// populated only in the config: it is null in both the plan and the state. The
+// provider must therefore read it from the config to forward header values to
+// the API, while persisting only the header names (value null) to state.
+func readConfigRequestHeaders(ctx context.Context, cfg tfsdk.Config, diags *diag.Diagnostics) types.List {
+	var headers types.List
+	diags.Append(cfg.GetAttribute(ctx, path.Root("request_headers"), &headers)...)
+	return headers
 }
 
 // savedHTTPFields holds HTTP-specific field values saved before mapMonitorToModel

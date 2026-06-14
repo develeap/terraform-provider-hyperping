@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	hyperping "github.com/develeap/hyperping-go"
@@ -176,6 +178,14 @@ func (r *StatusPageSubscriberResource) Create(ctx context.Context, req resource.
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// email/phone/teams_webhook_url are write-only (TF-09): their values exist only
+	// in the config, never the plan or state. Read them from the config for
+	// validation and the API request; they are nulled before being saved to state.
+	resp.Diagnostics.Append(readConfigSubscriberSecrets(ctx, req.Config, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -342,6 +352,19 @@ func (r *StatusPageSubscriberResource) ImportState(ctx context.Context, req reso
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), int64(subscriberID))...)
 }
 
+// readConfigSubscriberSecrets populates the write-only attributes (email, phone,
+// teams_webhook_url) on the model from the resource config. These attributes are
+// write-only (TF-09): their values exist only in the config, so the provider must
+// read them from there for validation and the API request. They are never saved
+// to state (see mapSubscriberToModel, which nulls them).
+func readConfigSubscriberSecrets(ctx context.Context, cfg tfsdk.Config, model *StatusPageSubscriberResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
+	diags.Append(cfg.GetAttribute(ctx, path.Root("email"), &model.Email)...)
+	diags.Append(cfg.GetAttribute(ctx, path.Root("phone"), &model.Phone)...)
+	diags.Append(cfg.GetAttribute(ctx, path.Root("teams_webhook_url"), &model.TeamsWebhookURL)...)
+	return diags
+}
+
 // validateConditionalFields validates that required fields are present based on type.
 func (r *StatusPageSubscriberResource) validateConditionalFields(model *StatusPageSubscriberResourceModel) error {
 	subscriberType := model.Type.ValueString()
@@ -411,21 +434,12 @@ func (r *StatusPageSubscriberResource) mapSubscriberToModel(sub *hyperping.Statu
 	}
 	model.CreatedAt = types.StringValue(sub.CreatedAt)
 
-	// Map optional fields
-	if sub.Email != nil && *sub.Email != "" {
-		model.Email = types.StringValue(*sub.Email)
-	} else {
-		model.Email = types.StringNull()
-	}
-
-	if sub.Phone != nil && *sub.Phone != "" {
-		model.Phone = types.StringValue(*sub.Phone)
-	} else {
-		model.Phone = types.StringNull()
-	}
-
-	// Note: API doesn't return teams_webhook_url, so we keep the planned value
-	// Slack channel is read-only (can't be created via API)
+	// email, phone, and teams_webhook_url are write-only (TF-09): they must never
+	// be persisted to state, regardless of what the API echoes back. The display
+	// value remains available through the computed `value` attribute above.
+	model.Email = types.StringNull()
+	model.Phone = types.StringNull()
+	model.TeamsWebhookURL = types.StringNull()
 }
 
 // NoSlackSubscriberType returns a validator that rejects "slack" type.
