@@ -93,7 +93,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"email": schema.StringAttribute{
-				MarkdownDescription: "Email address (required when type=email). Write-only: never persisted to state (requires Terraform >= 1.11).",
+				MarkdownDescription: "Email address (required when type=email). Write-only: never persisted to state (requires Terraform >= 1.11). Rotating the value requires replacing the subscriber; write-only attributes are null in state, so an edit alone produces no diff.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -106,7 +106,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"phone": schema.StringAttribute{
-				MarkdownDescription: "Phone number (required when type=sms). Write-only: never persisted to state (requires Terraform >= 1.11).",
+				MarkdownDescription: "Phone number (required when type=sms). Write-only: never persisted to state (requires Terraform >= 1.11). Rotating the value requires replacing the subscriber; write-only attributes are null in state, so an edit alone produces no diff.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -118,7 +118,7 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"teams_webhook_url": schema.StringAttribute{
-				MarkdownDescription: "Microsoft Teams webhook URL (required when type=teams). Write-only: never persisted to state (requires Terraform >= 1.11).",
+				MarkdownDescription: "Microsoft Teams webhook URL (required when type=teams). Write-only: never persisted to state (requires Terraform >= 1.11). Rotating the value requires replacing the subscriber; write-only attributes are null in state, so an edit alone produces no diff.",
 				Optional:            true,
 				Sensitive:           true,
 				WriteOnly:           true,
@@ -149,8 +149,10 @@ func (r *StatusPageSubscriberResource) Schema(ctx context.Context, req resource.
 				},
 			},
 			"value": schema.StringAttribute{
-				MarkdownDescription: "Display value (computed)",
-				Computed:            true,
+				MarkdownDescription: "Not populated in state. The API echoes the subscriber's contact " +
+					"(email address, phone number, or Teams webhook URL) here, but those are write-only " +
+					"secrets, so this attribute is intentionally left null to avoid persisting them.",
+				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
@@ -424,7 +426,12 @@ func (r *StatusPageSubscriberResource) buildAddSubscriberRequest(plan *StatusPag
 func (r *StatusPageSubscriberResource) mapSubscriberToModel(sub *hyperping.StatusPageSubscriber, model *StatusPageSubscriberResourceModel) {
 	model.ID = types.Int64Value(int64(sub.ID))
 	model.Type = types.StringValue(sub.Type)
-	model.Value = types.StringValue(sub.Value)
+	// The API echoes the contact back in `value`: for every supported type
+	// (email, sms, teams) it equals the email address, phone number, or webhook
+	// URL, all of which are write-only secrets (TF-09). Persisting `value` would
+	// leak the same secret through a computed attribute, so it is left null in
+	// state. See mapSubscriberToModel's write-only handling below.
+	model.Value = types.StringNull()
 	// API returns empty string for language when not explicitly set.
 	// Normalize to "en" (the schema default) to prevent drift.
 	if sub.Language != "" {
@@ -435,8 +442,8 @@ func (r *StatusPageSubscriberResource) mapSubscriberToModel(sub *hyperping.Statu
 	model.CreatedAt = types.StringValue(sub.CreatedAt)
 
 	// email, phone, and teams_webhook_url are write-only (TF-09): they must never
-	// be persisted to state, regardless of what the API echoes back. The display
-	// value remains available through the computed `value` attribute above.
+	// be persisted to state, regardless of what the API echoes back. The `value`
+	// attribute is nulled above for the same reason (it mirrors the secret).
 	model.Email = types.StringNull()
 	model.Phone = types.StringNull()
 	model.TeamsWebhookURL = types.StringNull()

@@ -160,7 +160,9 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						},
 						"value": schema.StringAttribute{
 							MarkdownDescription: "The header value. Sensitive: masked in plan output. " +
-								"Write-only: the value is never persisted to Terraform state (requires Terraform >= 1.11).",
+								"Write-only: the value is never persisted to Terraform state (requires Terraform >= 1.11). " +
+								"Because write-only values are null in state, editing only a header's value produces no diff; " +
+								"change the header name or add/remove a header entry to force the new value to be sent.",
 							Required:  true,
 							Sensitive: true,
 							WriteOnly: true,

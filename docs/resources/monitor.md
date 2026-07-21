@@ -99,7 +99,7 @@ resource "hyperping_monitor" "maintenance" {
 Required:
 
 - `name` (String) The header name. Must be a valid HTTP token (RFC 7230). Reserved headers that control HTTP framing or routing are not allowed: `Host`, `Transfer-Encoding`, `Content-Length`, `Connection`, `Upgrade`, `TE`, `Trailer`, `Expect`.
-- `value` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The header value. Sensitive: masked in plan output. Write-only: the value is never persisted to Terraform state (requires Terraform >= 1.11).
+- `value` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The header value. Sensitive: masked in plan output. Write-only: the value is never persisted to Terraform state (requires Terraform >= 1.11). Because write-only values are null in state, editing only a header's value produces no diff; change the header name or add/remove a header entry to force the new value to be sent.
 
 ## Import
 

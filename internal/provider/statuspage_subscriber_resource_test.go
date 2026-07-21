@@ -25,6 +25,8 @@ func TestAccStatusPageSubscriberResource_email(t *testing.T) {
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.email", "type", "email"),
 					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.email", "email"),
+					// value mirrors the write-only email; it must not be persisted to state (TF-09).
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.email", "value"),
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.email", "language", "en"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.email", "id"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.email", "created_at"),
@@ -56,6 +58,8 @@ func TestAccStatusPageSubscriberResource_sms(t *testing.T) {
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.sms", "type", "sms"),
 					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.sms", "phone"),
+					// value mirrors the write-only phone; it must not be persisted to state (TF-09).
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.sms", "value"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.sms", "id"),
 				),
 			},
@@ -75,6 +79,8 @@ func TestAccStatusPageSubscriberResource_teams(t *testing.T) {
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.teams", "type", "teams"),
 					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.teams", "teams_webhook_url"),
+					// value mirrors the write-only webhook URL; it must not be persisted to state (TF-09).
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.teams", "value"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.teams", "id"),
 				),
 			},
