@@ -41,7 +41,7 @@ Declarative `import {}` blocks live in your `.tf` files alongside the resources 
 | Status page | `sp_` | `sp_status123` |
 | Incident | `inc_` | `inc_incident123` |
 | Maintenance | `maint_` | `maint_window123` |
-| Status page subscriber | `{sp_id}/{sub_id}` | `sp_abc/sub_xyz` |
+| Status page subscriber | `{sp_id}:{subscriber_id}` | `sp_abc:42` |
 | Incident update | `{inc_id}/{upd_id}` | `inc_abc/upd_xyz` |
 
 ## Single-Resource Import Block
@@ -223,7 +223,7 @@ The `import-generator` tool bundled in `cmd/import-generator/` fetches all resou
 
 ```bash
 cd cmd/import-generator
-go run . -format=import-block -resources=monitors
+go run . -format=import -resources=monitors
 ```
 
 See [docs/IMPORT_GENERATOR_GUIDE.md](../IMPORT_GENERATOR_GUIDE.md) for full usage.
