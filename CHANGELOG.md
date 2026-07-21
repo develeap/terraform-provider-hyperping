@@ -10,6 +10,8 @@ Published releases start from v1.0.3.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-21
+
 ### Changed (breaking)
 
 - The secret-bearing attributes `hyperping_monitor.request_headers[].value` and the `email`, `phone`, and `teams_webhook_url` attributes of `hyperping_statuspage_subscriber` are now [write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) (TF-09). Their values are sent to the Hyperping API but are never persisted to Terraform state, removing the prior need to protect state with a secure backend for these fields. Write-only attributes require **Terraform >= 1.11**; the example modules' `required_version` and the CI test/integration matrices were raised to `1.11` accordingly. The provider reads these values from the resource config during create/update and stores only non-secret metadata (header names) in state. For `hyperping_statuspage_subscriber`, the computed `value` attribute (which the API echoes back with the same email/phone/webhook) is also left null in state so the secret cannot leak through it. Note: because write-only values are null in state, rotating a secret in place produces no diff; replace the resource (or, for monitor headers, change the header name) to apply a new value.
@@ -21,6 +23,7 @@ Published releases start from v1.0.3.
 ### Changed
 
 - Bumped `github.com/develeap/hyperping-go` from v0.6.3 to v0.7.1. The bump pulls in the v0.7.0 MCP client correctness work (canonical windowed signatures on `GetMonitorMtta`, `GetMonitorMttr`, `GetMonitorResponseTime`, `GetMonitorUptime`; response types renamed and rewritten to match the live `https://api.hyperping.io/v1/mcp` wire shape) and the v0.7.1 nil-args MCP transport fix that unblocked the six argument-less `tools/call` requests. The provider only consumes `*MCPClient` methods that were not affected by the type renames (`ListEscalationPolicies`, `ListOnCallSchedules`, `ListIntegrations`, plus the single-resource lookups), so no source-level migration is required for provider users. Upstream releases: v0.7.0 (https://github.com/develeap/hyperping-go/releases/tag/v0.7.0), v0.7.1 (https://github.com/develeap/hyperping-go/releases/tag/v0.7.1).
+- Bumped `github.com/schollz/progressbar/v3` v3.19.0 to v3.19.1 (#151) and `github.com/mattn/go-isatty` v0.0.22 to v0.0.23 (#153); both are used only by the migration CLI tooling. Bumped the github-actions workflow dependency group (6 updates, including `actions/checkout` and `actions/setup-go` to v7) (#154).
 
 ### Fixed
 
@@ -29,9 +32,13 @@ Published releases start from v1.0.3.
 ### Security
 
 - Bumped `govulncheck` from v1.1.4 to v1.3.0 in the `Security` CI job (`.github/workflows/test.yml`) and dropped the `-scan package` workaround. v1.1.4 crashed in symbol-scan mode whenever `golang.org/x/sys/unix` v0.35+ entered the graph (a `//go:linkname` in `auxv.go` made `go/packages` fail type-checking); `-scan package` worked around the crash but reported every imported vulnerable package instead of only those reachable from the provider's call graph. v1.3.0 restores default symbol-mode precision. Mirrors `hyperping-go` PR #22 which originated the workaround.
+- Bumped the Go directive from `1.26.4` to `1.26.5` to clear `GO-2026-5856` / `CVE-2026-42505` (crypto/tls Encrypted Client Hello de-anonymization), which govulncheck flagged against the standard library and which had been failing the `Security` CI job on branches built after the 2026-07-07 disclosure (#156).
+- Bumped `golang.org/x/crypto` from v0.51.0 to v0.54.0, clearing 13 Dependabot advisories on the default branch (7 critical, 2 high, 4 moderate; all first patched in 0.52.0). The dependency is indirect and unreachable (`go mod why` reports the module does not import it), so govulncheck's call-graph analysis never flagged it and this bump is Dependabot-alert hygiene rather than a fix for an exploitable path (#157).
 
 ### Added
 
+- Declarative import guide (`docs/guides/declarative-imports.md`) covering `import {}` blocks and `for_each` fleet imports, plus example `import.tf` files for `hyperping_monitor`, `hyperping_statuspage`, and `hyperping_incident` (TF-11, #146).
+- Provider credential-handling documentation in the README and provider docs index, clarifying `HYPERPING_API_KEY` env-var usage and the saved-plan-file caveat (#155).
 - Unit-test coverage for `cmd/migrate-pingdom` non-`main` subpackages: `converter` 0% to 100%, `generator` 0% to 100%, `pingdom` 0% to 95.6%, `report` 0% to 98.9%. Patterns: table-driven converter cases, golden-file generator snapshots, `http.RoundTripper`-injected REST client tests. No production-code changes (PR #128).
 - Unit-test coverage for `cmd/migrate-uptimerobot` non-`main` subpackages: `converter` 0% to 96.9%, `generator` 0% to 99.7%, `report` 0% to 100%, `uptimerobot` 23.4% to 90.6%. Same patterns as #128. No production-code changes (PR #129).
 
@@ -1145,7 +1152,8 @@ This provider is production-ready with comprehensive test coverage (45.8% overal
 - Operations guide for production deployments
 - Troubleshooting guide with common issues and solutions
 
-[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.2...HEAD
+[Unreleased]: https://github.com/develeap/terraform-provider-hyperping/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.12.1...v2.0.0
 [1.9.2]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/develeap/terraform-provider-hyperping/compare/v1.8.3...v1.9.0

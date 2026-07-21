@@ -161,8 +161,8 @@ migrate-pingdom --pingdom-api-key $PINGDOM_KEY --hyperping-api-key $HYPERPING_KE
 
 ## Requirements
 
-- Terraform >= 1.0
-- Go >= 1.26.2 (development only)
+- Terraform >= 1.11 (required for the write-only secret attributes on `hyperping_monitor` and `hyperping_statuspage_subscriber`; see CHANGELOG v2.0.0)
+- Go >= 1.26.5 (development only)
 - Hyperping account with API key
 
 ## Development
