@@ -102,6 +102,23 @@ terraform plan
 
 Or configure in the provider block (not recommended for production).
 
+### Credential handling
+
+The `api_key` attribute is marked `Sensitive`, so Terraform redacts it from CLI
+output and from `terraform show -json`. For production use, provide the key via the
+`HYPERPING_API_KEY` environment variable rather than hardcoding it in a `.tf` file:
+
+- Environment variable values are **never** written to state or to saved plan files
+  (`terraform plan -out=plan.tfplan`). Provider configuration is ephemeral: Terraform
+  re-evaluates it during apply and only records the provider address, not its values.
+- A key hardcoded as a literal in a `provider "hyperping"` block is captured in the
+  plan file's configuration snapshot. `Sensitive` does not remove it from that snapshot,
+  so treat any saved `.tfplan` as a secret and never commit it to version control.
+
+Terraform's `WriteOnly` attribute feature does not apply here: it is a managed-resource
+concept that the `ConfigureProvider` RPC does not process for provider schemas, so it is
+not available on (and would not benefit) provider configuration attributes.
+
 ## Migration Tools
 
 Automated CLI tools for migrating from other monitoring platforms:
