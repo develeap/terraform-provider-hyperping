@@ -60,6 +60,12 @@ func (p *HyperpingProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 				MarkdownDescription: "Hyperping API key (starts with `sk_`). Can also be set via `HYPERPING_API_KEY` environment variable.",
 				Optional:            true,
 				Sensitive:           true,
+				// TODO(TF-10): add WriteOnly: true once terraform-plugin-framework supports
+				// WriteOnly on provider schema attributes. As of v1.19.0, IsWriteOnly()
+				// always returns false for provider attributes ("write-only attributes are
+				// not relevant to provider schemas"). WriteOnly was added for resource
+				// schemas in hashicorp/terraform-plugin-framework#1044; provider-schema
+				// support is tracked upstream at hashicorp/terraform-plugin-framework#1305.
 			},
 			"base_url": schema.StringAttribute{
 				MarkdownDescription: "Hyperping API base URL. Defaults to `https://api.hyperping.io`.",
