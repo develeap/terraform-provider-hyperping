@@ -24,7 +24,9 @@ func TestAccStatusPageSubscriberResource_email(t *testing.T) {
 				Config: testAccStatusPageSubscriberResourceConfig_email(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.email", "type", "email"),
-					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.email", "email", "team@example.com"),
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.email", "email"),
+					// value mirrors the write-only email; it must not be persisted to state (TF-09).
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.email", "value"),
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.email", "language", "en"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.email", "id"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.email", "created_at"),
@@ -55,7 +57,9 @@ func TestAccStatusPageSubscriberResource_sms(t *testing.T) {
 				Config: testAccStatusPageSubscriberResourceConfig_sms(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.sms", "type", "sms"),
-					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.sms", "phone", "+1234567890"),
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.sms", "phone"),
+					// value mirrors the write-only phone; it must not be persisted to state (TF-09).
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.sms", "value"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.sms", "id"),
 				),
 			},
@@ -74,7 +78,9 @@ func TestAccStatusPageSubscriberResource_teams(t *testing.T) {
 				Config: testAccStatusPageSubscriberResourceConfig_teams(server.URL),
 				Check: tfresource.ComposeAggregateTestCheckFunc(
 					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.teams", "type", "teams"),
-					tfresource.TestCheckResourceAttr("hyperping_statuspage_subscriber.teams", "teams_webhook_url", "https://outlook.office.com/webhook/test"),
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.teams", "teams_webhook_url"),
+					// value mirrors the write-only webhook URL; it must not be persisted to state (TF-09).
+					tfresource.TestCheckNoResourceAttr("hyperping_statuspage_subscriber.teams", "value"),
 					tfresource.TestCheckResourceAttrSet("hyperping_statuspage_subscriber.teams", "id"),
 				),
 			},

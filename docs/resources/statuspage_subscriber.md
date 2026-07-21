@@ -98,13 +98,15 @@ resource "hyperping_statuspage" "production" {
 
 ### Optional
 
-- `email` (String, Sensitive) Email address (required when type=email)
+> **NOTE**: [Write-only arguments](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments) are supported in Terraform 1.11 and later.
+
+- `email` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Email address (required when type=email). Write-only: never persisted to state (requires Terraform >= 1.11). Rotating the value requires replacing the subscriber; write-only attributes are null in state, so an edit alone produces no diff.
 - `language` (String) Preferred language code (default: en)
-- `phone` (String, Sensitive) Phone number (required when type=sms)
-- `teams_webhook_url` (String, Sensitive) Microsoft Teams webhook URL (required when type=teams)
+- `phone` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Phone number (required when type=sms). Write-only: never persisted to state (requires Terraform >= 1.11). Rotating the value requires replacing the subscriber; write-only attributes are null in state, so an edit alone produces no diff.
+- `teams_webhook_url` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) Microsoft Teams webhook URL (required when type=teams). Write-only: never persisted to state (requires Terraform >= 1.11). Rotating the value requires replacing the subscriber; write-only attributes are null in state, so an edit alone produces no diff.
 
 ### Read-Only
 
 - `created_at` (String) Creation timestamp (computed)
 - `id` (Number) Subscriber ID (computed)
-- `value` (String) Display value (computed)
+- `value` (String) Not populated in state. The API echoes the subscriber's contact (email address, phone number, or Teams webhook URL) here, but those are write-only secrets, so this attribute is intentionally left null to avoid persisting them.

@@ -82,7 +82,7 @@ resource "hyperping_monitor" "maintenance" {
 - `protocol` (String) The protocol type. Valid values: `http`, `port`, `icmp`, `dns`. Defaults to `http`.
 - `regions` (List of String) List of monitoring regions. Use the `hyperping_monitoring_locations` data source to discover available locations.
 - `request_body` (String) HTTP request body. Only valid when protocol is `http` and http_method is `POST`, `PUT`, or `PATCH`.
-- `request_headers` (Attributes List) Custom HTTP headers to send with the request. Only valid when protocol is `http`. `Authorization` and `Cookie` are allowed for probing endpoints behind authentication; because values may contain credentials, the `value` field is marked sensitive and is persisted to Terraform state. Use a secure state backend if you put secrets here. (see [below for nested schema](#nestedatt--request_headers))
+- `request_headers` (Attributes List) Custom HTTP headers to send with the request. Only valid when protocol is `http`. `Authorization` and `Cookie` are allowed for probing endpoints behind authentication. The `value` field is write-only: it is masked in plan output and never persisted to state. (see [below for nested schema](#nestedatt--request_headers))
 - `required_keyword` (String) A keyword that must appear in the HTTP response body for the check to pass. Only valid when protocol is `http`.
 
 ### Read-Only
@@ -99,7 +99,7 @@ resource "hyperping_monitor" "maintenance" {
 Required:
 
 - `name` (String) The header name. Must be a valid HTTP token (RFC 7230). Reserved headers that control HTTP framing or routing are not allowed: `Host`, `Transfer-Encoding`, `Content-Length`, `Connection`, `Upgrade`, `TE`, `Trailer`, `Expect`.
-- `value` (String, Sensitive) The header value. Marked sensitive: masked in plan output and Terraform CLI display. Values are still stored in state, so credentials require a secure state backend.
+- `value` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The header value. Sensitive: masked in plan output. Write-only: the value is never persisted to Terraform state (requires Terraform >= 1.11). Because write-only values are null in state, editing only a header's value produces no diff; change the header name or add/remove a header entry to force the new value to be sent.
 
 ## Import
 

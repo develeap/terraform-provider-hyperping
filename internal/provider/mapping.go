@@ -180,6 +180,37 @@ func acknowledgedByAttrTypes() map[string]attr.Type {
 	}
 }
 
+// nullifyRequestHeaderValues returns a copy of a request_headers list with every
+// nested `value` set to null while preserving the header names. The `value` field
+// is write-only (TF-09): it must never be persisted to state, but the names are
+// kept so the configured header set is reflected in state and on import.
+func nullifyRequestHeaderValues(list types.List, diags *diag.Diagnostics) types.List {
+	if list.IsNull() || list.IsUnknown() {
+		return list
+	}
+
+	elems := list.Elements()
+	objType := types.ObjectType{AttrTypes: RequestHeaderAttrTypes()}
+	newElems := make([]attr.Value, 0, len(elems))
+	for _, e := range elems {
+		obj, ok := e.(types.Object)
+		if !ok {
+			newElems = append(newElems, e)
+			continue
+		}
+		obj, objDiags := types.ObjectValue(RequestHeaderAttrTypes(), map[string]attr.Value{
+			"name":  obj.Attributes()["name"],
+			"value": types.StringNull(),
+		})
+		diags.Append(objDiags...)
+		newElems = append(newElems, obj)
+	}
+
+	newList, listDiags := types.ListValue(objType, newElems)
+	diags.Append(listDiags...)
+	return newList
+}
+
 // mapRequestHeadersToTFList converts []RequestHeader to a Terraform List of objects.
 func mapRequestHeadersToTFList(headers []hyperping.RequestHeader, diags *diag.Diagnostics) types.List {
 	if len(headers) == 0 {
