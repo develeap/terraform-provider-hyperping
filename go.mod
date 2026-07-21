@@ -1,6 +1,6 @@
 module github.com/develeap/terraform-provider-hyperping
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
